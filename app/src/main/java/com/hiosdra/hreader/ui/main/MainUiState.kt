@@ -32,7 +32,7 @@ class MainViewModel(private val apiService: MinifluxApiService) : ViewModel() {
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                val fetchedEntries = apiService.getEntries(BuildConfig.MINIFLUX_API_KEY).entries // Access the 'entries' property
+                val fetchedEntries = apiService.getEntries().entries // Access the 'entries' property
                 _uiState.value = _uiState.value.copy(entries = fetchedEntries, isLoading = false)
                 Log.i("MainViewModel", "Entries loaded successfully: ${fetchedEntries.size} entries")
             } catch (e: Exception) {

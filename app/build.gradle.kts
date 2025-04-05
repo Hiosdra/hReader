@@ -20,8 +20,11 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "MINIFLUX_BASE_URL", "\"http://192.168.0.202:8682\"")
+//        buildConfigField("String", "MINIFLUX_BASE_URL", "\"http://192.168.0.202:8682\"")
+        buildConfigField("String", "MINIFLUX_BASE_URL", "\"https://miniflux.hiosdra.com\"")
         buildConfigField("String", "MINIFLUX_API_KEY", "\"pvHuBUHWfOhf-CQkdqAeETF9FORFPm3HskWIzR3fX4o=\"")
+        buildConfigField("String", "CLOUDFLARE_CLIENT_ID", "\"7deac5772438964e5e8571c789fa32a7.access\"")
+        buildConfigField("String", "CLOUDFLARE_CLIENT_SECRET", "\"cd2c46e1ad8514a31ac48ad25488adb66a2ca978d07436740b1a0559ac90df9b\"")
     }
 
     buildTypes {

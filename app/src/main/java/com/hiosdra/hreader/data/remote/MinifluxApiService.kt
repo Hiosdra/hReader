@@ -9,7 +9,6 @@ import retrofit2.http.Query
 interface MinifluxApiService {
     @GET("v1/entries")
     suspend fun getEntries(
-        @Header("X-Auth-Token") apiKey: String,
         @Query("status") status: String = "unread",
         @Query("order") order: String = "published_at",
         @Query("direction") direction: String = "asc",

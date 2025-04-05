@@ -20,11 +20,14 @@ val networkModule = module {
 
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
+            redactHeader("X-Auth-Token")
+            redactHeader("CF-Access-Client-Id")
+            redactHeader("CF-Access-Client-Secret")
         }
 
         val client = OkHttpClient.Builder()
-            .addInterceptor(logging)
             .addInterceptor(get<AuthInterceptor>())
+            .addInterceptor(logging)
             .build()
 
         Retrofit.Builder()
