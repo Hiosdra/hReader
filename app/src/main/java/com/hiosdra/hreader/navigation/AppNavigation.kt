@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.hiosdra.hreader.ui.article.ArticleScreen
 import com.hiosdra.hreader.ui.feeds.FeedsScreen
 import com.hiosdra.hreader.ui.main.MainScreen
 
@@ -27,9 +28,9 @@ fun AppNavigation(
             arguments = listOf(navArgument("articleId") { type = NavType.LongType })
         ) { backStackEntry ->
             val articleId = backStackEntry.arguments?.getLong("articleId")
-            // Fetch the article using the ID and display it
-            // Todo for now only log
+                ?: throw IllegalArgumentException("Article ID is required when navigating to article screen")
             Log.i("AppNavigation", "Article ID: $articleId")
+            ArticleScreen(navController, articleId)
         }
     }
 }
