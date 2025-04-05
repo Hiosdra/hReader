@@ -12,30 +12,33 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
 val networkModule = module {
-    single { AuthInterceptor() }
-    single {
-        val moshi = Moshi.Builder()
-            .add(KotlinJsonAdapterFactory())
-            .build()
-
-        val logging = HttpLoggingInterceptor().apply {
+    single<AuthInterceptor> { AuthInterceptor() }
+    single<HttpLoggingInterceptor> {
+        HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
             redactHeader("X-Auth-Token")
             redactHeader("CF-Access-Client-Id")
             redactHeader("CF-Access-Client-Secret")
         }
-
-        val client = OkHttpClient.Builder()
+    }
+    single<OkHttpClient> {
+        OkHttpClient.Builder()
             .addInterceptor(get<AuthInterceptor>())
-            .addInterceptor(logging)
+            .addInterceptor(get<HttpLoggingInterceptor>())
             .build()
-
+    }
+    single<Moshi> {
+        Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+    }
+    single<Retrofit> {
         Retrofit.Builder()
             .baseUrl(BuildConfig.MINIFLUX_BASE_URL)
-            .client(client)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .client(get<OkHttpClient>())
+            .addConverterFactory(MoshiConverterFactory.create(get<Moshi>()))
             .build()
     }
 
-    single { get<Retrofit>().create(MinifluxApiService::class.java) }
+    single<MinifluxApiService> { get<Retrofit>().create(MinifluxApiService::class.java) }
 }
