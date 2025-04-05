@@ -19,6 +19,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "MINIFLUX_BASE_URL", "\"http://192.168.0.202:8682\"")
+        buildConfigField("String", "MINIFLUX_API_KEY", "\"pvHuBUHWfOhf-CQkdqAeETF9FORFPm3HskWIzR3fX4o=\"")
     }
 
     buildTypes {
@@ -39,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -52,6 +56,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation("androidx.navigation:navigation-compose:2.8.5")
 
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -72,8 +77,9 @@ dependencies {
     annotationProcessor("androidx.room:room-compiler:2.6.1")
 
     // Koin
-    implementation("io.insert-koin:koin-android:3.5.3")
-    implementation("io.insert-koin:koin-androidx-compose:3.5.3")
+    implementation(project.dependencies.platform("io.insert-koin:koin-bom:4.0.3"))
+    implementation("io.insert-koin:koin-android")
+    implementation("io.insert-koin:koin-androidx-compose-navigation")
 
     // Coil
     implementation("io.coil-kt:coil-compose:2.5.0")
