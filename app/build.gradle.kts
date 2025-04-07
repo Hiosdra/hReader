@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation("androidx.navigation:navigation-compose:2.8.9")
+    implementation("androidx.browser:browser:1.8.0")
 
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
