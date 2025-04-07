@@ -11,5 +11,6 @@ data class Entry(
     val url: String,
     @Json(name = "published_at") val publishedAt: String,
     val content: String?,
-    val feed: Feed
+    val feed: Feed,
+    @Json(name = "reading_time") val readingTime: Int?,
 )
