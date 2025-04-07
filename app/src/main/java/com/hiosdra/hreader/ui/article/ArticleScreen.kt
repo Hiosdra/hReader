@@ -25,7 +25,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.text.HtmlCompat
 import androidx.navigation.NavHostController
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import org.koin.androidx.compose.koinViewModel
@@ -63,7 +65,10 @@ fun ArticleScreen(
                         IconButton(onClick = {
                             isWebViewMode.value = !isWebViewMode.value
                         }) {
-                            Icon(Icons.Filled.Warning, if (isWebViewMode.value) "Show Content" else "Show WebView")
+                            Icon(
+                                Icons.Filled.Warning,
+                                if (isWebViewMode.value) "Show Content" else "Show WebView"
+                            )
                         }
                     }
                 }
@@ -96,7 +101,12 @@ fun ArticleScreen(
                     )
                 } else {
                     Text(
-                        text = uiState.entry!!.content ?: "No content available",
+                        text = AnnotatedString(
+                            text = HtmlCompat.fromHtml(
+                                uiState.entry!!.content ?: "No content available",
+                                HtmlCompat.FROM_HTML_MODE_LEGACY
+                            ).toString()
+                        ),
                         modifier = Modifier.padding(paddingValues)
                     )
                 }
