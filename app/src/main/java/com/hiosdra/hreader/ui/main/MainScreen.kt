@@ -16,12 +16,9 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
@@ -61,22 +59,12 @@ fun MainScreen(
     viewModel: MainViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var expanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("All items", fontWeight = FontWeight.Bold)
-                        IconButton(onClick = { expanded = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "Filter")
-                        }
-                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                            DropdownMenuItem(text = { Text("All items") }, onClick = { expanded = false })
-                            DropdownMenuItem(text = { Text("Favorites") }, onClick = { expanded = false })
-                        }
-                    }
+                    Text("All items", fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("feeds") }) {
@@ -167,12 +155,6 @@ fun ArticleRow(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Star,
-                        contentDescription = "Favorite",
-                        tint = Color(0xFFCCCC00),
-                        modifier = Modifier.size(20.dp)
-                    )
                     Spacer(modifier = Modifier.size(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -211,7 +193,7 @@ fun ArticleRow(
                             Image(
                                 painter = rememberAsyncImagePainter(imageUrl),
                                 contentDescription = "Article image",
-                                modifier = Modifier.matchParentSize(),
+                                modifier = Modifier.fillMaxWidth(),
                                 contentScale = ContentScale.Crop
                             )
                         }
