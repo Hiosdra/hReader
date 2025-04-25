@@ -1,7 +1,9 @@
 package com.hiosdra.hreader.ui.main
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,18 +39,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.layout.ContentScale
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.ui.theme.MainChecked
-import com.hiosdra.hreader.ui.theme.MainHeader
 import com.hiosdra.hreader.ui.theme.MainUnchecked
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
@@ -60,6 +62,19 @@ fun MainScreen(
     viewModel: MainViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val navBackStackEntry =
+        remember(navController.currentBackStackEntry) { navController.getBackStackEntry("main") }
+    DisposableEffect(navBackStackEntry) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadEntries()
+            }
+        }
+        navBackStackEntry.lifecycle.addObserver(observer)
+        onDispose {
+            navBackStackEntry.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
@@ -103,11 +118,16 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
     LazyColumn(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         grouped.forEach { (date, items) ->
             item {
-                Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = try {
                             LocalDate.parse(date).format(dateFormatter)
-                        } catch (_: Exception) { date },
+                        } catch (_: Exception) {
+                            date
+                        },
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         fontSize = 14.sp
@@ -161,9 +181,17 @@ fun ArticleRow(
                     Spacer(modifier = Modifier.size(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(entry.author ?: "Source", color = MaterialTheme.colorScheme.secondaryContainer, fontSize = 13.sp)
+                            Text(
+                                entry.author ?: "Source",
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                fontSize = 13.sp
+                            )
                             Spacer(modifier = Modifier.size(6.dp))
-                            Text(entry.publishedAt.substring(11, 16), color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
+                            Text(
+                                entry.publishedAt.substring(11, 16),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 12.sp
+                            )
                         }
                         Text(
                             entry.title,
@@ -173,7 +201,8 @@ fun ArticleRow(
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
-                        val preview = entry.content?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: ""
+                        val preview =
+                            entry.content?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: ""
                         if (preview.isNotBlank()) {
                             Text(
                                 preview,

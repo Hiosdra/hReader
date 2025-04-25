@@ -24,7 +24,7 @@ class MainViewModel(private val apiService: MinifluxApiService) : ViewModel() {
         loadEntries()
     }
 
-    private fun loadEntries() {
+    internal fun loadEntries() {
         Log.i("MainViewModel", "Loading entries...")
         if (_uiState.value.isLoading) return
 
