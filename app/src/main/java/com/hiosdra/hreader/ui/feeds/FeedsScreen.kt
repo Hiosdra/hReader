@@ -27,7 +27,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.R
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Feed
 import org.koin.androidx.compose.koinViewModel
@@ -70,9 +72,17 @@ fun FeedsScreen(
                 LazyColumn(modifier = Modifier.padding(paddingValues)) {
                     items(uiState.feeds) { feed ->
                         val unreadCount = uiState.unreadCounts[feed.id] ?: 0
-                        FeedItem(feed = feed, unreadCount = unreadCount, onFeedClick = {
-                            navController.navigate("feed/${feed.id}")
-                        })
+                        FeedItem(
+                            feed = feed,
+                            unreadCount = unreadCount,
+                            onFeedClick = {
+                                // Open feed entries (default action)
+                                navController.navigate("feed/${feed.id}")
+                            },
+                            onDetailsClick = {
+                                navController.navigate("feed_details/${feed.id}")
+                            }
+                        )
                     }
                 }
             }
@@ -81,7 +91,12 @@ fun FeedsScreen(
 }
 
 @Composable
-fun FeedItem(feed: Feed, unreadCount: Int = 0, onFeedClick: () -> Unit) {
+fun FeedItem(
+    feed: Feed,
+    unreadCount: Int = 0,
+    onFeedClick: () -> Unit,
+    onDetailsClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -104,6 +119,13 @@ fun FeedItem(feed: Feed, unreadCount: Int = 0, onFeedClick: () -> Unit) {
             feed.siteUrl?.let {
                 Text(text = it, style = MaterialTheme.typography.bodySmall)
             }
+        }
+        IconButton(onClick = onDetailsClick) {
+            Icon(
+                painter = painterResource(id = R.drawable.baseline_details_24),
+                contentDescription = "Feed Details",
+                tint = MaterialTheme.colorScheme.secondary
+            )
         }
     }
     HorizontalDivider()
