@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
@@ -108,6 +108,8 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
     // Group entries by date (fake logic for demo)
     val grouped = entries.groupBy { it.publishedAt?.substring(0, 10) ?: "Unknown date" }
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy")
+    // Prepare flat list of all article IDs for navigation
+    val allArticleIds = entries.map { it.id }
     LazyColumn(modifier = modifier.background(Color(0xFF181818))) {
         grouped.forEach { (date, items) ->
             item {
@@ -122,8 +124,15 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
                     )
                 }
             }
-            items(items) { entry ->
-                ArticleRow(entry = entry, navController = navController)
+            itemsIndexed(items) { index, entry ->
+                // Find the index of this entry in the flat list
+                val globalIndex = allArticleIds.indexOf(entry.id)
+                ArticleRow(
+                    entry = entry,
+                    navController = navController,
+                    articleIds = allArticleIds,
+                    articleIndex = globalIndex
+                )
                 HorizontalDivider(thickness = 8.dp, color = Color(0xFF222222))
             }
         }
@@ -131,14 +140,18 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
 }
 
 @Composable
-fun ArticleRow(entry: Entry, navController: NavController) {
+fun ArticleRow(
+    entry: Entry,
+    navController: NavController,
+    articleIds: List<Long>,
+    articleIndex: Int
+) {
     var checked by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                val articleIds = listOf(entry.id)
-                navController.navigate("article/${articleIds.joinToString(",")}/0")
+                navController.navigate("article/${articleIds.joinToString(",")}/$articleIndex")
             }
             .background(Color(0xFF232323)),
         shape = MaterialTheme.shapes.medium

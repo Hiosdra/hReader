@@ -27,7 +27,9 @@ class ArticleViewModel(private val apiService: MinifluxApiService) : ViewModel()
             try {
                 val idsString = articleIds.joinToString(",")
                 val entries = apiService.getEntriesByIds(idsString).entries
-                _uiState.value = _uiState.value.copy(entries = entries, currentIndex = initialIndex, isLoading = false, error = null)
+                // Sort entries to match the order of articleIds
+                val sortedEntries = articleIds.mapNotNull { id -> entries.find { it.id == id } }
+                _uiState.value = _uiState.value.copy(entries = sortedEntries, currentIndex = initialIndex, isLoading = false, error = null)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = "Error loading articles: ${e.message}",

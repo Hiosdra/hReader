@@ -59,8 +59,12 @@ fun ArticleScreen(
     val pagerState = rememberPagerState(initialPage = initialIndex)
     val isWebViewMode = remember { mutableStateOf(false) }
 
-    LaunchedEffect(articleIds) {
+    LaunchedEffect(articleIds, initialIndex) {
         viewModel.loadArticles(articleIds, initialIndex)
+    }
+
+    LaunchedEffect(initialIndex) {
+        pagerState.scrollToPage(initialIndex)
     }
 
     // Sync pager with state
@@ -190,10 +194,6 @@ fun ArticleScreen(
                             }
                         }
                     }
-                    HorizontalPagerIndicator(
-                        pagerState = pagerState,
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
-                    )
                 }
             }
         }
