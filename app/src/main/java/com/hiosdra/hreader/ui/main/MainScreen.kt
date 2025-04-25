@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
 import org.koin.androidx.compose.koinViewModel
@@ -196,7 +196,7 @@ fun ArticleRow(
                 }
                 Spacer(modifier = Modifier.size(8.dp))
                 Box(
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier.size(96.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     val imageUrl = entry.enclosures?.firstOrNull {
@@ -206,7 +206,8 @@ fun ArticleRow(
                         Image(
                             painter = rememberAsyncImagePainter(imageUrl),
                             contentDescription = "Article image",
-                            modifier = Modifier.matchParentSize()
+                            modifier = Modifier.matchParentSize(),
+                            contentScale = ContentScale.Crop
                         )
                     }
                 }
