@@ -5,6 +5,7 @@
 2. Article photo view
 3. Per feed article list
 4. Article set as read
+5. Migrate from acompanist pager
 
 
 ## Med Prio
