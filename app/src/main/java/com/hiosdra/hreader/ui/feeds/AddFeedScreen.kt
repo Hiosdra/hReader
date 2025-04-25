@@ -15,6 +15,8 @@ import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.remote.MinifluxApiService
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import retrofit2.HttpException
+import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +42,19 @@ fun AddFeedScreen(
         } else {
             "https://$trimmed"
         }
+    }
+
+    fun extractErrorMessage(e: Exception): String {
+        if (e is HttpException) {
+            val errorBody = e.response()?.errorBody()?.string()
+            if (!errorBody.isNullOrEmpty()) {
+                try {
+                    val json = JSONObject(errorBody)
+                    return json.optString("error_message", e.message ?: "Unknown error")
+                } catch (_: Exception) {}
+            }
+        }
+        return e.message ?: "Unknown error"
     }
 
     Scaffold(
@@ -76,7 +91,7 @@ fun AddFeedScreen(
                                         onFeedAdded()
                                         navController.popBackStack()
                                     } catch (e: Exception) {
-                                        error = e.message
+                                        error = extractErrorMessage(e)
                                         isLoading = false
                                     }
                                 }
@@ -120,7 +135,7 @@ fun AddFeedScreen(
                                             error = "No feeds discovered at this URL."
                                         }
                                     } catch (e2: Exception) {
-                                        error = "Failed to discover feeds: ${e2.message}"
+                                        error = "Failed to discover feeds: ${extractErrorMessage(e2)}"
                                     }
                                     isLoading = false
                                 }
