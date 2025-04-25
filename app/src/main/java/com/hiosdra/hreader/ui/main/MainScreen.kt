@@ -48,6 +48,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.ui.theme.MainBackground
+import com.hiosdra.hreader.ui.theme.MainDivider
+import com.hiosdra.hreader.ui.theme.MainSurface
+import com.hiosdra.hreader.ui.theme.MainAuthor
+import com.hiosdra.hreader.ui.theme.MainDate
+import com.hiosdra.hreader.ui.theme.MainTitle
+import com.hiosdra.hreader.ui.theme.MainPreview
+import com.hiosdra.hreader.ui.theme.MainChecked
+import com.hiosdra.hreader.ui.theme.MainUnchecked
+import com.hiosdra.hreader.ui.theme.MainHeader
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -61,7 +71,7 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        modifier = Modifier.background(Color(0xFF232323)),
+        modifier = Modifier.background(MainBackground),
         topBar = {
             TopAppBar(
                 title = {
@@ -99,15 +109,15 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
     val grouped = entries.groupBy { it.publishedAt.substring(0, 10) }
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy")
     val allArticleIds = entries.map { it.id }
-    LazyColumn(modifier = modifier.background(Color(0xFF232323))) {
+    LazyColumn(modifier = modifier.background(MainBackground)) {
         grouped.forEach { (date, items) ->
             item {
-                Surface(color = Color(0xFF232323), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = MainSurface, modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = try {
                             LocalDate.parse(date).format(dateFormatter)
                         } catch (e: Exception) { date },
-                        color = Color.LightGray,
+                        color = MainHeader,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         fontSize = 14.sp
                     )
@@ -121,7 +131,7 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
                     articleIds = allArticleIds,
                     articleIndex = globalIndex
                 )
-                HorizontalDivider(thickness = 8.dp, color = Color(0xFF232323))
+                HorizontalDivider(thickness = 8.dp, color = MainDivider)
             }
         }
     }
@@ -142,7 +152,7 @@ fun ArticleRow(
             .clickable {
                 navController.navigate("article/${articleIds.joinToString(",")}/$articleIndex")
             }
-            .background(Color(0xFF232323)),
+            .background(MainBackground),
         shape = MaterialTheme.shapes.medium
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -160,14 +170,14 @@ fun ArticleRow(
                     Spacer(modifier = Modifier.size(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(entry.author ?: "Source", color = Color(0xFF7FBFFF), fontSize = 13.sp)
+                            Text(entry.author ?: "Source", color = MainAuthor, fontSize = 13.sp)
                             Spacer(modifier = Modifier.size(6.dp))
-                            Text(entry.publishedAt.substring(11, 16), color = Color.Gray, fontSize = 12.sp)
+                            Text(entry.publishedAt.substring(11, 16), color = MainDate, fontSize = 12.sp)
                         }
                         Text(
                             entry.title,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MainTitle,
                             fontSize = 15.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -176,7 +186,7 @@ fun ArticleRow(
                         if (preview.isNotBlank()) {
                             Text(
                                 preview,
-                                color = Color(0xFFCCCCCC),
+                                color = MainPreview,
                                 fontSize = 13.sp,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
@@ -205,8 +215,8 @@ fun ArticleRow(
                     checked = checked,
                     onCheckedChange = { checked = it },
                     colors = CheckboxDefaults.colors(
-                        checkedColor = Color(0xFF2196F3),
-                        uncheckedColor = Color.Gray
+                        checkedColor = MainChecked,
+                        uncheckedColor = MainUnchecked
                     )
                 )
             }
