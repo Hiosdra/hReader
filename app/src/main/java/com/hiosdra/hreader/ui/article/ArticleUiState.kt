@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class ArticleUiState(
-    val entry: Entry? = null,
+    val entries: List<Entry> = emptyList(),
+    val currentIndex: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -19,20 +20,23 @@ class ArticleViewModel(private val apiService: MinifluxApiService) : ViewModel()
     private val _uiState = MutableStateFlow(ArticleUiState())
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
-    fun loadArticle(articleId: Long) {
+    fun loadArticles(articleIds: List<Long>, initialIndex: Int = 0) {
         if (_uiState.value.isLoading) return
-
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                val entry = apiService.getEntryById(articleId)
-                _uiState.value = _uiState.value.copy(entry = entry, isLoading = false)
+                val entries = articleIds.map { apiService.getEntryById(it) }
+                _uiState.value = _uiState.value.copy(entries = entries, currentIndex = initialIndex, isLoading = false, error = null)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "Error loading article: ${e.message}",
+                    error = "Error loading articles: ${e.message}",
                     isLoading = false
                 )
             }
         }
+    }
+
+    fun setCurrentIndex(index: Int) {
+        _uiState.value = _uiState.value.copy(currentIndex = index)
     }
 }

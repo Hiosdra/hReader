@@ -70,7 +70,10 @@ fun ArticleList(entries: List<Entry>, navController: NavController, modifier: Mo
                     .fillMaxWidth()
                     .padding(16.dp)
                     .clickable {
-                        navController.navigate("article/${entry.id}")
+                        val articleIds = entries.map { it.id }
+                        val articleIdsString = articleIds.joinToString(",")
+                        val initialIndex = entries.indexOf(entry)
+                        navController.navigate("article/$articleIdsString/$initialIndex")
                     }
             )
         }

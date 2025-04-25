@@ -24,13 +24,18 @@ fun AppNavigation(
             FeedsScreen(navController = navController)
         }
         composable(
-            route = "article/{articleId}",
-            arguments = listOf(navArgument("articleId") { type = NavType.LongType })
+            route = "article/{articleIds}/{initialIndex}",
+            arguments = listOf(
+                navArgument("articleIds") { type = NavType.StringType },
+                navArgument("initialIndex") { type = NavType.IntType }
+            )
         ) { backStackEntry ->
-            val articleId = backStackEntry.arguments?.getLong("articleId")
-                ?: throw IllegalArgumentException("Article ID is required when navigating to article screen")
-            Log.i("AppNavigation", "Article ID: $articleId")
-            ArticleScreen(navController, articleId)
+            val articleIdsString = backStackEntry.arguments?.getString("articleIds")
+                ?: throw IllegalArgumentException("Article IDs are required when navigating to article screen")
+            val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
+            val articleIds = articleIdsString.split(",").mapNotNull { it.toLongOrNull() }
+            Log.i("AppNavigation", "Article IDs: $articleIds, initialIndex: $initialIndex")
+            ArticleScreen(navController, articleIds, initialIndex)
         }
     }
 }

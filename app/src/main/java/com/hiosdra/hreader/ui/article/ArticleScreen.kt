@@ -26,24 +26,43 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
 import androidx.navigation.NavHostController
+import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.pager.HorizontalPager
+import com.google.accompanist.pager.HorizontalPagerIndicator
+import com.google.accompanist.pager.rememberPagerState
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPagerApi::class)
 @Composable
 fun ArticleScreen(
     navController: NavHostController,
-    articleId: Long,
+    articleIds: List<Long>,
+    initialIndex: Int = 0,
     viewModel: ArticleViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val pagerState = rememberPagerState(initialPage = initialIndex)
     val isWebViewMode = remember { mutableStateOf(false) }
 
-    LaunchedEffect(articleId) {
-        viewModel.loadArticle(articleId)
+    LaunchedEffect(articleIds) {
+        viewModel.loadArticles(articleIds, initialIndex)
+    }
+
+    // Sync pager with state
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage != uiState.currentIndex) {
+            viewModel.setCurrentIndex(pagerState.currentPage)
+        }
+    }
+    LaunchedEffect(uiState.currentIndex) {
+        if (pagerState.currentPage != uiState.currentIndex) {
+            pagerState.scrollToPage(uiState.currentIndex)
+        }
     }
 
     Scaffold(
@@ -56,9 +75,10 @@ fun ArticleScreen(
                     }
                 },
                 actions = {
-                    uiState.entry?.let { entry ->
+                    val entry = uiState.entries.getOrNull(uiState.currentIndex)
+                    entry?.let {
                         IconButton(onClick = {
-                            openChromeCustomTab(navController.context, entry.url)
+                            openChromeCustomTab(navController.context, it.url)
                         }) {
                             Icon(Icons.AutoMirrored.Filled.ExitToApp, "Open in Chrome")
                         }
@@ -81,33 +101,44 @@ fun ArticleScreen(
                     CircularProgressIndicator()
                 }
             }
-
             uiState.error != null -> {
                 Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
             }
-
-            uiState.entry != null -> {
-                if (isWebViewMode.value) {
-                    AndroidView(
-                        factory = { context ->
-                            WebView(context).apply {
-                                webViewClient = WebViewClient()
-                            }
-                        },
-                        update = { webView ->
-                            webView.loadUrl(uiState.entry!!.url)
-                        },
-                        modifier = Modifier.padding(paddingValues)
-                    )
-                } else {
-                    Text(
-                        text = AnnotatedString(
-                            text = HtmlCompat.fromHtml(
-                                uiState.entry!!.content ?: "No content available",
-                                HtmlCompat.FROM_HTML_MODE_LEGACY
-                            ).toString()
-                        ),
-                        modifier = Modifier.padding(paddingValues)
+            uiState.entries.isNotEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    HorizontalPager(
+                        count = uiState.entries.size,
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        val entry = uiState.entries[page]
+                        if (isWebViewMode.value) {
+                            AndroidView(
+                                factory = { context ->
+                                    WebView(context).apply {
+                                        webViewClient = WebViewClient()
+                                    }
+                                },
+                                update = { webView ->
+                                    webView.loadUrl(entry.url)
+                                },
+                                modifier = Modifier.padding(paddingValues)
+                            )
+                        } else {
+                            Text(
+                                text = AnnotatedString(
+                                    text = HtmlCompat.fromHtml(
+                                        entry.content ?: "No content available",
+                                        HtmlCompat.FROM_HTML_MODE_LEGACY
+                                    ).toString()
+                                ),
+                                modifier = Modifier.padding(paddingValues)
+                            )
+                        }
+                    }
+                    HorizontalPagerIndicator(
+                        pagerState = pagerState,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
                     )
                 }
             }
