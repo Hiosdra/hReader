@@ -195,10 +195,7 @@ fun ArticleRow(
             }
             Spacer(modifier = Modifier.size(8.dp))
             Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(Color(0xFF222222)),
+                modifier = Modifier.size(64.dp),
                 contentAlignment = Alignment.Center
             ) {
                 val imageUrl = entry.enclosures?.firstOrNull {
