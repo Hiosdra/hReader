@@ -1,11 +1,9 @@
 # TODO
 
 ## High Prio
-1. Articles swiping
-2. Article photo view
-3. Per feed article list
-4. Article set as read
-5. Migrate from acompanist pager
+1. Per feed article list
+2. Article set as read
+3. Migrate from acompanist pager
 
 
 ## Med Prio
