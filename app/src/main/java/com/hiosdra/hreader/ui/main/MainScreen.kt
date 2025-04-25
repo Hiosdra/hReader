@@ -46,12 +46,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.ui.theme.MainBackground
-import com.hiosdra.hreader.ui.theme.MainDivider
-import com.hiosdra.hreader.ui.theme.MainSurface
 import com.hiosdra.hreader.ui.theme.MainChecked
-import com.hiosdra.hreader.ui.theme.MainUnchecked
 import com.hiosdra.hreader.ui.theme.MainHeader
+import com.hiosdra.hreader.ui.theme.MainUnchecked
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -65,7 +62,7 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        modifier = Modifier.background(MainBackground),
+        modifier = Modifier.background(MaterialTheme.colorScheme.background),
         topBar = {
             TopAppBar(
                 title = {
@@ -103,15 +100,15 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
     val grouped = entries.groupBy { it.publishedAt.substring(0, 10) }
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy")
     val allArticleIds = entries.map { it.id }
-    LazyColumn(modifier = modifier.background(MainBackground)) {
+    LazyColumn(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         grouped.forEach { (date, items) ->
             item {
-                Surface(color = MainSurface, modifier = Modifier.fillMaxWidth()) {
+                Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = try {
                             LocalDate.parse(date).format(dateFormatter)
                         } catch (_: Exception) { date },
-                        color = MainHeader,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         fontSize = 14.sp
                     )
@@ -125,7 +122,7 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
                     articleIds = allArticleIds,
                     articleIndex = globalIndex
                 )
-                HorizontalDivider(thickness = 8.dp, color = MainDivider)
+                HorizontalDivider(thickness = 8.dp, color = MaterialTheme.colorScheme.background)
             }
         }
     }
@@ -146,7 +143,7 @@ fun ArticleRow(
             .clickable {
                 navController.navigate("article/${articleIds.joinToString(",")}/$articleIndex")
             }
-            .background(MainBackground),
+            .background(MaterialTheme.colorScheme.background),
         shape = MaterialTheme.shapes.medium
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
