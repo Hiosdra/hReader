@@ -44,6 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -161,6 +162,11 @@ private fun ArticlePager(
                     modifier = Modifier.padding(paddingValues),
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) }
                 )
+                LaunchedEffect(entry.id) {
+                    if (entry.status != "read") {
+                        onReadStatusChange?.invoke(page, true)
+                    }
+                }
             }
         }
     }
