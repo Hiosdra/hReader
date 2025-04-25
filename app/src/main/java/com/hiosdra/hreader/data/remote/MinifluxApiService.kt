@@ -10,6 +10,7 @@ import com.hiosdra.hreader.data.model.Feed
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -45,4 +46,9 @@ interface MinifluxApiService {
     suspend fun discoverFeeds(
         @Body request: DiscoverRequest
     ): List<DiscoverResponse>
+
+    @PUT("v1/entries")
+    suspend fun updateEntriesStatus(
+        @Body request: UpdateEntriesStatusRequest
+    )
 }

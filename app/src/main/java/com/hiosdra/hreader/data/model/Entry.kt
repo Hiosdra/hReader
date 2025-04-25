@@ -15,4 +15,6 @@ data class Entry(
     @Json(name = "reading_time") val readingTime: Int?,
     @Json(name = "enclosures")
     val enclosures: List<Enclosure>? = null,
+    @Json(name = "status")
+    val status: String?,
 )

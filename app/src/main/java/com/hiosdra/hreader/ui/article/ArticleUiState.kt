@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.remote.MinifluxApiService
+import com.hiosdra.hreader.data.remote.UpdateEntriesStatusRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,5 +42,25 @@ class ArticleViewModel(private val apiService: MinifluxApiService) : ViewModel()
 
     fun setCurrentIndex(index: Int) {
         _uiState.value = _uiState.value.copy(currentIndex = index)
+    }
+
+    fun updateReadStatus(index: Int, isRead: Boolean) {
+        val entries = _uiState.value.entries.toMutableList()
+        val entry = entries.getOrNull(index) ?: return
+        val newStatus = if (isRead) "read" else "unread"
+        entries[index] = entry.copy(status = newStatus)
+        _uiState.value = _uiState.value.copy(entries = entries)
+        viewModelScope.launch {
+            try {
+                apiService.updateEntriesStatus(
+                    UpdateEntriesStatusRequest(
+                        entry_ids = listOf(entry.id),
+                        status = newStatus
+                    )
+                )
+            } catch (e: Exception) {
+                // Optionally handle error, revert status, or show message
+            }
+        }
     }
 }
