@@ -4,8 +4,14 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -27,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
@@ -73,7 +80,7 @@ fun ArticleScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Article") },
+                title = { Text("hReader", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -96,7 +103,10 @@ fun ArticleScreen(
                             )
                         }
                     }
-                }
+                },
+                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
     ) { paddingValues ->
@@ -117,7 +127,6 @@ fun ArticleScreen(
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         val entry = uiState.entries[page]
-                        // Main image extraction logic
                         val mainImageUrl = entry.enclosures?.firstOrNull { it.mimeType?.startsWith("image/") == true }?.url
                             ?: Regex("<img[^>]+src=\"([^\"]+)\"").find(entry.content ?: "")?.groupValues?.getOrNull(1)
                         if (isWebViewMode.value) {
@@ -133,26 +142,53 @@ fun ArticleScreen(
                                 modifier = Modifier.padding(paddingValues)
                             )
                         } else {
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                if (mainImageUrl != null) {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(mainImageUrl),
-                                        contentDescription = "Main article image",
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(paddingValues),
-                                        contentScale = ContentScale.FillWidth
+                            androidx.compose.material3.Surface(
+                                modifier = Modifier
+                                    .padding(paddingValues)
+                                    .fillMaxSize(),
+                                tonalElevation = 2.dp,
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                androidx.compose.foundation.layout.Column(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    Text(
+                                        text = entry.title ?: "No title",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = listOfNotNull(entry.author, entry.publishedAt).joinToString(" • "),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (mainImageUrl != null) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Image(
+                                            painter = rememberAsyncImagePainter(mainImageUrl),
+                                            contentDescription = "Main article image",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 220.dp)
+                                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = AnnotatedString(
+                                            text = HtmlCompat.fromHtml(
+                                                entry.content ?: "No content available",
+                                                HtmlCompat.FROM_HTML_MODE_LEGACY
+                                            ).toString()
+                                        ),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified
                                     )
                                 }
-                                Text(
-                                    text = AnnotatedString(
-                                        text = HtmlCompat.fromHtml(
-                                            entry.content ?: "No content available",
-                                            HtmlCompat.FROM_HTML_MODE_LEGACY
-                                        ).toString()
-                                    ),
-                                    modifier = Modifier.padding(paddingValues)
-                                )
                             }
                         }
                     }
