@@ -157,66 +157,69 @@ fun ArticleRow(
             .background(Color(0xFF232323)),
         shape = MaterialTheme.shapes.medium
     ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Star,
-                contentDescription = "Favorite",
-                tint = Color(0xFFCCCC00),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.size(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(entry.author ?: "Source", color = Color(0xFF7FBFFF), fontSize = 13.sp)
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text(entry.publishedAt.substring(11, 16), color = Color.Gray, fontSize = 12.sp)
-                }
-                Text(
-                    entry.title,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "Favorite",
+                    tint = Color(0xFFCCCC00),
+                    modifier = Modifier.size(20.dp)
                 )
-                val preview = entry.content?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: ""
-                if (preview.isNotBlank()) {
+                Spacer(modifier = Modifier.size(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(entry.author ?: "Source", color = Color(0xFF7FBFFF), fontSize = 13.sp)
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text(entry.publishedAt.substring(11, 16), color = Color.Gray, fontSize = 12.sp)
+                    }
                     Text(
-                        preview,
-                        color = Color(0xFFCCCCCC),
-                        fontSize = 13.sp,
+                        entry.title,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 15.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    val preview = entry.content?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: ""
+                    if (preview.isNotBlank()) {
+                        Text(
+                            preview,
+                            color = Color(0xFFCCCCCC),
+                            fontSize = 13.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-            }
-            Spacer(modifier = Modifier.size(8.dp))
-            Box(
-                modifier = Modifier.size(64.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                val imageUrl = entry.enclosures?.firstOrNull {
-                    it.mimeType?.startsWith("image/") == true
-                }?.url
-                if (imageUrl != null) {
-                    Image(
-                        painter = rememberAsyncImagePainter(imageUrl),
-                        contentDescription = "Article image",
-                        modifier = Modifier.matchParentSize()
-                    )
+                Spacer(modifier = Modifier.size(8.dp))
+                Box(
+                    modifier = Modifier.size(64.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val imageUrl = entry.enclosures?.firstOrNull {
+                        it.mimeType?.startsWith("image/") == true
+                    }?.url
+                    if (imageUrl != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(imageUrl),
+                            contentDescription = "Article image",
+                            modifier = Modifier.matchParentSize()
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.size(8.dp))
             }
-            Spacer(modifier = Modifier.size(8.dp))
             Checkbox(
                 checked = checked,
                 onCheckedChange = { checked = it },
                 colors = CheckboxDefaults.colors(
                     checkedColor = Color(0xFF2196F3),
                     uncheckedColor = Color.Gray
-                )
+                ),
+                modifier = Modifier.align(Alignment.TopEnd)
             )
         }
     }
