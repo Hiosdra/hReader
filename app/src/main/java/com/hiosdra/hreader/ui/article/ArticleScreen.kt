@@ -89,6 +89,7 @@ fun ArticleScreen(
             val entry = uiState.entries.getOrNull(uiState.currentIndex)
             ArticleTopBar(
                 entryUrl = entry?.url,
+                feedTitle = entry?.feed?.title,
                 isWebViewMode = isWebViewMode.value,
                 onBack = { navController.popBackStack() },
                 onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, entry.url) },
@@ -160,13 +161,14 @@ private fun ArticlePager(
 @Composable
 private fun ArticleTopBar(
     entryUrl: String?,
+    feedTitle: String?,
     isWebViewMode: Boolean,
     onBack: () -> Unit,
     onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit
 ) {
     TopAppBar(
-        title = { Text("hReader", style = MaterialTheme.typography.titleLarge) },
+        title = { Text(feedTitle ?: "hReader", style = MaterialTheme.typography.titleLarge) },
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
