@@ -76,8 +76,8 @@ fun FeedsScreen(
                             feed = feed,
                             unreadCount = unreadCount,
                             onFeedClick = {
-                                // Open feed entries (default action)
-                                navController.navigate("feed/${feed.id}")
+                                // Open article list filtered by this feed
+                                navController.navigate("articles?feedId=${feed.id}")
                             },
                             onDetailsClick = {
                                 navController.navigate("feed_details/${feed.id}")

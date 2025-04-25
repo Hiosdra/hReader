@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.di
 
 import com.hiosdra.hreader.ui.article.ArticleViewModel
+import com.hiosdra.hreader.ui.article.ArticleListViewModel
 import com.hiosdra.hreader.ui.feeds.AddFeedViewModel
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
 import com.hiosdra.hreader.ui.main.MainViewModel
@@ -12,4 +13,5 @@ val appModule = module {
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get()) }
     viewModel { AddFeedViewModel(get(), get()) }
+    viewModel { ArticleListViewModel(get()) }
 }

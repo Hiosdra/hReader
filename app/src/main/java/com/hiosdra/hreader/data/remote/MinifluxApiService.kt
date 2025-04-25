@@ -41,6 +41,15 @@ interface MinifluxApiService {
     @GET("v1/feeds/counters")
     suspend fun getFeedCounters(): FeedCountersResponse
 
+    @GET("v1/feeds/{feedId}/entries")
+    suspend fun getFeedEntries(
+        @Path("feedId") feedId: Long,
+        @Query("status") status: String = "unread",
+        @Query("order") order: String = "published_at",
+        @Query("direction") direction: String = "desc",
+        @Query("limit") limit: Int = 100
+    ): EntriesResponse
+
     @POST("v1/feeds")
     suspend fun createFeed(
         @Body request: CreateFeedRequest

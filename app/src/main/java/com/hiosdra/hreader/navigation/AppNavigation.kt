@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.hiosdra.hreader.ui.article.ArticleListScreen
 import com.hiosdra.hreader.ui.article.ArticleScreen
 import com.hiosdra.hreader.ui.feeds.AddFeedScreen
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
@@ -57,6 +58,19 @@ fun AppNavigation(
             val feedId = backStackEntry.arguments?.getLong("feedId")
             if (feedId != null) {
                 FeedDetailScreen(feedId = feedId, navController = navController)
+            } else {
+                Text(text = "Feed not found.")
+            }
+        }
+        composable(
+            route = "articles?feedId={feedId}",
+            arguments = listOf(
+                navArgument("feedId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val feedId = backStackEntry.arguments?.getLong("feedId")
+            if (feedId != null) {
+                ArticleListScreen(feedId = feedId, navController = navController)
             } else {
                 Text(text = "Feed not found.")
             }
