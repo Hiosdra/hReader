@@ -11,13 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,10 +32,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -48,6 +50,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import org.koin.androidx.compose.koinViewModel
@@ -62,7 +65,7 @@ fun ArticleScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(initialPage = initialIndex)
-    val isWebViewMode = remember { mutableStateOf(false) }
+    var isWebViewMode by remember { mutableStateOf(false) }
 
     LaunchedEffect(articleIds, initialIndex) {
         viewModel.loadArticles(articleIds, initialIndex)
@@ -90,10 +93,10 @@ fun ArticleScreen(
             ArticleTopBar(
                 entryUrl = entry?.url,
                 feedTitle = entry?.feed?.title,
-                isWebViewMode = isWebViewMode.value,
+                isWebViewMode = isWebViewMode,
                 onBack = { navController.popBackStack() },
                 onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, entry.url) },
-                onToggleWebView = { isWebViewMode.value = !isWebViewMode.value }
+                onToggleWebView = { isWebViewMode = !isWebViewMode }
             )
         }
     ) { paddingValues ->
@@ -110,7 +113,7 @@ fun ArticleScreen(
                 ArticlePager(
                     entries = uiState.entries,
                     pagerState = pagerState,
-                    isWebViewMode = isWebViewMode.value,
+                    isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues
                 )
             }
@@ -177,12 +180,18 @@ private fun ArticleTopBar(
         actions = {
             if (entryUrl != null) {
                 IconButton(onClick = onOpenInChrome) {
-                    Icon(Icons.AutoMirrored.Filled.ExitToApp, "Open in Chrome")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_chrome_logo),
+                        contentDescription = "Open in Chrome",
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
                 IconButton(onClick = onToggleWebView) {
                     Icon(
-                        Icons.Filled.Warning,
-                        if (isWebViewMode) "Show Content" else "Show WebView"
+                        painter = painterResource(id = if (isWebViewMode) R.drawable.baseline_web_asset_off_24 else R.drawable.baseline_web_asset_24),
+                        contentDescription = if (isWebViewMode) "Show Content" else "Show WebView",
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
