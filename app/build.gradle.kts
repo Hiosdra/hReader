@@ -89,7 +89,6 @@ dependencies {
 
     // Accompanist
     implementation("com.google.accompanist:accompanist-pager:0.36.0")
-    implementation("com.google.accompanist:accompanist-pager-indicators:0.36.0")
 
     // Test
     testImplementation("junit:junit:4.13.2")
