@@ -17,6 +17,11 @@ interface MinifluxApiService {
         @Query("limit") limit: Int = 100
     ): EntriesResponse
 
+    @GET("v1/entries")
+    suspend fun getEntriesByIds(
+        @Query("ids") ids: String
+    ): EntriesResponse
+
     @GET("v1/entries/{entryId}")
     suspend fun getEntryById(
         @Path("entryId") entryId: Long

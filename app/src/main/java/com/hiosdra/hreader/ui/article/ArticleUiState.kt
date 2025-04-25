@@ -25,7 +25,8 @@ class ArticleViewModel(private val apiService: MinifluxApiService) : ViewModel()
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                val entries = articleIds.map { apiService.getEntryById(it) }
+                val idsString = articleIds.joinToString(",")
+                val entries = apiService.getEntriesByIds(idsString).entries
                 _uiState.value = _uiState.value.copy(entries = entries, currentIndex = initialIndex, isLoading = false, error = null)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
