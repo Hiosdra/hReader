@@ -33,6 +33,15 @@ fun AddFeedScreen(
     val feedsViewModel: FeedsViewModel = koinViewModel()
     val feedsUiState by feedsViewModel.uiState.collectAsState()
 
+    fun normalizeUrl(url: String): String {
+        val trimmed = url.trim()
+        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            trimmed
+        } else {
+            "https://$trimmed"
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Add Feed") })
@@ -59,8 +68,9 @@ fun AddFeedScreen(
                                 error = null
                                 scope.launch {
                                     try {
+                                        val normalizedDiscoveredUrl = normalizeUrl(discovered.url)
                                         apiService.createFeed(
-                                            request = CreateFeedRequest(feed_url = discovered.url)
+                                            request = CreateFeedRequest(feed_url = normalizedDiscoveredUrl)
                                         )
                                         isLoading = false
                                         onFeedAdded()
@@ -88,10 +98,11 @@ fun AddFeedScreen(
                                     isLoading = false
                                     return@launch
                                 }
+                                val normalizedUrl = normalizeUrl(feedUrl)
                                 try {
                                     // Try direct add first
                                     apiService.createFeed(
-                                        request = CreateFeedRequest(feed_url = feedUrl)
+                                        request = CreateFeedRequest(feed_url = normalizedUrl)
                                     )
                                     isLoading = false
                                     onFeedAdded()
@@ -100,7 +111,7 @@ fun AddFeedScreen(
                                     // If failed, try discover
                                     try {
                                         val discovered = apiService.discoverFeeds(
-                                            request = DiscoverRequest(url = feedUrl)
+                                            request = DiscoverRequest(url = normalizedUrl)
                                         )
                                         if (discovered.isNotEmpty()) {
                                             discoveredFeeds = discovered
