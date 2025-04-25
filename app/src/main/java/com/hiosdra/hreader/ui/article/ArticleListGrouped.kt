@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.ui.main.ArticleRow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
