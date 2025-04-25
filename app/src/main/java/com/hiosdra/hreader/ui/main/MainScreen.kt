@@ -45,6 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.foundation.Image
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
 import org.koin.androidx.compose.koinViewModel
@@ -199,8 +201,16 @@ fun ArticleRow(
                     .background(Color(0xFF222222)),
                 contentAlignment = Alignment.Center
             ) {
-                // No image field, so always show a placeholder (e.g. asterisk or app logo)
-                Text("*", color = Color(0xFFFFC107), fontSize = 32.sp) // Placeholder
+                val imageUrl = entry.enclosures?.firstOrNull {
+                    it.mimeType?.startsWith("image/") == true
+                }?.url
+                if (imageUrl != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(imageUrl),
+                        contentDescription = "Article image",
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
             }
             Spacer(modifier = Modifier.size(8.dp))
             Checkbox(
