@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.navigation
 
 import android.util.Log
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -10,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hiosdra.hreader.ui.article.ArticleScreen
 import com.hiosdra.hreader.ui.feeds.AddFeedScreen
+import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
 import com.hiosdra.hreader.ui.feeds.FeedsScreen
 import com.hiosdra.hreader.ui.main.MainScreen
 import org.koin.androidx.compose.get
@@ -50,6 +52,19 @@ fun AppNavigation(
             val articleIds = articleIdsString.split(",").mapNotNull { it.toLongOrNull() }
             Log.i("AppNavigation", "Article IDs: $articleIds, initialIndex: $initialIndex")
             ArticleScreen(navController, articleIds, initialIndex)
+        }
+        composable(
+            route = "feed/{feedId}",
+            arguments = listOf(
+                navArgument("feedId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val feedId = backStackEntry.arguments?.getLong("feedId")
+            if (feedId != null) {
+                FeedDetailScreen(feedId = feedId, navController = navController)
+            } else {
+                Text(text = "Feed not found.")
+            }
         }
     }
 }

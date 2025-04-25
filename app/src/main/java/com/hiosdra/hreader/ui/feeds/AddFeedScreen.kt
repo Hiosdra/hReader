@@ -1,6 +1,8 @@
 package com.hiosdra.hreader.ui.feeds
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,7 +27,6 @@ fun AddFeedScreen(
     apiService: MinifluxApiService,
     onFeedAdded: () -> Unit = {}
 ) {
-    val context = LocalContext.current
     var feedUrl by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -59,8 +60,15 @@ fun AddFeedScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Add Feed") })
-        }
+            TopAppBar(
+                title = { Text("Add Feed") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
