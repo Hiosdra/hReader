@@ -7,6 +7,7 @@ import com.hiosdra.hreader.data.model.DiscoverResponse
 import com.hiosdra.hreader.data.model.EntriesResponse
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
+import com.hiosdra.hreader.data.model.FeedCountersResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -36,6 +37,9 @@ interface MinifluxApiService {
     @GET("v1/feeds")
     suspend fun getFeeds(
     ): List<Feed>
+
+    @GET("v1/feeds/counters")
+    suspend fun getFeedCounters(): FeedCountersResponse
 
     @POST("v1/feeds")
     suspend fun createFeed(

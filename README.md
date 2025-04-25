@@ -2,7 +2,6 @@
 
 ## High Prio
 1. Per feed article list (feed details as separate button)
-2. Unread count
 
 ## Med Prio
 1. AI article score for bullshit

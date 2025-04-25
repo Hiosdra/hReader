@@ -69,7 +69,8 @@ fun FeedsScreen(
             else -> {
                 LazyColumn(modifier = Modifier.padding(paddingValues)) {
                     items(uiState.feeds) { feed ->
-                        FeedItem(feed = feed, onFeedClick = {
+                        val unreadCount = uiState.unreadCounts[feed.id] ?: 0
+                        FeedItem(feed = feed, unreadCount = unreadCount, onFeedClick = {
                             navController.navigate("feed/${feed.id}")
                         })
                     }
@@ -80,7 +81,7 @@ fun FeedsScreen(
 }
 
 @Composable
-fun FeedItem(feed: Feed, onFeedClick: () -> Unit) {
+fun FeedItem(feed: Feed, unreadCount: Int = 0, onFeedClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -89,7 +90,17 @@ fun FeedItem(feed: Feed, onFeedClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = feed.title, style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = feed.title, style = MaterialTheme.typography.titleMedium)
+                if (unreadCount > 0) {
+                    Text(
+                        text = "  ($unreadCount)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
             feed.siteUrl?.let {
                 Text(text = it, style = MaterialTheme.typography.bodySmall)
             }

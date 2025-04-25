@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 
 data class FeedsUiState(
     val feeds: List<Feed> = emptyList(),
+    val unreadCounts: Map<Long, Int> = emptyMap(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -33,7 +34,13 @@ class FeedsViewModel(private val apiService: MinifluxApiService) : ViewModel() {
         viewModelScope.launch {
             try {
                 val fetchedFeeds = apiService.getFeeds()
-                _uiState.value = _uiState.value.copy(feeds = fetchedFeeds, isLoading = false)
+                val counters = apiService.getFeedCounters()
+                val unreadCounts = counters.unreads.mapKeys { it.key.toLong() }
+                _uiState.value = _uiState.value.copy(
+                    feeds = fetchedFeeds,
+                    unreadCounts = unreadCounts,
+                    isLoading = false
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Error loading feeds: ${e.message}", isLoading = false)
                 Log.e("FeedsViewModel", "Error loading feeds", e)
