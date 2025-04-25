@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
@@ -61,6 +61,7 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        modifier = Modifier.background(Color(0xFF232323)),
         topBar = {
             TopAppBar(
                 title = {
@@ -98,10 +99,10 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
     val grouped = entries.groupBy { it.publishedAt.substring(0, 10) }
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy")
     val allArticleIds = entries.map { it.id }
-    LazyColumn(modifier = modifier.background(Color(0xFF181818))) {
+    LazyColumn(modifier = modifier.background(Color(0xFF232323))) {
         grouped.forEach { (date, items) ->
             item {
-                Surface(color = Color(0xFF272727), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = Color(0xFF232323), modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = try {
                             LocalDate.parse(date).format(dateFormatter)
@@ -120,7 +121,7 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
                     articleIds = allArticleIds,
                     articleIndex = globalIndex
                 )
-                HorizontalDivider(thickness = 8.dp, color = Color(0xFF222222))
+                HorizontalDivider(thickness = 8.dp, color = Color(0xFF232323))
             }
         }
     }
@@ -137,6 +138,7 @@ fun ArticleRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 4.dp)
             .clickable {
                 navController.navigate("article/${articleIds.joinToString(",")}/$articleIndex")
             }
