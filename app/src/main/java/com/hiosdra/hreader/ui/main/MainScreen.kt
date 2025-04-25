@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -171,7 +170,7 @@ fun ArticleRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(entry.author ?: "Source", color = Color(0xFF7FBFFF), fontSize = 13.sp)
                     Spacer(modifier = Modifier.size(6.dp))
-                    Text(entry.publishedAt?.let { it.substring(11, 16) } ?: "", color = Color.Gray, fontSize = 12.sp)
+                    Text(entry.publishedAt.substring(11, 16), color = Color.Gray, fontSize = 12.sp)
                 }
                 Text(
                     entry.title,
@@ -193,7 +192,6 @@ fun ArticleRow(
                 }
             }
             Spacer(modifier = Modifier.size(8.dp))
-            // Thumbnail or logo
             Box(
                 modifier = Modifier
                     .size(54.dp)
