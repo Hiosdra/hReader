@@ -2,7 +2,7 @@ package com.hiosdra.hreader.data.remote
 
 import com.hiosdra.hreader.data.model.EntriesResponse
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.data.model.FeedsResponse
+import com.hiosdra.hreader.data.model.Feed
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Path
@@ -30,5 +30,5 @@ interface MinifluxApiService {
     @GET("v1/feeds")
     suspend fun getFeeds(
         @Header("X-Auth-Token") apiKey: String
-    ): FeedsResponse
+    ): List<Feed>
 }

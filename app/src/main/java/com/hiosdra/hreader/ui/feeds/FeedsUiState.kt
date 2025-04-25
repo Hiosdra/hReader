@@ -32,7 +32,7 @@ class FeedsViewModel(private val apiService: MinifluxApiService) : ViewModel() {
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                val fetchedFeeds = apiService.getFeeds(BuildConfig.MINIFLUX_API_KEY).feeds
+                val fetchedFeeds = apiService.getFeeds(BuildConfig.MINIFLUX_API_KEY)
                 _uiState.value = _uiState.value.copy(feeds = fetchedFeeds, isLoading = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Error loading feeds: ${e.message}", isLoading = false)

@@ -44,7 +44,7 @@ fun FeedsScreen(
             TopAppBar(
                 title = { Text("Subscriptions") },
                 actions = {
-                    IconButton(onClick = { /* Handle add new feed */ }) {
+                    IconButton(onClick = { navController.navigate("add_feed") }) {
                         Icon(Icons.Filled.Add, contentDescription = "Add Feed")
                     }
                 }
@@ -84,9 +84,10 @@ fun FeedItem(feed: Feed, onFeedClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = feed.title, style = MaterialTheme.typography.titleMedium)
-//            Text(text = "Last updated: ${feed.lastUpdated}", style = MaterialTheme.typography.bodySmall) // You might need to add logic to fetch this
+            feed.siteUrl?.let {
+                Text(text = it, style = MaterialTheme.typography.bodySmall)
+            }
         }
-//        Text(text = feed.unreadCount.toString(), style = MaterialTheme.typography.bodyLarge) // Add logic to fetch this
     }
     HorizontalDivider()
 }
