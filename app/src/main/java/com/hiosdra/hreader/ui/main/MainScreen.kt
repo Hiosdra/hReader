@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,10 +49,6 @@ import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.ui.theme.MainBackground
 import com.hiosdra.hreader.ui.theme.MainDivider
 import com.hiosdra.hreader.ui.theme.MainSurface
-import com.hiosdra.hreader.ui.theme.MainAuthor
-import com.hiosdra.hreader.ui.theme.MainDate
-import com.hiosdra.hreader.ui.theme.MainTitle
-import com.hiosdra.hreader.ui.theme.MainPreview
 import com.hiosdra.hreader.ui.theme.MainChecked
 import com.hiosdra.hreader.ui.theme.MainUnchecked
 import com.hiosdra.hreader.ui.theme.MainHeader
@@ -116,7 +110,7 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
                     Text(
                         text = try {
                             LocalDate.parse(date).format(dateFormatter)
-                        } catch (e: Exception) { date },
+                        } catch (_: Exception) { date },
                         color = MainHeader,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         fontSize = 14.sp
@@ -170,14 +164,14 @@ fun ArticleRow(
                     Spacer(modifier = Modifier.size(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(entry.author ?: "Source", color = MainAuthor, fontSize = 13.sp)
+                            Text(entry.author ?: "Source", color = MaterialTheme.colorScheme.secondaryContainer, fontSize = 13.sp)
                             Spacer(modifier = Modifier.size(6.dp))
-                            Text(entry.publishedAt.substring(11, 16), color = MainDate, fontSize = 12.sp)
+                            Text(entry.publishedAt.substring(11, 16), color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                         }
                         Text(
                             entry.title,
                             fontWeight = FontWeight.Bold,
-                            color = MainTitle,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 15.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -186,7 +180,7 @@ fun ArticleRow(
                         if (preview.isNotBlank()) {
                             Text(
                                 preview,
-                                color = MainPreview,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 13.sp,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
