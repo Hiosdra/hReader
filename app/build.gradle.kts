@@ -67,11 +67,11 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Moshi
-    implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
-    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
+    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     // Room
     implementation("androidx.room:room-runtime:2.7.1")
@@ -80,7 +80,7 @@ dependencies {
     annotationProcessor("androidx.room:room-compiler:2.7.1")
 
     // Koin
-    implementation(project.dependencies.platform("io.insert-koin:koin-bom:4.0.3"))
+    implementation(project.dependencies.platform("io.insert-koin:koin-bom:4.0.4"))
     implementation("io.insert-koin:koin-android")
     implementation("io.insert-koin:koin-androidx-compose-navigation")
 
@@ -88,8 +88,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
 
     // Accompanist
-    implementation("com.google.accompanist:accompanist-pager:0.34.0")
-    implementation("com.google.accompanist:accompanist-pager-indicators:0.34.0")
+    implementation("com.google.accompanist:accompanist-pager:0.36.0")
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.36.0")
 
     // Test
     testImplementation("junit:junit:4.13.2")
