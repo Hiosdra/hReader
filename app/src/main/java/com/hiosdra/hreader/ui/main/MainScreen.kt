@@ -107,10 +107,8 @@ fun MainScreen(
 
 @Composable
 fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modifier: Modifier) {
-    // Group entries by date (fake logic for demo)
-    val grouped = entries.groupBy { it.publishedAt?.substring(0, 10) ?: "Unknown date" }
+    val grouped = entries.groupBy { it.publishedAt.substring(0, 10) }
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy")
-    // Prepare flat list of all article IDs for navigation
     val allArticleIds = entries.map { it.id }
     LazyColumn(modifier = modifier.background(Color(0xFF181818))) {
         grouped.forEach { (date, items) ->
@@ -127,7 +125,6 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
                 }
             }
             itemsIndexed(items) { index, entry ->
-                // Find the index of this entry in the flat list
                 val globalIndex = allArticleIds.indexOf(entry.id)
                 ArticleRow(
                     entry = entry,
@@ -166,7 +163,6 @@ fun ArticleRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Main content (icon, text, image)
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
@@ -221,7 +217,6 @@ fun ArticleRow(
                         }
                     }
                 }
-                // Checkbox at top right
                 Checkbox(
                     checked = checked,
                     onCheckedChange = { checked = it },
