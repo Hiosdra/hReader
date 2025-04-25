@@ -1,9 +1,9 @@
 plugins {
     id("com.android.application") version "8.9.2"
-    id("org.jetbrains.kotlin.android") version "2.0.0"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
+    id("org.jetbrains.kotlin.android") version "2.1.20"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.1.20"
     id("kotlin-kapt")
-    id("com.google.devtools.ksp") version "2.0.0-1.0.24"
+    id("com.google.devtools.ksp") version "2.1.20-1.0.32"
 }
 
 android {
@@ -85,7 +85,7 @@ dependencies {
     implementation("io.insert-koin:koin-androidx-compose-navigation")
 
     // Coil
-    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Accompanist
     implementation("com.google.accompanist:accompanist-pager:0.36.0")
