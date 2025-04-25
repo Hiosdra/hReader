@@ -80,7 +80,7 @@ dependencies {
     annotationProcessor("androidx.room:room-compiler:2.7.1")
 
     // Koin
-    implementation(project.dependencies.platform("io.insert-koin:koin-bom:4.0.4"))
+    implementation(platform("io.insert-koin:koin-bom:4.0.4"))
     implementation("io.insert-koin:koin-android")
     implementation("io.insert-koin:koin-androidx-compose-navigation")
 
