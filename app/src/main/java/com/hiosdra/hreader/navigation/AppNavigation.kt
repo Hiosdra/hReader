@@ -14,8 +14,6 @@ import com.hiosdra.hreader.ui.feeds.AddFeedScreen
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
 import com.hiosdra.hreader.ui.feeds.FeedsScreen
 import com.hiosdra.hreader.ui.main.MainScreen
-import org.koin.androidx.compose.get
-import org.koin.compose.koinInject
 
 @Composable
 fun AppNavigation(
@@ -29,12 +27,9 @@ fun AppNavigation(
             FeedsScreen(navController = navController)
         }
         composable("add_feed") {
-            val apiService = koinInject<com.hiosdra.hreader.data.remote.MinifluxApiService>()
             AddFeedScreen(
                 navController = navController,
-                apiService = apiService,
                 onFeedAdded = {
-                    // After adding, pop back and refresh feeds
                     navController.popBackStack("feeds", inclusive = false)
                 }
             )
