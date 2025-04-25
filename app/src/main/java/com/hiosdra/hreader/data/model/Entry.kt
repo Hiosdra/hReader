@@ -13,4 +13,6 @@ data class Entry(
     val content: String?,
     val feed: Feed,
     @Json(name = "reading_time") val readingTime: Int?,
+    @Json(name = "enclosures")
+    val enclosures: List<Enclosure>? = null,
 )

@@ -2,6 +2,7 @@ package com.hiosdra.hreader.ui.article
 
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,17 +24,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.HorizontalPagerIndicator
 import com.google.accompanist.pager.rememberPagerState
+import com.hiosdra.hreader.data.model.Enclosure
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import org.koin.androidx.compose.koinViewModel
 
@@ -112,6 +117,9 @@ fun ArticleScreen(
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         val entry = uiState.entries[page]
+                        // Main image extraction logic
+                        val mainImageUrl = entry.enclosures?.firstOrNull { it.mimeType?.startsWith("image/") == true }?.url
+                            ?: Regex("<img[^>]+src=\"([^\"]+)\"").find(entry.content ?: "")?.groupValues?.getOrNull(1)
                         if (isWebViewMode.value) {
                             AndroidView(
                                 factory = { context ->
@@ -125,15 +133,27 @@ fun ArticleScreen(
                                 modifier = Modifier.padding(paddingValues)
                             )
                         } else {
-                            Text(
-                                text = AnnotatedString(
-                                    text = HtmlCompat.fromHtml(
-                                        entry.content ?: "No content available",
-                                        HtmlCompat.FROM_HTML_MODE_LEGACY
-                                    ).toString()
-                                ),
-                                modifier = Modifier.padding(paddingValues)
-                            )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                if (mainImageUrl != null) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(mainImageUrl),
+                                        contentDescription = "Main article image",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(paddingValues),
+                                        contentScale = ContentScale.FillWidth
+                                    )
+                                }
+                                Text(
+                                    text = AnnotatedString(
+                                        text = HtmlCompat.fromHtml(
+                                            entry.content ?: "No content available",
+                                            HtmlCompat.FROM_HTML_MODE_LEGACY
+                                        ).toString()
+                                    ),
+                                    modifier = Modifier.padding(paddingValues)
+                                )
+                            }
                         }
                     }
                     HorizontalPagerIndicator(
