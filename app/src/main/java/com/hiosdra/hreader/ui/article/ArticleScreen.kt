@@ -270,7 +270,7 @@ private fun ArticleContent(
                     text = AnnotatedString(
                         text = HtmlCompat.fromHtml(
                             entry.content ?: "No content available",
-                            HtmlCompat.FROM_HTML_MODE_LEGACY
+                            HtmlCompat.FROM_HTML_MODE_COMPACT
                         ).toString()
                     ),
                     style = MaterialTheme.typography.bodyLarge,
