@@ -14,10 +14,11 @@ class MyApplication : Application() {
         super.onCreate()
 
         startKoin {
-            androidLogger() // Use Android logger (optional)
+            androidLogger()
             androidContext(this@MyApplication)
-            workManagerFactory() // Required for Koin + WorkManager integration
-            modules(appModule, networkModule) // List your Koin modules here
+            workManagerFactory()
+            modules(appModule, networkModule)
         }
+        setupContentSyncWorker(this)
     }
 }

@@ -16,7 +16,7 @@ class ContentSyncWorker(
         return try {
             repository.refreshArticles()
             Result.success()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Result.retry()
         }
     }
