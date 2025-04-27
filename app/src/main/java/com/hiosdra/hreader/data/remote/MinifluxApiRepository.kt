@@ -55,7 +55,7 @@ class MinifluxApiRepository(private val apiService: MinifluxApiService) {
 }
 
 private suspend fun <T> withRetries(
-    maxAttempts: Int = 3,
+    maxAttempts: Int = 5,
     delayMillis: Long = 500,
     block: suspend () -> T
 ): T {
