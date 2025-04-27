@@ -15,6 +15,7 @@ import com.hiosdra.hreader.ui.feeds.AddFeedScreen
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
 import com.hiosdra.hreader.ui.feeds.FeedsScreen
 import com.hiosdra.hreader.ui.main.MainScreen
+import com.hiosdra.hreader.ui.settings.SettingsScreen
 
 @Composable
 fun AppNavigation(
@@ -74,6 +75,10 @@ fun AppNavigation(
             } else {
                 Text(text = "Feed not found.")
             }
+        }
+        composable("settings") { backStackEntry ->
+            val navController = navController
+            SettingsScreen(navController)
         }
     }
 }
