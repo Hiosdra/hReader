@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,8 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.hiosdra.hreader.R
 import androidx.navigation.NavController
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Feed
 import org.koin.androidx.compose.koinViewModel
 
@@ -76,7 +75,6 @@ fun FeedsScreen(
                             feed = feed,
                             unreadCount = unreadCount,
                             onFeedClick = {
-                                // Open article list filtered by this feed
                                 navController.navigate("articles?feedId=${feed.id}")
                             },
                             onDetailsClick = {

@@ -17,8 +17,6 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -37,9 +35,10 @@ fun ArticleRow(
     entry: Entry,
     navController: NavController,
     articleIds: List<Long>,
-    articleIndex: Int
+    articleIndex: Int,
+    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
-    var checked = remember { mutableStateOf(false) }
+    val checked = entry.status == "read"
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -116,8 +115,8 @@ fun ArticleRow(
                     }
                 }
                 Checkbox(
-                    checked = checked.value,
-                    onCheckedChange = { checked.value = it },
+                    checked = checked,
+                    onCheckedChange = { onCheckedChange(entry.id, it) },
                     colors = CheckboxDefaults.colors(
                         checkedColor = MainChecked,
                         uncheckedColor = MainUnchecked

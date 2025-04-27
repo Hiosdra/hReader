@@ -19,7 +19,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,8 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.ui.article.ArticleListGrouped
 import org.koin.androidx.compose.koinViewModel
@@ -40,19 +38,6 @@ fun MainScreen(
     viewModel: MainViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val navBackStackEntry =
-        remember(navController.currentBackStackEntry) { navController.getBackStackEntry("main") }
-    DisposableEffect(navBackStackEntry) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadEntries()
-            }
-        }
-        navBackStackEntry.lifecycle.addObserver(observer)
-        onDispose {
-            navBackStackEntry.lifecycle.removeObserver(observer)
-        }
-    }
 
     Scaffold(
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
@@ -67,8 +52,12 @@ fun MainScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.loadEntries() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+                    IconButton(onClick = { viewModel.refreshFromNetwork() }) {
+                        if (uiState.isRefreshing) {
+                            CircularProgressIndicator(modifier = Modifier.padding(8.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+                        }
                     }
                     val expanded = remember { mutableStateOf(false) }
                     IconButton(onClick = { expanded.value = true }) {
@@ -98,7 +87,10 @@ fun MainScreen(
             ArticleListGrouped(
                 entries = uiState.entries,
                 navController = navController,
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier.padding(paddingValues),
+                onCheckedChange = { entryId, checked ->
+                    viewModel.updateEntryReadStatus(entryId, checked)
+                }
             )
         }
     }

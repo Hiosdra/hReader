@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -23,14 +24,14 @@ import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArticleListScreen(
+fun FeedArticleListScreen(
     feedId: Long,
     navController: NavController,
     viewModel: ArticleListViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    androidx.compose.runtime.LaunchedEffect(feedId) {
+    LaunchedEffect(feedId) {
         viewModel.loadArticlesForFeed(feedId)
     }
 
@@ -59,7 +60,8 @@ fun ArticleListScreen(
                 ArticleListGrouped(
                     entries = uiState.entries,
                     navController = navController,
-                    modifier = Modifier.padding(paddingValues)
+                    modifier = Modifier.padding(paddingValues),
+                    onCheckedChange = { _, _ -> }
                 )
             }
         }

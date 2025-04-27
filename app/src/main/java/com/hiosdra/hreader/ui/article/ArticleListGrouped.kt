@@ -19,7 +19,12 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modifier: Modifier) {
+fun ArticleListGrouped(
+    entries: List<Entry>,
+    navController: NavController,
+    modifier: Modifier,
+    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
+) {
     val grouped = entries.groupBy { it.publishedAt.substring(0, 10) }
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy")
     val allArticleIds = entries.map { it.id }
@@ -48,7 +53,8 @@ fun ArticleListGrouped(entries: List<Entry>, navController: NavController, modif
                     entry = entry,
                     navController = navController,
                     articleIds = allArticleIds,
-                    articleIndex = globalIndex
+                    articleIndex = globalIndex,
+                    onCheckedChange = onCheckedChange
                 )
                 HorizontalDivider(thickness = 8.dp, color = MaterialTheme.colorScheme.background)
             }
