@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.data.remote.MinifluxApiService
+import com.hiosdra.hreader.data.remote.MinifluxApiRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +16,7 @@ data class MainUiState(
     val error: String? = null
 )
 
-class MainViewModel(private val apiService: MinifluxApiService) : ViewModel() {
+class MainViewModel(private val apiRepository: MinifluxApiRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
@@ -31,7 +31,7 @@ class MainViewModel(private val apiService: MinifluxApiService) : ViewModel() {
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                val fetchedEntries = apiService.getEntries().entries
+                val fetchedEntries = apiRepository.getEntries().entries
                 _uiState.value = _uiState.value.copy(entries = fetchedEntries, isLoading = false)
                 Log.i("MainViewModel", "Entries loaded successfully: ${fetchedEntries.size} entries")
             } catch (e: Exception) {

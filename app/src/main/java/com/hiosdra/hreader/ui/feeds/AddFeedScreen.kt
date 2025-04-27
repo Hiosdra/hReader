@@ -21,21 +21,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.hiosdra.hreader.data.model.CreateFeedRequest
-import com.hiosdra.hreader.data.model.DiscoverRequest
-import com.hiosdra.hreader.data.model.DiscoverResponse
-import com.hiosdra.hreader.data.remote.MinifluxApiService
-import kotlinx.coroutines.launch
-import org.json.JSONObject
 import org.koin.androidx.compose.koinViewModel
-import retrofit2.HttpException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

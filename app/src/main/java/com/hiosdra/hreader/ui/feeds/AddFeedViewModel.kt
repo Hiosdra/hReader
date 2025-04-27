@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.model.CreateFeedRequest
 import com.hiosdra.hreader.data.model.DiscoverRequest
 import com.hiosdra.hreader.data.model.DiscoverResponse
-import com.hiosdra.hreader.data.remote.MinifluxApiService
+import com.hiosdra.hreader.data.remote.MinifluxApiRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +23,7 @@ data class AddFeedUiState(
 )
 
 class AddFeedViewModel(
-    private val apiService: MinifluxApiService,
+    private val apiRepository: MinifluxApiRepository,
     private val feedsViewModel: FeedsViewModel
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AddFeedUiState())
@@ -69,7 +69,7 @@ class AddFeedViewModel(
             }
             val normalizedUrl = normalizeUrl(feedUrl)
             try {
-                apiService.createFeed(
+                apiRepository.createFeed(
                     request = CreateFeedRequest(feed_url = normalizedUrl)
                 )
                 _uiState.value = _uiState.value.copy(isLoading = false)
@@ -78,7 +78,7 @@ class AddFeedViewModel(
             } catch (e: Exception) {
                 // If failed, try discover
                 try {
-                    val discovered = apiService.discoverFeeds(
+                    val discovered = apiRepository.discoverFeeds(
                         request = DiscoverRequest(url = normalizedUrl)
                     )
                     if (discovered.isNotEmpty()) {
@@ -102,7 +102,7 @@ class AddFeedViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val normalizedDiscoveredUrl = normalizeUrl(discovered.url)
-                apiService.createFeed(
+                apiRepository.createFeed(
                     request = CreateFeedRequest(feed_url = normalizedDiscoveredUrl)
                 )
                 _uiState.value = _uiState.value.copy(isLoading = false)

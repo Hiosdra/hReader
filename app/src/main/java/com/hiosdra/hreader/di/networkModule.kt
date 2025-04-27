@@ -2,6 +2,7 @@ package com.hiosdra.hreader.di
 
 import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.data.remote.AuthInterceptor
+import com.hiosdra.hreader.data.remote.MinifluxApiRepository
 import com.hiosdra.hreader.data.remote.MinifluxApiService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -41,4 +42,5 @@ val networkModule = module {
     }
 
     single<MinifluxApiService> { get<Retrofit>().create(MinifluxApiService::class.java) }
+    single<MinifluxApiRepository> { MinifluxApiRepository(get()) }
 }

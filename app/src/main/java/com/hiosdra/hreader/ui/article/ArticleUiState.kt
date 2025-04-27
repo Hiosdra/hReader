@@ -3,7 +3,7 @@ package com.hiosdra.hreader.ui.article
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.data.remote.MinifluxApiService
+import com.hiosdra.hreader.data.remote.MinifluxApiRepository
 import com.hiosdra.hreader.data.remote.UpdateEntriesStatusRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +17,7 @@ data class ArticleUiState(
     val error: String? = null
 )
 
-class ArticleViewModel(private val apiService: MinifluxApiService) : ViewModel() {
+class ArticleViewModel(private val apiRepository: MinifluxApiRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(ArticleUiState())
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
@@ -27,7 +27,7 @@ class ArticleViewModel(private val apiService: MinifluxApiService) : ViewModel()
         viewModelScope.launch {
             try {
                 val idsString = articleIds.joinToString(",")
-                val entries = apiService.getEntriesByIds(idsString).entries
+                val entries = apiRepository.getEntriesByIds(idsString).entries
                 // Sort entries to match the order of articleIds
                 val sortedEntries = articleIds.mapNotNull { id -> entries.find { it.id == id } }
                 _uiState.value = _uiState.value.copy(entries = sortedEntries, currentIndex = initialIndex, isLoading = false, error = null)
@@ -52,7 +52,7 @@ class ArticleViewModel(private val apiService: MinifluxApiService) : ViewModel()
         _uiState.value = _uiState.value.copy(entries = entries)
         viewModelScope.launch {
             try {
-                apiService.updateEntriesStatus(
+                apiRepository.updateEntriesStatus(
                     UpdateEntriesStatusRequest(
                         entry_ids = listOf(entry.id),
                         status = newStatus
