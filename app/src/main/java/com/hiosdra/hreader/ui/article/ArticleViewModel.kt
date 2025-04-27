@@ -26,8 +26,7 @@ class ArticleViewModel(private val apiRepository: MinifluxApiRepository) : ViewM
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                val idsString = articleIds.joinToString(",")
-                val entries = apiRepository.getEntriesByIds(idsString).entries
+                val entries = apiRepository.getEntriesByIds(articleIds)
                 // Sort entries to match the order of articleIds
                 val sortedEntries = articleIds.mapNotNull { id -> entries.find { it.id == id } }
                 _uiState.value = _uiState.value.copy(entries = sortedEntries, currentIndex = initialIndex, isLoading = false, error = null)
@@ -58,7 +57,7 @@ class ArticleViewModel(private val apiRepository: MinifluxApiRepository) : ViewM
                         status = newStatus
                     )
                 )
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Optionally handle error, revert status, or show message
             }
         }

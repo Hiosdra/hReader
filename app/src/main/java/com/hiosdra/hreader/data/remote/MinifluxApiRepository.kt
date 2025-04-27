@@ -8,6 +8,10 @@ import com.hiosdra.hreader.data.model.EntriesResponse
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.model.FeedCountersResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 
 private const val ENTRIES_DOWNLOAD_DEFAULT_LIMIT = 50
@@ -22,8 +26,11 @@ class MinifluxApiRepository(private val apiService: MinifluxApiService) {
         apiService.getEntries(status, order, direction, limit)
     }
 
-    suspend fun getEntriesByIds(ids: String): EntriesResponse =
-        withRetries { apiService.getEntriesByIds(ids) }
+    suspend fun getEntriesByIds(ids: List<Long>): List<Entry> = withRetries {
+        coroutineScope {
+            ids.map { id -> async(Dispatchers.IO) { apiService.getEntryById(id) } }.awaitAll()
+        }
+    }
 
     suspend fun getEntryById(entryId: Long): Entry =
         withRetries { apiService.getEntryById(entryId) }
