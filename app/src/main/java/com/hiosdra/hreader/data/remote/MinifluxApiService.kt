@@ -21,7 +21,8 @@ interface MinifluxApiService {
         @Query("status") status: String = "unread",
         @Query("order") order: String = "published_at",
         @Query("direction") direction: String = "asc",
-        @Query("limit") limit: Int = 100
+        @Query("limit") limit: Int = 100,
+        @Query("offset") offset: Int = 0
     ): EntriesResponse
 
     @GET("v1/entries/{entryId}")

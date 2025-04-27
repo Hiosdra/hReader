@@ -79,10 +79,14 @@ dependencies {
     ksp("androidx.room:room-compiler:2.7.1")
     annotationProcessor("androidx.room:room-compiler:2.7.1")
 
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
+
     // Koin
     implementation(platform("io.insert-koin:koin-bom:4.0.4"))
     implementation("io.insert-koin:koin-android")
     implementation("io.insert-koin:koin-androidx-compose-navigation")
+    implementation("io.insert-koin:koin-androidx-workmanager")
 
     // Coil
     implementation("io.coil-kt:coil-compose:2.7.0")

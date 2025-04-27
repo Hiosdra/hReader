@@ -2,9 +2,8 @@ package com.hiosdra.hreader.ui.article
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hiosdra.hreader.data.local.ArticleRepository
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.data.remote.MinifluxApiRepository
-import com.hiosdra.hreader.data.remote.UpdateEntriesStatusRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,22 +16,35 @@ data class ArticleUiState(
     val error: String? = null
 )
 
-class ArticleViewModel(private val apiRepository: MinifluxApiRepository) : ViewModel() {
+class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(ArticleUiState())
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
-    fun loadArticles(articleIds: List<Long>, initialIndex: Int = 0) {
-        if (_uiState.value.isLoading) return
-        _uiState.value = _uiState.value.copy(isLoading = true)
+    init {
+        observeArticles()
+        refreshArticles()
+    }
+
+    private fun observeArticles() {
         viewModelScope.launch {
+            repository.getAllArticlesOldestFirst().collect { articles ->
+                _uiState.value = _uiState.value.copy(
+                    entries = articles,
+                    isLoading = false,
+                    error = null
+                )
+            }
+        }
+    }
+
+    fun refreshArticles() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val entries = apiRepository.getEntriesByIds(articleIds)
-                // Sort entries to match the order of articleIds
-                val sortedEntries = articleIds.mapNotNull { id -> entries.find { it.id == id } }
-                _uiState.value = _uiState.value.copy(entries = sortedEntries, currentIndex = initialIndex, isLoading = false, error = null)
+                repository.refreshArticles()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "Error loading articles: ${e.message}",
+                    error = "Error refreshing articles: ${e.message}",
                     isLoading = false
                 )
             }
@@ -50,16 +62,8 @@ class ArticleViewModel(private val apiRepository: MinifluxApiRepository) : ViewM
         entries[index] = entry.copy(status = newStatus)
         _uiState.value = _uiState.value.copy(entries = entries)
         viewModelScope.launch {
-            try {
-                apiRepository.updateEntriesStatus(
-                    UpdateEntriesStatusRequest(
-                        entry_ids = listOf(entry.id),
-                        status = newStatus
-                    )
-                )
-            } catch (_: Exception) {
-                // Optionally handle error, revert status, or show message
-            }
+            repository.updateReadStatus(entry.id.toString(), newStatus)
         }
     }
+
 }
