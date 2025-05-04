@@ -23,6 +23,7 @@ android {
         buildConfigField("String", "MINIFLUX_API_KEY", "\"pvHuBUHWfOhf-CQkdqAeETF9FORFPm3HskWIzR3fX4o=\"")
         buildConfigField("String", "CLOUDFLARE_CLIENT_ID", "\"7deac5772438964e5e8571c789fa32a7.access\"")
         buildConfigField("String", "CLOUDFLARE_CLIENT_SECRET", "\"cd2c46e1ad8514a31ac48ad25488adb66a2ca978d07436740b1a0559ac90df9b\"")
+        buildConfigField("String", "OPENROUTER_KEY", "\"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\"")
     }
 
     buildTypes {
