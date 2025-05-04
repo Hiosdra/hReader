@@ -28,10 +28,10 @@ class ArticleRepository(
             }
         }
 
-    fun getAllArticlesForFeed(feedId: Long): Flow<List<Entry>> {
+    suspend fun getAllArticlesForFeed(feedId: Long): Flow<List<Entry>> {
+        val feed = feedDao.getFeedById(feedId) ?: throw IllegalStateException("Feed not found")
         return articleDao.getAllArticlesForFeed(feedId).map { list ->
             list.map { article ->
-                val feed = feedDao.getFeedById(article.feedId) ?: throw IllegalStateException("Feed not found")
                 article.toEntry(feed)
             }
         }

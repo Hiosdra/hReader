@@ -43,6 +43,20 @@ class ArticleListViewModel(
         }
     }
 
+    fun markAllAsRead() {
+        val entries = _uiState.value.entries.map { it.copy(status = "read") }
+        _uiState.value = _uiState.value.copy(entries = entries)
+        viewModelScope.launch {
+            try {
+                _uiState.value.entries.forEach { entry ->
+                    articleRepository.updateReadStatus(entry.id.toString(), "read")
+                }
+            } catch (e: Exception) {
+                // Optionally handle error (rollback local change, show error, etc)
+            }
+        }
+    }
+
     fun refreshArticles(feedId: Long) {
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
