@@ -1,12 +1,10 @@
 # TODO
 
 ## High Prio
-1. Per feed article list (feed details as separate button)
 
 ## Med Prio
 1. AI article score for bullshit
 2. AI article overview/summary
-3. Offline caching and syncing
 
 
 ## Low prio

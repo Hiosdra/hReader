@@ -23,7 +23,8 @@ val appModule = module {
         ).build()
     }
     single { get<AppDatabase>().articleDao() }
-    single { ArticleRepository(get(), get()) }
+    single { get<AppDatabase>().feedDao() }
+    single { ArticleRepository(get(), get(), get()) }
     worker { ContentSyncWorker(get(), get()) }
     viewModel { MainViewModel(get()) }
     viewModel { FeedsViewModel(get()) }

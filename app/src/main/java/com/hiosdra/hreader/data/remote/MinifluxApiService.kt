@@ -18,11 +18,11 @@ import retrofit2.http.Query
 interface MinifluxApiService {
     @GET("v1/entries")
     suspend fun getEntries(
-        @Query("status") status: String = "unread",
-        @Query("order") order: String = "published_at",
-        @Query("direction") direction: String = "asc",
-        @Query("limit") limit: Int = 100,
-        @Query("offset") offset: Int = 0
+        @Query("status") status: String,
+        @Query("order") order: String,
+        @Query("direction") direction: String,
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int
     ): EntriesResponse
 
     @GET("v1/entries/{entryId}")
@@ -40,10 +40,10 @@ interface MinifluxApiService {
     @GET("v1/feeds/{feedId}/entries")
     suspend fun getFeedEntries(
         @Path("feedId") feedId: Long,
-        @Query("status") status: String = "unread",
-        @Query("order") order: String = "published_at",
-        @Query("direction") direction: String = "desc",
-        @Query("limit") limit: Int = 100
+        @Query("status") status: String,
+        @Query("order") order: String,
+        @Query("direction") direction: String,
+        @Query("limit") limit: Int
     ): EntriesResponse
 
     @POST("v1/feeds")

@@ -22,4 +22,10 @@ interface ArticleDao {
 
     @Query("UPDATE articles SET status = :status WHERE id = :articleId")
     suspend fun updateStatus(articleId: String, status: String)
+
+    @Query("SELECT * FROM articles WHERE id IN (:ids) ORDER BY publishedAt ASC")
+    fun getArticlesByIds(ids: List<String>): Flow<List<ArticleEntity>>
+
+    @Query("SELECT * FROM articles WHERE feedId = :feedId ORDER BY publishedAt ASC")
+    fun getAllArticlesForFeed(feedId: Long): Flow<List<ArticleEntity>>
 }

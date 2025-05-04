@@ -69,6 +69,10 @@ fun ArticleScreen(
     val pagerState = rememberPagerState(initialPage = initialIndex)
     var isWebViewMode by remember { mutableStateOf(false) }
 
+    LaunchedEffect(articleIds) {
+        viewModel.loadArticlesByIds(articleIds)
+    }
+
     LaunchedEffect(initialIndex) {
         pagerState.scrollToPage(initialIndex)
     }

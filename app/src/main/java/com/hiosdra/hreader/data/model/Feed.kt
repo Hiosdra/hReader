@@ -9,5 +9,4 @@ data class Feed(
     val title: String,
     @Json(name = "site_url") val siteUrl: String?,
     @Json(name = "feed_url") val feedUrl: String,
-    val category: Category
 )

@@ -21,20 +21,7 @@ class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() 
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
     init {
-        observeArticles()
         refreshArticles()
-    }
-
-    private fun observeArticles() {
-        viewModelScope.launch {
-            repository.getAllArticlesOldestFirst().collect { articles ->
-                _uiState.value = _uiState.value.copy(
-                    entries = articles,
-                    isLoading = false,
-                    error = null
-                )
-            }
-        }
     }
 
     fun refreshArticles() {
@@ -66,4 +53,16 @@ class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() 
         }
     }
 
+    fun loadArticlesByIds(ids: List<Long>) {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        viewModelScope.launch {
+            try {
+                repository.getArticlesByIds(ids).collect { articles ->
+                    _uiState.value = _uiState.value.copy(entries = articles, isLoading = false, error = null)
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message ?: "Unknown error")
+            }
+        }
+    }
 }
