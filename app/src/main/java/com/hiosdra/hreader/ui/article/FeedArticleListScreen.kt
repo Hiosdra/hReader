@@ -61,7 +61,9 @@ fun FeedArticleListScreen(
                     entries = uiState.entries,
                     navController = navController,
                     modifier = Modifier.padding(paddingValues),
-                    onCheckedChange = { _, _ -> }
+                    onCheckedChange = { entryId, checked ->
+                        viewModel.updateEntryReadStatus(entryId, checked)
+                    }
                 )
             }
         }

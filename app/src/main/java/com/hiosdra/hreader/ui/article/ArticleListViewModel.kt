@@ -28,6 +28,20 @@ class ArticleListViewModel(
             }
         }
     }
+
+    fun updateEntryReadStatus(entryId: Long, checked: Boolean) {
+        val entries = _uiState.value.entries.map {
+            if (it.id == entryId) it.copy(status = if (checked) "read" else "unread") else it
+        }
+        _uiState.value = _uiState.value.copy(entries = entries)
+        viewModelScope.launch {
+            try {
+                articleRepository.updateReadStatus(entryId.toString(), if (checked) "read" else "unread")
+            } catch (e: Exception) {
+                // Optionally handle error (rollback local change, show error, etc)
+            }
+        }
+    }
 }
 
 data class ArticleListUiState(
