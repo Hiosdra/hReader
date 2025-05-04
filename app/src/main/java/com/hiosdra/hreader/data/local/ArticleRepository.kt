@@ -1,21 +1,55 @@
 package com.hiosdra.hreader.data.local
 
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.data.remote.MinifluxApiService
+import com.hiosdra.hreader.data.model.Feed
+import com.hiosdra.hreader.data.remote.MinifluxApiRepository
 import com.hiosdra.hreader.data.remote.UpdateEntriesStatusRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class ArticleRepository(
     private val articleDao: ArticleDao,
-    private val api: MinifluxApiService
+    private val feedDao: FeedDao,
+    private val api: MinifluxApiRepository
 ) {
     fun getAllArticlesOldestFirst(): Flow<List<Entry>> =
-        articleDao.getAllArticlesOldestFirst().map { list -> list.map { it.toEntry() } }
+        articleDao.getAllArticlesOldestFirst().map { list ->
+            list.map { article ->
+                val feed = feedDao.getFeedById(article.feedId) ?: throw IllegalStateException("Feed not found")
+                article.toEntry(feed)
+            }
+        }
+
+    fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
+        articleDao.getArticlesByIds(ids.map { it.toString() }).map { list ->
+            list.map { article ->
+                val feed = feedDao.getFeedById(article.feedId) ?: throw IllegalStateException("Feed not found")
+                article.toEntry(feed)
+            }
+        }
+
+    fun getAllArticlesForFeed(feedId: Long): Flow<List<Entry>> {
+        return articleDao.getAllArticlesForFeed(feedId).map { list ->
+            list.map { article ->
+                val feed = feedDao.getFeedById(article.feedId) ?: throw IllegalStateException("Feed not found")
+                article.toEntry(feed)
+            }
+        }
+    }
 
     suspend fun refreshArticles() {
         val response = api.getEntries()
         val articles = response.entries.map { entry -> entry.toEntity() }
+        val feeds = response.entries.map { entry ->
+            val apiFeed = entry.feed
+            FeedEntity(
+                id = apiFeed.id,
+                title = apiFeed.title,
+                siteUrl = apiFeed.siteUrl,
+                feedUrl = apiFeed.feedUrl,
+            )
+        }.distinctBy { it.id }
+        feedDao.insertFeeds(feeds)
         articleDao.clearAll()
         articleDao.insertArticles(articles)
     }
@@ -26,17 +60,24 @@ class ArticleRepository(
     }
 }
 
-private fun ArticleEntity.toEntry(): Entry = Entry(
+private fun ArticleEntity.toEntry(feedEntity: FeedEntity): Entry = Entry(
     id = id.toLong(),
     title = title,
     author = author,
     url = url,
     publishedAt = publishedAt,
     content = content,
-    feed = feed,
+    feed = feedEntity.toFeed(),
     readingTime = readingTime,
     enclosures = enclosures,
     status = status
+)
+
+private fun FeedEntity.toFeed(): Feed = Feed(
+    id = id,
+    title = title,
+    siteUrl = siteUrl,
+    feedUrl = feedUrl
 )
 
 private fun Entry.toEntity(): ArticleEntity = ArticleEntity(
@@ -46,7 +87,7 @@ private fun Entry.toEntity(): ArticleEntity = ArticleEntity(
     url = url,
     publishedAt = publishedAt,
     content = content,
-    feed = feed,
+    feedId = feed.id,
     readingTime = readingTime,
     enclosures = enclosures,
     status = status

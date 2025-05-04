@@ -21,9 +21,10 @@ class MinifluxApiRepository(private val apiService: MinifluxApiService) {
         status: String = "unread",
         order: String = "published_at",
         direction: String = "asc",
-        limit: Int = ENTRIES_DOWNLOAD_DEFAULT_LIMIT
+        limit: Int = ENTRIES_DOWNLOAD_DEFAULT_LIMIT,
+        offset: Int = 0
     ): EntriesResponse = withRetries {
-        apiService.getEntries(status, order, direction, limit)
+        apiService.getEntries(status, order, direction, limit, offset)
     }
 
     suspend fun getEntriesByIds(ids: List<Long>): List<Entry> = withRetries {

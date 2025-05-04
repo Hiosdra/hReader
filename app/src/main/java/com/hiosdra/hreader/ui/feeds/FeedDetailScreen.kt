@@ -43,8 +43,6 @@ fun FeedDetailScreen(feedId: Long, viewModel: FeedsViewModel = koinViewModel(), 
                 Text(text = "Site URL: ${feed.siteUrl ?: "-"}", style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "Feed URL: ${feed.feedUrl}", style = MaterialTheme.typography.bodyMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Category: ${feed.category.title}", style = MaterialTheme.typography.bodyMedium)
             } else {
                 Text(text = "Feed not found.", color = MaterialTheme.colorScheme.error)
             }
