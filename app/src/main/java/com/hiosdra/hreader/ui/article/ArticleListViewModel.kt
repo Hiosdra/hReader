@@ -42,6 +42,20 @@ class ArticleListViewModel(
             }
         }
     }
+
+    fun refreshArticles(feedId: Long) {
+        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+        viewModelScope.launch {
+            try {
+                articleRepository.refreshArticles()
+                loadArticlesForFeed(feedId)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = "Network refresh failed: ${e.message}")
+            } finally {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
 }
 
 data class ArticleListUiState(
