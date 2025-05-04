@@ -38,20 +38,30 @@ class ArticleRepository(
     }
 
     suspend fun refreshArticles() {
-        val response = api.getEntries()
-        val articles = response.entries.map { entry -> entry.toEntity() }
-        val feeds = response.entries.map { entry ->
-            val apiFeed = entry.feed
-            FeedEntity(
-                id = apiFeed.id,
-                title = apiFeed.title,
-                siteUrl = apiFeed.siteUrl,
-                feedUrl = apiFeed.feedUrl,
-            )
-        }.distinctBy { it.id }
-        feedDao.insertFeeds(feeds)
+        val limit = 50
+        var offset = 0
+        val allArticles = mutableListOf<ArticleEntity>()
+        val allFeeds = mutableMapOf<Long, FeedEntity>()
+        while (true) {
+            val response = api.getEntries(limit = limit, offset = offset)
+            val articles = response.entries.map { entry -> entry.toEntity() }
+            val feeds = response.entries.map { entry ->
+                val apiFeed = entry.feed
+                FeedEntity(
+                    id = apiFeed.id,
+                    title = apiFeed.title,
+                    siteUrl = apiFeed.siteUrl,
+                    feedUrl = apiFeed.feedUrl,
+                )
+            }
+            articles.forEach { allArticles.add(it) }
+            feeds.forEach { allFeeds[it.id] = it }
+            if (articles.size < limit) break
+            offset += limit
+        }
+        feedDao.insertFeeds(allFeeds.values.toList())
         articleDao.clearAll()
-        articleDao.insertArticles(articles)
+        articleDao.insertArticles(allArticles)
     }
 
     suspend fun updateReadStatus(articleId: String, newStatus: String) {
