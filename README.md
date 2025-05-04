@@ -3,8 +3,9 @@
 ## High Prio
 
 ## Med Prio
-1. AI article score for bullshit
-2. AI article overview/summary
+1. Fetching article content
+2. AI article score for bullshit
+3. AI article overview/summary
 
 
 ## Low prio
