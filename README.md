@@ -3,7 +3,7 @@
 ## High Prio
 
 ## Med Prio
-1. Fetching article content
+1. Fetching article content to offline
 2. AI article score for bullshit
 3. AI article overview/summary
 
