@@ -5,6 +5,7 @@ import com.hiosdra.hreader.data.model.Enclosure
 import com.hiosdra.hreader.data.model.Feed
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import java.util.Date
 
 class Converters {
     private val moshi = Moshi.Builder().build()
@@ -29,5 +30,15 @@ class Converters {
     fun jsonToEnclosures(json: String?): List<Enclosure>? = json?.let {
         val type = Types.newParameterizedType(List::class.java, Enclosure::class.java)
         moshi.adapter<List<Enclosure>>(type).fromJson(it)
+    }
+
+    @TypeConverter
+    fun fromTimestamp(value: Long?): Date? {
+        return value?.let { Date(it) }
+    }
+
+    @TypeConverter
+    fun dateToTimestamp(date: Date?): Long? {
+        return date?.time
     }
 }

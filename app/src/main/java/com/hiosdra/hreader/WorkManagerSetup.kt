@@ -16,3 +16,13 @@ fun setupContentSyncWorker(context: Context) {
         workRequest
     )
 }
+
+fun setupArticleContentSyncWorker(context: Context) {
+    val workRequest = PeriodicWorkRequestBuilder<ContentSyncWorker>(1, TimeUnit.HOURS)
+        .build()
+    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        "ArticleContentSyncWorker",
+        ExistingPeriodicWorkPolicy.KEEP,
+        workRequest
+    )
+}

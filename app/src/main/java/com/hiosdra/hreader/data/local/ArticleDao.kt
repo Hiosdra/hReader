@@ -23,6 +23,9 @@ interface ArticleDao {
     @Query("UPDATE articles SET status = :status WHERE id = :articleId")
     suspend fun updateStatus(articleId: String, status: String)
 
+    @Query("UPDATE articles SET status = :status WHERE id IN (:ids)")
+    suspend fun updateStatusForIds(ids: List<String>, status: String)
+
     @Query("SELECT * FROM articles WHERE id IN (:ids) ORDER BY publishedAt ASC")
     fun getArticlesByIds(ids: List<String>): Flow<List<ArticleEntity>>
 

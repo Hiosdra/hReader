@@ -20,5 +20,6 @@ class MyApplication : Application() {
             modules(appModule, networkModule)
         }
         setupContentSyncWorker(this)
+        setupArticleContentSyncWorker(this)
     }
 }

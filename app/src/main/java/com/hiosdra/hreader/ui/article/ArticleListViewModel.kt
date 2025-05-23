@@ -21,10 +21,12 @@ class ArticleListViewModel(
         viewModelScope.launch {
             try {
                 articleRepository.getAllArticlesForFeed(feedId).collect { filtered ->
-                    _uiState.value = _uiState.value.copy(entries = filtered, isLoading = false, error = null)
+                    _uiState.value =
+                        _uiState.value.copy(entries = filtered, isLoading = false, error = null)
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message ?: "Unknown error")
+                _uiState.value =
+                    _uiState.value.copy(isLoading = false, error = e.message ?: "Unknown error")
             }
         }
     }
@@ -36,7 +38,10 @@ class ArticleListViewModel(
         _uiState.value = _uiState.value.copy(entries = entries)
         viewModelScope.launch {
             try {
-                articleRepository.updateReadStatus(entryId.toString(), if (checked) "read" else "unread")
+                articleRepository.updateReadStatus(
+                    entryId.toString(),
+                    if (checked) "read" else "unread"
+                )
             } catch (e: Exception) {
                 // Optionally handle error (rollback local change, show error, etc)
             }
@@ -48,9 +53,8 @@ class ArticleListViewModel(
         _uiState.value = _uiState.value.copy(entries = entries)
         viewModelScope.launch {
             try {
-                _uiState.value.entries.forEach { entry ->
-                    articleRepository.updateReadStatus(entry.id.toString(), "read")
-                }
+                val articleIds = _uiState.value.entries.map { it.id.toString() }
+                articleRepository.updateReadStatus(articleIds, "read")
             } catch (e: Exception) {
                 // Optionally handle error (rollback local change, show error, etc)
             }
@@ -64,7 +68,10 @@ class ArticleListViewModel(
                 articleRepository.refreshArticles()
                 loadArticlesForFeed(feedId)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "Network refresh failed: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Network refresh failed: ${e.message}"
+                )
             } finally {
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.local.ArticleRepository
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.data.repository.ArticleContentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,10 +14,14 @@ data class ArticleUiState(
     val entries: List<Entry> = emptyList(),
     val currentIndex: Int = 0,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val originalContent: Map<Long, String> = emptyMap()
 )
 
-class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() {
+class ArticleViewModel(
+    private val repository: ArticleRepository,
+    private val articleContentRepository: ArticleContentRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(ArticleUiState())
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
@@ -40,6 +45,26 @@ class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() 
 
     fun setCurrentIndex(index: Int) {
         _uiState.value = _uiState.value.copy(currentIndex = index)
+        // Fetch original content for the current article if not already loaded
+        val entry = _uiState.value.entries.getOrNull(index)
+        if (entry != null && !_uiState.value.originalContent.containsKey(entry.id)) {
+            loadOriginalContent(entry.id, entry.url)
+        }
+    }
+
+    private fun loadOriginalContent(entryId: Long, url: String) {
+        viewModelScope.launch {
+            try {
+                val content = articleContentRepository.getArticleContent(entryId, url)
+                val updatedContent = _uiState.value.originalContent.toMutableMap().apply {
+                    put(entryId, content)
+                }
+                _uiState.value = _uiState.value.copy(originalContent = updatedContent)
+            } catch (e: Exception) {
+                // Log error but don't update UI state - we'll fall back to the regular content
+                e.printStackTrace()
+            }
+        }
     }
 
     fun updateReadStatus(index: Int, isRead: Boolean) {
@@ -59,10 +84,27 @@ class ArticleViewModel(private val repository: ArticleRepository) : ViewModel() 
             try {
                 repository.getArticlesByIds(ids).collect { articles ->
                     _uiState.value = _uiState.value.copy(entries = articles, isLoading = false, error = null)
+                    
+                    // Load original content for the current article
+                    val currentArticle = articles.getOrNull(_uiState.value.currentIndex)
+                    if (currentArticle != null) {
+                        loadOriginalContent(currentArticle.id, currentArticle.url)
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message ?: "Unknown error")
             }
         }
+    }
+
+    // Get the content for a specific entry, preferring original content if available
+    fun getContentForEntry(entryId: Long): String? {
+        val originalContent = _uiState.value.originalContent[entryId]
+        if (originalContent != null) {
+            return originalContent
+        }
+        
+        // Fall back to the entry's content
+        return _uiState.value.entries.find { it.id == entryId }?.content
     }
 }

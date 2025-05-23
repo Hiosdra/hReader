@@ -41,12 +41,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.text.HtmlCompat
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -117,7 +114,8 @@ fun ArticleScreen(
                     pagerState = pagerState,
                     isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues,
-                    onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) }
+                    onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
+                    viewModel = viewModel
                 )
             }
         }
@@ -130,7 +128,8 @@ private fun ArticlePager(
     pagerState: com.google.accompanist.pager.PagerState,
     isWebViewMode: Boolean,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
-    onReadStatusChange: ((Int, Boolean) -> Unit)? = null
+    onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
+    viewModel: ArticleViewModel
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
@@ -158,7 +157,8 @@ private fun ArticlePager(
                     entry = entry,
                     mainImageUrl = mainImageUrl,
                     modifier = Modifier.padding(paddingValues),
-                    onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) }
+                    onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
+                    viewModel = viewModel
                 )
                 LaunchedEffect(entry.id) {
                     if (entry.status != "read") {
@@ -217,7 +217,8 @@ private fun ArticleContent(
     entry: Entry,
     mainImageUrl: String?,
     modifier: Modifier = Modifier,
-    onReadStatusChange: ((Boolean) -> Unit)? = null
+    onReadStatusChange: ((Boolean) -> Unit)? = null,
+    viewModel: ArticleViewModel
 ) {
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -266,15 +267,45 @@ private fun ArticleContent(
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = AnnotatedString(
-                        text = HtmlCompat.fromHtml(
-                            entry.content ?: "No content available",
-                            HtmlCompat.FROM_HTML_MODE_COMPACT
-                        ).toString()
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    lineHeight = TextUnit.Unspecified
+
+                // Get content from ViewModel, which will return original content if available
+                val articleContent = viewModel.getContentForEntry(entry.id) ?: "No content available"
+
+                AndroidView(
+                    factory = { context ->
+                        WebView(context).apply {
+                            settings.javaScriptEnabled = false
+                            settings.defaultFontSize = 16
+                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            webViewClient = WebViewClient()
+                        }
+                    },
+                    update = { webView ->
+                        val htmlData = """
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <style>
+                                    body { 
+                                        font-family: sans-serif; 
+                                        line-height: 1.5;
+                                        margin: 0;
+                                        padding: 0;
+                                        color: white;
+                                    }
+                                    img { max-width: 100%; height: auto; }
+                                    a { color: #1976D2; }
+                                </style>
+                            </head>
+                            <body>
+                                $articleContent
+                            </body>
+                            </html>
+                        """
+                        webView.loadDataWithBaseURL(null, htmlData, "text/html", "UTF-8", null)
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
