@@ -1,9 +1,10 @@
-package com.hiosdra.hreader.data.local
+package com.hiosdra.hreader.worker
 
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 

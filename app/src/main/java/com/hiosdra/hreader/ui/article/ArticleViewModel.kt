@@ -2,9 +2,9 @@ package com.hiosdra.hreader.ui.article
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hiosdra.hreader.data.local.ArticleRepository
+import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
+import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.data.repository.ArticleContentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

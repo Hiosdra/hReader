@@ -1,4 +1,4 @@
-package com.hiosdra.hreader.data.model
+package com.hiosdra.hreader.data.remote.dto
 
 import com.squareup.moshi.JsonClass
 

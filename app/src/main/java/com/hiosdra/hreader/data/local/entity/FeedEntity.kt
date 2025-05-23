@@ -1,4 +1,4 @@
-package com.hiosdra.hreader.data.local
+package com.hiosdra.hreader.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

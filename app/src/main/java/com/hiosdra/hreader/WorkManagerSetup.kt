@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.hiosdra.hreader.data.local.ArticleContentSyncWorker
-import com.hiosdra.hreader.data.local.ContentSyncWorker
+import com.hiosdra.hreader.worker.ArticleContentSyncWorker
+import com.hiosdra.hreader.worker.ContentSyncWorker
 import java.util.concurrent.TimeUnit
 
 fun setupContentSyncWorker(context: Context) {

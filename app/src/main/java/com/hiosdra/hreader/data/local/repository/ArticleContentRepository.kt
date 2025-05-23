@@ -1,7 +1,7 @@
-package com.hiosdra.hreader.data.repository
+package com.hiosdra.hreader.data.local.repository
 
-import com.hiosdra.hreader.data.local.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleContentDao
+import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
 import com.hiosdra.hreader.data.remote.MinifluxApiRepository
 import kotlinx.coroutines.Dispatchers
@@ -65,4 +65,3 @@ class ArticleContentRepository(
         articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
     }
 }
-

@@ -1,9 +1,10 @@
-package com.hiosdra.hreader.data.local
+package com.hiosdra.hreader.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.hiosdra.hreader.data.local.entity.ArticleEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -11,7 +12,7 @@ interface ArticleDao {
     @Query("SELECT * FROM articles ORDER BY publishedAt ASC")
     fun getAllArticlesOldestFirst(): Flow<List<ArticleEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertArticles(articles: List<ArticleEntity>)
 
     @Query("DELETE FROM articles")

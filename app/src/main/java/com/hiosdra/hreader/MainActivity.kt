@@ -10,10 +10,10 @@ import androidx.compose.material3.Surface
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import com.hiosdra.hreader.data.local.ArticleContentSyncWorker
-import com.hiosdra.hreader.data.local.ContentSyncWorker
 import com.hiosdra.hreader.navigation.AppNavigation
 import com.hiosdra.hreader.ui.theme.HReaderTheme
+import com.hiosdra.hreader.worker.ArticleContentSyncWorker
+import com.hiosdra.hreader.worker.ContentSyncWorker
 import org.koin.androidx.compose.KoinAndroidContext
 
 class MainActivity : ComponentActivity() {

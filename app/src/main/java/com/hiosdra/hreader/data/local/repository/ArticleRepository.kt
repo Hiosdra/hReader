@@ -1,9 +1,13 @@
-package com.hiosdra.hreader.data.local
+package com.hiosdra.hreader.data.local.repository
 
+import com.hiosdra.hreader.data.local.dao.ArticleDao
+import com.hiosdra.hreader.data.local.dao.FeedDao
+import com.hiosdra.hreader.data.local.entity.ArticleEntity
+import com.hiosdra.hreader.data.local.entity.FeedEntity
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.remote.MinifluxApiRepository
-import com.hiosdra.hreader.data.remote.UpdateEntriesStatusRequest
+import com.hiosdra.hreader.data.remote.dto.UpdateEntriesStatusRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -15,7 +19,8 @@ class ArticleRepository(
     fun getAllArticlesOldestFirst(): Flow<List<Entry>> =
         articleDao.getAllArticlesOldestFirst().map { list ->
             list.map { article ->
-                val feed = feedDao.getFeedById(article.feedId) ?: throw IllegalStateException("Feed not found")
+                val feed = feedDao.getFeedById(article.feedId)
+                    ?: throw IllegalStateException("Feed not found")
                 article.toEntry(feed)
             }
         }
@@ -23,7 +28,8 @@ class ArticleRepository(
     fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
         articleDao.getArticlesByIds(ids.map { it.toString() }).map { list ->
             list.map { article ->
-                val feed = feedDao.getFeedById(article.feedId) ?: throw IllegalStateException("Feed not found")
+                val feed = feedDao.getFeedById(article.feedId)
+                    ?: throw IllegalStateException("Feed not found")
                 article.toEntry(feed)
             }
         }
@@ -65,7 +71,12 @@ class ArticleRepository(
     }
 
     suspend fun updateReadStatus(articleIds: List<String>, newStatus: String) {
-        api.updateEntriesStatus(UpdateEntriesStatusRequest(articleIds.map { it.toLong() }, newStatus))
+        api.updateEntriesStatus(
+            UpdateEntriesStatusRequest(
+                articleIds.map { it.toLong() },
+                newStatus
+            )
+        )
         articleDao.updateStatusForIds(articleIds, newStatus)
     }
 

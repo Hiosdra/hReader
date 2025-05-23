@@ -2,10 +2,10 @@ package com.hiosdra.hreader.ui.feeds
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hiosdra.hreader.data.model.CreateFeedRequest
-import com.hiosdra.hreader.data.model.DiscoverRequest
-import com.hiosdra.hreader.data.model.DiscoverResponse
 import com.hiosdra.hreader.data.remote.MinifluxApiRepository
+import com.hiosdra.hreader.data.remote.dto.CreateFeedRequest
+import com.hiosdra.hreader.data.remote.dto.DiscoverRequest
+import com.hiosdra.hreader.data.remote.dto.DiscoverResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

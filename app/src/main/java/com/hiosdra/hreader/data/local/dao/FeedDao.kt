@@ -1,14 +1,15 @@
-package com.hiosdra.hreader.data.local
+package com.hiosdra.hreader.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.hiosdra.hreader.data.local.entity.FeedEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FeedDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertFeeds(feeds: List<FeedEntity>)
 
     @Query("SELECT * FROM feeds WHERE id = :feedId")
