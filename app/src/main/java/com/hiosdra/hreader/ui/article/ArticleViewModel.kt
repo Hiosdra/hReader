@@ -45,7 +45,6 @@ class ArticleViewModel(
 
     fun setCurrentIndex(index: Int) {
         _uiState.value = _uiState.value.copy(currentIndex = index)
-        // Fetch original content for the current article if not already loaded
         val entry = _uiState.value.entries.getOrNull(index)
         if (entry != null && !_uiState.value.originalContent.containsKey(entry.id)) {
             loadOriginalContent(entry.id, entry.url)
@@ -61,7 +60,6 @@ class ArticleViewModel(
                 }
                 _uiState.value = _uiState.value.copy(originalContent = updatedContent)
             } catch (e: Exception) {
-                // Log error but don't update UI state - we'll fall back to the regular content
                 e.printStackTrace()
             }
         }
@@ -84,8 +82,6 @@ class ArticleViewModel(
             try {
                 repository.getArticlesByIds(ids).collect { articles ->
                     _uiState.value = _uiState.value.copy(entries = articles, isLoading = false, error = null)
-                    
-                    // Load original content for the current article
                     val currentArticle = articles.getOrNull(_uiState.value.currentIndex)
                     if (currentArticle != null) {
                         loadOriginalContent(currentArticle.id, currentArticle.url)
@@ -97,14 +93,11 @@ class ArticleViewModel(
         }
     }
 
-    // Get the content for a specific entry, preferring original content if available
     fun getContentForEntry(entryId: Long): String? {
         val originalContent = _uiState.value.originalContent[entryId]
         if (originalContent != null) {
             return originalContent
         }
-        
-        // Fall back to the entry's content
         return _uiState.value.entries.find { it.id == entryId }?.content
     }
 }
