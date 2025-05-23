@@ -268,9 +268,7 @@ private fun ArticleContent(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Get content from ViewModel, which will return original content if available
                 val articleContent = viewModel.getContentForEntry(entry.id) ?: "No content available"
-
                 AndroidView(
                     factory = { context ->
                         WebView(context).apply {
@@ -303,7 +301,7 @@ private fun ArticleContent(
                             </body>
                             </html>
                         """
-                        webView.loadDataWithBaseURL(null, htmlData, "text/html", "UTF-8", null)
+                        webView.loadDataWithBaseURL(entry.url, htmlData, "text/html", "UTF-8", null)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
