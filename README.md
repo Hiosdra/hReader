@@ -1,7 +1,7 @@
 # TODO
 
 ## High Prio
-1. Auto sync on app exit
+1. Cache original article content images
 
 ## Med Prio
 1. AI article score for bullshit

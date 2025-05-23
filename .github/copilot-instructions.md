@@ -7,7 +7,7 @@ This document outlines coding preferences and guidelines for the hReader project
 ### Documentation
 
 - **NO JAVADOCS**: Do not generate or include Javadoc-style comments in the code
-- **NO INLINE COMMENTS**: Avoid adding inline comments to the code
+- **NO INLINE COMMENTS**: Do not add inline comments to the code
 - Use meaningful method and variable names instead of comments or documentation
 
 ### Kotlin Specific
