@@ -5,7 +5,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.data.local.entity.ArticleContent
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ArticleContentDao {
@@ -15,14 +14,8 @@ interface ArticleContentDao {
     @Query("SELECT * FROM article_contents WHERE entryId = :entryId")
     suspend fun getArticleContent(entryId: Long): ArticleContent?
 
-    @Query("SELECT * FROM article_contents WHERE entryId = :entryId")
-    fun getArticleContentFlow(entryId: Long): Flow<ArticleContent?>
-
     @Query("DELETE FROM article_contents WHERE entryId IN (:entryIds)")
     suspend fun deleteArticlesContent(entryIds: List<Long>)
-
-    @Query("SELECT COUNT(*) FROM article_contents")
-    suspend fun getArticleContentCount(): Int
 
     @Query("SELECT * FROM article_contents ORDER BY fetchedAt DESC")
     suspend fun getAllArticleContents(): List<ArticleContent>
