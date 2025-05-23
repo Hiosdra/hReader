@@ -9,7 +9,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
-import java.util.Date
+import java.time.Instant
 
 class ArticleContentRepository(
     private val minifluxApiRepository: MinifluxApiRepository,
@@ -26,7 +26,7 @@ class ArticleContentRepository(
         val articleContent = ArticleContent(
             entryId = entryId,
             content = originalContent.content,
-            fetchedAt = Date(),
+            fetchedAt = Instant.now(),
             url = url
         )
         articleContentDao.insertArticleContent(articleContent)

@@ -15,6 +15,7 @@ This document outlines coding preferences and guidelines for the hReader project
 - Follow Kotlin idioms and best practices
 - Use Kotlin's concise syntax features (extension functions, smart casts, etc.)
 - Prefer immutability where appropriate (use `val` over `var` when possible)
+- Use java.time API for date and time operations
 
 ### Architecture
 

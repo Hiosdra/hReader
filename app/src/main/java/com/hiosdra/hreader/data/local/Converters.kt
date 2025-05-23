@@ -5,7 +5,7 @@ import com.hiosdra.hreader.data.model.Enclosure
 import com.hiosdra.hreader.data.model.Feed
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
-import java.util.Date
+import java.time.Instant
 
 class Converters {
     private val moshi = Moshi.Builder().build()
@@ -33,12 +33,10 @@ class Converters {
     }
 
     @TypeConverter
-    fun fromTimestamp(value: Long?): Date? {
-        return value?.let { Date(it) }
-    }
+    fun fromInstant(instant: Instant?): Long? =
+        instant?.toEpochMilli()
 
     @TypeConverter
-    fun dateToTimestamp(date: Date?): Long? {
-        return date?.time
-    }
+    fun toInstant(epochMillis: Long?): Instant? =
+        epochMillis?.let { Instant.ofEpochMilli(it) }
 }
