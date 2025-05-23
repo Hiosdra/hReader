@@ -8,6 +8,7 @@ import com.hiosdra.hreader.data.model.EntriesResponse
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.model.FeedCountersResponse
+import com.hiosdra.hreader.data.model.OriginalContentResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -60,4 +61,9 @@ interface MinifluxApiService {
     suspend fun updateEntriesStatus(
         @Body request: UpdateEntriesStatusRequest
     )
+
+    @GET("v1/entries/{entryId}/fetch-content")
+    suspend fun fetchOriginalContent(
+        @Path("entryId") entryId: Long
+    ): OriginalContentResponse
 }

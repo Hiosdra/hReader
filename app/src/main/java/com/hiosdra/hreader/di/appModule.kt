@@ -2,8 +2,10 @@ package com.hiosdra.hreader.di
 
 import androidx.room.Room
 import com.hiosdra.hreader.data.local.AppDatabase
+import com.hiosdra.hreader.data.local.ArticleContentSyncWorker
 import com.hiosdra.hreader.data.local.ArticleRepository
 import com.hiosdra.hreader.data.local.ContentSyncWorker
+import com.hiosdra.hreader.data.repository.ArticleContentRepository
 import com.hiosdra.hreader.ui.article.ArticleListViewModel
 import com.hiosdra.hreader.ui.article.ArticleViewModel
 import com.hiosdra.hreader.ui.feeds.AddFeedViewModel
@@ -20,15 +22,19 @@ val appModule = module {
             androidApplication(),
             AppDatabase::class.java,
             "hreader-db"
-        ).build()
+        ).fallbackToDestructiveMigration()
+        .build()
     }
     single { get<AppDatabase>().articleDao() }
     single { get<AppDatabase>().feedDao() }
+    single { get<AppDatabase>().articleContentDao() }
     single { ArticleRepository(get(), get(), get()) }
+    single { ArticleContentRepository(get(), get(), get()) }
     worker { ContentSyncWorker(get(), get()) }
+    worker { ArticleContentSyncWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get()) }
     viewModel { FeedsViewModel(get()) }
-    viewModel { ArticleViewModel(get()) }
+    viewModel { ArticleViewModel(get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }
     viewModel { ArticleListViewModel(get()) }
 }

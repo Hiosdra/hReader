@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.hiosdra.hreader.data.local.ArticleContentSyncWorker
 import com.hiosdra.hreader.data.local.ContentSyncWorker
 import java.util.concurrent.TimeUnit
 
@@ -12,6 +13,16 @@ fun setupContentSyncWorker(context: Context) {
         .build()
     WorkManager.getInstance(context).enqueueUniquePeriodicWork(
         "ContentSyncWorker",
+        ExistingPeriodicWorkPolicy.KEEP,
+        workRequest
+    )
+}
+
+fun setupArticleContentSyncWorker(context: Context) {
+    val workRequest =
+        PeriodicWorkRequestBuilder<ArticleContentSyncWorker>(1, TimeUnit.HOURS).build()
+    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        "ArticleContentSyncWorker",
         ExistingPeriodicWorkPolicy.KEEP,
         workRequest
     )

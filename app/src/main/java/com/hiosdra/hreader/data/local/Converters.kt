@@ -5,6 +5,7 @@ import com.hiosdra.hreader.data.model.Enclosure
 import com.hiosdra.hreader.data.model.Feed
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import java.time.Instant
 
 class Converters {
     private val moshi = Moshi.Builder().build()
@@ -30,4 +31,12 @@ class Converters {
         val type = Types.newParameterizedType(List::class.java, Enclosure::class.java)
         moshi.adapter<List<Enclosure>>(type).fromJson(it)
     }
+
+    @TypeConverter
+    fun fromInstant(instant: Instant?): Long? =
+        instant?.toEpochMilli()
+
+    @TypeConverter
+    fun toInstant(epochMillis: Long?): Instant? =
+        epochMillis?.let { Instant.ofEpochMilli(it) }
 }

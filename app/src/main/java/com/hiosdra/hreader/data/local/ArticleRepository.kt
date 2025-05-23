@@ -64,9 +64,19 @@ class ArticleRepository(
         articleDao.insertArticles(allArticles)
     }
 
+    suspend fun updateReadStatus(articleIds: List<String>, newStatus: String) {
+        api.updateEntriesStatus(UpdateEntriesStatusRequest(articleIds.map { it.toLong() }, newStatus))
+        articleDao.updateStatusForIds(articleIds, newStatus)
+    }
+
     suspend fun updateReadStatus(articleId: String, newStatus: String) {
         api.updateEntriesStatus(UpdateEntriesStatusRequest(listOf(articleId.toLong()), newStatus))
         articleDao.updateStatus(articleId, newStatus)
+    }
+
+    suspend fun getUnreadArticles(): List<Entry> {
+        val response = api.getEntries(status = "unread")
+        return response.entries
     }
 }
 

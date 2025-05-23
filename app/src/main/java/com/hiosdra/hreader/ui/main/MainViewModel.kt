@@ -78,9 +78,8 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
         _uiState.value = _uiState.value.copy(entries = entries)
         viewModelScope.launch {
             try {
-                _uiState.value.entries.forEach { entry ->
-                    articleRepository.updateReadStatus(entry.id.toString(), "read")
-                }
+                val articleIds = _uiState.value.entries.map { it.id.toString() }
+                articleRepository.updateReadStatus(articleIds, "read")
             } catch (e: Exception) {
                 // Optionally handle error (rollback local change, show error, etc)
             }

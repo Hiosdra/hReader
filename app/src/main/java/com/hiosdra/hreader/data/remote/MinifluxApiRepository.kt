@@ -8,6 +8,7 @@ import com.hiosdra.hreader.data.model.EntriesResponse
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.model.FeedCountersResponse
+import com.hiosdra.hreader.data.model.OriginalContentResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -60,6 +61,9 @@ class MinifluxApiRepository(private val apiService: MinifluxApiService) {
 
     suspend fun updateEntriesStatus(request: UpdateEntriesStatusRequest) =
         withRetries { apiService.updateEntriesStatus(request) }
+
+    suspend fun fetchOriginalContent(entryId: Long): OriginalContentResponse =
+        withRetries { apiService.fetchOriginalContent(entryId) }
 }
 
 private suspend fun <T> withRetries(
