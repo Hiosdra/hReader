@@ -19,7 +19,7 @@ data class ArticleUiState(
 )
 
 class ArticleViewModel(
-    private val repository: ArticleRepository,
+    private val articleRepository: ArticleRepository,
     private val articleContentRepository: ArticleContentRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ArticleUiState())
@@ -33,7 +33,7 @@ class ArticleViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                repository.refreshArticles()
+                articleRepository.refreshArticles()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = "Error refreshing articles: ${e.message}",
@@ -72,7 +72,7 @@ class ArticleViewModel(
         entries[index] = entry.copy(status = newStatus)
         _uiState.value = _uiState.value.copy(entries = entries)
         viewModelScope.launch {
-            repository.updateReadStatus(entry.id.toString(), newStatus)
+            articleRepository.updateReadStatus(entry.id.toString(), newStatus)
         }
     }
 
@@ -80,7 +80,7 @@ class ArticleViewModel(
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                repository.getArticlesByIds(ids).collect { articles ->
+                articleRepository.getArticlesByIds(ids).collect { articles ->
                     _uiState.value = _uiState.value.copy(entries = articles, isLoading = false, error = null)
                     val currentArticle = articles.getOrNull(_uiState.value.currentIndex)
                     if (currentArticle != null) {
