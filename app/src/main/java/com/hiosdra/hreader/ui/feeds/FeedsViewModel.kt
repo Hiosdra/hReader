@@ -3,7 +3,6 @@ package com.hiosdra.hreader.ui.feeds
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.remote.MinifluxApiRepository
 import kotlinx.coroutines.flow.MutableStateFlow

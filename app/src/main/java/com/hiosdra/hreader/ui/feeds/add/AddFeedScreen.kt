@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.hiosdra.hreader.ui.feeds.FeedsViewModel
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,8 +33,6 @@ fun AddFeedScreen(
     navController: NavController,
     onFeedAdded: () -> Unit = {}
 ) {
-    val feedsViewModel: FeedsViewModel = koinViewModel()
-    val feedsUiState by feedsViewModel.uiState.collectAsState()
     val addFeedViewModel: AddFeedViewModel = koinViewModel()
     val uiState by addFeedViewModel.uiState.collectAsState()
 
