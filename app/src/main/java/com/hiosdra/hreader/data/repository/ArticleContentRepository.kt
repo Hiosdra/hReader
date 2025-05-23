@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.data.repository
 
+import com.hiosdra.hreader.data.local.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
 import com.hiosdra.hreader.data.remote.MinifluxApiRepository
@@ -7,53 +8,33 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import java.util.Date
 
-/**
- * Repository for managing article content, coordinating between the Miniflux API
- * and local database for offline storage.
- */
 class ArticleContentRepository(
     private val minifluxApiRepository: MinifluxApiRepository,
-    private val articleContentDao: ArticleContentDao
+    private val articleContentDao: ArticleContentDao,
+    private val articleDao: ArticleDao
 ) {
-    /**
-     * Gets article content from local database if available, otherwise fetches from API
-     * and stores in database.
-     */
     suspend fun getArticleContent(entryId: Long, url: String): String {
-        // Check if we have the content locally
         val localContent = articleContentDao.getArticleContent(entryId)
-
-        // If content exists locally, return it
         if (localContent != null) {
             return localContent.content
         }
 
-        // Otherwise fetch from API
         val originalContent = minifluxApiRepository.fetchOriginalContent(entryId)
-
-        // Store in database
         val articleContent = ArticleContent(
             entryId = entryId,
             content = originalContent.content,
             fetchedAt = Date(),
             url = url
         )
-
         articleContentDao.insertArticleContent(articleContent)
-
         return originalContent.content
     }
 
-    /**
-     * Processes HTML content to find images and potentially save them locally
-     * for true offline capability.
-     *
-     * Note: This is a placeholder for now, actual implementation will be added later.
-     */
     private suspend fun processAndSaveImages(entryId: Long, htmlContent: String) {
-        // This will be implemented later when we add proper image handling
+        // TODO This will be implemented later when we add proper image handling
         // For now, we just store the HTML as-is
     }
 
@@ -73,11 +54,15 @@ class ArticleContentRepository(
         deferredResults.awaitAll()
     }
 
-    suspend fun deleteArticleContent(entryId: Long) {
-        articleContentDao.deleteArticleContent(entryId)
-    }
+    suspend fun cleanupOrphanedContent() {
+        val allContent = articleContentDao.getAllArticleContents()
+        val allArticles = articleDao.getAllArticlesOldestFirst().first()
+        val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
 
-    suspend fun getAllArticleContents(): List<ArticleContent> {
-        return articleContentDao.getAllArticleContents()
+        val contentToDelete = allContent.filter { content ->
+            !currentEntryIds.contains(content.entryId)
+        }
+        articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
     }
 }
+

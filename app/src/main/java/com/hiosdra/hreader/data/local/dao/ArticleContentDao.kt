@@ -18,8 +18,8 @@ interface ArticleContentDao {
     @Query("SELECT * FROM article_contents WHERE entryId = :entryId")
     fun getArticleContentFlow(entryId: Long): Flow<ArticleContent?>
 
-    @Query("DELETE FROM article_contents WHERE entryId = :entryId")
-    suspend fun deleteArticleContent(entryId: Long)
+    @Query("DELETE FROM article_contents WHERE entryId IN (:entryIds)")
+    suspend fun deleteArticlesContent(entryIds: List<Long>)
 
     @Query("SELECT COUNT(*) FROM article_contents")
     suspend fun getArticleContentCount(): Int

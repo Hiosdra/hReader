@@ -32,3 +32,6 @@ This document outlines coding preferences and guidelines for the hReader project
 
 - Handle sensitive data appropriately
 - Don't hardcode credentials or API keys
+
+## Logging
+- Don't specifically measure and log time taken for operations

@@ -1,17 +1,13 @@
 package com.hiosdra.hreader.data.local
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.repository.ArticleContentRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Background worker that fetches original article content for offline reading.
- * This worker is responsible for downloading full content of unread articles
- * so they can be read offline later.
- */
 class ArticleContentSyncWorker(
     appContext: Context,
     params: WorkerParameters,
@@ -19,25 +15,37 @@ class ArticleContentSyncWorker(
     private val articleContentRepository: ArticleContentRepository
 ) : CoroutineWorker(appContext, params) {
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        try {
-            // Get unread articles that don't have their content downloaded yet
-            val unreadArticles = articleRepository.getUnreadArticles()
+    companion object {
+        private const val TAG = "ArticleContentSyncWorker"
+    }
 
-            // Format the entries for prefetching
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        Log.i(TAG, "Starting ArticleContentSyncWorker")
+        try {
+            Log.d(TAG, "Fetching unread articles")
+            val unreadArticles = articleRepository.getUnreadArticles()
+            Log.i(TAG, "Found ${unreadArticles.size} unread articles")
+
             val entriesToFetch = unreadArticles.map { entry ->
                 entry.id to entry.url
             }
 
-            // Prefetch content for these articles
             if (entriesToFetch.isNotEmpty()) {
+                Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles")
                 articleContentRepository.prefetchArticleContent(entriesToFetch)
+                Log.i(TAG, "Content prefetching completed")
+            } else {
+                Log.i(TAG, "No articles to prefetch")
             }
 
+            Log.d(TAG, "Starting cleanup of orphaned content")
+            articleContentRepository.cleanupOrphanedContent()
+            Log.i(TAG, "Content cleanup completed")
+
+            Log.i(TAG, "ArticleContentSyncWorker completed successfully")
             Result.success()
         } catch (e: Exception) {
-            e.printStackTrace()
-            // Retry on failure
+            Log.e(TAG, "ArticleContentSyncWorker failed: ${e.message}", e)
             Result.retry()
         }
     }
