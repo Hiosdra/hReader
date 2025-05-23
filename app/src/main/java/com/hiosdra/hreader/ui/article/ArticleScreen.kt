@@ -115,7 +115,8 @@ fun ArticleScreen(
                     isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
-                    viewModel = viewModel
+                    articleContentMap = uiState.originalContent,
+                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) }
                 )
             }
         }
@@ -129,7 +130,8 @@ private fun ArticlePager(
     isWebViewMode: Boolean,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
-    viewModel: ArticleViewModel
+    articleContentMap: Map<Long, String?>,
+    getContentForEntry: (Long) -> String?
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
@@ -158,7 +160,7 @@ private fun ArticlePager(
                     mainImageUrl = mainImageUrl,
                     modifier = Modifier.padding(paddingValues),
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
-                    viewModel = viewModel
+                    articleContent = getContentForEntry(entry.id) ?: "No content available"
                 )
                 LaunchedEffect(entry.id) {
                     if (entry.status != "read") {
@@ -218,7 +220,7 @@ private fun ArticleContent(
     mainImageUrl: String?,
     modifier: Modifier = Modifier,
     onReadStatusChange: ((Boolean) -> Unit)? = null,
-    viewModel: ArticleViewModel
+    articleContent: String
 ) {
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -268,7 +270,6 @@ private fun ArticleContent(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val articleContent = viewModel.getContentForEntry(entry.id) ?: "No content available"
                 AndroidView(
                     factory = { context ->
                         WebView(context).apply {
