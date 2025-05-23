@@ -6,8 +6,8 @@ import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.ui.article.ArticleListViewModel
 import com.hiosdra.hreader.ui.article.ArticleViewModel
-import com.hiosdra.hreader.ui.feeds.AddFeedViewModel
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
+import com.hiosdra.hreader.ui.feeds.add.AddFeedViewModel
 import com.hiosdra.hreader.ui.main.MainViewModel
 import com.hiosdra.hreader.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.worker.ContentSyncWorker

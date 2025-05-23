@@ -1,11 +1,11 @@
 package com.hiosdra.hreader.data.remote
 
-import com.hiosdra.hreader.data.model.EntriesResponse
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.remote.dto.CreateFeedRequest
 import com.hiosdra.hreader.data.remote.dto.CreateFeedResponse
 import com.hiosdra.hreader.data.remote.dto.DiscoverRequest
 import com.hiosdra.hreader.data.remote.dto.DiscoverResponse
+import com.hiosdra.hreader.data.remote.dto.EntriesResponse
 import com.hiosdra.hreader.data.remote.dto.FeedCountersResponse
 import com.hiosdra.hreader.data.remote.dto.OriginalContentResponse
 import com.hiosdra.hreader.data.remote.dto.UpdateEntriesStatusRequest

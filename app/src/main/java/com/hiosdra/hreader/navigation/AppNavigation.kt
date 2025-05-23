@@ -11,9 +11,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hiosdra.hreader.ui.article.ArticleScreen
 import com.hiosdra.hreader.ui.article.FeedArticleListScreen
-import com.hiosdra.hreader.ui.feeds.AddFeedScreen
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
 import com.hiosdra.hreader.ui.feeds.FeedsScreen
+import com.hiosdra.hreader.ui.feeds.add.AddFeedScreen
 import com.hiosdra.hreader.ui.main.MainScreen
 import com.hiosdra.hreader.ui.settings.SettingsScreen
 
