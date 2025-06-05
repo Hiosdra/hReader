@@ -36,9 +36,10 @@ class ArticleViewModel(
                 articleRepository.refreshArticles()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "Error refreshing articles: ${e.message}",
-                    isLoading = false
+                    error = "Error refreshing articles: ${e.message}"
                 )
+            } finally {
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }
