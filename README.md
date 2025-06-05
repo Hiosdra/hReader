@@ -10,4 +10,4 @@
 
 ## Low prio
 1. Detect if youtube miniplayer is open and shorten list of articles
-2. Migrate from acompanist pager
+2. Migrate from accompanist pager

@@ -5,8 +5,7 @@
 OpenRouter provides a unified API that gives you access to hundreds of AI models through a single endpoint, while automatically handling fallbacks and selecting the most cost-effective options. Get started with just a few lines of code using your preferred SDK or framework.
 
 <Tip>
-  Want to chat with our docs? Download an LLM-friendly text file of our [full
-  documentation](/docs/llms-full.txt) and include it in your system prompt.
+  Want to chat with our docs? Our [full documentation](https://openrouter.ai/docs) is available here, and you can include its content in your system prompt.
 </Tip>
 
 In the examples below, the OpenRouter-specific headers are optional. Setting them allows your app to appear on the OpenRouter leaderboards.
