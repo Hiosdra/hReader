@@ -21,6 +21,15 @@ class DataLayerArchitectureTest {
     }
 
     @Test
+    fun localShouldNotDependOnRemote() {
+        val rule: ArchRule = noClasses()
+            .that().resideInAPackage("..data.local..")
+            .should().dependOnClassesThat().resideInAPackage("..data.remote..")
+
+        rule.check(allClasses)
+    }
+
+    @Test
     fun noDirectClassImportsBetweenRemoteAndLocal() {
         val rule: ArchRule = noClasses()
             .that().resideInAnyPackage("..data.remote..", "..data.local..")
