@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<!-- saved from url=(0034)https://miniflux.app/docs/api.html -->
+<html lang="en-us" data-lt-installed="true"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="go-import" content="miniflux.app git https://github.com/miniflux/v2.git"><title>API Reference</title>
+<link rel="shortcut icon" href="https://miniflux.app/favicon.ico" type="image/x-icon"><link rel="stylesheet" type="text/css" href="./API Reference_files/stylesheet.css"></head><body><article><h1>API Reference</h1><nav class="breadcrumb"><a href="https://miniflux.app/index.html">Home</a> &gt; <a href="https://miniflux.app/docs/index.html">Documentation</a></nav><p>Table of Contents:</p><ul><li><a href="https://miniflux.app/docs/api.html#authentication">Authentication</a></li><li><a href="https://miniflux.app/docs/api.html#clients">Clients</a><ul><li><a href="https://miniflux.app/docs/api.html#go-client">Golang Client</a></li><li><a href="https://miniflux.app/docs/api.html#python-client">Python Client</a></li></ul></li><li><a href="https://miniflux.app/docs/api.html#endpoints">API Endpoints</a><ul><li><a href="https://miniflux.app/docs/api.html#status-codes">Status Codes</a></li><li><a href="https://miniflux.app/docs/api.html#error-response">Error Response</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-discover">Discover Subscriptions</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-flush-history">Flush History</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-feeds">Get Feeds</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-category-feeds">Get Category Feeds</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-feed">Get Feed</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-feed-icon-by-feed-id">Get Feed Icon by Feed ID</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-feed-icon-by-icon-id">Get Feed Icon by Icon ID</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-mark-feed-entries-as-read">Mark Feed Entries as Read</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-create-feed">Create Feed</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-update-feed">Update Feed</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-refresh-feed">Refresh Feed</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-refresh-all-feeds">Refresh all Feeds</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-remove-feed">Remove Feed</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-feed-entry">Get Feed Entry</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-entry">Get Entry</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-update-entry">Update Entry</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-save-entry">Save entry to third-party services</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-fetch-content">Fetch original article</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-feed-entries">Get Feed Entries</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-category-entries">Get Category Entries</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-entries">Get Entries</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-update-entries">Update Entries status</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-toggle-bookmark">Toggle Entry Bookmark</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-enclosure">Get Enclosure</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-update-enclosure">Update Enclosure</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-categories">Get Categories</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-create-category">Create Category</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-update-category">Update Category</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-refresh-category">Refresh Category Feeds</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-delete-category">Delete Category</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-mark-category-entries-as-read">Mark Category Entries as Read</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-export">OPML Export</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-import">OPML Import</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-create-user">Create User</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-update-user">Update User</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-me">Get Current User</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-user">Get User</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-get-users">Get Users</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-delete-user">Delete User</a></li><li><a href="https://miniflux.app/docs/api.html#integrations-status">Integrations Status</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-mark-user-entries-as-read">Mark User Entries as Read</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-counters">Fetch unread and read counters</a></li><li><a href="https://miniflux.app/docs/api.html#endpoint-healthcheck">Healthcheck</a></li><li><a href="https://miniflux.app/docs/api.html#deprecated-endpoint-version">Application version</a> (deprecated)</li><li><a href="https://miniflux.app/docs/api.html#endpoint-version">Application version and build information</a></li></ul></li></ul><h2 id="authentication">Authentication <a class="anchor" href="https://miniflux.app/docs/api.html#authentication" title="Permalink">¶</a></h2><p>The API supports two authentication mechanisms:</p><ul><li>HTTP Basic authentication with the account username/password.</li><li>Per-application API keys (since version 2.0.21) -&gt; <strong>preferred method</strong>.</li></ul><p>To generate a new API token, got to “Settings &gt; API Keys &gt; Create a new API key”.</p><h3 id="http-basic-authentication-example">HTTP Basic Authentication Example</h3><pre><code class="language-bash">curl -u your-miniflux-username https://miniflux.example.org/v1/me
+</code></pre><h3 id="api-token-authentication-example">API Token Authentication Example</h3><p>Miniflux uses the HTTP header <code>X-Auth-Token</code> for API token authentication.</p><pre><code class="language-bash">curl -H "X-Auth-Token: your-token" https://miniflux.example.org/v1/me
+</code></pre><h2 id="clients">Clients <a class="anchor" href="https://miniflux.app/docs/api.html#clients" title="Permalink">¶</a></h2><p>There are two official API clients, one written in Go and another one
+written in Python.</p><h3 id="go-client">Golang Client <a class="anchor" href="https://miniflux.app/docs/api.html#go-client" title="Permalink">¶</a></h3><ul><li>Repository: <a href="https://github.com/miniflux/v2/tree/main/client">https://github.com/miniflux/v2/tree/main/client</a></li><li>Reference: <a href="https://pkg.go.dev/miniflux.app/v2/client">https://pkg.go.dev/miniflux.app/v2/client</a></li></ul><p>Installation:</p><pre><code class="language-bash">go get -u miniflux.app/v2/client
+</code></pre><p>Usage Example:</p><pre><code class="language-go">package main
+
+import (
+    "fmt"
+
+    miniflux "miniflux.app/v2/client"
+)
+
+func main() {
+    // Authentication using username/password.
+    client := miniflux.NewClient("https://miniflux.example.org", "admin", "secret")
+
+    // Authentication using API token.
+    client := miniflux.NewClient("https://miniflux.example.org", "My secret token")
+
+    // Fetch all feeds.
+    feeds, err := client.Feeds()
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    fmt.Println(feeds)
+}
+</code></pre><h3 id="python-client">Python Client <a class="anchor" href="https://miniflux.app/docs/api.html#python-client" title="Permalink">¶</a></h3><ul><li>Repository: <a href="https://github.com/miniflux/python-client">https://github.com/miniflux/python-client</a></li><li>PyPi: <a href="https://pypi.org/project/miniflux/">https://pypi.org/project/miniflux/</a></li></ul><p>Installation:</p><pre><code class="language-bash">pip install miniflux
+</code></pre><p>Usage example:</p><pre><code class="language-python">import miniflux
+
+# Authentication using username/password
+client = miniflux.Client("https://miniflux.example.org", "my_username", "my_secret_password")
+
+# Authentication using an API token
+client = miniflux.Client("https://miniflux.example.org", api_key="My Secret Token")
+
+# Get all feeds
+feeds = client.get_feeds()
+
+# Refresh a feed
+client.refresh_feed(123)
+
+# Discover subscriptions from a website
+subscriptions = client.discover("https://example.org")
+
+# Create a new feed, with a personalized user agent and with the crawler enabled
+feed_id = client.create_feed("http://example.org/feed.xml", 42, crawler=True, user_agent="GoogleBot")
+
+# Fetch 10 starred entries
+entries = client.get_entries(starred=True, limit=10)
+
+# Fetch last 5 feed entries
+feed_entries = client.get_feed_entries(123, direction='desc', order='published_at', limit=5)
+
+# Update a feed category
+client.update_feed(123, category_id=456)
+</code></pre><h2 id="endpoints">API Endpoints <a class="anchor" href="https://miniflux.app/docs/api.html#endpoints" title="Permalink">¶</a></h2><h3 id="status-codes">Status Codes <a class="anchor" href="https://miniflux.app/docs/api.html#status-codes" title="Permalink">¶</a></h3><ul><li><code>200</code>: Everything is OK</li><li><code>201</code>: Resource created/modified</li><li><code>204</code>: Resource removed/modified</li><li><code>400</code>: Bad request</li><li><code>401</code>: Unauthorized (bad username/password)</li><li><code>403</code>: Forbidden (access not allowed)</li><li><code>500</code>: Internal server error</li></ul><h3 id="error-response">Error Response <a class="anchor" href="https://miniflux.app/docs/api.html#error-response" title="Permalink">¶</a></h3><pre><code class="language-json">{
+    "error_message": "Some error"
+}
+</code></pre><h3 id="endpoint-discover">Discover Subscriptions <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-discover" title="Permalink">¶</a></h3><p>Request:</p><pre><code>POST /v1/discover
+Content-Type: application/json
+
+{
+    "url": "http://example.org"
+}
+</code></pre><p>Response:</p><pre><code class="language-json">[
+    {
+        "url": "http://example.org/feed.atom",
+        "title": "Atom Feed",
+        "type": "atom"
+    },
+    {
+        "url": "http://example.org/feed.rss",
+        "title": "RSS Feed",
+        "type": "rss"
+    }
+]
+</code></pre><p>Optional fields:</p><ul><li><code>username</code>: Feed username (string)</li><li><code>password</code>: Feed password (string)</li><li><code>user_agent</code>: Custom user agent (string)</li><li><code>fetch_via_proxy</code> (boolean)</li></ul><h3 id="endpoint-flush-history">Flush History <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-flush-history" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/flush-history
+</code></pre><p>Note that <code>DELETE</code> is also supported.</p><p>Returns a <code>202 Accepted</code> status code for success.</p><div class="info">This API endpoint is available since Miniflux v2.0.49.</div><h3 id="endpoint-get-feeds">Get Feeds <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-feeds" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/feeds
+</code></pre><p>Response:</p><pre><code class="language-json">[
+    {
+        "id": 42,
+        "user_id": 123,
+        "title": "Example Feed",
+        "site_url": "http://example.org",
+        "feed_url": "http://example.org/feed.atom",
+        "checked_at": "2017-12-22T21:06:03.133839-05:00",
+        "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+        "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+        "parsing_error_message": "",
+        "parsing_error_count": 0,
+        "scraper_rules": "",
+        "rewrite_rules": "",
+        "crawler": false,
+        "blocklist_rules": "",
+        "keeplist_rules": "",
+        "user_agent": "",
+        "username": "",
+        "password": "",
+        "disabled": false,
+        "ignore_http_cache": false,
+        "fetch_via_proxy": false,
+        "category": {
+            "id": 793,
+            "user_id": 123,
+            "title": "Some category"
+        },
+        "icon": {
+            "feed_id": 42,
+            "icon_id": 84
+        }
+    }
+]
+</code></pre><p>Notes:</p><ul><li><code>icon</code> is <code>null</code> when the feed doesn’t have any favicon.</li></ul><h3 id="endpoint-get-category-feeds">Get Category Feeds <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-category-feeds" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/categories/40/feeds
+</code></pre><p>Response:</p><pre><code class="language-json">[
+    {
+        "id": 42,
+        "user_id": 123,
+        "title": "Example Feed",
+        "site_url": "http://example.org",
+        "feed_url": "http://example.org/feed.atom",
+        "checked_at": "2017-12-22T21:06:03.133839-05:00",
+        "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+        "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+        "parsing_error_message": "",
+        "parsing_error_count": 0,
+        "scraper_rules": "",
+        "rewrite_rules": "",
+        "crawler": false,
+        "blocklist_rules": "",
+        "keeplist_rules": "",
+        "user_agent": "",
+        "username": "",
+        "password": "",
+        "disabled": false,
+        "ignore_http_cache": false,
+        "fetch_via_proxy": false,
+        "category": {
+            "id": 40,
+            "user_id": 123,
+            "title": "Some category"
+        },
+        "icon": {
+            "feed_id": 42,
+            "icon_id": 84
+        }
+    }
+]
+</code></pre><div class="info">This API endpoint is available since Miniflux v2.0.29.</div><h3 id="endpoint-get-feed">Get Feed <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-feed" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/feeds/42
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 42,
+    "user_id": 123,
+    "title": "Example Feed",
+    "site_url": "http://example.org",
+    "feed_url": "http://example.org/feed.atom",
+    "checked_at": "2017-12-22T21:06:03.133839-05:00",
+    "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+    "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+    "parsing_error_message": "",
+    "parsing_error_count": 0,
+    "scraper_rules": "",
+    "rewrite_rules": "",
+    "crawler": false,
+    "blocklist_rules": "",
+    "keeplist_rules": "",
+    "user_agent": "",
+    "username": "",
+    "password": "",
+    "disabled": false,
+    "ignore_http_cache": false,
+    "fetch_via_proxy": false,
+    "category": {
+        "id": 793,
+        "user_id": 123,
+        "title": "Some category"
+    },
+    "icon": {
+        "feed_id": 42,
+        "icon_id": 84
+    }
+}
+</code></pre><p>Notes:</p><ul><li><code>icon</code> is <code>null</code> when the feed doesn’t have any favicon.</li></ul><h3 id="endpoint-get-feed-icon-by-feed-id">Get Feed Icon By Feed ID<a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-feed-icon-by-feed-id" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/feeds/{feedID}/icon
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 262,
+    "data": "image/png;base64,iVBORw0KGgoAAA....",
+    "mime_type": "image/png"
+}
+</code></pre><p>If the feed doesn’t have any favicon, a 404 is returned.</p><h3 id="endpoint-get-feed-icon-by-icon-id">Get Feed Icon By Icon ID<a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-feed-icon-by-icon-id" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/icons/{iconID}
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 262,
+    "data": "image/png;base64,iVBORw0KGgoAAA....",
+    "mime_type": "image/png"
+}
+</code></pre><div class="info">This API endpoint is available since Miniflux v2.0.49.</div><h3 id="endpoint-create-feed">Create Feed <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-create-feed" title="Permalink">¶</a></h3><p>Request:</p><pre><code>POST /v1/feeds
+Content-Type: application/json
+
+{
+    "feed_url": "http://example.org/feed.atom",
+    "category_id": 22
+}
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "feed_id": 262,
+}
+</code></pre><p>Required fields:</p><ul><li><code>feed_url</code>: Feed URL (string)</li><li><code>category_id</code>: Category ID (int, optional since Miniflux &gt;= 2.0.49)</li></ul><p>Optional fields:</p><ul><li><code>username</code>: Feed username (string)</li><li><code>password</code>: Feed password (string)</li><li><code>crawler</code>: Enable/Disable scraper (boolean)</li><li><code>user_agent</code>: Custom user agent for the feed (string)</li><li><code>scraper_rules</code>: List of scraper rules (string) - Miniflux &gt;= 2.0.19</li><li><code>rewrite_rules</code>: List of rewrite rules (string) - Miniflux &gt;= 2.0.19</li><li><code>blocklist_rules</code> (string) - Miniflux &gt;= 2.0.27</li><li><code>keeplist_rules</code> (string) - Miniflux &gt;= 2.0.27</li><li><code>disabled</code> (boolean) - Miniflux &gt;= 2.0.27</li><li><code>ignore_http_cache</code> (boolean) - Miniflux &gt;= 2.0.27</li><li><code>fetch_via_proxy</code> (boolean) - Miniflux &gt;= 2.0.27</li></ul><h3 id="endpoint-update-feed">Update Feed <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-update-feed" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/feeds/42
+Content-Type: application/json
+
+{
+    "title": "New Feed Title",
+    "category_id": 22
+}
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 42,
+    "user_id": 123,
+    "title": "New Feed Title",
+    "site_url": "http://example.org",
+    "feed_url": "http://example.org/feed.atom",
+    "checked_at": "2017-12-22T21:06:03.133839-05:00",
+    "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+    "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+    "parsing_error_message": "",
+    "parsing_error_count": 0,
+    "scraper_rules": "",
+    "rewrite_rules": "",
+    "crawler": false,
+    "blocklist_rules": "",
+    "keeplist_rules": "",
+    "user_agent": "",
+    "username": "",
+    "password": "",
+    "disabled": false,
+    "ignore_http_cache": false,
+    "fetch_via_proxy": false,
+    "category": {
+        "id": 22,
+        "user_id": 123,
+        "title": "Another category"
+    },
+    "icon": {
+        "feed_id": 42,
+        "icon_id": 84
+    }
+}
+</code></pre><p>Available fields:</p><ul><li><code>feed_url</code> (string)</li><li><code>site_url</code> (string)</li><li><code>title</code> (string)</li><li><code>category_id</code> (int)</li><li><code>scraper_rules</code> (string)</li><li><code>rewrite_rules</code> (string)</li><li><code>blocklist_rules</code> (string)</li><li><code>keeplist_rules</code> (string)</li><li><code>crawler</code> (boolean)</li><li><code>user_agent</code>: Custom user agent for the feed (string)</li><li><code>username</code> (string)</li><li><code>password</code> (string)</li><li><code>disabled</code> (boolean)</li><li><code>ignore_http_cache</code> (boolean)</li><li><code>fetch_via_proxy</code> (boolean)</li></ul><h3 id="endpoint-refresh-feed">Refresh Feed <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-refresh-feed" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/feeds/42/refresh
+</code></pre><ul><li>Returns <code>204</code> status code for success.</li><li>This API call is synchronous and can takes hundred of milliseconds.</li></ul><h3 id="endpoint-refresh-all-feeds">Refresh all Feeds <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-refresh-all-feeds" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/feeds/refresh
+</code></pre><ul><li>Returns <code>204</code> status code for success.</li><li>Feeds are refreshed in a background process.</li><li>Available since Miniflux 2.0.21</li></ul><h3 id="endpoint-remove-feed">Remove Feed <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-remove-feed" title="Permalink">¶</a></h3><p>Request:</p><pre><code>DELETE /v1/feeds/42
+</code></pre><h3 id="endpoint-get-feed-entry">Get Feed Entry <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-feed-entry" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/feeds/42/entries/888
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 888,
+    "user_id": 123,
+    "feed_id": 42,
+    "title": "Entry Title",
+    "url": "http://example.org/article.html",
+    "comments_url": "",
+    "author": "Foobar",
+    "content": "&lt;p&gt;HTML contents&lt;/p&gt;",
+    "hash": "29f99e4074cdacca1766f47697d03c66070ef6a14770a1fd5a867483c207a1bb",
+    "published_at": "2016-12-12T16:15:19Z",
+    "created_at": "2016-12-27T16:15:19Z",
+    "status": "unread",
+    "share_code": "",
+    "starred": false,
+    "reading_time": 1,
+    "enclosures": null,
+    "feed": {
+        "id": 42,
+        "user_id": 123,
+        "title": "New Feed Title",
+        "site_url": "http://example.org",
+        "feed_url": "http://example.org/feed.atom",
+        "checked_at": "2017-12-22T21:06:03.133839-05:00",
+        "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+        "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+        "parsing_error_message": "",
+        "parsing_error_count": 0,
+        "scraper_rules": "",
+        "rewrite_rules": "",
+        "crawler": false,
+        "blocklist_rules": "",
+        "keeplist_rules": "",
+        "user_agent": "",
+        "username": "",
+        "password": "",
+        "disabled": false,
+        "ignore_http_cache": false,
+        "fetch_via_proxy": false,
+        "category": {
+            "id": 22,
+            "user_id": 123,
+            "title": "Another category"
+        },
+        "icon": {
+            "feed_id": 42,
+            "icon_id": 84
+        }
+    }
+}
+</code></pre><h3 id="endpoint-get-entry">Get Entry <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-entry" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/entries/888
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 888,
+    "user_id": 123,
+    "feed_id": 42,
+    "title": "Entry Title",
+    "url": "http://example.org/article.html",
+    "comments_url": "",
+    "author": "Foobar",
+    "content": "&lt;p&gt;HTML contents&lt;/p&gt;",
+    "hash": "29f99e4074cdacca1766f47697d03c66070ef6a14770a1fd5a867483c207a1bb",
+    "published_at": "2016-12-12T16:15:19Z",
+    "created_at": "2016-12-27T16:15:19Z",
+    "status": "unread",
+    "share_code": "",
+    "starred": false,
+    "reading_time": 1,
+    "enclosures": null,
+    "feed": {
+        "id": 42,
+        "user_id": 123,
+        "title": "New Feed Title",
+        "site_url": "http://example.org",
+        "feed_url": "http://example.org/feed.atom",
+        "checked_at": "2017-12-22T21:06:03.133839-05:00",
+        "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+        "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+        "parsing_error_message": "",
+        "parsing_error_count": 0,
+        "scraper_rules": "",
+        "rewrite_rules": "",
+        "crawler": false,
+        "blocklist_rules": "",
+        "keeplist_rules": "",
+        "user_agent": "",
+        "username": "",
+        "password": "",
+        "disabled": false,
+        "ignore_http_cache": false,
+        "fetch_via_proxy": false,
+        "category": {
+            "id": 22,
+            "user_id": 123,
+            "title": "Another category"
+        },
+        "icon": {
+            "feed_id": 42,
+            "icon_id": 84
+        }
+    }
+}
+</code></pre><h3 id="endpoint-update-entry">Update Entry <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-update-entry" title="Permalink">¶</a></h3><p>Both fields <code>title</code> and <code>content</code> are optional.</p><p>Request:</p><pre><code>PUT /v1/entries/{entryID}
+
+{
+    "title": "New title",
+    "content": "Some text"
+}
+</code></pre><p>Response:</p><pre><code class="language-json">{
+  "id": 1790,
+  "user_id": 1,
+  "feed_id": 21,
+  "status": "unread",
+  "hash": "22a6795131770d9577c91c7816e7c05f78586fc82e8ad0881bce69155f63edb6",
+  "title": "New title",
+  "url": "https://miniflux.app/releases/1.0.1.html",
+  "comments_url": "",
+  "published_at": "2013-03-20T00:00:00Z",
+  "created_at": "2023-10-07T03:52:50.013556Z",
+  "changed_at": "2023-10-07T03:52:50.013556Z",
+  "content": "Some text",
+  "author": "Frédéric Guillot",
+  "share_code": "",
+  "starred": false,
+  "reading_time": 1,
+  "enclosures": [],
+  "feed": {
+    "id": 21,
+    "user_id": 1,
+    "feed_url": "https://miniflux.app/feed.xml",
+    "site_url": "https://miniflux.app",
+    "title": "Miniflux",
+    "checked_at": "2023-10-08T23:56:44.853427Z",
+    "next_check_at": "0001-01-01T00:00:00Z",
+    "etag_header": "",
+    "last_modified_header": "",
+    "parsing_error_message": "",
+    "parsing_error_count": 0,
+    "scraper_rules": "",
+    "rewrite_rules": "",
+    "crawler": false,
+    "blocklist_rules": "",
+    "keeplist_rules": "",
+    "urlrewrite_rules": "",
+    "user_agent": "",
+    "cookie": "",
+    "username": "",
+    "password": "",
+    "disabled": false,
+    "no_media_player": false,
+    "ignore_http_cache": false,
+    "allow_self_signed_certificates": false,
+    "fetch_via_proxy": false,
+    "category": {
+      "id": 2,
+      "title": "000",
+      "user_id": 1,
+      "hide_globally": false
+    },
+    "icon": {
+      "feed_id": 21,
+      "icon_id": 11
+    },
+    "hide_globally": false,
+    "apprise_service_urls": ""
+  },
+  "tags": []
+}
+</code></pre><p>Returns a <code>201 Created</code> status code for success.</p><div class="info">This API endpoint is available since Miniflux v2.0.49.</div><h3 id="endpoint-save-entry">Save entry to third-party services <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-save-entry" title="Permalink">¶</a></h3><p>Request:</p><pre><code>POST /v1/entries/{entryID}/save
+</code></pre><p>Response:</p><p>Returns a <code>202 Accepted</code> status code for success.</p><h3 id="endpoint-fetch-content">Fetch original article <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-fetch-content" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/entries/{entryID}/fetch-content
+</code></pre><p>Response:</p><pre><code class="language-json">{"content": "html content"}
+</code></pre><div class="info">This API endpoint is available since Miniflux v2.0.36.</div><h3 id="endpoint-get-category-entries">Get Category Entries <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-category-entries" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/categories/22/entries?limit=1&amp;order=id&amp;direction=asc
+</code></pre><p>Available filters:</p><ul><li><code>status</code>: Entry status (read, unread or removed), this option can be repeated to filter by multiple statuses (version &gt;= 2.0.24)</li><li><code>offset</code></li><li><code>limit</code></li><li><code>order</code>: “id”, “status”, “published_at”, “category_title”,
+“category_id”</li><li><code>direction</code>: “asc” or “desc”</li><li><code>before</code> (unix timestamp, available since Miniflux 2.0.9)</li><li><code>after</code> (unix timestamp, available since Miniflux 2.0.9)</li><li><code>published_before</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>published_after</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>changed_before</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>changed_after</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>before_entry_id</code> (int64, available since Miniflux 2.0.9)</li><li><code>after_entry_id</code> (int64, available since Miniflux 2.0.9)</li><li><code>starred</code> (boolean, available since Miniflux 2.0.9)</li><li><code>search</code>: search query (text, available since Miniflux 2.0.10)</li><li><code>category_id</code>: filter by category (int, available since Miniflux 2.0.19)</li></ul><p>Response:</p><pre><code class="language-json">{
+    "total": 10,
+    "entries": [
+        {
+            "id": 888,
+            "user_id": 123,
+            "feed_id": 42,
+            "title": "Entry Title",
+            "url": "http://example.org/article.html",
+            "comments_url": "",
+            "author": "Foobar",
+            "content": "&lt;p&gt;HTML contents&lt;/p&gt;",
+            "hash": "29f99e4074cdacca1766f47697d03c66070ef6a14770a1fd5a867483c207a1bb",
+            "published_at": "2016-12-12T16:15:19Z",
+            "created_at": "2016-12-27T16:15:19Z",
+            "status": "unread",
+            "share_code": "",
+            "starred": false,
+            "reading_time": 1,
+            "enclosures": null,
+            "feed": {
+                "id": 42,
+                "user_id": 123,
+                "title": "New Feed Title",
+                "site_url": "http://example.org",
+                "feed_url": "http://example.org/feed.atom",
+                "checked_at": "2017-12-22T21:06:03.133839-05:00",
+                "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+                "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+                "parsing_error_message": "",
+                "parsing_error_count": 0,
+                "scraper_rules": "",
+                "rewrite_rules": "",
+                "crawler": false,
+                "blocklist_rules": "",
+                "keeplist_rules": "",
+                "user_agent": "",
+                "username": "",
+                "password": "",
+                "disabled": false,
+                "ignore_http_cache": false,
+                "fetch_via_proxy": false,
+                "category": {
+                    "id": 22,
+                    "user_id": 123,
+                    "title": "Another category"
+                },
+                "icon": {
+                    "feed_id": 42,
+                    "icon_id": 84
+                }
+            }
+        }
+    ]
+}
+</code></pre><h3 id="endpoint-get-feed-entries">Get Feed Entries <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-feed-entries" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/feeds/42/entries?limit=1&amp;order=id&amp;direction=asc
+</code></pre><p>Available filters:</p><ul><li><code>status</code>: Entry status (read, unread or removed), this option can be repeated to filter by multiple statuses (version &gt;= 2.0.24)</li><li><code>offset</code></li><li><code>limit</code></li><li><code>order</code>: “id”, “status”, “published_at”, “category_title”,
+“category_id”</li><li><code>direction</code>: “asc” or “desc”</li><li><code>before</code> (unix timestamp, available since Miniflux 2.0.9)</li><li><code>after</code> (unix timestamp, available since Miniflux 2.0.9)</li><li><code>published_before</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>published_after</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>changed_before</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>changed_after</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>before_entry_id</code> (int64, available since Miniflux 2.0.9)</li><li><code>after_entry_id</code> (int64, available since Miniflux 2.0.9)</li><li><code>starred</code> (boolean, available since Miniflux 2.0.9)</li><li><code>search</code>: search query (text, available since Miniflux 2.0.10)</li><li><code>category_id</code>: filter by category (int, available since Miniflux 2.0.19)</li></ul><p>Response:</p><pre><code class="language-json">{
+    "total": 10,
+    "entries": [
+        {
+            "id": 888,
+            "user_id": 123,
+            "feed_id": 42,
+            "title": "Entry Title",
+            "url": "http://example.org/article.html",
+            "comments_url": "",
+            "author": "Foobar",
+            "content": "&lt;p&gt;HTML contents&lt;/p&gt;",
+            "hash": "29f99e4074cdacca1766f47697d03c66070ef6a14770a1fd5a867483c207a1bb",
+            "published_at": "2016-12-12T16:15:19Z",
+            "created_at": "2016-12-27T16:15:19Z",
+            "status": "unread",
+            "share_code": "",
+            "starred": false,
+            "reading_time": 1,
+            "enclosures": null,
+            "feed": {
+                "id": 42,
+                "user_id": 123,
+                "title": "New Feed Title",
+                "site_url": "http://example.org",
+                "feed_url": "http://example.org/feed.atom",
+                "checked_at": "2017-12-22T21:06:03.133839-05:00",
+                "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+                "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+                "parsing_error_message": "",
+                "parsing_error_count": 0,
+                "scraper_rules": "",
+                "rewrite_rules": "",
+                "crawler": false,
+                "blocklist_rules": "",
+                "keeplist_rules": "",
+                "user_agent": "",
+                "username": "",
+                "password": "",
+                "disabled": false,
+                "ignore_http_cache": false,
+                "fetch_via_proxy": false,
+                "category": {
+                    "id": 22,
+                    "user_id": 123,
+                    "title": "Another category"
+                },
+                "icon": {
+                    "feed_id": 42,
+                    "icon_id": 84
+                }
+            }
+        }
+    ]
+}
+</code></pre><h3 id="endpoint-mark-feed-entries-as-read">Mark Feed Entries as Read <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-mark-feed-entries-as-read" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/feeds/123/mark-all-as-read
+</code></pre><p>Returns <code>204 Not Content</code> status code for success.</p><div class="info">This API endpoint is available since Miniflux v2.0.26.</div><h3 id="endpoint-get-entries">Get Entries <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-entries" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/entries?status=unread&amp;direction=desc
+</code></pre><p>Available filters:</p><ul><li><code>status</code>: Entry status (read, unread or removed), this option can be repeated to filter by multiple statuses (version &gt;= 2.0.24)</li><li><code>offset</code></li><li><code>limit</code></li><li><code>order</code>: “id”, “status”, “published_at”, “category_title”,
+“category_id”</li><li><code>direction</code>: “asc” or “desc”</li><li><code>before</code> (unix timestamp, available since Miniflux 2.0.9)</li><li><code>after</code> (unix timestamp, available since Miniflux 2.0.9)</li><li><code>published_before</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>published_after</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>changed_before</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>changed_after</code> (unix timestamp, available since Miniflux 2.0.49)</li><li><code>before_entry_id</code> (int64, available since Miniflux 2.0.9)</li><li><code>after_entry_id</code> (int64, available since Miniflux 2.0.9)</li><li><code>starred</code> (boolean, available since Miniflux 2.0.9)</li><li><code>search</code>: search query (text, available since Miniflux 2.0.10)</li><li><code>category_id</code>: filter by category (int, available since Miniflux 2.0.24)</li></ul><p>Response:</p><pre><code class="language-json">{
+    "total": 10,
+    "entries": [
+        {
+            "id": 888,
+            "user_id": 123,
+            "feed_id": 42,
+            "title": "Entry Title",
+            "url": "http://example.org/article.html",
+            "comments_url": "",
+            "author": "Foobar",
+            "content": "&lt;p&gt;HTML contents&lt;/p&gt;",
+            "hash": "29f99e4074cdacca1766f47697d03c66070ef6a14770a1fd5a867483c207a1bb",
+            "published_at": "2016-12-12T16:15:19Z",
+            "created_at": "2016-12-27T16:15:19Z",
+            "status": "unread",
+            "share_code": "",
+            "starred": false,
+            "reading_time": 1,
+            "enclosures": null,
+            "feed": {
+                "id": 42,
+                "user_id": 123,
+                "title": "New Feed Title",
+                "site_url": "http://example.org",
+                "feed_url": "http://example.org/feed.atom",
+                "checked_at": "2017-12-22T21:06:03.133839-05:00",
+                "etag_header": "KyLxEflwnTGF5ecaiqZ2G0TxBCc",
+                "last_modified_header": "Sat, 23 Dec 2017 01:04:21 GMT",
+                "parsing_error_message": "",
+                "parsing_error_count": 0,
+                "scraper_rules": "",
+                "rewrite_rules": "",
+                "crawler": false,
+                "blocklist_rules": "",
+                "keeplist_rules": "",
+                "user_agent": "",
+                "username": "",
+                "password": "",
+                "disabled": false,
+                "ignore_http_cache": false,
+                "fetch_via_proxy": false,
+                "category": {
+                    "id": 22,
+                    "user_id": 123,
+                    "title": "Another category"
+                },
+                "icon": {
+                    "feed_id": 42,
+                    "icon_id": 84
+                }
+            }
+        }
+    ]
+}
+</code></pre><h3 id="endpoint-update-entries">Update Entries <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-update-entries" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/entries
+Content-Type: application/json
+
+{
+    "entry_ids": [1234, 4567],
+    "status": "read"
+}
+</code></pre><p>Returns a <code>204</code> status code for success.</p><h3 id="endpoint-toggle-bookmark">Toggle Entry Bookmark <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-toggle-bookmark" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/entries/1234/bookmark
+</code></pre><p>Returns a <code>204</code> status code for success.</p><h3 id="endpoint-get-enclosure">Get Enclosure <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-enclosure" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/enclosures/{enclosureID}
+</code></pre><p>Response:</p><pre><code class="language-json">{
+  "id": 278,
+  "user_id": 1,
+  "entry_id": 195,
+  "url": "https://example.org/file",
+  "mime_type": "application/octet-stream",
+  "size": 0,
+  "media_progression": 0
+}
+</code></pre><div class="info">This API endpoint has been available since Miniflux v2.2.0.</div><h3 id="endpoint-update-enclosure">Update Enclosure <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-update-enclosure" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/enclosures/{enclosureID}
+
+{
+    "media_progression": 42
+}
+</code></pre><p>Returns a <code>204</code> status code for success.</p><div class="info">This API endpoint has been available since Miniflux v2.2.0.</div><h3 id="endpoint-get-categories">Get Categories <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-categories" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/categories
+</code></pre><p>Response:</p><pre><code class="language-json">[
+    {"title": "All", "user_id": 267, "id": 792},
+    {"title": "Engineering Blogs", "user_id": 267, "id": 793}
+]
+</code></pre><h3 id="endpoint-create-category">Create Category <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-create-category" title="Permalink">¶</a></h3><p>Request:</p><pre><code>POST /v1/categories
+Content-Type: application/json
+
+{
+    "title": "My category"
+}
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 802,
+    "user_id": 267,
+    "title": "My category"
+}
+</code></pre><h3 id="endpoint-update-category">Update Category <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-update-category" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/categories/802
+Content-Type: application/json
+
+{
+    "title": "My new title"
+}
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 802,
+    "user_id": 267,
+    "title": "My new title"
+}
+</code></pre><h3 id="endpoint-refresh-category">Refresh Category Feeds<a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-refresh-category" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/categories/123/refresh
+</code></pre><ul><li>Returns <code>204</code> status code for success.</li><li>Category feeds are refreshed in a background process.</li></ul><div class="info">This API endpoint is available since Miniflux v2.0.42.</div><h3 id="endpoint-delete-category">Delete Category <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-delete-category" title="Permalink">¶</a></h3><p>Request:</p><pre><code>DELETE /v1/categories/802
+</code></pre><p>Returns a <code>204</code> status code when successful.</p><h3 id="endpoint-mark-category-entries-as-read">Mark Category Entries as Read <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-mark-category-entries-as-read" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/categories/123/mark-all-as-read
+</code></pre><p>Returns <code>204 Not Content</code> status code for success.</p><div class="info">This API endpoint is available since Miniflux v2.0.26.</div><h3 id="endpoint-export">OPML Export <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-export" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/export
+</code></pre><p>The response is a XML document (OPML file).</p><div class="info">This API call is available since Miniflux v2.0.1.</div><h3 id="endpoint-import">OPML Import <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-import" title="Permalink">¶</a></h3><p>Request:</p><pre><code>POST /v1/import
+
+XML data
+</code></pre><ul><li>The body is your OPML file (XML).</li><li>Returns <code>201 Created</code> if imported successfully.</li></ul><p>Response:</p><pre><code class="language-json">{
+  "message": "Feeds imported successfully"
+}
+</code></pre><div class="info">This API call is available since Miniflux v2.0.7.</div><h3 id="endpoint-create-user">Create User <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-create-user" title="Permalink">¶</a></h3><p>Request:</p><pre><code>POST /v1/users
+Content-Type: application/json
+
+{
+    "username": "bob",
+    "password": "test123",
+    "is_admin": false
+}
+</code></pre><p>Available Fields:</p><table><thead><tr><th>Field</th><th>Type</th></tr></thead><tbody><tr><td><code>username</code></td><td><code>string</code></td></tr><tr><td><code>password</code></td><td><code>string</code></td></tr><tr><td><code>google_id</code></td><td><code>string</code></td></tr><tr><td><code>openid_connect_id</code></td><td><code>string</code></td></tr><tr><td><code>is_admin</code></td><td><code>boolean</code></td></tr></tbody></table><p>Response:</p><pre><code class="language-json">{
+    "id": 270,
+    "username": "bob",
+    "theme": "system_serif",
+    "language": "en_US",
+    "timezone": "UTC",
+    "entry_sorting_direction": "desc",
+    "stylesheet": "",
+    "google_id": "",
+    "openid_connect_id": "",
+    "entries_per_page": 100,
+    "keyboard_shortcuts": true,
+    "show_reading_time": true,
+    "entry_swipe": true,
+    "last_login_at": null
+}
+</code></pre><div class="info">You must be an administrator to create users.</div><h3 id="endpoint-update-user">Update User <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-update-user" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/users/270
+Content-Type: application/json
+
+{
+    "username": "joe"
+}
+</code></pre><p>Available fields:</p><table><thead><tr><th>Field</th><th>Type</th><th>Example</th></tr></thead><tbody><tr><td><code>username</code></td><td><code>string</code></td><td></td></tr><tr><td><code>password</code></td><td><code>string</code></td><td></td></tr><tr><td><code>theme</code></td><td><code>string</code></td><td>“dark_serif”</td></tr><tr><td><code>language</code></td><td><code>string</code></td><td>“fr_FR”</td></tr><tr><td><code>timezone</code></td><td><code>string</code></td><td>“Europe/Paris”</td></tr><tr><td><code>entry_sorting_direction</code></td><td><code>string</code></td><td>“desc” or “asc”</td></tr><tr><td><code>stylesheet</code></td><td><code>string</code></td><td></td></tr><tr><td><code>google_id</code></td><td><code>string</code></td><td></td></tr><tr><td><code>openid_connect_id</code></td><td><code>string</code></td><td></td></tr><tr><td><code>entries_per_page</code></td><td><code>int</code></td><td></td></tr><tr><td><code>is_admin</code></td><td><code>boolean</code></td><td></td></tr><tr><td><code>keyboard_shortcuts</code></td><td><code>boolean</code></td><td></td></tr><tr><td><code>show_reading_time</code></td><td><code>boolean</code></td><td></td></tr><tr><td><code>entry_swipe</code></td><td><code>boolean</code></td><td></td></tr></tbody></table><p>Response:</p><pre><code class="language-json">{
+    "id": 270,
+    "username": "joe",
+    "theme": "system_serif",
+    "language": "en_US",
+    "timezone": "America/Los_Angeles",
+    "entry_sorting_direction": "desc",
+    "stylesheet": "",
+    "google_id": "",
+    "openid_connect_id": "",
+    "entries_per_page": 100,
+    "keyboard_shortcuts": true,
+    "show_reading_time": true,
+    "entry_swipe": true,
+    "last_login_at": "2021-01-05T06:46:06.461189Z"
+}
+</code></pre><div class="info">You must be an administrator to update users.</div><h3 id="endpoint-me">Get Current User <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-me" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/me
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 1,
+    "username": "admin",
+    "is_admin": true,
+    "theme": "dark_serif",
+    "language": "en_US",
+    "timezone": "America/Vancouver",
+    "entry_sorting_direction": "desc",
+    "stylesheet": "",
+    "google_id": "",
+    "openid_connect_id": "",
+    "entries_per_page": 100,
+    "keyboard_shortcuts": true,
+    "show_reading_time": true,
+    "entry_swipe": true,
+    "last_login_at": "2021-01-05T04:51:45.118524Z"
+}
+</code></pre><div class="info">This API endpoint is available since Miniflux v2.0.8.</div><h3 id="endpoint-get-user">Get User <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-user" title="Permalink">¶</a></h3><p>Request:</p><pre><code># Get user by user ID
+GET /v1/users/270
+
+# Get user by username
+GET /v1/users/foobar
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "id": 270,
+    "username": "test",
+    "is_admin": false,
+    "theme": "light_serif",
+    "language": "en_US",
+    "timezone": "America/Los_Angeles",
+    "entry_sorting_direction": "desc",
+    "stylesheet": "",
+    "google_id": "",
+    "openid_connect_id": "",
+    "entries_per_page": 100,
+    "keyboard_shortcuts": true,
+    "show_reading_time": true,
+    "entry_swipe": true,
+    "last_login_at": "2021-01-04T20:57:34.447789-08:00"
+}
+</code></pre><div class="info">You must be an administrator to fetch users.</div><h3 id="endpoint-get-users">Get Users <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-get-users" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/users
+</code></pre><p>Response:</p><pre><code class="language-json">[
+    {
+        "id": 270,
+        "username": "test",
+        "is_admin": false,
+        "theme": "light_serif",
+        "language": "en_US",
+        "timezone": "America/Los_Angeles",
+        "entry_sorting_direction": "desc",
+        "stylesheet": "",
+        "google_id": "",
+        "openid_connect_id": "",
+        "entries_per_page": 100,
+        "keyboard_shortcuts": true,
+        "show_reading_time": true,
+        "entry_swipe": true,
+        "last_login_at": "2021-01-04T20:57:34.447789-08:00"
+    }
+]
+</code></pre><div class="info">You must be an administrator to fetch users.</div><h3 id="endpoint-delete-user">Delete User <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-delete-user" title="Permalink">¶</a></h3><p>Request:</p><pre><code>DELETE /v1/users/270
+</code></pre><div class="info">You must be an administrator to delete users.</div><h3 id="integrations-status">Integrations Status <a class="anchor" href="https://miniflux.app/docs/api.html#integrations-status" title="Permalink">¶</a></h3><p>This API endpoint returns <code>true</code> if the authenticated user has enabled an integration to save entries to a third-party service (e.g., Wallabag, Shiori, Shaarli). Note that the Google Reader API and Fever API are not considered.</p><p>Request:</p><pre><code>GET /integrations/status
+</code></pre><p>Response:</p><pre><code>{"has_integrations": true}
+</code></pre><div class="info">This API endpoint is available since Miniflux v2.2.2.</div><h3 id="endpoint-mark-user-entries-as-read">Mark User Entries as Read <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-mark-user-entries-as-read" title="Permalink">¶</a></h3><p>Request:</p><pre><code>PUT /v1/users/123/mark-all-as-read
+</code></pre><p>Returns <code>204 Not Content</code> status code for success.</p><div class="info">This API endpoint is available since Miniflux v2.0.26.</div><h3 id="endpoint-counters">Fetch Read/Unread Counters <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-counters" title="Permalink">¶</a></h3><p>Request:</p><pre><code>GET /v1/feeds/counters
+</code></pre><p>Response Example:</p><pre><code class="language-json">{
+  "reads": {
+    "1": 12,
+    "3": 1,
+    "4": 1
+  },
+  "unreads": {
+    "1": 7,
+    "3": 99,
+    "4": 14
+  }
+}
+</code></pre><div class="info">This endpoint is available since Miniflux 2.0.37.</div><h3 id="endpoint-healthcheck">Healthcheck <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-healthcheck" title="Permalink">¶</a></h3><p>The healthcheck endpoint is useful for monitoring and load-balancer
+configuration.</p><p>Request:</p><pre><code>GET /healthcheck
+</code></pre><p>Response:</p><pre><code>OK
+</code></pre><p>Returns a status code 200 when the service is up.</p><h3 id="deprecated-endpoint-version">Application version <a class="anchor" href="https://miniflux.app/docs/api.html#deprecated-endpoint-version" title="Permalink">¶</a></h3><p>The version endpoint returns Miniflux build version.</p><p>Request:</p><pre><code>GET /version
+</code></pre><p>Response:</p><pre><code>2.0.22
+</code></pre><div class="info">This API endpoint is available since Miniflux v2.0.22 and it's deprecated since version 2.0.49.</div><h3 id="endpoint-version">Application version and build information <a class="anchor" href="https://miniflux.app/docs/api.html#endpoint-version" title="Permalink">¶</a></h3><p>The version endpoint returns Miniflux version and build information.</p><p>Request:</p><pre><code>GET /v1/version
+</code></pre><p>Response:</p><pre><code class="language-json">{
+    "version":"2.0.49",
+    "commit":"69779e795",
+    "build_date":"2023-10-14T20:12:04-0700",
+    "go_version":"go1.21.1",
+    "compiler":"gc",
+    "arch":"amd64",
+    "os":"linux"
+}
+</code></pre><div class="info">This API endpoint is available since Miniflux v2.0.49.</div></article><footer class="footer"><a href="https://github.com/miniflux/website/edit/main/content/docs/api.md">Edit this page</a></footer></body></html>
