@@ -12,7 +12,7 @@ interface ArticleDao {
     @Query("SELECT * FROM articles ORDER BY publishedAt ASC")
     fun getAllArticlesOldestFirst(): Flow<List<ArticleEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertArticles(articles: List<ArticleEntity>)
 
     @Query("DELETE FROM articles")
