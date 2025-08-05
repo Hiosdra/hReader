@@ -6,15 +6,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
@@ -33,7 +30,7 @@ fun ArticleListGrouped(
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy") // Removed the dot after day
     val allArticleIds = entries.map { it.id }
     val extendedColors = LocalExtendedColors.current
-    
+
     LazyColumn(
         modifier = modifier.background(MaterialTheme.colorScheme.background)
     ) {
@@ -55,7 +52,6 @@ fun ArticleListGrouped(
                         modifier = Modifier.align(Alignment.CenterStart)
                     )
                 }
-                // Add a thin divider below the date header
                 HorizontalDivider(
                     thickness = 1.dp,
                     color = extendedColors.divider,
@@ -71,7 +67,6 @@ fun ArticleListGrouped(
                     articleIndex = globalIndex,
                     onCheckedChange = onCheckedChange
                 )
-                // Only add divider if not the last item
                 if (index < items.size - 1) {
                     HorizontalDivider(
                         thickness = 0.5.dp,
