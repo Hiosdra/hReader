@@ -29,7 +29,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.ui.article.ArticleListGrouped
@@ -48,7 +47,10 @@ fun MainScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("All items", fontWeight = FontWeight.Bold)
+                    Text(
+                        "All Articles",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("feeds") }) {
@@ -58,7 +60,11 @@ fun MainScreen(
                 actions = {
                     IconButton(onClick = { viewModel.refreshFromNetwork() }) {
                         if (uiState.isRefreshing) {
-                            CircularProgressIndicator(modifier = Modifier.padding(8.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.padding(8.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         } else {
                             Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
                         }
@@ -85,15 +91,29 @@ fun MainScreen(
         floatingActionButton = {
             val showDialog = remember { mutableStateOf(false) }
             if (!uiState.isLoading && uiState.entries.any { it.status != "read" }) {
-                FloatingActionButton(onClick = { showDialog.value = true }) {
+                FloatingActionButton(
+                    onClick = { showDialog.value = true },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ) {
                     Icon(Icons.Filled.Done, contentDescription = "Mark all as read")
                 }
             }
             if (showDialog.value) {
                 AlertDialog(
                     onDismissRequest = { showDialog.value = false },
-                    title = { Text("Mark all as read?") },
-                    text = { Text("Are you sure you want to mark all articles as read?") },
+                    title = { 
+                        Text(
+                            "Mark all as read?",
+                            style = MaterialTheme.typography.headlineSmall
+                        ) 
+                    },
+                    text = { 
+                        Text(
+                            "Are you sure you want to mark all articles as read?",
+                            style = MaterialTheme.typography.bodyMedium
+                        ) 
+                    },
                     confirmButton = {
                         TextButton(onClick = {
                             showDialog.value = false
@@ -113,7 +133,9 @@ fun MainScreen(
     ) { paddingValues ->
         if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         } else {
             ArticleListGrouped(
