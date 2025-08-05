@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.ui.article
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -96,13 +98,18 @@ fun ArticleRow(
                         val preview =
                             entry.content?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: ""
                         if (preview.isNotBlank()) {
-                            Text(
-                                text = preview,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = extendedColors.preview,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Box {
+                                ArticleWebView(
+                                    articleContent = preview,
+                                    baseUrl = entry.url,
+                                    modifier = Modifier.heightIn(max = 96.dp)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .background(extendedColors.cardBackground.copy(alpha = 0.5f))
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
