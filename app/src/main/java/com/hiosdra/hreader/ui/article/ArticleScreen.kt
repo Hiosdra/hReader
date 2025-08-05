@@ -115,7 +115,6 @@ fun ArticleScreen(
                     isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
-                    articleContentMap = uiState.originalContent,
                     getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) }
                 )
             }
@@ -130,7 +129,6 @@ private fun ArticlePager(
     isWebViewMode: Boolean,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
-    articleContentMap: Map<Long, String?>,
     getContentForEntry: (Long) -> String?
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -237,7 +235,7 @@ private fun ArticleContent(
             ) {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = entry.title ?: "No title",
+                        text = entry.title,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
@@ -270,40 +268,9 @@ private fun ArticleContent(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                AndroidView(
-                    factory = { context ->
-                        WebView(context).apply {
-                            settings.javaScriptEnabled = false
-                            settings.defaultFontSize = 16
-                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                            webViewClient = WebViewClient()
-                        }
-                    },
-                    update = { webView ->
-                        val htmlData = """
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                <style>
-                                    body { 
-                                        font-family: sans-serif; 
-                                        line-height: 1.5;
-                                        margin: 0;
-                                        padding: 0;
-                                        color: white;
-                                    }
-                                    img { max-width: 100%; height: auto; }
-                                    a { color: #1976D2; }
-                                </style>
-                            </head>
-                            <body>
-                                $articleContent
-                            </body>
-                            </html>
-                        """
-                        webView.loadDataWithBaseURL(entry.url, htmlData, "text/html", "UTF-8", null)
-                    },
+                ArticleWebView(
+                    articleContent = articleContent,
+                    baseUrl = entry.url,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
