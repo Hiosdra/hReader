@@ -27,7 +27,7 @@ fun ArticleListGrouped(
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
     val grouped = entries.groupBy { it.publishedAt.substring(0, 10) }
-    val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy") // Removed the dot after day
+    val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")
     val allArticleIds = entries.map { it.id }
     val extendedColors = LocalExtendedColors.current
 
