@@ -13,7 +13,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-// Custom color provider for colors not included in Material 3 ColorScheme
 data class ExtendedColors(
     val cardBackground: Color,
     val divider: Color,
@@ -104,7 +103,7 @@ private val LightExtendedColors = ExtendedColors(
 fun HReaderTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Set to false by default to use our custom colors
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
