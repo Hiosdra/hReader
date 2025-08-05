@@ -1,20 +1,21 @@
 package com.hiosdra.hreader.ui.article
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.ui.theme.LocalExtendedColors
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -26,14 +27,19 @@ fun ArticleListGrouped(
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
     val grouped = entries.groupBy { it.publishedAt.substring(0, 10) }
-    val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy")
+    val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")
     val allArticleIds = entries.map { it.id }
-    LazyColumn(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
+    val extendedColors = LocalExtendedColors.current
+
+    LazyColumn(
+        modifier = modifier.background(MaterialTheme.colorScheme.background)
+    ) {
         grouped.forEach { (date, items) ->
             item {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = try {
@@ -41,11 +47,16 @@ fun ArticleListGrouped(
                         } catch (_: Exception) {
                             date
                         },
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = extendedColors.header,
+                        modifier = Modifier.align(Alignment.CenterStart)
                     )
                 }
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = extendedColors.divider,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
             }
             itemsIndexed(items) { index, entry ->
                 val globalIndex = allArticleIds.indexOf(entry.id)
@@ -56,7 +67,13 @@ fun ArticleListGrouped(
                     articleIndex = globalIndex,
                     onCheckedChange = onCheckedChange
                 )
-                HorizontalDivider(thickness = 8.dp, color = MaterialTheme.colorScheme.background)
+                if (index < items.size - 1) {
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = extendedColors.divider,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+                }
             }
         }
     }

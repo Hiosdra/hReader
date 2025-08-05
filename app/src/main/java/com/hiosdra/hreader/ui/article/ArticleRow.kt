@@ -9,9 +9,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
@@ -19,16 +23,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.ui.theme.MainChecked
-import com.hiosdra.hreader.ui.theme.MainUnchecked
+import com.hiosdra.hreader.ui.theme.LocalExtendedColors
 
 @Composable
 fun ArticleRow(
@@ -39,72 +41,88 @@ fun ArticleRow(
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
     val checked = entry.status == "read"
+    val extendedColors = LocalExtendedColors.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
             .clickable {
                 navController.navigate("article/${articleIds.joinToString(",")}/$articleIndex")
-            }
-            .background(MaterialTheme.colorScheme.background),
-        shape = MaterialTheme.shapes.medium
+            },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = extendedColors.cardBackground
+        )
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
                 Row(
                     modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Spacer(modifier = Modifier.size(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        ) {
                             Text(
-                                entry.author ?: "Source",
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 13.sp
+                                text = entry.author ?: "Source",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = extendedColors.author
                             )
-                            Spacer(modifier = Modifier.size(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                entry.publishedAt.substring(11, 16),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 12.sp
+                                text = entry.publishedAt.substring(11, 16),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = extendedColors.date
                             )
                         }
                         Text(
-                            entry.title,
-                            fontWeight = FontWeight.Bold,
+                            text = entry.title,
+                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 15.sp,
                             maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(bottom = 4.dp)
                         )
                         val preview =
                             entry.content?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: ""
                         if (preview.isNotBlank()) {
-                            Text(
-                                preview,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 13.sp,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Box {
+                                ArticleWebView(
+                                    articleContent = preview,
+                                    baseUrl = entry.url,
+                                    modifier = Modifier.heightIn(max = 96.dp)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .background(extendedColors.cardBackground.copy(alpha = 0.5f))
+                                )
+                            }
                         }
                     }
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Box(
-                        modifier = Modifier.size(96.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val imageUrl = entry.enclosures?.firstOrNull {
-                            it.mimeType?.startsWith("image/") == true
-                        }?.url
-                        if (imageUrl != null) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    val imageUrl = entry.enclosures?.firstOrNull {
+                        it.mimeType?.startsWith("image/") == true
+                    }?.url
+                    if (imageUrl != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(96.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Image(
                                 painter = rememberAsyncImagePainter(imageUrl),
                                 contentDescription = "Article image",
@@ -114,12 +132,13 @@ fun ArticleRow(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 Checkbox(
                     checked = checked,
                     onCheckedChange = { onCheckedChange(entry.id, it) },
                     colors = CheckboxDefaults.colors(
-                        checkedColor = MainChecked,
-                        uncheckedColor = MainUnchecked
+                        checkedColor = extendedColors.checked,
+                        uncheckedColor = extendedColors.unchecked
                     )
                 )
             }
