@@ -18,8 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,7 +55,9 @@ import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.navigation.PaywallBypassProvider
 import com.hiosdra.hreader.navigation.openChromeCustomTab
+import com.hiosdra.hreader.navigation.openWithPaywallBypass
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPagerApi::class)
@@ -180,6 +186,9 @@ private fun ArticleTopBar(
     onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit
 ) {
+    val context = LocalContext.current
+    var menuExpanded by remember { mutableStateOf(false) }
+
     TopAppBar(
         title = { Text(feedTitle ?: "hReader", style = MaterialTheme.typography.titleLarge) },
         navigationIcon = {
@@ -202,6 +211,31 @@ private fun ArticleTopBar(
                         painter = painterResource(id = if (isWebViewMode) R.drawable.baseline_web_asset_off_24 else R.drawable.baseline_web_asset_24),
                         contentDescription = if (isWebViewMode) "Show Content" else "Show WebView",
                         tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = "More options"
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Open via SMRY.ai") },
+                        onClick = {
+                            menuExpanded = false
+                            openWithPaywallBypass(context, PaywallBypassProvider.SMRY_AI, entryUrl)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Open via RemovePaywall") },
+                        onClick = {
+                            menuExpanded = false
+                            openWithPaywallBypass(context, PaywallBypassProvider.REMOVE_PAYWALL, entryUrl)
+                        }
                     )
                 }
             }
