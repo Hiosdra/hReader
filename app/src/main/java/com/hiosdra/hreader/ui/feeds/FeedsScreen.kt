@@ -12,21 +12,29 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.R
@@ -68,19 +76,55 @@ fun FeedsScreen(
                 Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
             }
             else -> {
-                LazyColumn(modifier = Modifier.padding(paddingValues)) {
-                    items(uiState.feeds) { feed ->
-                        val unreadCount = uiState.unreadCounts[feed.id] ?: 0
-                        FeedItem(
-                            feed = feed,
-                            unreadCount = unreadCount,
-                            onFeedClick = {
-                                navController.navigate("articles?feedId=${feed.id}")
-                            },
-                            onDetailsClick = {
-                                navController.navigate("feed_details/${feed.id}")
+                var searchQuery by rememberSaveable { mutableStateOf("") }
+
+                val filteredFeeds = if (searchQuery.isBlank()) {
+                    uiState.feeds
+                } else {
+                    uiState.feeds.filter { feed ->
+                        val q = searchQuery.trim()
+                        feed.title.contains(q, ignoreCase = true) ||
+                                (feed.siteUrl?.contains(q, ignoreCase = true) == true)
+                    }
+                }
+
+                Column(modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .semantics { contentDescription = "Search subscriptions" },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                                }
                             }
-                        )
+                        },
+                        placeholder = { Text("Search subscriptions") },
+                        singleLine = true
+                    )
+
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(filteredFeeds) { feed ->
+                            val unreadCount = uiState.unreadCounts[feed.id] ?: 0
+                            FeedItem(
+                                feed = feed,
+                                unreadCount = unreadCount,
+                                onFeedClick = {
+                                    navController.navigate("articles?feedId=${feed.id}")
+                                },
+                                onDetailsClick = {
+                                    navController.navigate("feed_details/${feed.id}")
+                                }
+                            )
+                        }
                     }
                 }
             }
