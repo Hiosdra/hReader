@@ -1,8 +1,8 @@
 package com.hiosdra.hreader.data.paywall
 
 enum class PaywallBypassMethod(val displayName: String, val baseUrl: String) {
-    SMRY_AI("Smry.ai", "https://www.smry.ai/"),
-    REMOVE_PAYWALL("RemovePaywall.com", "https://www.removepaywall.com/")
+    SMRY_AI("Smry.ai", "https://www.smry.ai"),
+    REMOVE_PAYWALL("RemovePaywall.com", "https://www.removepaywall.com")
 }
 
 class PaywallBypassService {

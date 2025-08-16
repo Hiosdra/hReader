@@ -13,7 +13,7 @@ class PaywallBypassServiceTest {
     @Test
     fun testGetBypassUrl_SmryAi() {
         val originalUrl = "https://www.nytimes.com/2023/article"
-        val expected = "https://www.smry.ai/?url=https://www.nytimes.com/2023/article"
+        val expected = "https://www.smry.ai?url=https://www.nytimes.com/2023/article"
         
         val result = paywallBypassService.getBypassUrl(originalUrl, PaywallBypassMethod.SMRY_AI)
         
@@ -23,7 +23,7 @@ class PaywallBypassServiceTest {
     @Test
     fun testGetBypassUrl_RemovePaywall() {
         val originalUrl = "https://www.wsj.com/articles/test"
-        val expected = "https://www.removepaywall.com/?url=https://www.wsj.com/articles/test"
+        val expected = "https://www.removepaywall.com?url=https://www.wsj.com/articles/test"
         
         val result = paywallBypassService.getBypassUrl(originalUrl, PaywallBypassMethod.REMOVE_PAYWALL)
         
@@ -32,15 +32,15 @@ class PaywallBypassServiceTest {
 
     @Test
     fun testIsPaywallBypassUrl() {
-        assertTrue(paywallBypassService.isPaywallBypassUrl("https://www.smry.ai/?url=test"))
-        assertTrue(paywallBypassService.isPaywallBypassUrl("https://www.removepaywall.com/?url=test"))
+        assertTrue(paywallBypassService.isPaywallBypassUrl("https://www.smry.ai?url=test"))
+        assertTrue(paywallBypassService.isPaywallBypassUrl("https://www.removepaywall.com?url=test"))
         assertFalse(paywallBypassService.isPaywallBypassUrl("https://www.nytimes.com/article"))
     }
 
     @Test
     fun testExtractOriginalUrl() {
-        val bypassUrl1 = "https://www.smry.ai/?url=https://www.nytimes.com/article"
-        val bypassUrl2 = "https://www.removepaywall.com/?url=https://www.wsj.com/test"
+        val bypassUrl1 = "https://www.smry.ai?url=https://www.nytimes.com/article"
+        val bypassUrl2 = "https://www.removepaywall.com?url=https://www.wsj.com/test"
         val normalUrl = "https://www.nytimes.com/article"
         
         assertEquals("https://www.nytimes.com/article", paywallBypassService.extractOriginalUrl(bypassUrl1))
