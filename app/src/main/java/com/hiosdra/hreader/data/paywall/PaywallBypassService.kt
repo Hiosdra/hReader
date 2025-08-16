@@ -7,6 +7,9 @@ enum class PaywallBypassMethod(val displayName: String, val baseUrl: String) {
 
 class PaywallBypassService {
     fun getBypassUrl(originalUrl: String, method: PaywallBypassMethod): String {
+        if (originalUrl.isBlank()) {
+            throw IllegalArgumentException("Original URL cannot be blank")
+        }
         return when (method) {
             PaywallBypassMethod.SMRY_AI -> "${method.baseUrl}/${originalUrl}"
             PaywallBypassMethod.REMOVE_PAYWALL -> "${method.baseUrl}?url=${originalUrl}"

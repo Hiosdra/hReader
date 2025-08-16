@@ -47,4 +47,14 @@ class PaywallBypassServiceTest {
         assertEquals("https://www.wsj.com/test", paywallBypassService.extractOriginalUrl(bypassUrl2))
         assertNull(paywallBypassService.extractOriginalUrl(normalUrl))
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testGetBypassUrl_EmptyUrl() {
+        paywallBypassService.getBypassUrl("", PaywallBypassMethod.SMRY_AI)
+    }
+
+    @Test(expected = IllegalArgumentException::class) 
+    fun testGetBypassUrl_BlankUrl() {
+        paywallBypassService.getBypassUrl("   ", PaywallBypassMethod.SMRY_AI)
+    }
 }
