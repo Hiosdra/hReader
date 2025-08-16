@@ -4,6 +4,8 @@ import androidx.room.Room
 import com.hiosdra.hreader.data.local.AppDatabase
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.data.paywall.PaywallBypassService
+import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.ui.article.ArticleListViewModel
 import com.hiosdra.hreader.ui.article.ArticleViewModel
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
@@ -30,6 +32,8 @@ val appModule = module {
     single { get<AppDatabase>().articleContentDao() }
     single { ArticleRepository(get(), get(), get()) }
     single { ArticleContentRepository(get(), get(), get()) }
+    single { PaywallBypassService() }
+    single { PreferencesManager(androidApplication()) }
     worker { ContentSyncWorker(get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get()) }
