@@ -9,16 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -56,17 +52,7 @@ fun SettingsScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-            var loremEnabled by remember { mutableStateOf(false) }
             var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
-            
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Text(text = "Lorem Ipsum Setting", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = loremEnabled,
-                    onCheckedChange = { loremEnabled = it },
-                    colors = SwitchDefaults.colors()
-                )
-            }
             
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
