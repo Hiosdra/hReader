@@ -104,7 +104,7 @@ fun ArticleScreen(
                 onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, entry.url) },
                 onToggleWebView = { isWebViewMode = !isWebViewMode },
                 onBypassPaywall = {
-                    if (entry != null) {
+                    if (entry != null && entry.url.isNotBlank()) {
                         val bypassMethod = preferencesManager.getPaywallBypassMethod()
                         val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
                         openChromeCustomTab(navController.context, bypassUrl)
