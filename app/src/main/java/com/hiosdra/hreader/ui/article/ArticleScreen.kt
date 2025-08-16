@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,8 +52,11 @@ import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.data.paywall.PaywallBypassService
+import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPagerApi::class)
 @Composable
@@ -65,6 +69,9 @@ fun ArticleScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(initialPage = initialIndex)
     var isWebViewMode by remember { mutableStateOf(false) }
+    
+    val preferencesManager: PreferencesManager = koinInject()
+    val paywallBypassService: PaywallBypassService = koinInject()
 
     LaunchedEffect(articleIds) {
         viewModel.loadArticlesByIds(articleIds)
@@ -95,7 +102,14 @@ fun ArticleScreen(
                 isWebViewMode = isWebViewMode,
                 onBack = { navController.popBackStack() },
                 onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, entry.url) },
-                onToggleWebView = { isWebViewMode = !isWebViewMode }
+                onToggleWebView = { isWebViewMode = !isWebViewMode },
+                onBypassPaywall = {
+                    if (entry != null) {
+                        val bypassMethod = preferencesManager.getPaywallBypassMethod()
+                        val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
+                        openChromeCustomTab(navController.context, bypassUrl)
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -178,8 +192,11 @@ private fun ArticleTopBar(
     isWebViewMode: Boolean,
     onBack: () -> Unit,
     onOpenInChrome: () -> Unit,
-    onToggleWebView: () -> Unit
+    onToggleWebView: () -> Unit,
+    onBypassPaywall: () -> Unit
 ) {
+    val paywallBypassService: PaywallBypassService = koinInject()
+    
     TopAppBar(
         title = { Text(feedTitle ?: "hReader", style = MaterialTheme.typography.titleLarge) },
         navigationIcon = {
@@ -189,6 +206,15 @@ private fun ArticleTopBar(
         },
         actions = {
             if (entryUrl != null) {
+                if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
+                    IconButton(onClick = onBypassPaywall) {
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = "Bypass Paywall",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
                 IconButton(onClick = onOpenInChrome) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_chrome_logo),
