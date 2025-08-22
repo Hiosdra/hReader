@@ -17,7 +17,18 @@ class PreferencesManager(context: Context) {
             .apply()
     }
     
+    fun getBionicReadingEnabled(): Boolean {
+        return sharedPreferences.getBoolean(KEY_BIONIC_READING_ENABLED, false)
+    }
+    
+    fun setBionicReadingEnabled(enabled: Boolean) {
+        sharedPreferences.edit()
+            .putBoolean(KEY_BIONIC_READING_ENABLED, enabled)
+            .apply()
+    }
+    
     companion object {
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
+        private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
     }
 }
