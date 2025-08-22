@@ -1,8 +1,10 @@
 package com.hiosdra.hreader.ui.article
 
+import android.content.Intent
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,11 +22,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -34,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,10 +47,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -56,6 +63,7 @@ import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.navigation.openChromeCustomTab
+import com.hiosdra.hreader.util.cleanUrl
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import java.time.Instant
@@ -105,13 +113,24 @@ fun ArticleScreen(
                 feedTitle = entry?.feed?.title,
                 isWebViewMode = isWebViewMode,
                 onBack = { navController.popBackStack() },
-                onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, entry.url) },
+                onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, cleanUrl(entry.url)) },
                 onToggleWebView = { isWebViewMode = !isWebViewMode },
                 onBypassPaywall = {
                     if (entry != null && entry.url.isNotBlank()) {
                         val bypassMethod = preferencesManager.getPaywallBypassMethod()
                         val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
                         openChromeCustomTab(navController.context, bypassUrl)
+                    }
+                },
+                onShare = {
+                    if (entry != null) {
+                        val ctx = navController.context
+                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, entry.title)
+                            putExtra(Intent.EXTRA_TEXT, "${entry.title}\n${cleanUrl(entry.url)}")
+                        }
+                        ctx.startActivity(Intent.createChooser(sendIntent, null))
                     }
                 }
             )
@@ -197,7 +216,8 @@ private fun ArticleTopBar(
     onBack: () -> Unit,
     onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit,
-    onBypassPaywall: () -> Unit
+    onBypassPaywall: () -> Unit,
+    onShare: () -> Unit
 ) {
     val paywallBypassService: PaywallBypassService = koinInject()
 
@@ -234,6 +254,13 @@ private fun ArticleTopBar(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
+                IconButton(onClick = onShare) {
+                    Icon(
+                        Icons.Filled.Share,
+                        contentDescription = "Share",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         },
         colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
@@ -251,6 +278,9 @@ private fun ArticleContent(
     articleContent: String
 ) {
     val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
+    val progressState = remember { mutableFloatStateOf(0f) }
+    var showImage by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     Surface(
         modifier = modifier.fillMaxSize(),
         tonalElevation = 0.dp,
@@ -283,6 +313,16 @@ private fun ArticleContent(
                             onCheckedChange = { checked -> onReadStatusChange?.invoke(checked) }
                         )
                     }
+                    if (progressState.floatValue in 0.02f..0.98f) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { progressState.floatValue },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(50))
+                        )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     MetaChips(
                         author = entry.author,
@@ -298,7 +338,8 @@ private fun ArticleContent(
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp)),
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { showImage = true },
                             contentScale = ContentScale.Crop
                         )
                     }
@@ -306,10 +347,17 @@ private fun ArticleContent(
                     ArticleWebView(
                         articleContent = articleContent,
                         baseUrl = entry.url,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        onLinkClick = { url -> openChromeCustomTab(context, url) },
+                        onScrollProgress = { p -> progressState.floatValue = p }
                     )
                 }
             }
+        }
+    }
+    if (showImage && mainImageUrl != null) {
+        Dialog(onDismissRequest = { showImage = false }) {
+            ZoomableImage(url = mainImageUrl) { showImage = false }
         }
     }
 }
