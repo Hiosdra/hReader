@@ -30,7 +30,7 @@ val appModule = module {
     single { get<AppDatabase>().articleDao() }
     single { get<AppDatabase>().feedDao() }
     single { get<AppDatabase>().articleContentDao() }
-    single { ArticleRepository(get(), get(), get(), get()) }
+    single { ArticleRepository(get(), get(), get(), get(), get()) }
     single { ArticleContentRepository(get(), get(), get()) }
     single { PaywallBypassService() }
     single { PreferencesManager(androidApplication()) }
