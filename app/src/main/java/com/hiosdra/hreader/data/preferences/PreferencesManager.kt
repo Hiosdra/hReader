@@ -17,7 +17,18 @@ class PreferencesManager(context: Context) {
             .apply()
     }
     
+    fun getLastSyncTimestamp(): Long {
+        return sharedPreferences.getLong(KEY_LAST_SYNC_TIMESTAMP, 0L)
+    }
+    
+    fun setLastSyncTimestamp(timestamp: Long) {
+        sharedPreferences.edit()
+            .putLong(KEY_LAST_SYNC_TIMESTAMP, timestamp)
+            .apply()
+    }
+    
     companion object {
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
+        private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
     }
 }
