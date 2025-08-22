@@ -86,12 +86,30 @@ app/src/main/java/com/hiosdra/hreader/
 - **View**: Jetpack Compose screens in `ui/`  
 - **ViewModel**: Koin-injected ViewModels following Android lifecycle
 
-### Key Dependencies  
-- **DI**: Koin 4.1.0 (modules in `di/`)
-- **Database**: Room 2.7.2 (entities in `data/local/entity/`)
-- **Network**: Retrofit 2.11.0 + Moshi (services in `data/remote/`)
-- **Background Work**: WorkManager 2.10.3 (workers in `worker/`)
-- **UI**: Jetpack Compose with Material3
+### Key Dependencies (Verified)
+- **Kotlin**: 2.2.10
+- **Android Gradle Plugin**: 8.12.1
+- **Compose BOM**: 2025.08.00 (Material3, UI, Tooling use BOM-managed versions)
+- **Activity Compose**: 1.10.1
+- **Navigation Compose**: 2.9.3
+- **Lifecycle Runtime KTX**: 2.9.2
+- **Coroutines (Android)**: 1.10.2
+- **Room**: 2.7.2 (runtime, ktx, ksp compiler)
+- **WorkManager**: 2.10.3
+- **Koin BOM**: 4.1.0 (android, compose-navigation, workmanager)
+- **Retrofit**: 3.0.0 (NOTE: Upstream stable series is 2.x; ensure 3.0.0 artifacts are intended and compatible)
+- **Retrofit Moshi Converter**: 3.0.0
+- **OkHttp Logging Interceptor**: 5.1.0
+- **Moshi**: 1.15.2 (with KSP codegen)
+- **Coil Compose**: 2.7.0
+- **Accompanist Pager**: 0.36.0 (DEPRECATED – plan migration to androidx.compose.foundation.pager)
+- **Browser**: androidx.browser:1.9.0
+- **Testing**: JUnit 4.13.2, ArchUnit 1.4.1, AndroidX Test JUnit 1.3.0, Espresso 3.7.0
+
+Notes:
+- Accompanist Pager is deprecated; migrate to the official Foundation Pager soon.
+- Verify Retrofit 3.x usage; if unintentional, revert to 2.11.0 to avoid unexpected API changes.
+- Compose BOM manages versions; do not hardcode individual compose artifact versions outside the BOM.
 
 ## Code Style Preferences
 
@@ -162,3 +180,44 @@ The `.github/workflows/ci.yml` runs on push/PR:
 ### Expected Build Output Sizes
 - Debug APK: ~37MB (`app/build/outputs/apk/debug/app-debug.apk`)
 - Release APK: ~28MB (`app/build/outputs/apk/release/app-release-unsigned.apk`)
+
+## Navigation & Routes (Updated)
+
+Current key routes:
+- `main` – unified article list (all feeds)
+- `main?feedId={feedId}` – same screen filtered to a specific feed (Long). Uses `defaultValue = -1L` sentinel; interpret `-1L` as null.
+- `feeds` – subscriptions list
+- `feed/{feedId}` – feed details
+- `add_feed` – add new feed
+- `article/{articleIds}/{initialIndex}` – paged article reader
+- `settings` – settings screen
+
+Guidelines:
+- Do NOT declare nullable Long nav arguments; use a sentinel `defaultValue` (e.g. `-1L`) and map to null in code.
+- When adding optional filters, prefer query style `main?foo={foo}` with default sentinel instead of creating a new screen.
+- Keep MainViewModel feed filtering via `setFeed(feedId)` / `clearFeed()`; avoid duplicating per-feed viewmodels.
+- Prefer adding new list variations as parameters to MainScreen instead of new routes unless layout diverges significantly.
+
+Deprecated/Consolidated:
+- Separate per-feed article list screen replaced by `main?feedId=...`.
+
+## ViewModel Patterns (Articles)
+- Maintain a single source of truth (MainViewModel) for article lists; apply in-memory session read retention (`sessionReadIds`).
+- When adding new filters (e.g. unread-only toggle), extend MainViewModel rather than introducing parallel flows.
+
+## Optional Long Argument Pattern
+```kotlin
+composable(
+  "main?feedId={feedId}",
+  arguments = listOf(navArgument("feedId") { type = NavType.LongType; defaultValue = -1L })
+) { backStackEntry ->
+  val idRaw = backStackEntry.arguments?.getLong("feedId") ?: -1L
+  val feedId = if (idRaw == -1L) null else idRaw
+  MainScreen(navController, feedId)
+}
+```
+
+## Adding New Filters
+1. Extend `MainUiState` with new filter flag.
+2. Store full list internally; derive filtered list in a private function similar to `applyFilterAndEmit`.
+3. Avoid re-collecting flows unnecessarily; reuse existing collection and re-filter locally.
