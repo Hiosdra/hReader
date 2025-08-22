@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.ui.main
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,7 +26,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -65,13 +67,18 @@ fun MainScreen(
         if (feedId != null) viewModel.setFeed(feedId) else viewModel.clearFeed()
     }
 
+    val unreadCount = uiState.entries.count { it.status != "read" }
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
-        modifier = Modifier.background(MaterialTheme.colorScheme.background),
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.background)
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        uiState.feedTitle ?: "All Items",
+                        (uiState.feedTitle ?: "All Items") + if (unreadCount > 0) "  •  $unreadCount" else "",
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
@@ -102,12 +109,12 @@ fun MainScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.refreshFromNetwork() },
+                        onClick = { if (!uiState.isRefreshing) viewModel.refreshFromNetwork() },
                         modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
                         if (uiState.isRefreshing) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -161,29 +168,31 @@ fun MainScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
+                ),
+                scrollBehavior = scrollBehavior
             )
         },
         floatingActionButton = {
             val showDialog = remember { mutableStateOf(false) }
+            val showFab = !uiState.isLoading && unreadCount > 0 && !showDialog.value
+            val alpha by animateFloatAsState(targetValue = if (showFab) 1f else 0f, animationSpec = tween(300))
             AnimatedVisibility(
-                visible = !uiState.isLoading && uiState.entries.any { it.status != "read" },
+                visible = showFab,
                 enter = fadeIn(animationSpec = tween(durationMillis = 300)),
                 exit = fadeOut(animationSpec = tween(durationMillis = 300))
             ) {
-                FloatingActionButton(
+                ExtendedFloatingActionButton(
                     onClick = { showDialog.value = true },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = CircleShape,
-                    modifier = Modifier.shadow(4.dp, CircleShape)
-                ) {
-                    Icon(
-                        Icons.Filled.Done,
-                        contentDescription = "Mark all as read",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                    icon = { Icon(Icons.Filled.Done, contentDescription = null) },
+                    text = { Text(text = "Mark $unreadCount read") },
+                    expanded = unreadCount < 100,
+                    modifier = Modifier
+                        .shadow(4.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = alpha))
+                )
             }
             if (showDialog.value) {
                 AlertDialog(
@@ -191,16 +200,14 @@ fun MainScreen(
                     title = {
                         Text(
                             "Mark all as read?",
-                            style = MaterialTheme.typography.headlineSmall,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxSize()
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Start
                         )
                     },
                     text = {
                         Text(
                             "Are you sure you want to mark all articles as read?",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     },
                     confirmButton = {
@@ -223,8 +230,8 @@ fun MainScreen(
                             )
                         ) { Text("Cancel") }
                     },
-                    containerColor = extendedColors.cardBackground,
-                    shape = RoundedCornerShape(16.dp)
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(20.dp)
                 )
             }
         }
@@ -240,11 +247,25 @@ fun MainScreen(
                     modifier = Modifier.size(48.dp)
                 )
             }
+        } else if (uiState.entries.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No articles",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
         } else {
             ArticleListGrouped(
                 entries = uiState.entries,
                 navController = navController,
-                modifier = Modifier.padding(paddingValues),
+                modifier = Modifier
+                    .padding(paddingValues),
                 onCheckedChange = { entryId, checked ->
                     viewModel.updateEntryReadStatus(entryId, checked)
                 }

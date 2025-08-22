@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.ui.article
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,6 +21,7 @@ import com.hiosdra.hreader.ui.theme.LocalExtendedColors
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ArticleListGrouped(
     entries: List<Entry>,
@@ -26,31 +29,40 @@ fun ArticleListGrouped(
     modifier: Modifier,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
-    val grouped = entries.groupBy { it.publishedAt.substring(0, 10) }
+    val sortedEntries = entries.sortedBy { it.publishedAt }
+    val grouped = sortedEntries.groupBy { it.publishedAt.substring(0, 10) }
+    val sortedKeys = grouped.keys.sorted() // oldest date first
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")
-    val allArticleIds = entries.map { it.id }
+    val allArticleIds = sortedEntries.map { it.id }
     val extendedColors = LocalExtendedColors.current
 
     LazyColumn(
         modifier = modifier.background(MaterialTheme.colorScheme.background)
     ) {
-        grouped.forEach { (date, items) ->
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+        sortedKeys.forEach { date ->
+            val items = grouped[date].orEmpty()
+            stickyHeader {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = try {
-                            LocalDate.parse(date).format(dateFormatter)
-                        } catch (_: Exception) {
-                            date
-                        },
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = extendedColors.header,
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
+                    ) {
+                        Text(
+                            text = try {
+                                LocalDate.parse(date).format(dateFormatter)
+                            } catch (_: Exception) {
+                                date
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = extendedColors.header,
+                            modifier = Modifier.align(Alignment.CenterStart)
+                        )
+                    }
                 }
                 HorizontalDivider(
                     thickness = 1.dp,
@@ -58,7 +70,7 @@ fun ArticleListGrouped(
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
-            itemsIndexed(items) { index, entry ->
+            itemsIndexed(items, key = { _, e -> e.id }) { index, entry ->
                 val globalIndex = allArticleIds.indexOf(entry.id)
                 ArticleRow(
                     entry = entry,
