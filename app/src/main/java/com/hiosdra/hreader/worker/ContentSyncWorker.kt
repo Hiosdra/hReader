@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.util.SyncPerformanceLogger
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.IOException
@@ -24,7 +25,9 @@ class ContentSyncWorker(
 
         return try {
             Log.d(TAG, "Refreshing articles from remote source")
-            repository.refreshArticles()
+            SyncPerformanceLogger.measureSyncTime("Article refresh") {
+                repository.refreshArticles()
+            }
             Log.i(TAG, "ContentSyncWorker completed successfully")
             Result.success()
         } catch (e: Exception) {
