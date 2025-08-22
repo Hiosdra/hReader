@@ -15,6 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -53,6 +54,51 @@ fun SettingsScreen(
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
+            var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
+            
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Reading Experience",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                bionicReadingEnabled = !bionicReadingEnabled
+                                preferencesManager.setBionicReadingEnabled(bionicReadingEnabled)
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Bionic Reading",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "Highlight portions of words for faster reading",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = bionicReadingEnabled,
+                            onCheckedChange = { enabled ->
+                                bionicReadingEnabled = enabled
+                                preferencesManager.setBionicReadingEnabled(enabled)
+                            }
+                        )
+                    }
+                }
+            }
             
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
