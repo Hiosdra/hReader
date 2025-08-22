@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -57,6 +58,9 @@ import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPagerApi::class)
 @Composable
@@ -69,7 +73,7 @@ fun ArticleScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(initialPage = initialIndex)
     var isWebViewMode by remember { mutableStateOf(false) }
-    
+
     val preferencesManager: PreferencesManager = koinInject()
     val paywallBypassService: PaywallBypassService = koinInject()
 
@@ -196,7 +200,7 @@ private fun ArticleTopBar(
     onBypassPaywall: () -> Unit
 ) {
     val paywallBypassService: PaywallBypassService = koinInject()
-    
+
     TopAppBar(
         title = { Text(feedTitle ?: "hReader", style = MaterialTheme.typography.titleLarge) },
         navigationIcon = {
@@ -211,7 +215,7 @@ private fun ArticleTopBar(
                         Icon(
                             Icons.Filled.Lock,
                             contentDescription = "Bypass Paywall",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -227,7 +231,7 @@ private fun ArticleTopBar(
                     Icon(
                         painter = painterResource(id = if (isWebViewMode) R.drawable.baseline_web_asset_off_24 else R.drawable.baseline_web_asset_24),
                         contentDescription = if (isWebViewMode) "Show Content" else "Show WebView",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -246,60 +250,91 @@ private fun ArticleContent(
     onReadStatusChange: ((Boolean) -> Unit)? = null,
     articleContent: String
 ) {
+    val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
     Surface(
         modifier = modifier.fillMaxSize(),
-        tonalElevation = 2.dp,
+        tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.medium
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = entry.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 900.dp)
+                        .padding(top = 12.dp)
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                        Text(
+                            text = entry.title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Checkbox(
+                            checked = entry.status == "read",
+                            onCheckedChange = { checked -> onReadStatusChange?.invoke(checked) }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    MetaChips(
+                        author = entry.author,
+                        dateText = dateText,
+                        readingTimeMinutes = entry.readingTime
                     )
-                    Checkbox(
-                        checked = entry.status == "read",
-                        onCheckedChange = { checked ->
-                            onReadStatusChange?.invoke(checked)
-                        },
-                        modifier = Modifier.align(Alignment.Top)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    androidx.compose.material3.Divider()
+                    if (mainImageUrl != null) {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Image(
+                            painter = rememberAsyncImagePainter(mainImageUrl),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    ArticleWebView(
+                        articleContent = articleContent,
+                        baseUrl = entry.url,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = listOfNotNull(entry.author, entry.publishedAt).joinToString(" • "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (mainImageUrl != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Image(
-                        painter = rememberAsyncImagePainter(mainImageUrl),
-                        contentDescription = "Main article image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 220.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ArticleWebView(
-                    articleContent = articleContent,
-                    baseUrl = entry.url,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
     }
+}
+
+@Composable
+private fun MetaChips(author: String?, dateText: String, readingTimeMinutes: Int?) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        val items = buildList {
+            if (!author.isNullOrBlank()) add(author)
+            add(dateText)
+            if (readingTimeMinutes != null && readingTimeMinutes > 0) add("${readingTimeMinutes} min read")
+        }
+        items.forEachIndexed { index, text ->
+            androidx.compose.material3.AssistChip(
+                onClick = {},
+                label = { Text(text) }
+            )
+            if (index != items.lastIndex) Spacer(modifier = Modifier.width(8.dp))
+        }
+    }
+}
+
+private fun formatPublishedDate(raw: String): String {
+    return runCatching {
+        val instant = Instant.parse(raw)
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(instant)
+    }.getOrElse { raw }
 }
