@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 
 data class FeedsUiState(
     val feeds: List<Feed> = emptyList(),
+    val filteredFeeds: List<Feed> = emptyList(),
+    val searchQuery: String = "",
     val unreadCounts: Map<Long, Int> = emptyMap(),
     val isLoading: Boolean = false,
     val error: String? = null
@@ -26,6 +28,24 @@ class FeedsViewModel(private val apiRepository: MinifluxApiRepository) : ViewMod
         loadFeeds()
     }
 
+    fun updateSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+        filterFeeds()
+    }
+
+    private fun filterFeeds() {
+        val query = _uiState.value.searchQuery.lowercase().trim()
+        val filteredFeeds = if (query.isEmpty()) {
+            _uiState.value.feeds
+        } else {
+            _uiState.value.feeds.filter { feed ->
+                feed.title.lowercase().contains(query) ||
+                feed.siteUrl?.lowercase()?.contains(query) == true
+            }
+        }
+        _uiState.value = _uiState.value.copy(filteredFeeds = filteredFeeds)
+    }
+
     private fun loadFeeds() {
         if (_uiState.value.isLoading) return
 
@@ -37,9 +57,13 @@ class FeedsViewModel(private val apiRepository: MinifluxApiRepository) : ViewMod
                 val unreadCounts = counters.unreads.mapKeys { it.key.toLong() }
                 _uiState.value = _uiState.value.copy(
                     feeds = fetchedFeeds,
+                    filteredFeeds = fetchedFeeds,
                     unreadCounts = unreadCounts,
                     isLoading = false
                 )
+                if (_uiState.value.searchQuery.isNotEmpty()) {
+                    filterFeeds()
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Error loading feeds: ${e.message}", isLoading = false)
                 Log.e("FeedsViewModel", "Error loading feeds", e)
