@@ -10,7 +10,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hiosdra.hreader.ui.article.ArticleScreen
-import com.hiosdra.hreader.ui.article.FeedArticleListScreen
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
 import com.hiosdra.hreader.ui.feeds.FeedsScreen
 import com.hiosdra.hreader.ui.feeds.add.AddFeedScreen
@@ -24,6 +23,16 @@ fun AppNavigation(
     NavHost(navController = navController, startDestination = "main") {
         composable("main") {
             MainScreen(navController = navController)
+        }
+        composable(
+            route = "main?feedId={feedId}",
+            arguments = listOf(
+                navArgument("feedId") { type = NavType.LongType; defaultValue = -1L }
+            )
+        ) { backStackEntry ->
+            val raw = backStackEntry.arguments?.getLong("feedId") ?: -1L
+            val feedId = if (raw == -1L) null else raw
+            MainScreen(navController = navController, feedId = feedId)
         }
         composable("feeds") {
             FeedsScreen(navController = navController)
@@ -63,21 +72,7 @@ fun AppNavigation(
                 Text(text = "Feed not found.")
             }
         }
-        composable(
-            route = "articles?feedId={feedId}",
-            arguments = listOf(
-                navArgument("feedId") { type = NavType.LongType }
-            )
-        ) { backStackEntry ->
-            val feedId = backStackEntry.arguments?.getLong("feedId")
-            if (feedId != null) {
-                FeedArticleListScreen(feedId = feedId, navController = navController)
-            } else {
-                Text(text = "Feed not found.")
-            }
-        }
-        composable("settings") { backStackEntry ->
-            val navController = navController
+        composable("settings") { _ ->
             SettingsScreen(navController)
         }
     }

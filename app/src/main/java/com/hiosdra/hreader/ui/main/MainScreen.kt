@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
@@ -31,10 +32,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,10 +55,15 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun MainScreen(
     navController: NavController,
+    feedId: Long? = null,
     viewModel: MainViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val extendedColors = LocalExtendedColors.current
+
+    LaunchedEffect(feedId) {
+        if (feedId != null) viewModel.setFeed(feedId) else viewModel.clearFeed()
+    }
 
     Scaffold(
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
@@ -65,20 +71,33 @@ fun MainScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "All Items",
+                        uiState.feedTitle ?: "All Items",
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
-                    IconButton(
-                        onClick = { navController.navigate("feeds") },
-                        modifier = Modifier.padding(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Menu,
-                            contentDescription = "Feeds",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                    if (feedId == null) {
+                        IconButton(
+                            onClick = { navController.navigate("feeds") },
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Menu,
+                                contentDescription = "Feeds",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { navController.popBackStack() },
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -194,9 +213,7 @@ fun MainScreen(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             )
-                        ) {
-                            Text("Confirm")
-                        }
+                        ) { Text("Confirm") }
                     },
                     dismissButton = {
                         OutlinedButton(
@@ -204,9 +221,7 @@ fun MainScreen(
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.primary
                             )
-                        ) {
-                            Text("Cancel")
-                        }
+                        ) { Text("Cancel") }
                     },
                     containerColor = extendedColors.cardBackground,
                     shape = RoundedCornerShape(16.dp)

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.model.Entry
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +15,8 @@ data class MainUiState(
     val entries: List<Entry> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val feedTitle: String? = null
 )
 
 class MainViewModel(private val articleRepository: ArticleRepository) : ViewModel() {
@@ -23,22 +25,43 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
 
     private var fullList: List<Entry> = emptyList()
     private val sessionReadIds = mutableSetOf<Long>()
-    private var collectStarted = false
+    private var collectionJob: Job? = null
+    private var currentFeedId: Long? = null
 
     init {
+        loadEntries() // default: all items
+    }
+
+    internal fun setFeed(feedId: Long) {
+        if (currentFeedId == feedId) return
+        currentFeedId = feedId
+        sessionReadIds.clear()
+        loadEntries()
+    }
+
+    internal fun clearFeed() {
+        if (currentFeedId == null) return
+        currentFeedId = null
+        sessionReadIds.clear()
         loadEntries()
     }
 
     internal fun loadEntries() {
-        if (collectStarted) return
-        collectStarted = true
-        Log.i("MainViewModel", "Loading all entries (filtering previously read, keeping session newly read visible)")
-        _uiState.value = _uiState.value.copy(isLoading = true)
-        viewModelScope.launch {
+        collectionJob?.cancel()
+        Log.i("MainViewModel", "Loading entries for ${currentFeedId?.let { "feed $it" } ?: "all feeds"} (filtering previously read, keeping session newly read visible)")
+        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+        collectionJob = viewModelScope.launch {
             try {
-                articleRepository.getAllArticlesOldestFirst().collect { fetchedEntries ->
+                val feedId = currentFeedId
+                val flow = if (feedId == null) {
+                    articleRepository.getAllArticlesOldestFirst()
+                } else {
+                    articleRepository.getAllArticlesForFeed(feedId)
+                }
+                val feedTitle = feedId?.let { articleRepository.getFeed(it)?.title }
+                flow.collect { fetchedEntries ->
                     fullList = fetchedEntries
-                    applyFilterAndEmit(isLoadingDone = true)
+                    applyFilterAndEmit(isLoadingDone = true, feedTitle = feedTitle)
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -50,13 +73,14 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
         }
     }
 
-    private fun applyFilterAndEmit(isLoadingDone: Boolean = false) {
+    private fun applyFilterAndEmit(isLoadingDone: Boolean = false, feedTitle: String? = _uiState.value.feedTitle) {
         val filtered = fullList.filter { entry ->
             if (entry.status != "read") true else sessionReadIds.contains(entry.id)
         }
         _uiState.value = _uiState.value.copy(
             entries = filtered,
-            isLoading = if (isLoadingDone) false else _uiState.value.isLoading
+            isLoading = if (isLoadingDone) false else _uiState.value.isLoading,
+            feedTitle = feedTitle
         )
     }
 
@@ -64,7 +88,6 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRefreshing = true, error = null)
             try {
-                // Clearing sessionReadIds enforces removal of previously session-kept read items after refresh
                 sessionReadIds.clear()
                 articleRepository.refreshArticles()
             } catch (e: Exception) {
@@ -77,7 +100,7 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
     }
 
     fun updateEntryReadStatus(entryId: Long, checked: Boolean) {
-        val target = fullList.find { it.id == entryId } ?: return
+        if (fullList.none { it.id == entryId }) return
         val newStatus = if (checked) "read" else "unread"
         fullList = fullList.map {
             if (it.id == entryId) it.copy(status = newStatus) else it
