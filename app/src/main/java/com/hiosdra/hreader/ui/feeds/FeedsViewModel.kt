@@ -61,7 +61,9 @@ class FeedsViewModel(private val apiRepository: MinifluxApiRepository) : ViewMod
                     unreadCounts = unreadCounts,
                     isLoading = false
                 )
-                filterFeeds()
+                if (_uiState.value.searchQuery.isNotEmpty()) {
+                    filterFeeds()
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Error loading feeds: ${e.message}", isLoading = false)
                 Log.e("FeedsViewModel", "Error loading feeds", e)
