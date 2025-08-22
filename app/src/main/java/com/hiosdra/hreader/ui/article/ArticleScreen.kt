@@ -298,7 +298,7 @@ private fun ArticleContent(
 ) {
     val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
     val progressState = remember { mutableFloatStateOf(0f) }
-    var showImage by remember { mutableStateOf(false) }
+    var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -360,7 +360,7 @@ private fun ArticleContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .clickable { showImage = true },
+                                .clickable { zoomImageUrl = mainImageUrl },
                             contentScale = ContentScale.Crop
                         )
                     }
@@ -377,19 +377,14 @@ private fun ArticleContent(
             }
         }
     }
-    if (showImage && mainImageUrl != null) {
-        Dialog(onDismissRequest = { showImage = false }) {
-            ZoomableImage(url = mainImageUrl) { showImage = false }
-        }
-    }
     val actionsUrl = imageActionsUrl
     if (actionsUrl != null) {
         ImageActionsDialog(
             imageUrl = actionsUrl,
             onDismiss = { imageActionsUrl = null },
             onView = {
+                zoomImageUrl = actionsUrl
                 imageActionsUrl = null
-                showImage = true
             },
             onCopy = {
                 copyTextToClipboard(context, "Image URL", actionsUrl)
@@ -412,6 +407,12 @@ private fun ArticleContent(
             val shared = shareImageFile(context, entry.title, shareTarget)
             if (!shared) Toast.makeText(context, "Image share failed", Toast.LENGTH_SHORT).show()
             imageShareUrl = null
+        }
+    }
+    val zoomUrl = zoomImageUrl
+    if (zoomUrl != null) {
+        Dialog(onDismissRequest = { zoomImageUrl = null }) {
+            ZoomableImage(url = zoomUrl) { zoomImageUrl = null }
         }
     }
 }
