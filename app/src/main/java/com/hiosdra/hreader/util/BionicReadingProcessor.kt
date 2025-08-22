@@ -66,10 +66,10 @@ object BionicReadingProcessor {
     }
     
     private fun makeBionicWord(word: String): String {
-        when (word.length) {
-            1, 2 -> return "<b>${word[0]}</b>${word.substring(1)}"
-            3, 4, 5 -> return "<b>${word.substring(0, 2)}</b>${word.substring(2)}"
-            else -> return "<b>${word.substring(0, 3)}</b>${word.substring(3)}"
+        return when (word.length) {
+            1, 2 -> "<b>${word[0]}</b>${word.substring(1)}"
+            3, 4, 5 -> "<b>${word.substring(0, 2)}</b>${word.substring(2)}"
+            else -> "<b>${word.substring(0, 3)}</b>${word.substring(3)}"
         }
     }
 }
