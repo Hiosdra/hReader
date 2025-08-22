@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.ui.article
 
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.material3.MaterialTheme
@@ -7,12 +8,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
+import com.hiosdra.hreader.util.cleanUrl
 
 @Composable
 fun ArticleWebView(
     articleContent: String,
     baseUrl: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLinkClick: ((String) -> Unit)? = null,
+    onScrollProgress: ((Float) -> Unit)? = null
 ) {
     val textColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.onSurface.toArgb())
     val linkColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.primary.toArgb())
@@ -21,10 +25,38 @@ fun ArticleWebView(
     AndroidView(
         factory = { context ->
             WebView(context).apply {
+                fun updateScrollProgress(wv: WebView) {
+                    if (onScrollProgress == null) return
+                    val contentHeightPx = wv.contentHeight * wv.scale
+                    val viewHeight = wv.height
+                    val range = (contentHeightPx - viewHeight).coerceAtLeast(1f)
+                    val progress = (wv.scrollY / range).coerceIn(0f, 1f)
+                    onScrollProgress.invoke(progress)
+                }
                 settings.javaScriptEnabled = false
                 settings.defaultFontSize = 16
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                webViewClient = WebViewClient()
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                        val url = request?.url?.toString() ?: return false
+                        onLinkClick?.invoke(cleanUrl(url))
+                        return true
+                    }
+                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                        if (url != null) {
+                            onLinkClick?.invoke(cleanUrl(url))
+                            return true
+                        }
+                        return false
+                    }
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        if (view != null) view.post { updateScrollProgress(view) }
+                    }
+                }
+                setOnScrollChangeListener { v, _, _, _, _ ->
+                    if (v is WebView) updateScrollProgress(v)
+                }
             }
         },
         update = { webView ->
