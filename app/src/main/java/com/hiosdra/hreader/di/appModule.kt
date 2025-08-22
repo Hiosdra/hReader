@@ -38,7 +38,7 @@ val appModule = module {
     worker { ArticleContentSyncWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get()) }
     viewModel { FeedsViewModel(get()) }
-    viewModel { ArticleViewModel(get(), get()) }
+    viewModel { ArticleViewModel(get(), get(), get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }
     viewModel { ArticleListViewModel(get()) }
 }
