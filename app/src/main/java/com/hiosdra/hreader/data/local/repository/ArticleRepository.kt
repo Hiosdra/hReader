@@ -118,6 +118,11 @@ class ArticleRepository(
                 article.toEntry(feed)
             }
         }
+
+    suspend fun getFeed(feedId: Long): Feed? {
+        val entity = feedDao.getFeedById(feedId) ?: return null
+        return entity.toFeed()
+    }
 }
 
 private fun ArticleEntity.toEntry(feedEntity: FeedEntity): Entry = Entry(
