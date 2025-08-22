@@ -42,14 +42,13 @@ fun ArticleRow(
 ) {
     val checked = entry.status == "read"
     val extendedColors = LocalExtendedColors.current
+    val openArticle = { navController.navigate("article/${articleIds.joinToString(",")}/$articleIndex") }
 
     Card(
+        onClick = openArticle,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .clickable {
-                navController.navigate("article/${articleIds.joinToString(",")}/$articleIndex")
-            },
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 2.dp
@@ -108,6 +107,7 @@ fun ArticleRow(
                                     modifier = Modifier
                                         .matchParentSize()
                                         .background(extendedColors.cardBackground.copy(alpha = 0.5f))
+                                        .clickable { openArticle() }
                                 )
                             }
                         }
