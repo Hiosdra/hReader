@@ -1,5 +1,8 @@
 package com.hiosdra.hreader.data.local.repository
 
+import android.util.Log
+import androidx.room.withTransaction
+import com.hiosdra.hreader.data.local.AppDatabase
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.FeedDao
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
@@ -14,7 +17,8 @@ import kotlinx.coroutines.flow.map
 class ArticleRepository(
     private val articleDao: ArticleDao,
     private val feedDao: FeedDao,
-    private val api: MinifluxApiRepository
+    private val api: MinifluxApiRepository,
+    private val db: AppDatabase
 ) {
     fun getAllArticlesOldestFirst(): Flow<List<Entry>> =
         articleDao.getAllArticlesOldestFirst().map { list ->
@@ -46,49 +50,74 @@ class ArticleRepository(
     suspend fun refreshArticles() {
         val limit = 50
         var offset = 0
-        val allArticles = mutableListOf<ArticleEntity>()
-        val allFeeds = mutableMapOf<Long, FeedEntity>()
+        val fetchedArticles = mutableListOf<ArticleEntity>()
+        val feedsMap = mutableMapOf<Long, FeedEntity>()
         while (true) {
             val response = api.getEntries(limit = limit, offset = offset)
-            val articles = response.entries.map { entry -> entry.toEntity() }
+            val articles = response.entries.map { it.toEntity() }
             val feeds = response.entries.map { entry ->
-                val apiFeed = entry.feed
+                val f = entry.feed
                 FeedEntity(
-                    id = apiFeed.id,
-                    title = apiFeed.title,
-                    siteUrl = apiFeed.siteUrl,
-                    feedUrl = apiFeed.feedUrl,
+                    id = f.id,
+                    title = f.title,
+                    siteUrl = f.siteUrl,
+                    feedUrl = f.feedUrl,
                 )
             }
-            articles.forEach { allArticles.add(it) }
-            feeds.forEach { allFeeds[it.id] = it }
+            fetchedArticles += articles
+            feeds.forEach { feedsMap[it.id] = it }
             if (articles.size < limit) break
             offset += limit
         }
-        feedDao.insertFeeds(allFeeds.values.toList())
-        articleDao.clearAll()
-        articleDao.insertArticles(allArticles)
+        db.withTransaction {
+            feedDao.insertFeeds(feedsMap.values.toList())
+            val toInsert = fetchedArticles.map { remote ->
+                val existing = articleDao.findById(remote.id)
+                if (existing?.status == "read" && remote.status != "read") remote.copy(status = "read") else remote
+            }
+            articleDao.insertArticles(toInsert)
+        }
     }
 
     suspend fun updateReadStatus(articleIds: List<String>, newStatus: String) {
-        api.updateEntriesStatus(
-            UpdateEntriesStatusRequest(
-                articleIds.map { it.toLong() },
-                newStatus
-            )
-        )
         articleDao.updateStatusForIds(articleIds, newStatus)
+        try {
+            api.updateEntriesStatus(
+                UpdateEntriesStatusRequest(
+                    articleIds.map { it.toLong() },
+                    newStatus
+                )
+            )
+        } catch (e: Exception) {
+            Log.w("ArticleRepository", "Failed to push bulk status update; will retry on next sync: ${e.message}")
+        }
     }
 
     suspend fun updateReadStatus(articleId: String, newStatus: String) {
-        api.updateEntriesStatus(UpdateEntriesStatusRequest(listOf(articleId.toLong()), newStatus))
         articleDao.updateStatus(articleId, newStatus)
+        try {
+            api.updateEntriesStatus(UpdateEntriesStatusRequest(listOf(articleId.toLong()), newStatus))
+        } catch (e: Exception) {
+            Log.w("ArticleRepository", "Failed to push status update for $articleId; keeping local optimistic state: ${e.message}")
+        }
     }
 
-    suspend fun getUnreadArticles(): List<Entry> {
-        val response = api.getEntries(status = "unread")
-        return response.entries
+    suspend fun getLocalUnreadArticles(): List<Entry> {
+        val unread = articleDao.getArticlesByStatus("unread")
+        return unread.map { entity ->
+            val feed = feedDao.getFeedById(entity.feedId) ?: throw IllegalStateException("Feed not found")
+            entity.toEntry(feed)
+        }
     }
+
+    fun getUnreadArticlesOldestFirst(): Flow<List<Entry>> =
+        articleDao.getAllUnreadArticlesOldestFirst().map { list ->
+            list.map { article ->
+                val feed = feedDao.getFeedById(article.feedId)
+                    ?: throw IllegalStateException("Feed not found")
+                article.toEntry(feed)
+            }
+        }
 }
 
 private fun ArticleEntity.toEntry(feedEntity: FeedEntity): Entry = Entry(

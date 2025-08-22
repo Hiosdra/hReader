@@ -32,4 +32,19 @@ interface ArticleDao {
 
     @Query("SELECT * FROM articles WHERE feedId = :feedId ORDER BY publishedAt ASC")
     fun getAllArticlesForFeed(feedId: Long): Flow<List<ArticleEntity>>
+
+    @Query("SELECT * FROM articles WHERE status = :status")
+    suspend fun getArticlesByStatus(status: String): List<ArticleEntity>
+
+    @Query("SELECT * FROM articles WHERE id = :id LIMIT 1")
+    suspend fun findById(id: String): ArticleEntity?
+
+    @Query("SELECT * FROM articles WHERE id IN (:ids)")
+    suspend fun getArticlesImmediate(ids: List<String>): List<ArticleEntity>
+
+    @Query("SELECT * FROM articles")
+    suspend fun getAllArticlesImmediate(): List<ArticleEntity>
+
+    @Query("SELECT * FROM articles WHERE status != 'read' ORDER BY publishedAt ASC")
+    fun getAllUnreadArticlesOldestFirst(): Flow<List<ArticleEntity>>
 }

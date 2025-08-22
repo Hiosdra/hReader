@@ -18,6 +18,9 @@ import com.hiosdra.hreader.worker.ContentSyncWorker
 class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
+        private const val SYNC_WORK_NAME = "OnExitChainedSync"
+        private const val MIN_INTERVAL_MS = 2 * 60 * 1000L
+        private var lastSyncAt: Long = 0L
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,26 +37,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        Log.i(TAG, "App stopping, triggering content sync")
         triggerContentSync()
     }
 
     private fun triggerContentSync() {
-        val contentSyncRequest = OneTimeWorkRequestBuilder<ContentSyncWorker>().build()
-        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
-            "OnExitContentSync",
-            ExistingWorkPolicy.REPLACE,
-            contentSyncRequest
-        )
-
-        val articleContentSyncRequest =
-            OneTimeWorkRequestBuilder<ArticleContentSyncWorker>().build()
-        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
-            "OnExitArticleContentSync",
-            ExistingWorkPolicy.REPLACE,
-            articleContentSyncRequest
-        )
-
-        Log.i(TAG, "Content sync tasks scheduled")
+        val now = System.currentTimeMillis()
+        if (now - lastSyncAt < MIN_INTERVAL_MS) {
+            Log.i(TAG, "Skipping sync (throttled)")
+            return
+        }
+        lastSyncAt = now
+        Log.i(TAG, "Scheduling chained content sync")
+        val wm = WorkManager.getInstance(applicationContext)
+        val contentSync = OneTimeWorkRequestBuilder<ContentSyncWorker>().build()
+        val articleContentSync = OneTimeWorkRequestBuilder<ArticleContentSyncWorker>().build()
+        wm.beginUniqueWork(SYNC_WORK_NAME, ExistingWorkPolicy.REPLACE, contentSync)
+            .then(articleContentSync)
+            .enqueue()
     }
 }
