@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.util.SyncPerformanceLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -25,7 +26,9 @@ class ArticleContentSyncWorker(
         Log.i(TAG, "Starting ArticleContentSyncWorker")
         try {
             Log.d(TAG, "Cleaning up orphaned content before prefetch")
-            articleContentRepository.cleanupOrphanedContent()
+            SyncPerformanceLogger.measureSyncTime("Orphaned content cleanup") {
+                articleContentRepository.cleanupOrphanedContent()
+            }
             Log.d(TAG, "Cleanup complete")
 
             Log.d(TAG, "Fetching local unread articles")
@@ -37,8 +40,13 @@ class ArticleContentSyncWorker(
             }
 
             if (entriesToFetch.isNotEmpty()) {
-                Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles")
-                articleContentRepository.prefetchArticleContent(entriesToFetch)
+                val limitedEntries = entriesToFetch.take(50) // Apply our 50 article limit
+                SyncPerformanceLogger.logBatchInfo(50, entriesToFetch.size)
+                Log.d(TAG, "Prefetching content for ${limitedEntries.size} articles (limited from ${entriesToFetch.size})")
+                
+                SyncPerformanceLogger.measureSyncTime("Article content prefetch") {
+                    articleContentRepository.prefetchArticleContent(limitedEntries)
+                }
                 Log.i(TAG, "Content prefetching completed")
             } else {
                 Log.i(TAG, "No articles to prefetch")
