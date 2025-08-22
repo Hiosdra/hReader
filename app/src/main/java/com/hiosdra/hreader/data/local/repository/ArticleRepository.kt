@@ -12,6 +12,7 @@ import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.MinifluxApiRepository
 import com.hiosdra.hreader.data.remote.dto.UpdateEntriesStatusRequest
+import com.hiosdra.hreader.util.SyncPerformanceLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -63,6 +64,8 @@ class ArticleRepository(
         val useIncrementalSync = lastSyncTimestamp > 0 && 
                                  (syncStartTime - lastSyncTimestamp) < 24 * 60 * 60 * 1000L // Last sync within 24h
         
+        SyncPerformanceLogger.logSyncMode(useIncrementalSync, lastSyncTimestamp.takeIf { it > 0 })
+        
         while (true) {
             val response = if (useIncrementalSync) {
                 val lastSyncIso = Instant.ofEpochMilli(lastSyncTimestamp)
@@ -90,17 +93,22 @@ class ArticleRepository(
             if (articles.size < limit) break
             offset += limit
         }
-        db.withTransaction {
-            feedDao.insertFeeds(feedsMap.values.toList())
-            // Batch query for existing articles to optimize database access
-            val articleIds = fetchedArticles.map { it.id }
-            val existingArticles = articleDao.getArticlesImmediate(articleIds).associateBy { it.id }
-            
-            val toInsert = fetchedArticles.map { remote ->
-                val existing = existingArticles[remote.id]
-                if (existing?.status == "read" && remote.status != "read") remote.copy(status = "read") else remote
+        
+        SyncPerformanceLogger.logBatchInfo(limit, fetchedArticles.size)
+        
+        SyncPerformanceLogger.measureSyncTime("Database transaction") {
+            db.withTransaction {
+                feedDao.insertFeeds(feedsMap.values.toList())
+                // Batch query for existing articles to optimize database access
+                val articleIds = fetchedArticles.map { it.id }
+                val existingArticles = articleDao.getArticlesImmediate(articleIds).associateBy { it.id }
+                
+                val toInsert = fetchedArticles.map { remote ->
+                    val existing = existingArticles[remote.id]
+                    if (existing?.status == "read" && remote.status != "read") remote.copy(status = "read") else remote
+                }
+                articleDao.insertArticles(toInsert)
             }
-            articleDao.insertArticles(toInsert)
         }
         
         // Update last sync timestamp
