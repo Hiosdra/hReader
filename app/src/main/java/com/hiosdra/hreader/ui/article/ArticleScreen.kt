@@ -1,10 +1,18 @@
 package com.hiosdra.hreader.ui.article
 
+import android.app.DownloadManager
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +31,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,9 +61,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.FileProvider
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -64,8 +77,14 @@ import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import com.hiosdra.hreader.util.cleanUrl
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import java.io.File
+import java.io.FileOutputStream
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -280,6 +299,8 @@ private fun ArticleContent(
     val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
     val progressState = remember { mutableFloatStateOf(0f) }
     var showImage by remember { mutableStateOf(false) }
+    var imageActionsUrl by remember { mutableStateOf<String?>(null) }
+    var imageShareUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -349,7 +370,8 @@ private fun ArticleContent(
                         baseUrl = entry.url,
                         modifier = Modifier.fillMaxWidth(),
                         onLinkClick = { url -> openChromeCustomTab(context, url) },
-                        onScrollProgress = { p -> progressState.floatValue = p }
+                        onScrollProgress = { p -> progressState.floatValue = p },
+                        onImageLongClick = { url -> imageActionsUrl = url }
                     )
                 }
             }
@@ -358,6 +380,38 @@ private fun ArticleContent(
     if (showImage && mainImageUrl != null) {
         Dialog(onDismissRequest = { showImage = false }) {
             ZoomableImage(url = mainImageUrl) { showImage = false }
+        }
+    }
+    val actionsUrl = imageActionsUrl
+    if (actionsUrl != null) {
+        ImageActionsDialog(
+            imageUrl = actionsUrl,
+            onDismiss = { imageActionsUrl = null },
+            onView = {
+                imageActionsUrl = null
+                showImage = true
+            },
+            onCopy = {
+                copyTextToClipboard(context, "Image URL", actionsUrl)
+                imageActionsUrl = null
+            },
+            onDownload = {
+                enqueueImageDownload(context, actionsUrl)
+                imageActionsUrl = null
+            },
+            onShare = {
+                imageShareUrl = actionsUrl
+                imageActionsUrl = null
+            }
+        )
+    }
+    val shareTarget = imageShareUrl
+    if (shareTarget != null) {
+        LaunchedEffect(shareTarget) {
+            Toast.makeText(context, "Preparing image...", Toast.LENGTH_SHORT).show()
+            val shared = shareImageFile(context, entry.title, shareTarget)
+            if (!shared) Toast.makeText(context, "Image share failed", Toast.LENGTH_SHORT).show()
+            imageShareUrl = null
         }
     }
 }
@@ -385,4 +439,101 @@ private fun formatPublishedDate(raw: String): String {
         val instant = Instant.parse(raw)
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(instant)
     }.getOrElse { raw }
+}
+
+@Composable
+private fun ImageActionsDialog(
+    imageUrl: String,
+    onDismiss: () -> Unit,
+    onView: () -> Unit,
+    onCopy: () -> Unit,
+    onDownload: () -> Unit,
+    onShare: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Image") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(imageUrl, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        },
+        confirmButton = {
+            Column {
+                Button(onClick = onView, modifier = Modifier.fillMaxWidth()) { Text("View") }
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = onCopy, modifier = Modifier.fillMaxWidth()) { Text("Copy URL") }
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Download") }
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = onShare, modifier = Modifier.fillMaxWidth()) { Text("Share image") }
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Close") }
+            }
+        },
+        dismissButton = {}
+    )
+}
+
+private fun copyTextToClipboard(context: Context, label: String, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
+    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+}
+
+private fun enqueueImageDownload(context: Context, url: String) {
+    runCatching {
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val request = DownloadManager.Request(Uri.parse(url))
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, Uri.parse(url).lastPathSegment ?: "image")
+        dm.enqueue(request)
+        Toast.makeText(context, "Downloading", Toast.LENGTH_SHORT).show()
+    }
+}
+
+private val imageShareClient = OkHttpClient()
+
+// Replace old shareImageUrl with new implementation
+private suspend fun shareImageFile(context: Context, title: String?, url: String): Boolean = withContext(Dispatchers.IO) {
+    try {
+        val request = Request.Builder().url(url).build()
+        val resp = imageShareClient.newCall(request).execute()
+        try {
+            if (!resp.isSuccessful) return@withContext false
+            val body = resp.body ?: return@withContext false
+            val bytes = body.bytes()
+            val contentType = body.contentType()?.toString() ?: "image/jpeg"
+            var ext = when {
+                contentType.contains("png") -> ".png"
+                contentType.contains("webp") -> ".webp"
+                contentType.contains("gif") -> ".gif"
+                contentType.contains("svg") -> ".svg"
+                contentType.contains("jpeg") || contentType.contains("jpg") -> ".jpg"
+                else -> ".img"
+            }
+            val lastSeg = Uri.parse(url).lastPathSegment
+            if (lastSeg != null && lastSeg.contains('.')) ext = "" // already has extension
+            val safeNameBase = (lastSeg ?: "image_${System.currentTimeMillis()}").take(80)
+            val fileName = if (ext.isEmpty()) safeNameBase else safeNameBase + ext
+            val dir = File(context.cacheDir, "shared_images").apply { mkdirs() }
+            val outFile = File(dir, fileName)
+            FileOutputStream(outFile).use { it.write(bytes) }
+            val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", outFile)
+            withContext(Dispatchers.Main) {
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = contentType
+                    putExtra(Intent.EXTRA_SUBJECT, title ?: "Image")
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, null))
+            }
+            true
+        } finally {
+            resp.close()
+        }
+    } catch (e: Exception) {
+        false
+    }
 }
