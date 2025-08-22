@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.2.10"
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.10"
     id("kotlin-kapt")
-    id("com.google.devtools.ksp") version "2.2.0-2.0.2"
+    id("com.google.devtools.ksp") version "2.2.10-2.0.2"
 }
 
 android {
@@ -78,7 +78,6 @@ dependencies {
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")
     ksp("androidx.room:room-compiler:2.7.2")
-    annotationProcessor("androidx.room:room-compiler:2.7.2")
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.10.3")

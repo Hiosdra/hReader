@@ -99,7 +99,7 @@ fun FeedsScreen(
                         },
                         singleLine = true
                     )
-                    
+
                     LazyColumn {
                         items(uiState.filteredFeeds) { feed ->
                             val unreadCount = uiState.unreadCounts[feed.id] ?: 0
@@ -107,7 +107,7 @@ fun FeedsScreen(
                                 feed = feed,
                                 unreadCount = unreadCount,
                                 onFeedClick = {
-                                    navController.navigate("articles?feedId=${feed.id}")
+                                    navController.navigate("main?feedId=${feed.id}")
                                 },
                                 onDetailsClick = {
                                     navController.navigate("feed_details/${feed.id}")
