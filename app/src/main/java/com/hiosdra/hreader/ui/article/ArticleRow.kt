@@ -1,15 +1,13 @@
 package com.hiosdra.hreader.ui.article
 
+import android.text.Html
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -94,22 +92,18 @@ fun ArticleRow(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
-                        val preview =
-                            entry.content?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: ""
+                        val preview = entry.content?.let { raw ->
+                            extractTextPreview(raw)
+                        }.orEmpty()
                         if (preview.isNotBlank()) {
-                            Box {
-                                ArticleWebView(
-                                    articleContent = preview,
-                                    baseUrl = entry.url,
-                                    modifier = Modifier.heightIn(max = 96.dp)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .background(extendedColors.cardBackground.copy(alpha = 0.5f))
-                                        .clickable { openArticle() }
-                                )
-                            }
+                            Text(
+                                text = preview,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = extendedColors.author,
+                                maxLines = 4,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
                         }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -144,4 +138,18 @@ fun ArticleRow(
             }
         }
     }
+}
+
+private fun extractTextPreview(html: String): String {
+    val noScripts = html.replace(Regex("(?is)<(script|style)[^>]*?>.*?</\\1>"), " ")
+    val noImages = noScripts.replace(Regex("(?is)<img[^>]*?>"), " ")
+    val noSvgs = noImages.replace(Regex("(?is)<svg[^>]*?>.*?</svg>"), " ")
+    val noVideos = noSvgs.replace(Regex("(?is)<(video|source|picture)[^>]*?>.*?</\\1>"), " ")
+    val text = Html.fromHtml(noVideos, Html.FROM_HTML_MODE_LEGACY).toString()
+    return text
+        .replace('\uFFFC', ' ') // object replacement char
+        .lines()
+        .map { it.trim() }
+        .firstOrNull { it.isNotBlank() }
+        .orEmpty()
 }
