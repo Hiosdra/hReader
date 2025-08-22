@@ -56,12 +56,14 @@ class ArticleContentRepository(
 
     suspend fun cleanupOrphanedContent() {
         val allContent = articleContentDao.getAllArticleContents()
+        if (allContent.isEmpty()) return
         val allArticles = articleDao.getAllArticlesOldestFirst().first()
         val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
-
+        if (currentEntryIds.isEmpty()) return
         val contentToDelete = allContent.filter { content ->
             !currentEntryIds.contains(content.entryId)
         }
+        if (contentToDelete.isEmpty()) return
         articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
     }
 }

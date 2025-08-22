@@ -25,10 +25,6 @@ class ArticleViewModel(
     private val _uiState = MutableStateFlow(ArticleUiState())
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
-    init {
-        refreshArticles()
-    }
-
     fun refreshArticles() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
