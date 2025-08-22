@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.ui.article
 
+import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -16,7 +17,8 @@ fun ArticleWebView(
     baseUrl: String?,
     modifier: Modifier = Modifier,
     onLinkClick: ((String) -> Unit)? = null,
-    onScrollProgress: ((Float) -> Unit)? = null
+    onScrollProgress: ((Float) -> Unit)? = null,
+    onImageLongClick: ((String) -> Unit)? = null
 ) {
     val textColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.onSurface.toArgb())
     val linkColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.primary.toArgb())
@@ -56,6 +58,20 @@ fun ArticleWebView(
                 }
                 setOnScrollChangeListener { v, _, _, _, _ ->
                     if (v is WebView) updateScrollProgress(v)
+                }
+                setOnLongClickListener { v: View ->
+                    val result = (v as? WebView)?.hitTestResult
+                    if (result != null) {
+                        val type = result.type
+                        if (type == WebView.HitTestResult.IMAGE_TYPE || type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+                            val url = result.extra
+                            if (!url.isNullOrBlank()) {
+                                onImageLongClick?.invoke(url)
+                                return@setOnLongClickListener true
+                            }
+                        }
+                    }
+                    false
                 }
             }
         },
