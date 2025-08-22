@@ -21,20 +21,24 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
+    private var fullList: List<Entry> = emptyList()
+    private val sessionReadIds = mutableSetOf<Long>()
+    private var collectStarted = false
+
     init {
         loadEntries()
     }
 
     internal fun loadEntries() {
-        Log.i("MainViewModel", "Loading entries...")
-        if (_uiState.value.isLoading) return
-
+        if (collectStarted) return
+        collectStarted = true
+        Log.i("MainViewModel", "Loading all entries (filtering previously read, keeping session newly read visible)")
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
                 articleRepository.getAllArticlesOldestFirst().collect { fetchedEntries ->
-                    _uiState.value = _uiState.value.copy(entries = fetchedEntries, isLoading = false)
-                    Log.i("MainViewModel", "Entries loaded successfully: ${fetchedEntries.size} entries")
+                    fullList = fetchedEntries
+                    applyFilterAndEmit(isLoadingDone = true)
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -46,43 +50,56 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
         }
     }
 
+    private fun applyFilterAndEmit(isLoadingDone: Boolean = false) {
+        val filtered = fullList.filter { entry ->
+            if (entry.status != "read") true else sessionReadIds.contains(entry.id)
+        }
+        _uiState.value = _uiState.value.copy(
+            entries = filtered,
+            isLoading = if (isLoadingDone) false else _uiState.value.isLoading
+        )
+    }
+
     fun refreshFromNetwork() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRefreshing = true, error = null)
             try {
+                // Clearing sessionReadIds enforces removal of previously session-kept read items after refresh
+                sessionReadIds.clear()
                 articleRepository.refreshArticles()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Network refresh failed: ${e.message}")
             } finally {
                 _uiState.value = _uiState.value.copy(isRefreshing = false)
+                applyFilterAndEmit()
             }
         }
     }
 
     fun updateEntryReadStatus(entryId: Long, checked: Boolean) {
-        val entries = _uiState.value.entries.map {
-            if (it.id == entryId) it.copy(status = if (checked) "read" else "unread") else it
+        val target = fullList.find { it.id == entryId } ?: return
+        val newStatus = if (checked) "read" else "unread"
+        fullList = fullList.map {
+            if (it.id == entryId) it.copy(status = newStatus) else it
         }
-        _uiState.value = _uiState.value.copy(entries = entries)
+        if (checked) sessionReadIds.add(entryId) else sessionReadIds.remove(entryId)
+        applyFilterAndEmit()
         viewModelScope.launch {
             try {
-                articleRepository.updateReadStatus(entryId.toString(), if (checked) "read" else "unread")
-            } catch (e: Exception) {
-                // Optionally handle error (rollback local change, show error, etc)
-            }
+                articleRepository.updateReadStatus(entryId.toString(), newStatus)
+            } catch (_: Exception) { }
         }
     }
 
     fun markAllAsRead() {
-        val entries = _uiState.value.entries.map { it.copy(status = "read") }
-        _uiState.value = _uiState.value.copy(entries = entries)
+        val ids = fullList.map { it.id }
+        fullList = fullList.map { it.copy(status = "read") }
+        sessionReadIds.addAll(ids)
+        applyFilterAndEmit()
         viewModelScope.launch {
             try {
-                val articleIds = _uiState.value.entries.map { it.id.toString() }
-                articleRepository.updateReadStatus(articleIds, "read")
-            } catch (e: Exception) {
-                // Optionally handle error (rollback local change, show error, etc)
-            }
+                articleRepository.updateReadStatus(ids.map { it.toString() }, "read")
+            } catch (_: Exception) { }
         }
     }
 }

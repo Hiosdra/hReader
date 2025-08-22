@@ -7,6 +7,7 @@ import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.io.IOException
 
 class ContentSyncWorker(
     appContext: Context,
@@ -28,7 +29,7 @@ class ContentSyncWorker(
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "ContentSyncWorker failed: ${e.message}", e)
-            Result.retry()
+            if (e is IOException) Result.retry() else Result.failure()
         }
     }
 }
