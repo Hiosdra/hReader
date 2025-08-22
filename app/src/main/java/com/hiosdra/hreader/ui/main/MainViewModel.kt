@@ -27,6 +27,7 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
     private val sessionReadIds = mutableSetOf<Long>()
     private var collectionJob: Job? = null
     private var currentFeedId: Long? = null
+    private var lastStatuses: Map<Long, String> = emptyMap()
 
     init {
         loadEntries() // default: all items
@@ -60,7 +61,15 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
                 }
                 val feedTitle = feedId?.let { articleRepository.getFeed(it)?.title }
                 flow.collect { fetchedEntries ->
+                    // detect unread -> read transitions not initiated via updateEntryReadStatus (e.g. article screen auto-mark)
+                    fetchedEntries.forEach { entry ->
+                        val previous = lastStatuses[entry.id]
+                        if (previous != null && previous != "read" && entry.status == "read") {
+                            sessionReadIds.add(entry.id)
+                        }
+                    }
                     fullList = fetchedEntries
+                    lastStatuses = fetchedEntries.associate { it.id to (it.status ?: "unread") }
                     applyFilterAndEmit(isLoadingDone = true, feedTitle = feedTitle)
                 }
             } catch (e: Exception) {
