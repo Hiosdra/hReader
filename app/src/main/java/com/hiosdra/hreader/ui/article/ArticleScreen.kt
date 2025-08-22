@@ -35,8 +35,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -154,7 +156,13 @@ fun ArticleScreen(
                         }
                         ctx.startActivity(Intent.createChooser(sendIntent, null))
                     }
-                }
+                },
+                onAiOverview = {
+                    if (entry != null) {
+                        viewModel.generateAiOverview(entry.id)
+                    }
+                },
+                isGeneratingOverview = uiState.isGeneratingOverview
             )
         }
     ) { paddingValues ->
@@ -174,9 +182,25 @@ fun ArticleScreen(
                     isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
-                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) }
+                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
+                    aiOverviews = uiState.aiOverviews,
+                    isGeneratingOverview = uiState.isGeneratingOverview
                 )
             }
+        }
+        
+        // AI Overview Error Dialog
+        uiState.overviewError?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearOverviewError() },
+                title = { Text("AI Overview Error") },
+                text = { Text(error) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearOverviewError() }) {
+                        Text("OK")
+                    }
+                }
+            )
         }
     }
 }
@@ -189,7 +213,9 @@ private fun ArticlePager(
     isWebViewMode: Boolean,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
-    getContentForEntry: (Long) -> String?
+    getContentForEntry: (Long) -> String?,
+    aiOverviews: Map<Long, String> = emptyMap(),
+    isGeneratingOverview: Boolean = false
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
@@ -217,7 +243,9 @@ private fun ArticlePager(
                     mainImageUrl = mainImageUrl,
                     modifier = Modifier.padding(paddingValues),
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
-                    articleContent = getContentForEntry(entry.id) ?: "No content available"
+                    articleContent = getContentForEntry(entry.id) ?: "No content available",
+                    aiOverview = aiOverviews[entry.id],
+                    isGeneratingOverview = isGeneratingOverview && pagerState.currentPage == page
                 )
                 LaunchedEffect(entry.id) {
                     if (entry.status != "read") {
@@ -239,7 +267,9 @@ private fun ArticleTopBar(
     onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit,
     onBypassPaywall: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    onAiOverview: () -> Unit,
+    isGeneratingOverview: Boolean = false
 ) {
     val paywallBypassService: PaywallBypassService = koinInject()
 
@@ -252,6 +282,23 @@ private fun ArticleTopBar(
         },
         actions = {
             if (entryUrl != null) {
+                IconButton(
+                    onClick = onAiOverview,
+                    enabled = !isGeneratingOverview
+                ) {
+                    if (isGeneratingOverview) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Filled.Star,
+                            contentDescription = "AI Overview",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
                 if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
                     IconButton(onClick = onBypassPaywall) {
                         Icon(
@@ -297,7 +344,9 @@ private fun ArticleContent(
     mainImageUrl: String?,
     modifier: Modifier = Modifier,
     onReadStatusChange: ((Boolean) -> Unit)? = null,
-    articleContent: String
+    articleContent: String,
+    aiOverview: String? = null,
+    isGeneratingOverview: Boolean = false
 ) {
     val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
     val progressState = remember { mutableFloatStateOf(0f) }
@@ -355,6 +404,66 @@ private fun ArticleContent(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     androidx.compose.material3.Divider()
+                    
+                    // AI Overview Section
+                    if (aiOverview != null || isGeneratingOverview) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = androidx.compose.material3.CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Star,
+                                        contentDescription = "AI Overview",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "AI Overview",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                if (isGeneratingOverview) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Generating overview...",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = aiOverview ?: "",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    
                     if (mainImageUrl != null) {
                         Spacer(modifier = Modifier.height(20.dp))
                         Image(

@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import org.koin.compose.koinInject
@@ -53,7 +54,9 @@ fun SettingsScreen(
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
+            var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
             
+            // Paywall Bypass Method Card
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             ) {
@@ -88,6 +91,56 @@ fun SettingsScreen(
                                 Text(text = method.displayName, style = MaterialTheme.typography.bodyMedium)
                                 Text(
                                     text = method.baseUrl,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // AI Model Selection Card
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "AI Model for Article Overview",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        text = "Choose which AI model to use for generating article summaries",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    AiModel.entries.forEach { model ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedAiModel = model
+                                    preferencesManager.setAiModel(model)
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            RadioButton(
+                                selected = selectedAiModel == model,
+                                onClick = {
+                                    selectedAiModel = model
+                                    preferencesManager.setAiModel(model)
+                                }
+                            )
+                            Column(modifier = Modifier.padding(start = 8.dp)) {
+                                Text(text = model.displayName, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = model.description,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
