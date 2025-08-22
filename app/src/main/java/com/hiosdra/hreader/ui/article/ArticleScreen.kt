@@ -10,6 +10,7 @@ import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -68,9 +72,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
-import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.pager.HorizontalPager
-import com.google.accompanist.pager.rememberPagerState
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
@@ -89,7 +90,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPagerApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ArticleScreen(
     navController: NavHostController,
@@ -98,7 +99,7 @@ fun ArticleScreen(
     viewModel: ArticleViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val pagerState = rememberPagerState(initialPage = initialIndex)
+    val pagerState = rememberPagerState(initialPage = 0) { uiState.entries.size }
     var isWebViewMode by remember { mutableStateOf(false) }
 
     val preferencesManager: PreferencesManager = koinInject()
@@ -108,18 +109,20 @@ fun ArticleScreen(
         viewModel.loadArticlesByIds(articleIds)
     }
 
-    LaunchedEffect(initialIndex) {
-        pagerState.scrollToPage(initialIndex)
+    LaunchedEffect(initialIndex, uiState.entries.size) {
+        if (uiState.entries.isNotEmpty() && initialIndex in uiState.entries.indices) {
+            pagerState.scrollToPage(initialIndex)
+        }
     }
 
     // Sync pager with state
     LaunchedEffect(pagerState.currentPage) {
-        if (pagerState.currentPage != uiState.currentIndex) {
+        if (pagerState.currentPage != uiState.currentIndex && pagerState.currentPage in uiState.entries.indices) {
             viewModel.setCurrentIndex(pagerState.currentPage)
         }
     }
     LaunchedEffect(uiState.currentIndex) {
-        if (pagerState.currentPage != uiState.currentIndex) {
+        if (uiState.currentIndex in uiState.entries.indices && pagerState.currentPage != uiState.currentIndex) {
             pagerState.scrollToPage(uiState.currentIndex)
         }
     }
@@ -179,9 +182,10 @@ fun ArticleScreen(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun ArticlePager(
     entries: List<Entry>,
-    pagerState: com.google.accompanist.pager.PagerState,
+    pagerState: PagerState,
     isWebViewMode: Boolean,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
@@ -189,7 +193,6 @@ private fun ArticlePager(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
-            count = entries.size,
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
