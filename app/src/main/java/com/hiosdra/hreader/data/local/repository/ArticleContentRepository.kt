@@ -39,7 +39,10 @@ class ArticleContentRepository(
     }
 
     suspend fun prefetchArticleContent(entries: List<Pair<Long, String>>) = coroutineScope {
-        val deferredResults = entries.map { (entryId, url) ->
+        // Limit prefetching to the most recent 50 unread articles to improve performance
+        val limitedEntries = entries.take(50)
+        
+        val deferredResults = limitedEntries.map { (entryId, url) ->
             async(Dispatchers.IO) {
                 try {
                     if (articleContentDao.getArticleContent(entryId) == null) {
