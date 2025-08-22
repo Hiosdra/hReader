@@ -14,7 +14,6 @@ import com.hiosdra.hreader.navigation.AppNavigation
 import com.hiosdra.hreader.ui.theme.HReaderTheme
 import com.hiosdra.hreader.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.worker.ContentSyncWorker
-import org.koin.androidx.compose.KoinAndroidContext
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -25,11 +24,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            KoinAndroidContext {
-                HReaderTheme {
-                    Surface(color = MaterialTheme.colorScheme.background) {
-                        AppNavigation()
-                    }
+            HReaderTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    AppNavigation()
                 }
             }
         }
@@ -49,7 +46,8 @@ class MainActivity : ComponentActivity() {
             contentSyncRequest
         )
 
-        val articleContentSyncRequest = OneTimeWorkRequestBuilder<ArticleContentSyncWorker>().build()
+        val articleContentSyncRequest =
+            OneTimeWorkRequestBuilder<ArticleContentSyncWorker>().build()
         WorkManager.getInstance(applicationContext).enqueueUniqueWork(
             "OnExitArticleContentSync",
             ExistingWorkPolicy.REPLACE,
