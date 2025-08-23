@@ -18,10 +18,11 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -190,7 +191,7 @@ fun ArticleScreen(
                 )
             }
         }
-        
+
         // AI Overview Error Dialog
         uiState.overviewError?.let { error ->
             AlertDialog(
@@ -395,7 +396,7 @@ private fun ArticleContent(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     androidx.compose.material3.Divider()
-                    
+
                     if (mainImageUrl != null) {
                         Spacer(modifier = Modifier.height(20.dp))
                         Image(
@@ -463,8 +464,8 @@ private fun ArticleContent(
 
 @Composable
 private fun MetaChips(
-    author: String?, 
-    dateText: String, 
+    author: String?,
+    dateText: String,
     readingTimeMinutes: Int?,
     entryId: Long? = null,
     aiOverview: String? = null,
@@ -472,39 +473,40 @@ private fun MetaChips(
     onAiOverviewClick: (() -> Unit)? = null
 ) {
     val isAiExpanded = remember { mutableStateOf(false) }
-    
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
+        @OptIn(ExperimentalLayoutApi::class)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val items = buildList {
                 if (!author.isNullOrBlank()) add(author)
                 add(dateText)
                 if (readingTimeMinutes != null && readingTimeMinutes > 0) add("${readingTimeMinutes} min read")
             }
-            items.forEachIndexed { index, text ->
+            items.forEach { text ->
                 androidx.compose.material3.AssistChip(
                     onClick = {},
                     label = { Text(text) }
                 )
-                if (index != items.lastIndex) Spacer(modifier = Modifier.width(8.dp))
             }
-            
-            // AI Overview Chip
             if (entryId != null && onAiOverviewClick != null) {
-                if (items.isNotEmpty()) Spacer(modifier = Modifier.width(8.dp))
-                
                 androidx.compose.material3.AssistChip(
                     onClick = {
-                        if (aiOverview != null || isGeneratingOverview) {
-                            isAiExpanded.value = !isAiExpanded.value
+                        if (aiOverview == null) {
+                            if (!isGeneratingOverview) {
+                                isAiExpanded.value = true
+                                onAiOverviewClick()
+                            } else {
+                                // ignore taps while generating
+                            }
                         } else {
-                            onAiOverviewClick()
+                            isAiExpanded.value = !isAiExpanded.value
                         }
                     },
-                    label = { 
+                    label = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Filled.Star,
@@ -513,31 +515,32 @@ private fun MetaChips(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (aiOverview != null || isGeneratingOverview) {
-                                    if (isAiExpanded.value) "Hide Overview" else "Show Overview"
-                                } else {
-                                    "AI Overview"
-                                }
-                            )
+                            val chipText = when {
+                                aiOverview == null && isGeneratingOverview -> "Generating..."
+                                aiOverview == null -> "AI Overview"
+                                isAiExpanded.value -> "Hide Overview"
+                                else -> "Show Overview"
+                            }
+                            Text(chipText)
                         }
                     },
+                    enabled = !(aiOverview == null && isGeneratingOverview),
                     colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
-                        containerColor = if (aiOverview != null || isGeneratingOverview) 
-                            MaterialTheme.colorScheme.primaryContainer 
-                        else 
+                        containerColor = if (aiOverview != null || isGeneratingOverview)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
                             MaterialTheme.colorScheme.surfaceVariant
                     )
                 )
             }
         }
-        
+
         // AI Overview Content with Animation
         if (entryId != null && (aiOverview != null || isGeneratingOverview) && isAiExpanded.value) {
-            androidx.compose.animation.AnimatedVisibility(
+            AnimatedVisibility(
                 visible = isAiExpanded.value,
-                enter = androidx.compose.animation.slideInVertically() + androidx.compose.animation.fadeIn(),
-                exit = androidx.compose.animation.slideOutVertically() + androidx.compose.animation.fadeOut()
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut()
             ) {
                 Card(
                     modifier = Modifier
