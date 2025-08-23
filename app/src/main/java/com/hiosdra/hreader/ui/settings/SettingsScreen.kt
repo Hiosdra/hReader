@@ -1,7 +1,6 @@
 package com.hiosdra.hreader.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +32,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,7 +60,12 @@ fun SettingsScreen(
 ) {
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
     var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
+    var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
     var showPerformanceDialog by remember { mutableStateOf(false) }
+    val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
+        bionicReadingEnabled = enabled
+        preferencesManager.setBionicReadingEnabled(enabled)
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -79,6 +85,47 @@ fun SettingsScreen(
             modifier = Modifier.padding(paddingValues).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Reading Experience Card
+            item {
+                Text(
+                    text = "Reading Experience",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onToggleBionicReading(!bionicReadingEnabled) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Bionic Reading",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "Highlight portions of words for faster reading",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = bionicReadingEnabled,
+                                onCheckedChange = onToggleBionicReading
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Paywall Bypass Method Section
             item {
                 Text(
                     text = "Paywall Bypass Method",
@@ -120,6 +167,8 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            // AI Model Selection Section
             item {
                 Text(
                     text = "AI Model for Article Overview",
@@ -137,6 +186,8 @@ fun SettingsScreen(
                     }
                 )
             }
+
+            // Performance Section
             item {
                 Text(
                     text = "Performance",
@@ -295,12 +346,12 @@ private fun AiModelCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 modifier = Modifier.weight(1f),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
@@ -313,7 +364,7 @@ private fun AiModelCard(
                             },
                             shape = CircleShape
                         ),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Star,
@@ -326,9 +377,9 @@ private fun AiModelCard(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
-                
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = model.displayName,
@@ -354,7 +405,7 @@ private fun AiModelCard(
                     )
                 }
             }
-            
+
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
