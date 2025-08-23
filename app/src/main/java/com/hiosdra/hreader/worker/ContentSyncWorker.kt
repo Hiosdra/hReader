@@ -15,6 +15,7 @@ class ContentSyncWorker(
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params), KoinComponent {
     private val repository: ArticleRepository by inject()
+    private val syncPerformanceLogger: SyncPerformanceLogger by inject()
 
     companion object {
         private const val TAG = "ContentSyncWorker"
@@ -25,7 +26,7 @@ class ContentSyncWorker(
 
         return try {
             Log.d(TAG, "Refreshing articles from remote source")
-            SyncPerformanceLogger.measureSyncTime("Article refresh") {
+            syncPerformanceLogger.measureSyncTime("Article refresh") {
                 repository.refreshArticles()
             }
             Log.i(TAG, "ContentSyncWorker completed successfully")
