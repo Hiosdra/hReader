@@ -10,6 +10,11 @@ import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -157,11 +162,6 @@ fun ArticleScreen(
                         ctx.startActivity(Intent.createChooser(sendIntent, null))
                     }
                 },
-                onAiOverview = {
-                    if (entry != null) {
-                        viewModel.generateAiOverview(entry.id)
-                    }
-                },
                 isGeneratingOverview = uiState.isGeneratingOverview
             )
         }
@@ -184,7 +184,8 @@ fun ArticleScreen(
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
                     getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                     aiOverviews = uiState.aiOverviews,
-                    isGeneratingOverview = uiState.isGeneratingOverview
+                    isGeneratingOverview = uiState.isGeneratingOverview,
+                    onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) }
                 )
             }
         }
@@ -215,7 +216,8 @@ private fun ArticlePager(
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
     getContentForEntry: (Long) -> String?,
     aiOverviews: Map<Long, String> = emptyMap(),
-    isGeneratingOverview: Boolean = false
+    isGeneratingOverview: Boolean = false,
+    onAiOverview: ((Long) -> Unit)? = null
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
@@ -245,7 +247,8 @@ private fun ArticlePager(
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
                     articleContent = getContentForEntry(entry.id) ?: "No content available",
                     aiOverview = aiOverviews[entry.id],
-                    isGeneratingOverview = isGeneratingOverview && pagerState.currentPage == page
+                    isGeneratingOverview = isGeneratingOverview && pagerState.currentPage == page,
+                    onAiOverview = onAiOverview
                 )
                 LaunchedEffect(entry.id) {
                     if (entry.status != "read") {
@@ -268,7 +271,6 @@ private fun ArticleTopBar(
     onToggleWebView: () -> Unit,
     onBypassPaywall: () -> Unit,
     onShare: () -> Unit,
-    onAiOverview: () -> Unit,
     isGeneratingOverview: Boolean = false
 ) {
     val paywallBypassService: PaywallBypassService = koinInject()
@@ -282,23 +284,6 @@ private fun ArticleTopBar(
         },
         actions = {
             if (entryUrl != null) {
-                IconButton(
-                    onClick = onAiOverview,
-                    enabled = !isGeneratingOverview
-                ) {
-                    if (isGeneratingOverview) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            Icons.Filled.Star,
-                            contentDescription = "AI Overview",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
                 if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
                     IconButton(onClick = onBypassPaywall) {
                         Icon(
@@ -346,7 +331,8 @@ private fun ArticleContent(
     onReadStatusChange: ((Boolean) -> Unit)? = null,
     articleContent: String,
     aiOverview: String? = null,
-    isGeneratingOverview: Boolean = false
+    isGeneratingOverview: Boolean = false,
+    onAiOverview: ((Long) -> Unit)? = null
 ) {
     val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
     val progressState = remember { mutableFloatStateOf(0f) }
@@ -400,69 +386,14 @@ private fun ArticleContent(
                     MetaChips(
                         author = entry.author,
                         dateText = dateText,
-                        readingTimeMinutes = entry.readingTime
+                        readingTimeMinutes = entry.readingTime,
+                        entryId = entry.id,
+                        aiOverview = aiOverview,
+                        isGeneratingOverview = isGeneratingOverview,
+                        onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     androidx.compose.material3.Divider()
-                    
-                    // AI Overview Section
-                    if (aiOverview != null || isGeneratingOverview) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = androidx.compose.material3.CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Star,
-                                        contentDescription = "AI Overview",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "AI Overview",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                if (isGeneratingOverview) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "Generating overview...",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                } else {
-                                    Text(
-                                        text = aiOverview ?: "",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
                     
                     if (mainImageUrl != null) {
                         Spacer(modifier = Modifier.height(20.dp))
@@ -530,19 +461,135 @@ private fun ArticleContent(
 }
 
 @Composable
-private fun MetaChips(author: String?, dateText: String, readingTimeMinutes: Int?) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        val items = buildList {
-            if (!author.isNullOrBlank()) add(author)
-            add(dateText)
-            if (readingTimeMinutes != null && readingTimeMinutes > 0) add("${readingTimeMinutes} min read")
+private fun MetaChips(
+    author: String?, 
+    dateText: String, 
+    readingTimeMinutes: Int?,
+    entryId: Long? = null,
+    aiOverview: String? = null,
+    isGeneratingOverview: Boolean = false,
+    onAiOverviewClick: (() -> Unit)? = null
+) {
+    val isAiExpanded = remember { mutableStateOf(false) }
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            val items = buildList {
+                if (!author.isNullOrBlank()) add(author)
+                add(dateText)
+                if (readingTimeMinutes != null && readingTimeMinutes > 0) add("${readingTimeMinutes} min read")
+            }
+            items.forEachIndexed { index, text ->
+                androidx.compose.material3.AssistChip(
+                    onClick = {},
+                    label = { Text(text) }
+                )
+                if (index != items.lastIndex) Spacer(modifier = Modifier.width(8.dp))
+            }
+            
+            // AI Overview Chip
+            if (entryId != null && onAiOverviewClick != null) {
+                if (items.isNotEmpty()) Spacer(modifier = Modifier.width(8.dp))
+                
+                androidx.compose.material3.AssistChip(
+                    onClick = {
+                        if (aiOverview != null || isGeneratingOverview) {
+                            isAiExpanded.value = !isAiExpanded.value
+                        } else {
+                            onAiOverviewClick()
+                        }
+                    },
+                    label = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = "AI Overview",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (aiOverview != null || isGeneratingOverview) {
+                                    if (isAiExpanded.value) "Hide Overview" else "Show Overview"
+                                } else {
+                                    "AI Overview"
+                                }
+                            )
+                        }
+                    },
+                    colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
+                        containerColor = if (aiOverview != null || isGeneratingOverview) 
+                            MaterialTheme.colorScheme.primaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
         }
-        items.forEachIndexed { index, text ->
-            androidx.compose.material3.AssistChip(
-                onClick = {},
-                label = { Text(text) }
-            )
-            if (index != items.lastIndex) Spacer(modifier = Modifier.width(8.dp))
+        
+        // AI Overview Content with Animation
+        if (entryId != null && (aiOverview != null || isGeneratingOverview) && isAiExpanded.value) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isAiExpanded.value,
+                enter = androidx.compose.animation.slideInVertically() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.slideOutVertically() + androidx.compose.animation.fadeOut()
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = "AI Overview",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "AI Overview",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (isGeneratingOverview) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Generating overview...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = aiOverview ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
