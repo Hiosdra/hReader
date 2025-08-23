@@ -23,7 +23,8 @@ class ArticleRepository(
     private val feedDao: FeedDao,
     private val api: MinifluxApiRepository,
     private val db: AppDatabase,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val syncPerformanceLogger: SyncPerformanceLogger
 ) {
     fun getAllArticlesOldestFirst(): Flow<List<Entry>> =
         articleDao.getAllArticlesOldestFirst().map { list ->
@@ -64,7 +65,7 @@ class ArticleRepository(
         val useIncrementalSync = lastSyncTimestamp > 0 && 
                                  (syncStartTime - lastSyncTimestamp) < 24 * 60 * 60 * 1000L // Last sync within 24h
         
-        SyncPerformanceLogger.logSyncMode(useIncrementalSync, lastSyncTimestamp.takeIf { it > 0 })
+        syncPerformanceLogger.logSyncMode(useIncrementalSync, lastSyncTimestamp.takeIf { it > 0 })
         
         while (true) {
             val response = if (useIncrementalSync) {
@@ -94,9 +95,9 @@ class ArticleRepository(
             offset += limit
         }
         
-        SyncPerformanceLogger.logBatchInfo(limit, fetchedArticles.size)
+        syncPerformanceLogger.logBatchInfo(limit, fetchedArticles.size)
         
-        SyncPerformanceLogger.measureSyncTime("Database transaction") {
+        syncPerformanceLogger.measureSyncTime("Database transaction") {
             db.withTransaction {
                 feedDao.insertFeeds(feedsMap.values.toList())
                 // Batch query for existing articles to optimize database access

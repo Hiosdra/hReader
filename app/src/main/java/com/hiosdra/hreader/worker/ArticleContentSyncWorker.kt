@@ -15,7 +15,8 @@ class ArticleContentSyncWorker(
     appContext: Context,
     params: WorkerParameters,
     private val articleRepository: ArticleRepository,
-    private val articleContentRepository: ArticleContentRepository
+    private val articleContentRepository: ArticleContentRepository,
+    private val syncPerformanceLogger: SyncPerformanceLogger
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -26,7 +27,7 @@ class ArticleContentSyncWorker(
         Log.i(TAG, "Starting ArticleContentSyncWorker")
         try {
             Log.d(TAG, "Cleaning up orphaned content before prefetch")
-            SyncPerformanceLogger.measureSyncTime("Orphaned content cleanup") {
+            syncPerformanceLogger.measureSyncTime("Orphaned content cleanup") {
                 articleContentRepository.cleanupOrphanedContent()
             }
             Log.d(TAG, "Cleanup complete")
@@ -40,10 +41,10 @@ class ArticleContentSyncWorker(
             }
 
             if (entriesToFetch.isNotEmpty()) {
-                SyncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
+                syncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
                 Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles (background sync - no limit)")
                 
-                SyncPerformanceLogger.measureSyncTime("Article content prefetch") {
+                syncPerformanceLogger.measureSyncTime("Article content prefetch") {
                     articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
                 }
                 Log.i(TAG, "Content prefetching completed")
