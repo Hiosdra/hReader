@@ -42,7 +42,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -228,7 +227,7 @@ private fun PerformanceInfoDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
+        title = {
             Text(
                 "Sync Performance Info",
                 style = MaterialTheme.typography.titleLarge
@@ -288,7 +287,7 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         // Additional details based on what's available
         record.batchSize?.let { batchSize ->
             record.totalArticles?.let { totalArticles ->
@@ -299,13 +298,13 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
                 )
             }
         }
-        
+
         record.isIncremental?.let { isIncremental ->
             val syncType = if (isIncremental) "Incremental" else "Full"
             val syncInfo = record.lastSyncHoursAgo?.let { hours ->
                 "$syncType sync (last sync: ${hours}h ago)"
             } ?: "$syncType sync"
-            
+
             Text(
                 text = syncInfo,
                 style = MaterialTheme.typography.bodySmall,
@@ -378,9 +377,9 @@ private fun AiModelCard(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
-                
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = model.displayName,
@@ -406,7 +405,7 @@ private fun AiModelCard(
                     )
                 }
             }
-            
+
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,

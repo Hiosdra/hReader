@@ -10,12 +10,19 @@ import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,8 +42,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -174,9 +183,26 @@ fun ArticleScreen(
                     isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
-                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) }
+                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
+                    aiOverviews = uiState.aiOverviews,
+                    isGeneratingOverview = uiState.isGeneratingOverview,
+                    onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) }
                 )
             }
+        }
+
+        // AI Overview Error Dialog
+        uiState.overviewError?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearOverviewError() },
+                title = { Text("AI Overview Error") },
+                text = { Text(error) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearOverviewError() }) {
+                        Text("OK")
+                    }
+                }
+            )
         }
     }
 }
@@ -189,7 +215,10 @@ private fun ArticlePager(
     isWebViewMode: Boolean,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
-    getContentForEntry: (Long) -> String?
+    getContentForEntry: (Long) -> String?,
+    aiOverviews: Map<Long, String> = emptyMap(),
+    isGeneratingOverview: Boolean = false,
+    onAiOverview: ((Long) -> Unit)? = null
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
@@ -217,7 +246,10 @@ private fun ArticlePager(
                     mainImageUrl = mainImageUrl,
                     modifier = Modifier.padding(paddingValues),
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
-                    articleContent = getContentForEntry(entry.id) ?: "No content available"
+                    articleContent = getContentForEntry(entry.id) ?: "No content available",
+                    aiOverview = aiOverviews[entry.id],
+                    isGeneratingOverview = isGeneratingOverview && pagerState.currentPage == page,
+                    onAiOverview = onAiOverview
                 )
                 LaunchedEffect(entry.id) {
                     if (entry.status != "read") {
@@ -297,7 +329,10 @@ private fun ArticleContent(
     mainImageUrl: String?,
     modifier: Modifier = Modifier,
     onReadStatusChange: ((Boolean) -> Unit)? = null,
-    articleContent: String
+    articleContent: String,
+    aiOverview: String? = null,
+    isGeneratingOverview: Boolean = false,
+    onAiOverview: ((Long) -> Unit)? = null
 ) {
     val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
     val progressState = remember { mutableFloatStateOf(0f) }
@@ -351,10 +386,15 @@ private fun ArticleContent(
                     MetaChips(
                         author = entry.author,
                         dateText = dateText,
-                        readingTimeMinutes = entry.readingTime
+                        readingTimeMinutes = entry.readingTime,
+                        entryId = entry.id,
+                        aiOverview = aiOverview,
+                        isGeneratingOverview = isGeneratingOverview,
+                        onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     androidx.compose.material3.Divider()
+
                     if (mainImageUrl != null) {
                         Spacer(modifier = Modifier.height(20.dp))
                         Image(
@@ -421,19 +461,137 @@ private fun ArticleContent(
 }
 
 @Composable
-private fun MetaChips(author: String?, dateText: String, readingTimeMinutes: Int?) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        val items = buildList {
-            if (!author.isNullOrBlank()) add(author)
-            add(dateText)
-            if (readingTimeMinutes != null && readingTimeMinutes > 0) add("${readingTimeMinutes} min read")
+private fun MetaChips(
+    author: String?,
+    dateText: String,
+    readingTimeMinutes: Int?,
+    entryId: Long? = null,
+    aiOverview: String? = null,
+    isGeneratingOverview: Boolean = false,
+    onAiOverviewClick: (() -> Unit)? = null
+) {
+    val isAiExpanded = remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        @OptIn(ExperimentalLayoutApi::class)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val items = buildList {
+                if (!author.isNullOrBlank()) add(author)
+                add(dateText)
+                if (readingTimeMinutes != null && readingTimeMinutes > 0) add("${readingTimeMinutes} min read")
+            }
+            items.forEach { text ->
+                androidx.compose.material3.AssistChip(
+                    onClick = {},
+                    label = { Text(text) }
+                )
+            }
+            if (entryId != null && onAiOverviewClick != null) {
+                androidx.compose.material3.AssistChip(
+                    onClick = {
+                        if (aiOverview == null) {
+                            isAiExpanded.value = true
+                            onAiOverviewClick()
+                        } else {
+                            isAiExpanded.value = !isAiExpanded.value
+                        }
+                    },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = "AI Overview",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            val chipText = when {
+                                aiOverview == null && isGeneratingOverview -> "Generating..."
+                                aiOverview == null -> "AI Overview"
+                                isAiExpanded.value -> "Hide Overview"
+                                else -> "Show Overview"
+                            }
+                            Text(chipText)
+                        }
+                    },
+                    enabled = !(aiOverview == null && isGeneratingOverview),
+                    colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
+                        containerColor = if (aiOverview != null || isGeneratingOverview)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
         }
-        items.forEachIndexed { index, text ->
-            androidx.compose.material3.AssistChip(
-                onClick = {},
-                label = { Text(text) }
-            )
-            if (index != items.lastIndex) Spacer(modifier = Modifier.width(8.dp))
+
+        // AI Overview Content with Animation
+        if (entryId != null && (aiOverview != null || isGeneratingOverview) && isAiExpanded.value) {
+            AnimatedVisibility(
+                visible = isAiExpanded.value,
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut()
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = "AI Overview",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "AI Overview",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (isGeneratingOverview) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Generating overview...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = aiOverview ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
