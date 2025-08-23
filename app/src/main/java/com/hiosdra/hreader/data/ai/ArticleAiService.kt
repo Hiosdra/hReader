@@ -9,23 +9,24 @@ class ArticleAiService(
     private val openRouterApiService: OpenRouterApiService
 ) {
     private val apiKey = BuildConfig.OPENROUTER_KEY
-    
+
     suspend fun generateArticleOverview(
         title: String,
         content: String,
         model: AiModel
     ): Result<String> = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) return@withContext Result.failure(Exception("Missing OpenRouter API key"))
         try {
             val cleanContent = cleanArticleContent(content)
             val request = createSummaryRequest(title, cleanContent, model)
-            
+
             Log.d("ArticleAiService", "Generating overview with model: ${model.modelId}")
-            
+
             val response = openRouterApiService.chatCompletion(
                 authorization = "Bearer $apiKey",
-                request = request.toMap()
+                request = request
             )
-            
+
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body?.error != null) {
@@ -47,15 +48,14 @@ class ArticleAiService(
             Result.failure(e)
         }
     }
-    
+
     private fun cleanArticleContent(content: String): String {
         return content
-            .replace(Regex("<[^>]+>"), " ") // Remove HTML tags
-            .replace(Regex("\\s+"), " ") // Normalize whitespace
+            .replace(Regex("<[^>]+>"), " ")
+            .replace(Regex("\\s+"), " ")
             .trim()
-            .take(3000) // Limit content length to avoid token limits
     }
-    
+
     private fun createSummaryRequest(
         title: String,
         content: String,
@@ -63,14 +63,22 @@ class ArticleAiService(
     ): OpenRouterRequest {
         val systemMessage = ChatMessage(
             role = "system",
-            content = "You are a helpful assistant that creates concise, informative overviews of articles. Provide a summary in 2-3 sentences that captures the main points and key insights."
+            content = """
+You are a helpful assistant that creates concise, informative overviews of articles. Provide a summary in 2-3 sentences that captures the main points and key insights.
+
+DO NOT INCLUDE "Here's your summary" or "Here's your overview" in the response.
+                """.trimIndent()
         )
-        
+
         val userMessage = ChatMessage(
             role = "user",
-            content = "Please provide a brief overview of this article:\n\nTitle: $title\n\nContent: $content"
+            content = """
+Please provide a brief overview of this article:
+Title: $title
+Content: $content
+""".trimIndent()
         )
-        
+
         return OpenRouterRequest(
             model = model.modelId,
             messages = listOf(systemMessage, userMessage),
