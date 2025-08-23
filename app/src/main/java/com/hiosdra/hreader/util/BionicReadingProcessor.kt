@@ -24,12 +24,14 @@ object BionicReadingProcessor {
                     if (tagLower.startsWith("<pre") || 
                         tagLower.startsWith("<code") ||
                         tagLower.startsWith("<script") ||
-                        tagLower.startsWith("<style")) {
+                        tagLower.startsWith("<style") ||
+                        tagLower.startsWith("<svg")) {
                         val closingTag = when {
                             tagLower.startsWith("<pre") -> "</pre>"
                             tagLower.startsWith("<code") -> "</code>" 
                             tagLower.startsWith("<script") -> "</script>"
                             tagLower.startsWith("<style") -> "</style>"
+                            tagLower.startsWith("<svg") -> "</svg>"
                             else -> ""
                         }
                         if (closingTag.isNotEmpty()) {
@@ -60,17 +62,19 @@ object BionicReadingProcessor {
     private fun processBionicText(text: String): String {
         if (text.isBlank()) return text
         
-        return text.replace(Regex("\\b([a-zA-Z]+)\\b")) { matchResult ->
+        return text.replace(Regex("\\b([\\p{L}]+)\\b")) { matchResult ->
             val word = matchResult.value
             makeBionicWord(word)
         }
     }
     
     private fun makeBionicWord(word: String): String {
+        if (word.length < 2) return word
+        
         return when (word.length) {
-            1, 2 -> "<b>${word[0]}</b>${word.substring(1)}"
-            3, 4, 5 -> "<b>${word.substring(0, 2)}</b>${word.substring(2)}"
-            else -> "<b>${word.substring(0, 3)}</b>${word.substring(3)}"
+            2 -> "<strong>${word[0]}</strong>${word.substring(1)}"
+            3, 4, 5 -> "<strong>${word.substring(0, 2)}</strong>${word.substring(2)}"
+            else -> "<strong>${word.substring(0, 3)}</strong>${word.substring(3)}"
         }
     }
 }
