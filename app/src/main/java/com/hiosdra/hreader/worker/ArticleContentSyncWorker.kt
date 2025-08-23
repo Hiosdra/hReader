@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.util.SyncPerformanceLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -14,7 +15,8 @@ class ArticleContentSyncWorker(
     appContext: Context,
     params: WorkerParameters,
     private val articleRepository: ArticleRepository,
-    private val articleContentRepository: ArticleContentRepository
+    private val articleContentRepository: ArticleContentRepository,
+    private val syncPerformanceLogger: SyncPerformanceLogger
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -25,7 +27,9 @@ class ArticleContentSyncWorker(
         Log.i(TAG, "Starting ArticleContentSyncWorker")
         try {
             Log.d(TAG, "Cleaning up orphaned content before prefetch")
-            articleContentRepository.cleanupOrphanedContent()
+            syncPerformanceLogger.measureSyncTime("Orphaned content cleanup") {
+                articleContentRepository.cleanupOrphanedContent()
+            }
             Log.d(TAG, "Cleanup complete")
 
             Log.d(TAG, "Fetching local unread articles")
@@ -37,8 +41,12 @@ class ArticleContentSyncWorker(
             }
 
             if (entriesToFetch.isNotEmpty()) {
-                Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles")
-                articleContentRepository.prefetchArticleContent(entriesToFetch)
+                syncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
+                Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles (background sync - no limit)")
+                
+                syncPerformanceLogger.measureSyncTime("Article content prefetch") {
+                    articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
+                }
                 Log.i(TAG, "Content prefetching completed")
             } else {
                 Log.i(TAG, "No articles to prefetch")
