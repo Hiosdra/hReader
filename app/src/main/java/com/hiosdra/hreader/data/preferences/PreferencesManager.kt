@@ -95,12 +95,23 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
+    fun getCredibilityScoreEnabled(): Boolean {
+        return sharedPreferences.getBoolean(KEY_CREDIBILITY_SCORE_ENABLED, false)
+    }
+
+    fun setCredibilityScoreEnabled(enabled: Boolean) {
+        sharedPreferences.edit()
+            .putBoolean(KEY_CREDIBILITY_SCORE_ENABLED, enabled)
+            .apply()
+    }
+
     companion object {
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_AI_MODEL = "ai_model"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
+        private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
         private const val MAX_PERFORMANCE_RECORDS = 50
     }
 }
