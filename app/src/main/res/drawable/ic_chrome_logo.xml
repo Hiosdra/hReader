@@ -3,23 +3,25 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-  <!-- Monochrome Chrome icon -->
-  <!-- Outer ring -->
+  <!-- Monochrome Chrome icon preserving original shape -->
+  <!-- White center background circle -->
   <path
-      android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,20c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z"
+      android:pathData="M12,5.998m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0"
       android:fillColor="#000000"/>
-  <!-- Center circle -->
+  <!-- Top segment (originally red) -->
   <path
-      android:pathData="M12,7c-2.76,0 -5,2.24 -5,5s2.24,5 5,5 5,-2.24 5,-5 -2.24,-5 -5,-5zM12,15c-1.66,0 -3,-1.34 -3,-3s1.34,-3 3,-3 3,1.34 3,3 -1.34,3 -3,3z"
+      android:pathData="M12,6H22.39a11.997,11.997 0,0 0,-20.782 0.002L6.804,15l0.005,-0.001A5.993,5.993 0,0 1,12 6Z"
       android:fillColor="#000000"/>
-  <!-- Three curved segments representing Chrome's tricolor design -->
+  <!-- Center blue circle -->
   <path
-      android:pathData="M12,4.5c1.93,0 3.68,0.73 5,1.93L15.5,9.5C14.65,8.59 13.4,8 12,8c-0.83,0 -1.58,0.25 -2.21,0.68L7.86,6.43C9.18,5.23 10.93,4.5 12,4.5z"
+      android:pathData="M12,12m-4.75,0a4.75,4.75 0,1 1,9.5 0a4.75,4.75 0,1 1,-9.5 0"
       android:fillColor="#000000"/>
+  <!-- Bottom right segment (originally yellow) -->
   <path
-      android:pathData="M19.5,12c0,1.93 -0.73,3.68 -1.93,5L14.5,15.5c0.91,-0.85 1.5,-2.1 1.5,-3.5 0,-0.83 -0.25,-1.58 -0.68,-2.21l2.25,-1.93C18.77,9.18 19.5,10.93 19.5,12z"
+      android:pathData="M17.196,15.002 L12.001,24A11.997,11.997 0,0 0,22.39 6.002H12l-0.001,0.005A5.993,5.993 0,0 1,17.196 15.002Z"
       android:fillColor="#000000"/>
+  <!-- Bottom left segment (originally green) -->
   <path
-      android:pathData="M12,19.5c-1.93,0 -3.68,-0.73 -5,-1.93L8.5,14.5C9.35,15.41 10.6,16 12,16c0.83,0 1.58,-0.25 2.21,-0.68l1.93,2.25C14.82,18.77 13.07,19.5 12,19.5z"
+      android:pathData="M6.805,15.002 L1.609,6.003A11.997,11.997 0,0 0,12.002 24L17.197,15.002l-0.004,-0.004a5.993,5.993 0,0 1,-10.389 0.004Z"
       android:fillColor="#000000"/>
 </vector>
