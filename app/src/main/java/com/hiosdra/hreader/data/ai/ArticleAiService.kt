@@ -74,7 +74,7 @@ class ArticleAiService(
                 } else {
                     val scoreText = body?.choices?.firstOrNull()?.message?.content
                         ?: throw Exception("No content in response")
-                    
+
                     val score = parseCredibilityScore(scoreText.trim())
                     Log.d("ArticleAiService", "Successfully generated credibility score: $score")
                     Result.success(score)
@@ -166,7 +166,7 @@ Content: $content
         return OpenRouterRequest(
             model = model.modelId,
             messages = listOf(systemMessage, userMessage),
-            maxTokens = 10,
+            maxTokens = 5000,
             temperature = 0.3
         )
     }
