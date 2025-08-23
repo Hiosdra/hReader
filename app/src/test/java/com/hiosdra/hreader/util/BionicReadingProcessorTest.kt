@@ -78,4 +78,39 @@ class BionicReadingProcessorTest {
         val unicodeResult = BionicReadingProcessor.processTextToBionic("café résumé naïve")
         println("DEBUG_UNICODE_RESULT=$unicodeResult")
     }
+
+    @Test
+    fun `test tag with attributes`() {
+        val input = "<p class='foo'>hello world</p>"
+        val result = BionicReadingProcessor.processTextToBionic(input)
+        assertEquals("<p class=\"foo\"><strong>he</strong>llo <strong>wo</strong>rld</p>", result)
+    }
+
+    @Test
+    fun `test attribute text not processed`() {
+        val input = "<img alt='some words here'>"
+        val result = BionicReadingProcessor.processTextToBionic(input)
+        assertEquals("<img alt=\"some words here\">", result)
+    }
+
+    @Test
+    fun `test nested skipped tags`() {
+        val input = "<pre><code>some code here</code></pre>"
+        val result = BionicReadingProcessor.processTextToBionic(input)
+        assertEquals("<pre><code>some code here</code></pre>", result)
+    }
+
+    @Test
+    fun `test malformed html`() {
+        val input = "<p>Hello <strong>world"
+        val result = BionicReadingProcessor.processTextToBionic(input)
+        assertEquals("<p><strong>He</strong>llo <strong><strong>wo</strong>rld</strong></p>", result)
+    }
+
+    @Test
+    fun `test attribute with angle brackets`() {
+        val input = "<img alt='a > b < c'>"
+        val result = BionicReadingProcessor.processTextToBionic(input)
+        assertEquals("<img alt=\"a &gt; b &lt; c\">", result)
+    }
 }
