@@ -11,7 +11,7 @@ import com.hiosdra.hreader.data.remote.dto.OriginalContentResponse
 import com.hiosdra.hreader.data.remote.dto.UpdateEntriesStatusRequest
 import kotlinx.coroutines.delay
 
-private const val ENTRIES_DOWNLOAD_DEFAULT_LIMIT = 50
+private const val ENTRIES_DOWNLOAD_DEFAULT_LIMIT = 200
 
 class MinifluxApiRepository(private val apiService: MinifluxApiService) {
     suspend fun getEntries(
@@ -22,6 +22,17 @@ class MinifluxApiRepository(private val apiService: MinifluxApiService) {
         offset: Int = 0
     ): EntriesResponse = withRetries {
         apiService.getEntries(status, order, direction, limit, offset)
+    }
+
+    suspend fun getEntriesChangedAfter(
+        changedAfter: String,
+        status: String = "unread",
+        order: String = "published_at", 
+        direction: String = "asc",
+        limit: Int = ENTRIES_DOWNLOAD_DEFAULT_LIMIT,
+        offset: Int = 0
+    ): EntriesResponse = withRetries {
+        apiService.getEntriesChangedAfter(status, order, direction, limit, offset, changedAfter)
     }
 
     suspend fun getFeeds(): List<Feed> =
