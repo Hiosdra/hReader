@@ -55,7 +55,11 @@ fun SettingsScreen(
         Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
             var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
-            
+            val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
+                bionicReadingEnabled = enabled
+                preferencesManager.setBionicReadingEnabled(enabled)
+            }
+
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             ) {
@@ -70,10 +74,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { 
-                                bionicReadingEnabled = !bionicReadingEnabled
-                                preferencesManager.setBionicReadingEnabled(bionicReadingEnabled)
-                            }
+                            .clickable { onToggleBionicReading(!bionicReadingEnabled) }
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -91,15 +92,12 @@ fun SettingsScreen(
                         }
                         Switch(
                             checked = bionicReadingEnabled,
-                            onCheckedChange = { enabled ->
-                                bionicReadingEnabled = enabled
-                                preferencesManager.setBionicReadingEnabled(enabled)
-                            }
+                            onCheckedChange = onToggleBionicReading
                         )
                     }
                 }
             }
-            
+
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             ) {

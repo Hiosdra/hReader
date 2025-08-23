@@ -41,17 +41,13 @@ object BionicReadingProcessor {
         }
     }
 
-    private fun makeBionicWord(wordRaw: String): String {
+    private fun makeBionicWord(wordRaw: String): String = run {
         val word = java.text.Normalizer.normalize(wordRaw, java.text.Normalizer.Form.NFC)
-        val length = word.length
-        if (length < 2) return word
-        val prefixLength = when (length) {
-            2 -> 1
-            in 3..5 -> 2
-            else -> 3
+        when (word.length) {
+            0, 1 -> word
+            2 -> "<strong>${word[0]}</strong>${word.substring(1)}"
+            in 3..5 -> "<strong>${word.substring(0, 2)}</strong>${word.substring(2)}"
+            else -> "<strong>${word.substring(0, 3)}</strong>${word.substring(3)}"
         }
-        val prefix = word.substring(0, prefixLength)
-        val suffix = word.substring(prefixLength)
-        return "<strong>$prefix</strong>$suffix"
     }
 }
