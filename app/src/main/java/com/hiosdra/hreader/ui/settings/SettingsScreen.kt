@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -17,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -28,7 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,6 +47,9 @@ fun SettingsScreen(
     navController: NavController? = null,
     preferencesManager: PreferencesManager = koinInject()
 ) {
+    var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
+    var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
+    var showPerformanceDialog by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,131 +65,119 @@ fun SettingsScreen(
             )
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-            var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
-            var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
-            var showPerformanceDialog by remember { mutableStateOf(false) }
-
-            // Paywall Bypass Method Card
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Paywall Bypass Method",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    PaywallBypassMethod.entries.forEach { method ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedBypassMethod = method
-                                    preferencesManager.setPaywallBypassMethod(method)
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            RadioButton(
-                                selected = selectedBypassMethod == method,
-                                onClick = {
-                                    selectedBypassMethod = method
-                                    preferencesManager.setPaywallBypassMethod(method)
-                                }
-                            )
-                            Column(modifier = Modifier.padding(start = 8.dp)) {
-                                Text(text = method.displayName, style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = method.baseUrl,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // AI Model Selection Card
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "AI Model for Article Overviews",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    AiModel.entries.forEach { model ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedAiModel = model
-                                    preferencesManager.setAiModel(model)
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            RadioButton(
-                                selected = selectedAiModel == model,
-                                onClick = {
-                                    selectedAiModel = model
-                                    preferencesManager.setAiModel(model)
-                                }
-                            )
-                            Column(modifier = Modifier.padding(start = 8.dp)) {
-                                Text(text = model.displayName, style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = model.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Performance Info Card
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Performance",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Button(
-                        onClick = { showPerformanceDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Show Performance Info")
-                    }
-                }
-            }
-
-            // Performance Dialog
-            if (showPerformanceDialog) {
-                PerformanceInfoDialog(
-                    performanceRecords = preferencesManager.getSyncPerformanceRecords(),
-                    onDismiss = { showPerformanceDialog = false },
-                    onClearRecords = {
-                        preferencesManager.clearSyncPerformanceRecords()
-                        showPerformanceDialog = false
-                    }
+        LazyColumn(
+            modifier = Modifier.padding(paddingValues).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Text(
+                    text = "Paywall Bypass Method",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        PaywallBypassMethod.entries.forEach { method ->
+                            ListItem(
+                                headlineContent = { Text(method.displayName) },
+                                supportingContent = { Text(method.baseUrl, style = MaterialTheme.typography.bodySmall) },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Lock,
+                                        contentDescription = null
+                                    )
+                                },
+                                trailingContent = {
+                                    RadioButton(
+                                        selected = selectedBypassMethod == method,
+                                        onClick = {
+                                            selectedBypassMethod = method
+                                            preferencesManager.setPaywallBypassMethod(method)
+                                        }
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedBypassMethod = method
+                                        preferencesManager.setPaywallBypassMethod(method)
+                                    }
+                            )
+                        }
+                    }
+                }
             }
+            item {
+                Text(
+                    text = "AI Model for Article Overview",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        AiModel.entries.forEach { model ->
+                            ListItem(
+                                headlineContent = { Text(model.displayName) },
+                                supportingContent = { Text(model.description, style = MaterialTheme.typography.bodySmall) },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Star,
+                                        contentDescription = null
+                                    )
+                                },
+                                trailingContent = {
+                                    RadioButton(
+                                        selected = selectedAiModel == model,
+                                        onClick = {
+                                            selectedAiModel = model
+                                            preferencesManager.setAiModel(model)
+                                        }
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedAiModel = model
+                                        preferencesManager.setAiModel(model)
+                                    }
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Text(
+                    text = "Performance",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Button(
+                            onClick = { showPerformanceDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Show Performance Info")
+                        }
+                    }
+                }
+            }
+        }
+        if (showPerformanceDialog) {
+            PerformanceInfoDialog(
+                performanceRecords = preferencesManager.getSyncPerformanceRecords(),
+                onDismiss = { showPerformanceDialog = false },
+                onClearRecords = { preferencesManager.clearSyncPerformanceRecords() }
+            )
         }
     }
 }

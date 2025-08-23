@@ -163,8 +163,7 @@ fun ArticleScreen(
                         }
                         ctx.startActivity(Intent.createChooser(sendIntent, null))
                     }
-                },
-                isGeneratingOverview = uiState.isGeneratingOverview
+                }
             )
         }
     ) { paddingValues ->
@@ -272,8 +271,7 @@ private fun ArticleTopBar(
     onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit,
     onBypassPaywall: () -> Unit,
-    onShare: () -> Unit,
-    isGeneratingOverview: Boolean = false
+    onShare: () -> Unit
 ) {
     val paywallBypassService: PaywallBypassService = koinInject()
 
