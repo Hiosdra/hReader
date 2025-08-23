@@ -5,6 +5,7 @@ import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
 
 object BionicReadingProcessor {
+    private val WORD_REGEX = Regex("([\\p{L}\\p{M}]+)")
 
     fun processTextToBionic(html: String): String {
         if (html.isBlank()) return html
@@ -21,7 +22,7 @@ object BionicReadingProcessor {
             when (child) {
                 is TextNode -> {
                     val parentTag = child.parent()?.nodeName()?.lowercase()
-                    if (parentTag !in setOf("pre", "code", "script", "style", "svg")) {
+                    if (parentTag !in setOf("pre", "code", "script", "style", "svg", "strong", "b")) {
                         val processed = processBionicText(child.wholeText)
                         if (processed != child.wholeText) {
                             child.after(processed)
@@ -36,14 +37,14 @@ object BionicReadingProcessor {
 
     private fun processBionicText(text: String): String {
         if (text.isBlank()) return text
-        return text.replace(Regex("([\\p{L}\\p{M}]+)")) { match ->
+        return text.replace(WORD_REGEX) { match ->
             makeBionicWord(match.value)
         }
     }
 
-    private fun makeBionicWord(wordRaw: String): String = run {
+    private fun makeBionicWord(wordRaw: String): String {
         val word = java.text.Normalizer.normalize(wordRaw, java.text.Normalizer.Form.NFC)
-        when (word.length) {
+        return when (word.length) {
             0, 1 -> word
             2 -> "<strong>${word[0]}</strong>${word.substring(1)}"
             in 3..5 -> "<strong>${word.substring(0, 2)}</strong>${word.substring(2)}"
