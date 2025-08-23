@@ -38,8 +38,11 @@ class ArticleContentRepository(
         // For now, we just store the HTML as-is
     }
 
-    suspend fun prefetchArticleContent(entries: List<Pair<Long, String>>) = coroutineScope {
-        val deferredResults = entries.map { (entryId, url) ->
+    suspend fun prefetchArticleContent(entries: List<Pair<Long, String>>, limit: Int? = 50) = coroutineScope {
+        // Apply limit if specified (null means no limit for background sync)
+        val limitedEntries = if (limit != null) entries.take(limit) else entries
+        
+        val deferredResults = limitedEntries.map { (entryId, url) ->
             async(Dispatchers.IO) {
                 try {
                     if (articleContentDao.getArticleContent(entryId) == null) {
