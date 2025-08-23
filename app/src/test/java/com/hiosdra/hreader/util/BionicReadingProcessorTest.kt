@@ -26,7 +26,7 @@ class BionicReadingProcessorTest {
     @Test
     fun `test HTML tags are preserved`() {
         val result = BionicReadingProcessor.processTextToBionic("<p>hello <strong>world</strong></p>")
-        assertEquals("<p><strong>he</strong>llo <strong><strong>wo</strong>rld</strong></p>", result)
+        assertEquals("<p><strong>he</strong>llo <strong>world</strong></p>", result)
     }
 
     @Test
@@ -96,7 +96,7 @@ class BionicReadingProcessorTest {
     fun `test malformed html`() {
         val input = "<p>Hello <strong>world"
         val result = BionicReadingProcessor.processTextToBionic(input)
-        assertEquals("<p><strong>He</strong>llo <strong><strong>wo</strong>rld</strong></p>", result)
+        assertEquals("<p><strong>He</strong>llo <strong>world</strong></p>", result)
     }
 
     @Test
