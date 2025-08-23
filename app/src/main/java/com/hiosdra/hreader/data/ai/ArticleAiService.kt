@@ -82,8 +82,8 @@ Content: $content
         return OpenRouterRequest(
             model = model.modelId,
             messages = listOf(systemMessage, userMessage),
-            maxTokens = 200,
-            temperature = 0.7
+            maxTokens = 500,
+            temperature = 0.5
         )
     }
 }
