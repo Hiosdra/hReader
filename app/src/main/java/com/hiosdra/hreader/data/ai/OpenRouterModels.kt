@@ -7,8 +7,8 @@ import com.squareup.moshi.JsonClass
 data class OpenRouterRequest(
     val model: String,
     val messages: List<ChatMessage>,
-    @field:Json(name = "max_tokens") val maxTokens: Int = 500,
-    val temperature: Double = 0.7
+    @field:Json(name = "max_tokens") val maxTokens: Int,
+    val temperature: Double
 )
 
 @JsonClass(generateAdapter = true)
