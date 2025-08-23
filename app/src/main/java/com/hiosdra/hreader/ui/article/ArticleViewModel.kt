@@ -20,7 +20,10 @@ data class ArticleUiState(
     val originalContent: Map<Long, String> = emptyMap(),
     val aiOverviews: Map<Long, String> = emptyMap(),
     val isGeneratingOverview: Boolean = false,
-    val overviewError: String? = null
+    val overviewError: String? = null,
+    val credibilityScores: Map<Long, Float> = emptyMap(),
+    val isGeneratingScore: Boolean = false,
+    val scoreError: String? = null
 )
 
 class ArticleViewModel(
@@ -153,7 +156,64 @@ class ArticleViewModel(
         }
     }
 
+    fun generateCredibilityScore(entryId: Long) {
+        val entry = _uiState.value.entries.find { it.id == entryId } ?: return
+
+        // Check if score already exists
+        if (_uiState.value.credibilityScores.containsKey(entryId)) {
+            return
+        }
+
+        // Check if feature is enabled
+        if (!preferencesManager.getCredibilityScoreEnabled()) {
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            isGeneratingScore = true,
+            scoreError = null
+        )
+
+        viewModelScope.launch {
+            try {
+                val content = getContentForEntry(entryId) ?: entry.content ?: ""
+                val model = preferencesManager.getAiModel()
+
+                val result = articleAiService.generateCredibilityScore(
+                    title = entry.title,
+                    content = content,
+                    model = model
+                )
+
+                result.fold(
+                    onSuccess = { score ->
+                        _uiState.value = _uiState.value.copy(
+                            credibilityScores = _uiState.value.credibilityScores + (entryId to score),
+                            isGeneratingScore = false,
+                            scoreError = null
+                        )
+                    },
+                    onFailure = { error ->
+                        _uiState.value = _uiState.value.copy(
+                            isGeneratingScore = false,
+                            scoreError = error.message ?: "Failed to generate credibility score"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isGeneratingScore = false,
+                    scoreError = e.message ?: "Failed to generate credibility score"
+                )
+            }
+        }
+    }
+
     fun clearOverviewError() {
         _uiState.value = _uiState.value.copy(overviewError = null)
+    }
+
+    fun clearScoreError() {
+        _uiState.value = _uiState.value.copy(scoreError = null)
     }
 }
