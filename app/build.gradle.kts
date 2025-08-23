@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.10"
     id("kotlin-kapt")
     id("com.google.devtools.ksp") version "2.2.10-2.0.2"
+    id("androidx.room")
 }
 
 android {
@@ -45,6 +46,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    room {
+        schemaDirectory("$projectDir/schemas")
+        generateKotlin = true
     }
 }
 
@@ -91,6 +96,9 @@ dependencies {
 
     // Coil
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Jsoup
+    implementation("org.jsoup:jsoup:1.21.1")
 
 
     // Test
