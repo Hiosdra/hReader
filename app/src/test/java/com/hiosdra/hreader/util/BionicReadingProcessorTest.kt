@@ -72,14 +72,6 @@ class BionicReadingProcessorTest {
     }
 
     @Test
-    fun debugPrintSvgAndUnicode() {
-        val svgResult = BionicReadingProcessor.processTextToBionic("<svg>hello world</svg>")
-        println("DEBUG_SVG_RESULT=$svgResult")
-        val unicodeResult = BionicReadingProcessor.processTextToBionic("café résumé naïve")
-        println("DEBUG_UNICODE_RESULT=$unicodeResult")
-    }
-
-    @Test
     fun `test tag with attributes`() {
         val input = "<p class='foo'>hello world</p>"
         val result = BionicReadingProcessor.processTextToBionic(input)
