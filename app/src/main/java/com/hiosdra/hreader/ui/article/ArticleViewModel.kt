@@ -104,37 +104,35 @@ class ArticleViewModel(
         }
         return _uiState.value.entries.find { it.id == entryId }?.content
     }
-    
+
     fun generateAiOverview(entryId: Long) {
         val entry = _uiState.value.entries.find { it.id == entryId } ?: return
-        
+
         // Check if overview already exists
         if (_uiState.value.aiOverviews.containsKey(entryId)) {
             return
         }
-        
+
         _uiState.value = _uiState.value.copy(
             isGeneratingOverview = true,
             overviewError = null
         )
-        
+
         viewModelScope.launch {
             try {
                 val content = getContentForEntry(entryId) ?: entry.content ?: ""
                 val model = preferencesManager.getAiModel()
-                
+
                 val result = articleAiService.generateArticleOverview(
                     title = entry.title,
                     content = content,
                     model = model
                 )
-                
+
                 result.fold(
                     onSuccess = { overview ->
-                        val updatedOverviews = _uiState.value.aiOverviews.toMutableMap()
-                        updatedOverviews[entryId] = overview
                         _uiState.value = _uiState.value.copy(
-                            aiOverviews = updatedOverviews,
+                            aiOverviews = _uiState.value.aiOverviews + (entryId to overview),
                             isGeneratingOverview = false,
                             overviewError = null
                         )
@@ -154,7 +152,7 @@ class ArticleViewModel(
             }
         }
     }
-    
+
     fun clearOverviewError() {
         _uiState.value = _uiState.value.copy(overviewError = null)
     }
