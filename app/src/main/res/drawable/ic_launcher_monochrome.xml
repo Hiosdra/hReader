@@ -4,34 +4,27 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Main "h" letter for hReader - bold and prominent -->
+    <!-- Monochrome version optimized for themed icons -->
+    <!-- Main "h" letter for hReader -->
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#000000"
         android:pathData="M28,30 L28,78 L36,78 L36,58 L50,58 L50,78 L58,78 L58,30 L50,30 L50,50 L36,50 L36,30 Z" />
     
-    <!-- RSS signal waves emanating from the right side -->
+    <!-- Simplified RSS signal waves for monochrome clarity -->
     <path
         android:fillColor="@android:color/transparent"
         android:pathData="M64,48 Q66,46 69,46 Q72,46 74,48 Q76,50 76,54 Q76,58 74,60 Q72,62 69,62 Q66,62 64,60"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#000000"
         android:strokeWidth="2.5" />
     
     <path
         android:fillColor="@android:color/transparent"
         android:pathData="M64,42 Q68,38 74,38 Q80,38 84,42 Q88,46 88,54 Q88,62 84,66 Q80,70 74,70 Q68,70 64,66"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.5"
-        android:strokeAlpha="0.8" />
-    
-    <path
-        android:fillColor="@android:color/transparent"
-        android:pathData="M64,36 Q70,30 78,30 Q86,30 92,36 Q98,42 98,54 Q98,66 92,72 Q86,78 78,78 Q70,78 64,72"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.5"
-        android:strokeAlpha="0.6" />
+        android:strokeColor="#000000"
+        android:strokeWidth="2.5" />
     
     <!-- RSS source dot -->
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#000000"
         android:pathData="M64,54 m-2.5,0 a2.5,2.5 0,1 1,5 0 a2.5,2.5 0,1 1,-5 0" />
 </vector>
