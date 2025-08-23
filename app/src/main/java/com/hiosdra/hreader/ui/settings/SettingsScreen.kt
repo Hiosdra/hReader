@@ -61,10 +61,15 @@ fun SettingsScreen(
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
     var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
     var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
+    var credibilityScoreEnabled by remember { mutableStateOf(preferencesManager.getCredibilityScoreEnabled()) }
     var showPerformanceDialog by remember { mutableStateOf(false) }
     val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
         bionicReadingEnabled = enabled
         preferencesManager.setBionicReadingEnabled(enabled)
+    }
+    val onToggleCredibilityScore: (Boolean) -> Unit = { enabled ->
+        credibilityScoreEnabled = enabled
+        preferencesManager.setCredibilityScoreEnabled(enabled)
     }
     Scaffold(
         topBar = {
@@ -119,6 +124,64 @@ fun SettingsScreen(
                             Switch(
                                 checked = bionicReadingEnabled,
                                 onCheckedChange = onToggleBionicReading
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Credibility Score Section
+            item {
+                Text(
+                    text = "AI Credibility Analysis",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onToggleCredibilityScore(!credibilityScoreEnabled) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Credibility Scoring",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "AI analysis of article reliability and trustworthiness",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = credibilityScoreEnabled,
+                                onCheckedChange = onToggleCredibilityScore
+                            )
+                        }
+                        if (credibilityScoreEnabled) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            Text(
+                                text = "Score Meaning:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = "• 70-100%: High credibility (well-sourced, factual)\n• 40-69%: Moderate credibility (some bias or verification needed)\n• 0-39%: Low credibility (high risk of misinformation)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
