@@ -297,7 +297,7 @@ private fun ArticleTopBar(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_chrome_logo),
                         contentDescription = "Open in Chrome",
-                        tint = Color.Unspecified,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp)
                     )
                 }
