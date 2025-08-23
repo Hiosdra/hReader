@@ -26,6 +26,16 @@ interface MinifluxApiService {
         @Query("offset") offset: Int
     ): EntriesResponse
 
+    @GET("v1/entries")
+    suspend fun getEntriesChangedAfter(
+        @Query("status") status: String,
+        @Query("order") order: String,
+        @Query("direction") direction: String,
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,
+        @Query("changed_after") changedAfter: String
+    ): EntriesResponse
+
     @GET("v1/feeds")
     suspend fun getFeeds(
     ): List<Feed>
