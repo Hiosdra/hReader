@@ -64,7 +64,7 @@ fun SettingsScreen(
             var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
             var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
             var showPerformanceDialog by remember { mutableStateOf(false) }
-            
+
             // Paywall Bypass Method Card
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -152,7 +152,7 @@ fun SettingsScreen(
                     }
                 }
             }
-            
+
             // Performance Info Card
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -173,13 +173,13 @@ fun SettingsScreen(
                     }
                 }
             }
-            
+
             // Performance Dialog
             if (showPerformanceDialog) {
                 PerformanceInfoDialog(
                     performanceRecords = preferencesManager.getSyncPerformanceRecords(),
                     onDismiss = { showPerformanceDialog = false },
-                    onClearRecords = { 
+                    onClearRecords = {
                         preferencesManager.clearSyncPerformanceRecords()
                         showPerformanceDialog = false
                     }
@@ -197,7 +197,7 @@ private fun PerformanceInfoDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
+        title = {
             Text(
                 "Sync Performance Info",
                 style = MaterialTheme.typography.titleLarge
@@ -257,7 +257,7 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         // Additional details based on what's available
         record.batchSize?.let { batchSize ->
             record.totalArticles?.let { totalArticles ->
@@ -268,13 +268,13 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
                 )
             }
         }
-        
+
         record.isIncremental?.let { isIncremental ->
             val syncType = if (isIncremental) "Incremental" else "Full"
             val syncInfo = record.lastSyncHoursAgo?.let { hours ->
                 "$syncType sync (last sync: ${hours}h ago)"
             } ?: "$syncType sync"
-            
+
             Text(
                 text = syncInfo,
                 style = MaterialTheme.typography.bodySmall,
