@@ -1,22 +1,35 @@
 package com.hiosdra.hreader.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -34,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.SyncPerformanceRecord
@@ -45,6 +59,14 @@ fun SettingsScreen(
     navController: NavController? = null,
     preferencesManager: PreferencesManager = koinInject()
 ) {
+    var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
+    var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
+    var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
+    var showPerformanceDialog by remember { mutableStateOf(false) }
+    val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
+        bionicReadingEnabled = enabled
+        preferencesManager.setBionicReadingEnabled(enabled)
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,130 +82,140 @@ fun SettingsScreen(
             )
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-            var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
-            var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
-            var showPerformanceDialog by remember { mutableStateOf(false) }
-            val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
-                bionicReadingEnabled = enabled
-                preferencesManager.setBionicReadingEnabled(enabled)
-            }
-
+        LazyColumn(
+            modifier = Modifier.padding(paddingValues).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             // Reading Experience Card
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+            item {
+                Text(
+                    text = "Reading Experience",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(
-                        text = "Reading Experience",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onToggleBionicReading(!bionicReadingEnabled) }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Bionic Reading",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "Highlight portions of words for faster reading",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = bionicReadingEnabled,
-                            onCheckedChange = onToggleBionicReading
-                        )
-                    }
-                }
-            }
-
-            // Paywall Bypass Method Card
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Paywall Bypass Method",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    PaywallBypassMethod.entries.forEach { method ->
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    selectedBypassMethod = method
-                                    preferencesManager.setPaywallBypassMethod(method)
-                                }
-                                .padding(vertical = 4.dp),
+                                .clickable { onToggleBionicReading(!bionicReadingEnabled) }
+                                .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Start
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            RadioButton(
-                                selected = selectedBypassMethod == method,
-                                onClick = {
-                                    selectedBypassMethod = method
-                                    preferencesManager.setPaywallBypassMethod(method)
-                                }
-                            )
-                            Column(modifier = Modifier.padding(start = 8.dp)) {
-                                Text(text = method.displayName, style = MaterialTheme.typography.bodyMedium)
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = method.baseUrl,
+                                    text = "Bionic Reading",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "Highlight portions of words for faster reading",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            Switch(
+                                checked = bionicReadingEnabled,
+                                onCheckedChange = onToggleBionicReading
+                            )
                         }
                     }
                 }
             }
-            
-            // Performance Info Card
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+
+            // Paywall Bypass Method Section
+            item {
+                Text(
+                    text = "Paywall Bypass Method",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(
-                        text = "Performance",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Button(
-                        onClick = { showPerformanceDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Show Performance Info")
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        PaywallBypassMethod.entries.forEach { method ->
+                            ListItem(
+                                headlineContent = { Text(method.displayName) },
+                                supportingContent = { Text(method.baseUrl, style = MaterialTheme.typography.bodySmall) },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Lock,
+                                        contentDescription = null
+                                    )
+                                },
+                                trailingContent = {
+                                    RadioButton(
+                                        selected = selectedBypassMethod == method,
+                                        onClick = {
+                                            selectedBypassMethod = method
+                                            preferencesManager.setPaywallBypassMethod(method)
+                                        }
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedBypassMethod = method
+                                        preferencesManager.setPaywallBypassMethod(method)
+                                    }
+                            )
+                        }
                     }
                 }
             }
-            
-            // Performance Dialog
-            if (showPerformanceDialog) {
-                PerformanceInfoDialog(
-                    performanceRecords = preferencesManager.getSyncPerformanceRecords(),
-                    onDismiss = { showPerformanceDialog = false },
-                    onClearRecords = { 
-                        preferencesManager.clearSyncPerformanceRecords()
-                        showPerformanceDialog = false
+
+            // AI Model Selection Section
+            item {
+                Text(
+                    text = "AI Model for Article Overview",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+            items(AiModel.entries.toList()) { model ->
+                AiModelCard(
+                    model = model,
+                    isSelected = selectedAiModel == model,
+                    onSelect = {
+                        selectedAiModel = model
+                        preferencesManager.setAiModel(model)
                     }
                 )
             }
+
+            // Performance Section
+            item {
+                Text(
+                    text = "Performance",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Button(
+                            onClick = { showPerformanceDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Show Performance Info")
+                        }
+                    }
+                }
+            }
+        }
+        if (showPerformanceDialog) {
+            PerformanceInfoDialog(
+                performanceRecords = preferencesManager.getSyncPerformanceRecords(),
+                onDismiss = { showPerformanceDialog = false },
+                onClearRecords = { preferencesManager.clearSyncPerformanceRecords() }
+            )
         }
     }
 }
@@ -279,6 +311,110 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun AiModelCard(
+    model: AiModel,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp, vertical = 4.dp)
+            .clickable { onSelect() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 6.dp else 2.dp
+        ),
+        border = if (isSelected) {
+            androidx.compose.foundation.BorderStroke(
+                2.dp,
+                MaterialTheme.colorScheme.primary
+            )
+        } else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            },
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = model.displayName,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        ),
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = model.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        },
+                        maxLines = 2
+                    )
+                }
+            }
+            
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }

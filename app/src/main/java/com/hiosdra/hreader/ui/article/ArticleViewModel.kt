@@ -2,9 +2,11 @@ package com.hiosdra.hreader.ui.article
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,12 +17,17 @@ data class ArticleUiState(
     val currentIndex: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val originalContent: Map<Long, String> = emptyMap()
+    val originalContent: Map<Long, String> = emptyMap(),
+    val aiOverviews: Map<Long, String> = emptyMap(),
+    val isGeneratingOverview: Boolean = false,
+    val overviewError: String? = null
 )
 
 class ArticleViewModel(
     private val articleRepository: ArticleRepository,
-    private val articleContentRepository: ArticleContentRepository
+    private val articleContentRepository: ArticleContentRepository,
+    private val articleAiService: ArticleAiService,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ArticleUiState())
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
@@ -96,5 +103,57 @@ class ArticleViewModel(
             return originalContent
         }
         return _uiState.value.entries.find { it.id == entryId }?.content
+    }
+
+    fun generateAiOverview(entryId: Long) {
+        val entry = _uiState.value.entries.find { it.id == entryId } ?: return
+
+        // Check if overview already exists
+        if (_uiState.value.aiOverviews.containsKey(entryId)) {
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            isGeneratingOverview = true,
+            overviewError = null
+        )
+
+        viewModelScope.launch {
+            try {
+                val content = getContentForEntry(entryId) ?: entry.content ?: ""
+                val model = preferencesManager.getAiModel()
+
+                val result = articleAiService.generateArticleOverview(
+                    title = entry.title,
+                    content = content,
+                    model = model
+                )
+
+                result.fold(
+                    onSuccess = { overview ->
+                        _uiState.value = _uiState.value.copy(
+                            aiOverviews = _uiState.value.aiOverviews + (entryId to overview),
+                            isGeneratingOverview = false,
+                            overviewError = null
+                        )
+                    },
+                    onFailure = { error ->
+                        _uiState.value = _uiState.value.copy(
+                            isGeneratingOverview = false,
+                            overviewError = error.message ?: "Failed to generate overview"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isGeneratingOverview = false,
+                    overviewError = e.message ?: "Failed to generate overview"
+                )
+            }
+        }
+    }
+
+    fun clearOverviewError() {
+        _uiState.value = _uiState.value.copy(overviewError = null)
     }
 }
