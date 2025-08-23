@@ -5,10 +5,6 @@ enum class AiModel(
     val modelId: String,
     val description: String
 ) {
-    LLAMA_3_2_3B("Llama 3.2 3B", "meta-llama/llama-3.2-3b-instruct:free", "Fast and efficient for summaries"),
-    LLAMA_3_2_1B("Llama 3.2 1B", "meta-llama/llama-3.2-1b-instruct:free", "Lightweight model for basic summaries"),
-    QWEN_2_5_1_5B("Qwen 2.5 1.5B", "qwen/qwen-2.5-1.5b-instruct:free", "Good balance of speed and quality"),
-    GEMMA_2_2B("Gemma 2 2B", "google/gemma-2-2b-it:free", "Google's efficient model for text generation"),
     GPT_OSS_20B("GPT OSS 20B", "openai/gpt-oss-20b:free", "OpenAI's open-source large model"),
     GLM_4_5_AIR("GLM 4.5 Air", "z-ai/glm-4.5-air:free", "Zhipu AI's efficient conversational model"),
     DEEPSEEK_R1("DeepSeek R1", "deepseek/deepseek-r1-0528:free", "DeepSeek's reasoning-focused model"),
@@ -22,6 +18,6 @@ enum class AiModel(
     QWEN_3_30B("Qwen 3 30B", "qwen/qwen3-30b-a3b:free", "Qwen's balanced performance model");
     
     companion object {
-        fun getDefault(): AiModel = LLAMA_3_2_3B
+        fun getDefault(): AiModel = GPT_OSS_20B
     }
 }
