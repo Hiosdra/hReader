@@ -17,18 +17,19 @@ object BionicReadingProcessor {
                 val tagEnd = html.indexOf('>', i)
                 if (tagEnd != -1) {
                     val tag = html.substring(i, tagEnd + 1)
+                    val tagLower = tag.lowercase()
                     result.append(tag)
                     i = tagEnd + 1
                     
-                    if (tag.lowercase().startsWith("<pre") || 
-                        tag.lowercase().startsWith("<code") ||
-                        tag.lowercase().startsWith("<script") ||
-                        tag.lowercase().startsWith("<style")) {
+                    if (tagLower.startsWith("<pre") || 
+                        tagLower.startsWith("<code") ||
+                        tagLower.startsWith("<script") ||
+                        tagLower.startsWith("<style")) {
                         val closingTag = when {
-                            tag.lowercase().startsWith("<pre") -> "</pre>"
-                            tag.lowercase().startsWith("<code") -> "</code>" 
-                            tag.lowercase().startsWith("<script") -> "</script>"
-                            tag.lowercase().startsWith("<style") -> "</style>"
+                            tagLower.startsWith("<pre") -> "</pre>"
+                            tagLower.startsWith("<code") -> "</code>" 
+                            tagLower.startsWith("<script") -> "</script>"
+                            tagLower.startsWith("<style") -> "</style>"
                             else -> ""
                         }
                         if (closingTag.isNotEmpty()) {
