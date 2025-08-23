@@ -30,6 +30,16 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
+    fun getBionicReadingEnabled(): Boolean {
+        return sharedPreferences.getBoolean(KEY_BIONIC_READING_ENABLED, false)
+    }
+
+    fun setBionicReadingEnabled(enabled: Boolean) {
+        sharedPreferences.edit()
+            .putBoolean(KEY_BIONIC_READING_ENABLED, enabled)
+            .apply()
+    }
+
     fun getAiModel(): AiModel {
         val savedModel = sharedPreferences.getString(KEY_AI_MODEL, AiModel.getDefault().name)
         return AiModel.entries.find { it.name == savedModel } ?: AiModel.getDefault()
@@ -87,6 +97,7 @@ class PreferencesManager(context: Context) {
 
     companion object {
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
+        private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_AI_MODEL = "ai_model"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
