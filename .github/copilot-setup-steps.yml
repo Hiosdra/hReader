@@ -10,7 +10,7 @@ setup_steps:
       distribution: 'temurin'
       java-version: '17'
 
-  # Set up Android SDK (required for Android development)  
+  # Set up Android SDK (required for Android development)
   - name: "Set up Android SDK"
     run: |
       # Android SDK will be auto-downloaded by Gradle, but we can pre-configure the environment
@@ -39,7 +39,7 @@ setup_steps:
       # Download Gradle wrapper if not present
       if [ -f "./gradlew" ]; then
         # Run Gradle help to download wrapper and basic dependencies
-        ./gradlew --version --no-daemon
+        ./gradlew dependencies --no-daemon
         
         # Optionally pre-download main dependencies (but avoid full build due to time constraints)
         # This helps with dependency resolution in subsequent operations
