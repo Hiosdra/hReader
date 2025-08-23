@@ -494,12 +494,8 @@ private fun MetaChips(
                 androidx.compose.material3.AssistChip(
                     onClick = {
                         if (aiOverview == null) {
-                            if (!isGeneratingOverview) {
-                                isAiExpanded.value = true
-                                onAiOverviewClick()
-                            } else {
-                                // ignore taps while generating
-                            }
+                            isAiExpanded.value = true
+                            onAiOverviewClick()
                         } else {
                             isAiExpanded.value = !isAiExpanded.value
                         }
