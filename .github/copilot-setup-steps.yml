@@ -3,19 +3,12 @@
 # https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment
 
 setup_steps:
-  # Set up Java 17 which is required for this Android project
+  # Set up Java 17 using actions/setup-java
   - name: "Set up Java 17"
-    run: |
-      # Ensure Java 17 is available (typically already present in environment)
-      java -version
-      if [ $? -ne 0 ]; then
-        echo "Java not found. Installing OpenJDK 17..."
-        sudo apt-get update
-        sudo apt-get install -y openjdk-17-jdk
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-      fi
-      echo "JAVA_HOME=${JAVA_HOME}" >> $GITHUB_ENV
-      echo "${JAVA_HOME}/bin" >> $GITHUB_PATH
+    uses: actions/setup-java@v4
+    with:
+      distribution: 'temurin'
+      java-version: '17'
 
   # Set up Android SDK (required for Android development)  
   - name: "Set up Android SDK"
