@@ -92,6 +92,9 @@ dependencies {
     // Coil
     implementation("io.coil-kt:coil-compose:2.7.0")
 
+    // Jsoup
+    implementation("org.jsoup:jsoup:1.21.1")
+
 
     // Test
     testImplementation("junit:junit:4.13.2")
