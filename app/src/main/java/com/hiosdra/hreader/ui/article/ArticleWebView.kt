@@ -9,7 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
+import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.util.BionicReadingProcessor
 import com.hiosdra.hreader.util.cleanUrl
+import org.koin.compose.koinInject
 
 @Composable
 fun ArticleWebView(
@@ -18,7 +21,8 @@ fun ArticleWebView(
     modifier: Modifier = Modifier,
     onLinkClick: ((String) -> Unit)? = null,
     onScrollProgress: ((Float) -> Unit)? = null,
-    onImageLongClick: ((String) -> Unit)? = null
+    onImageLongClick: ((String) -> Unit)? = null,
+    preferencesManager: PreferencesManager = koinInject()
 ) {
     val textColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.onSurface.toArgb())
     val linkColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.primary.toArgb())
@@ -76,6 +80,13 @@ fun ArticleWebView(
             }
         },
         update = { webView ->
+            val bionicReadingEnabled = preferencesManager.getBionicReadingEnabled()
+            val processedContent = if (bionicReadingEnabled) {
+                BionicReadingProcessor.processTextToBionic(articleContent)
+            } else {
+                articleContent
+            }
+            
             val htmlData = """
                 <!DOCTYPE html>
                 <html>
@@ -100,7 +111,7 @@ fun ArticleWebView(
                         hr { border:none; height:1px; background:rgba(255,255,255,.15); margin:32px 0; }
                     </style>
                 </head>
-                <body>$articleContent</body>
+                <body>$processedContent</body>
                 </html>
             """.trimIndent()
             webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
