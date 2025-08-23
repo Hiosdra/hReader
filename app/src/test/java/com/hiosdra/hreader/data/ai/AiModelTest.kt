@@ -8,14 +8,14 @@ class AiModelTest {
     @Test
     fun testDefaultModel() {
         val defaultModel = AiModel.getDefault()
-        assertEquals(AiModel.LLAMA_3_2_3B, defaultModel)
+        assertEquals(AiModel.GPT_OSS_20B, defaultModel)
     }
     
     @Test
     fun testModelProperties() {
-        val model = AiModel.LLAMA_3_2_3B
-        assertEquals("Llama 3.2 3B", model.displayName)
-        assertEquals("meta-llama/llama-3.2-3b-instruct:free", model.modelId)
+        val model = AiModel.GPT_OSS_20B
+        assertEquals("GPT OSS 20B", model.displayName)
+        assertEquals("openai/gpt-oss-20b:free", model.modelId)
         assertTrue(model.description.isNotEmpty())
     }
     
