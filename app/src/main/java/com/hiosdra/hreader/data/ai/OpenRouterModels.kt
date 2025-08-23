@@ -1,32 +1,21 @@
 package com.hiosdra.hreader.data.ai
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class OpenRouterRequest(
     val model: String,
     val messages: List<ChatMessage>,
-    val maxTokens: Int = 500,
+    @field:Json(name = "max_tokens") val maxTokens: Int = 500,
     val temperature: Double = 0.7
-) {
-    fun toMap(): Map<String, Any> = mapOf(
-        "model" to model,
-        "messages" to messages.map { it.toMap() },
-        "max_tokens" to maxTokens,
-        "temperature" to temperature
-    )
-}
+)
 
 @JsonClass(generateAdapter = true)
 data class ChatMessage(
     val role: String,
     val content: String
-) {
-    fun toMap(): Map<String, String> = mapOf(
-        "role" to role,
-        "content" to content
-    )
-}
+)
 
 @JsonClass(generateAdapter = true)
 data class OpenRouterResponse(
@@ -39,14 +28,14 @@ data class OpenRouterResponse(
 data class Choice(
     val message: ChatMessage,
     val index: Int,
-    val finishReason: String? = null
+    @field:Json(name = "finish_reason") val finishReason: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class Usage(
-    val promptTokens: Int,
-    val completionTokens: Int,
-    val totalTokens: Int
+    @field:Json(name = "prompt_tokens") val promptTokens: Int,
+    @field:Json(name = "completion_tokens") val completionTokens: Int,
+    @field:Json(name = "total_tokens") val totalTokens: Int
 )
 
 @JsonClass(generateAdapter = true)
