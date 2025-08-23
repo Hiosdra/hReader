@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
@@ -186,7 +187,10 @@ fun ArticleScreen(
                     getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                     aiOverviews = uiState.aiOverviews,
                     isGeneratingOverview = uiState.isGeneratingOverview,
-                    onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) }
+                    onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
+                    credibilityScores = uiState.credibilityScores,
+                    isGeneratingScore = uiState.isGeneratingScore,
+                    onCredibilityScore = { entryId -> viewModel.generateCredibilityScore(entryId) }
                 )
             }
         }
@@ -199,6 +203,20 @@ fun ArticleScreen(
                 text = { Text(error) },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearOverviewError() }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
+
+        // Credibility Score Error Dialog
+        uiState.scoreError?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearScoreError() },
+                title = { Text("Credibility Analysis Error") },
+                text = { Text(error) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearScoreError() }) {
                         Text("OK")
                     }
                 }
@@ -218,7 +236,10 @@ private fun ArticlePager(
     getContentForEntry: (Long) -> String?,
     aiOverviews: Map<Long, String> = emptyMap(),
     isGeneratingOverview: Boolean = false,
-    onAiOverview: ((Long) -> Unit)? = null
+    onAiOverview: ((Long) -> Unit)? = null,
+    credibilityScores: Map<Long, Float> = emptyMap(),
+    isGeneratingScore: Boolean = false,
+    onCredibilityScore: ((Long) -> Unit)? = null
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
@@ -249,7 +270,10 @@ private fun ArticlePager(
                     articleContent = getContentForEntry(entry.id) ?: "No content available",
                     aiOverview = aiOverviews[entry.id],
                     isGeneratingOverview = isGeneratingOverview && pagerState.currentPage == page,
-                    onAiOverview = onAiOverview
+                    onAiOverview = onAiOverview,
+                    credibilityScore = credibilityScores[entry.id],
+                    isGeneratingScore = isGeneratingScore && pagerState.currentPage == page,
+                    onCredibilityScore = onCredibilityScore
                 )
                 LaunchedEffect(entry.id) {
                     if (entry.status != "read") {
@@ -332,7 +356,10 @@ private fun ArticleContent(
     articleContent: String,
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
-    onAiOverview: ((Long) -> Unit)? = null
+    onAiOverview: ((Long) -> Unit)? = null,
+    credibilityScore: Float? = null,
+    isGeneratingScore: Boolean = false,
+    onCredibilityScore: ((Long) -> Unit)? = null
 ) {
     val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
     val progressState = remember { mutableFloatStateOf(0f) }
@@ -390,7 +417,10 @@ private fun ArticleContent(
                         entryId = entry.id,
                         aiOverview = aiOverview,
                         isGeneratingOverview = isGeneratingOverview,
-                        onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null
+                        onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null,
+                        credibilityScore = credibilityScore,
+                        isGeneratingScore = isGeneratingScore,
+                        onCredibilityScoreClick = if (onCredibilityScore != null) { { onCredibilityScore(entry.id) } } else null
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     androidx.compose.material3.Divider()
@@ -468,7 +498,10 @@ private fun MetaChips(
     entryId: Long? = null,
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
-    onAiOverviewClick: (() -> Unit)? = null
+    onAiOverviewClick: (() -> Unit)? = null,
+    credibilityScore: Float? = null,
+    isGeneratingScore: Boolean = false,
+    onCredibilityScoreClick: (() -> Unit)? = null
 ) {
     val isAiExpanded = remember { mutableStateOf(false) }
 
@@ -524,6 +557,49 @@ private fun MetaChips(
                             MaterialTheme.colorScheme.primaryContainer
                         else
                             MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
+            if (entryId != null && onCredibilityScoreClick != null) {
+                androidx.compose.material3.AssistChip(
+                    onClick = {
+                        onCredibilityScoreClick()
+                    },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Info,
+                                contentDescription = "Credibility Score",
+                                modifier = Modifier.size(16.dp),
+                                tint = when {
+                                    credibilityScore == null && isGeneratingScore -> MaterialTheme.colorScheme.primary
+                                    credibilityScore != null && credibilityScore >= 0.7f -> androidx.compose.ui.graphics.Color(0xFF4CAF50) // Green
+                                    credibilityScore != null && credibilityScore >= 0.4f -> androidx.compose.ui.graphics.Color(0xFFFF9800) // Orange  
+                                    credibilityScore != null -> androidx.compose.ui.graphics.Color(0xFFE53935) // Red
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            val chipText = when {
+                                credibilityScore == null && isGeneratingScore -> "Analyzing..."
+                                credibilityScore == null -> "Check Credibility"
+                                else -> {
+                                    val percentage = (credibilityScore * 100).toInt()
+                                    "$percentage% credible"
+                                }
+                            }
+                            Text(chipText)
+                        }
+                    },
+                    enabled = !(credibilityScore == null && isGeneratingScore),
+                    colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
+                        containerColor = when {
+                            credibilityScore != null && credibilityScore >= 0.7f -> androidx.compose.ui.graphics.Color(0xFF4CAF50).copy(alpha = 0.2f)
+                            credibilityScore != null && credibilityScore >= 0.4f -> androidx.compose.ui.graphics.Color(0xFFFF9800).copy(alpha = 0.2f)
+                            credibilityScore != null -> androidx.compose.ui.graphics.Color(0xFFE53935).copy(alpha = 0.2f)
+                            credibilityScore != null || isGeneratingScore -> MaterialTheme.colorScheme.primaryContainer
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        }
                     )
                 )
             }
