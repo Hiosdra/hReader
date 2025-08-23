@@ -91,7 +91,7 @@ fun ArticleRow(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = entry.author?.takeIf { it.isNotBlank() } ?: entry.feed.title,
+                                text = entry.feed.title,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = extendedColors.author
                             )
