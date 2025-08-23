@@ -14,7 +14,8 @@ import java.time.Instant
 class ArticleContentRepository(
     private val minifluxApiRepository: MinifluxApiRepository,
     private val articleContentDao: ArticleContentDao,
-    private val articleDao: ArticleDao
+    private val articleDao: ArticleDao,
+    private val articleImageRepository: ArticleImageRepository
 ) {
     suspend fun getArticleContent(entryId: Long, url: String): String {
         val localContent = articleContentDao.getArticleContent(entryId)
@@ -23,6 +24,10 @@ class ArticleContentRepository(
         }
 
         val originalContent = minifluxApiRepository.fetchOriginalContent(entryId)
+        
+        // Download images from content
+        processAndSaveImages(entryId, originalContent.content)
+        
         val articleContent = ArticleContent(
             entryId = entryId,
             content = originalContent.content,
@@ -34,8 +39,21 @@ class ArticleContentRepository(
     }
 
     private suspend fun processAndSaveImages(entryId: Long, htmlContent: String) {
-        // TODO This will be implemented later when we add proper image handling
-        // For now, we just store the HTML as-is
+        // Extract image URLs from HTML content
+        val imgRegex = Regex("<img[^>]+src=\"([^\"]+)\"", RegexOption.IGNORE_CASE)
+        val imageUrls = imgRegex.findAll(htmlContent)
+            .map { it.groupValues[1] }
+            .filter { it.startsWith("http") } // Only process absolute URLs
+            .toList()
+
+        // Download each image
+        imageUrls.forEach { imageUrl ->
+            try {
+                articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     suspend fun prefetchArticleContent(entries: List<Pair<Long, String>>, limit: Int? = 50) = coroutineScope {
@@ -57,16 +75,36 @@ class ArticleContentRepository(
         deferredResults.awaitAll()
     }
 
-    suspend fun cleanupOrphanedContent() {
-        val allContent = articleContentDao.getAllArticleContents()
-        if (allContent.isEmpty()) return
-        val allArticles = articleDao.getAllArticlesOldestFirst().first()
-        val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
-        if (currentEntryIds.isEmpty()) return
-        val contentToDelete = allContent.filter { content ->
-            !currentEntryIds.contains(content.entryId)
+    suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>) = coroutineScope {
+        val deferredResults = entries.map { (entryId, imageUrls) ->
+            async(Dispatchers.IO) {
+                imageUrls.forEach { imageUrl ->
+                    try {
+                        articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
         }
-        if (contentToDelete.isEmpty()) return
-        articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
+        deferredResults.awaitAll()
+    }
+
+    suspend fun cleanupOrphanedContent() {
+        // Cleanup orphaned article content
+        val allContent = articleContentDao.getAllArticleContents()
+        if (allContent.isNotEmpty()) {
+            val allArticles = articleDao.getAllArticlesOldestFirst().first()
+            val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
+            val contentToDelete = allContent.filter { content ->
+                !currentEntryIds.contains(content.entryId)
+            }
+            if (contentToDelete.isNotEmpty()) {
+                articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
+            }
+        }
+        
+        // Cleanup orphaned images
+        articleImageRepository.cleanupOrphanedImages()
     }
 }

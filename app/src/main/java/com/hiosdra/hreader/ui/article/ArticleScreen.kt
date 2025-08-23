@@ -86,6 +86,7 @@ import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.navigation.openChromeCustomTab
+import com.hiosdra.hreader.ui.components.rememberOfflineAwareImagePainter
 import com.hiosdra.hreader.util.cleanUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -398,7 +399,10 @@ private fun ArticleContent(
                     if (mainImageUrl != null) {
                         Spacer(modifier = Modifier.height(20.dp))
                         Image(
-                            painter = rememberAsyncImagePainter(mainImageUrl),
+                            painter = rememberOfflineAwareImagePainter(
+                                entryId = entry.id,
+                                imageUrl = mainImageUrl
+                            ),
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()
