@@ -1,0 +1,67 @@
+# GitHub Copilot Setup Steps for hReader Android Project
+# This file configures the environment for GitHub Copilot agents working on this repository
+# https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment
+
+setup_steps:
+  # Set up Java 17 using actions/setup-java
+  - name: "Set up Java 17"
+    uses: actions/setup-java@v4
+    with:
+      distribution: 'temurin'
+      java-version: '17'
+
+  # Set up Android SDK (required for Android development)
+  - name: "Set up Android SDK"
+    run: |
+      # Android SDK will be auto-downloaded by Gradle, but we can pre-configure the environment
+      echo "Setting up Android development environment..."
+      
+      # Create Android SDK directory structure
+      mkdir -p $HOME/android-sdk
+      export ANDROID_HOME=$HOME/android-sdk
+      export ANDROID_SDK_ROOT=$ANDROID_HOME
+      echo "ANDROID_HOME=${ANDROID_HOME}" >> $GITHUB_ENV
+      echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> $GITHUB_ENV
+      echo "${ANDROID_HOME}/tools" >> $GITHUB_PATH
+      echo "${ANDROID_HOME}/tools/bin" >> $GITHUB_PATH
+      echo "${ANDROID_HOME}/platform-tools" >> $GITHUB_PATH
+      
+      # Set proper permissions for Gradle wrapper
+      if [ -f "./gradlew" ]; then
+        chmod +x ./gradlew
+      fi
+
+  # Pre-warm Gradle dependencies to improve build times
+  - name: "Pre-warm Gradle dependencies"
+    run: |
+      echo "Pre-downloading Gradle wrapper and dependencies..."
+      
+      # Download Gradle wrapper if not present
+      if [ -f "./gradlew" ]; then
+        # Run Gradle help to download wrapper and basic dependencies
+        ./gradlew dependencies --no-daemon
+        
+        # Optionally pre-download main dependencies (but avoid full build due to time constraints)
+        # This helps with dependency resolution in subsequent operations
+        echo "Gradle wrapper ready for Android development"
+      else
+        echo "No Gradle wrapper found - will be configured when needed"
+      fi
+
+  # Configure Git for better development workflow
+  - name: "Configure development environment"
+    run: |
+      # Set up Git configuration for better commit handling
+      git config --global init.defaultBranch main
+      
+      # Ensure proper line endings for cross-platform development
+      git config --global core.autocrlf input
+      
+      # Configure Gradle for headless operation and memory optimization
+      mkdir -p $HOME/.gradle
+      echo "org.gradle.daemon=false" >> $HOME/.gradle/gradle.properties
+      echo "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8" >> $HOME/.gradle/gradle.properties
+      echo "android.useAndroidX=true" >> $HOME/.gradle/gradle.properties
+      echo "kotlin.code.style=official" >> $HOME/.gradle/gradle.properties
+      
+      echo "Development environment configured for hReader Android project"
