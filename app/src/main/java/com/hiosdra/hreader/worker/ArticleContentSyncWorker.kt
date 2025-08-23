@@ -40,12 +40,11 @@ class ArticleContentSyncWorker(
             }
 
             if (entriesToFetch.isNotEmpty()) {
-                val limitedEntries = entriesToFetch.take(50) // Apply our 50 article limit
-                SyncPerformanceLogger.logBatchInfo(50, entriesToFetch.size)
-                Log.d(TAG, "Prefetching content for ${limitedEntries.size} articles (limited from ${entriesToFetch.size})")
+                SyncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
+                Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles (background sync - no limit)")
                 
                 SyncPerformanceLogger.measureSyncTime("Article content prefetch") {
-                    articleContentRepository.prefetchArticleContent(limitedEntries)
+                    articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
                 }
                 Log.i(TAG, "Content prefetching completed")
             } else {
