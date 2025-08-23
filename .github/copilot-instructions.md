@@ -116,6 +116,7 @@ Notes:
 ### Documentation
 - **NO JAVADOCS**: Do not generate or include Javadoc-style comments in the code
 - **NO INLINE COMMENTS**: Do not add inline comments to the code
+- **NO FEATURE DOCS**: Do not create separate feature documentation files (e.g., AI_FEATURE_DOCS.md)
 - Use meaningful method and variable names instead of comments or documentation
 
 ### Kotlin Specific
