@@ -10,6 +10,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import org.jsoup.Jsoup
 import java.time.Instant
 
 class ArticleContentRepository(
@@ -41,7 +42,7 @@ class ArticleContentRepository(
 
     private suspend fun processAndSaveImages(entryId: Long, htmlContent: String, baseUri: String) {
         // Extract image URLs from HTML content using Jsoup for robustness
-        val imageUrls = org.jsoup.Jsoup.parse(htmlContent, baseUri).select("img[src]")
+        val imageUrls = Jsoup.parse(htmlContent, baseUri).select("img[src]")
             .map { it.attr("abs:src") }
             .filterNot { it.isBlank() }
             .distinct()
