@@ -1,83 +1,67 @@
 package com.hiosdra.hreader.data.repository
 
+import android.content.Context
+import com.hiosdra.hreader.data.local.dao.ArticleDao
+import com.hiosdra.hreader.data.local.dao.ArticleImageDao
+import com.hiosdra.hreader.data.local.entity.ArticleImage
+import com.hiosdra.hreader.data.local.repository.ArticleImageRepository
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
-import java.security.MessageDigest
+import org.junit.runner.RunWith
+import org.junit.runners.JUnit4
+import java.io.File
+import java.time.Instant
 
+@RunWith(JUnit4::class)
 class ArticleImageRepositoryTest {
+    private val context = mockk<Context>().apply {
+        every { filesDir } returns File("/tmp/androidstudio")
+    }
+    private val articleImageDao = mockk<ArticleImageDao>()
+    private val articleDao = mockk<ArticleDao>()
+    private val okHttpClient = mockk<OkHttpClient>()
+    private val repo: ArticleImageRepository = ArticleImageRepository(context, articleImageDao, articleDao, okHttpClient) { path ->
+        println("fileExists called with: $path")
+        path == "/tmp/image.jpg" || path == "/tmp/orphan.jpg"
+    }
 
     @Test
-    fun generateImageId_isConsistent() {
-        // Test that generateImageId produces consistent results
-        val entryId = 123L
+    fun getLocalImagePath_returnsPath_whenImageExists() = runBlocking {
+        println("Running getLocalImagePath_returnsPath_whenImageExists")
+        val entryId = 1L
         val imageUrl = "https://example.com/image.jpg"
-        
-        // Use the same algorithm as in ArticleImageRepository
-        val input = "$entryId-$imageUrl"
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(input.toByteArray())
-        val imageId1 = hash.joinToString("") { "%02x".format(it) }.take(16)
-        
-        val digest2 = MessageDigest.getInstance("SHA-256")
-        val hash2 = digest2.digest(input.toByteArray())
-        val imageId2 = hash2.joinToString("") { "%02x".format(it) }.take(16)
-        
-        assertEquals("Image ID should be consistent", imageId1, imageId2)
-        assertEquals("Image ID should be 16 characters", 16, imageId1.length)
-        assertNotNull("Image ID should not be null", imageId1)
-        assertTrue("Image ID should be non-empty", imageId1.isNotEmpty())
+        val localPath = "/tmp/image.jpg"
+        val articleImage = ArticleImage("id", entryId, imageUrl, localPath, "image/jpeg", Instant.now(), 123)
+        coEvery { articleImageDao.getImageForArticleByUrl(entryId, imageUrl) } returns articleImage
+        val result = repo.getLocalImagePath(entryId, imageUrl)
+        assertEquals(localPath, result)
     }
 
     @Test
-    fun getFileExtension_returnsCorrectExtension() {
-        // Test file extension detection logic similar to ArticleImageRepository
-        val testCases = mapOf(
-            "image/png" to ".png",
-            "image/jpeg" to ".jpg",
-            "image/webp" to ".webp",
-            "image/gif" to ".gif",
-            "image/svg+xml" to ".svg",
-            "unknown/type" to ".img"
-        )
-
-        testCases.forEach { (contentType, expected) ->
-            val extension = when {
-                contentType.contains("png") -> ".png"
-                contentType.contains("webp") -> ".webp"
-                contentType.contains("gif") -> ".gif"
-                contentType.contains("svg") -> ".svg"
-                contentType.contains("jpeg") || contentType.contains("jpg") -> ".jpg"
-                else -> ".img"
-            }
-            assertEquals("Extension for $contentType should be $expected", expected, extension)
-        }
+    fun getLocalImagePath_returnsNull_whenImageDoesNotExist() = runBlocking {
+        println("Running getLocalImagePath_returnsNull_whenImageDoesNotExist")
+        val entryId = 2L
+        val imageUrl = "https://example.com/image2.jpg"
+        coEvery { articleImageDao.getImageForArticleByUrl(entryId, imageUrl) } returns null
+        val result = repo.getLocalImagePath(entryId, imageUrl)
+        assertNull(result)
     }
 
     @Test
-    fun getFileExtension_fromUrl_returnsCorrectExtension() {
-        // Test file extension detection from URLs
-        val testCases = mapOf(
-            "https://example.com/image.png" to ".png",
-            "https://example.com/image.JPG" to ".jpg",
-            "https://example.com/image.webp" to ".webp",
-            "https://example.com/image.gif" to ".gif",
-            "https://example.com/photo.jpeg" to ".jpg",
-            "https://example.com/unknown" to ".img"
-        )
-
-        testCases.forEach { (imageUrl, expected) ->
-            val extension = when {
-                imageUrl.contains(".png", ignoreCase = true) -> ".png"
-                imageUrl.contains(".webp", ignoreCase = true) -> ".webp"
-                imageUrl.contains(".gif", ignoreCase = true) -> ".gif"
-                imageUrl.contains(".svg", ignoreCase = true) -> ".svg"
-                imageUrl.contains(".jpg", ignoreCase = true) || imageUrl.contains(".jpeg", ignoreCase = true) -> ".jpg"
-                else -> ".img"
-            }
-            assertEquals("Extension for URL $imageUrl should be $expected", expected, extension)
-        }
+    fun cleanupOrphanedImages_deletesImagesNotInArticles() = runBlocking {
+        println("Running cleanupOrphanedImages_deletesImagesNotInArticles")
+        val orphanImage = ArticleImage("id", 99L, "url", "/tmp/orphan.jpg", "image/jpeg", Instant.now(), 123)
+        coEvery { articleImageDao.getAllArticleImages() } returns listOf(orphanImage)
+        coEvery { articleDao.getAllArticlesOldestFirst() } returns kotlinx.coroutines.flow.flowOf(emptyList())
+        coEvery { articleImageDao.deleteArticleImage(orphanImage) } returns Unit
+        repo.cleanupOrphanedImages()
+        coVerify { articleImageDao.deleteArticleImage(orphanImage) }
     }
 }
