@@ -59,9 +59,7 @@ class ArticleContentRepository(
     }
 
     suspend fun prefetchArticleContent(entries: List<Pair<Long, String>>, limit: Int? = 50) = coroutineScope {
-        // Apply limit if specified (null means no limit for background sync)
         val limitedEntries = if (limit != null) entries.take(limit) else entries
-
         val deferredResults = limitedEntries.map { (entryId, url) ->
             async(Dispatchers.IO) {
                 try {
@@ -73,7 +71,6 @@ class ArticleContentRepository(
                 }
             }
         }
-
         deferredResults.awaitAll()
     }
 
