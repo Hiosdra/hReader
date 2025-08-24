@@ -27,7 +27,7 @@ class ArticleContentRepository(
         val originalContent = minifluxApiRepository.fetchOriginalContent(entryId)
 
         // Download images from content
-        processAndSaveImages(entryId, originalContent.content)
+        processAndSaveImages(entryId, originalContent.content, url)
 
         val articleContent = ArticleContent(
             entryId = entryId,
@@ -39,12 +39,12 @@ class ArticleContentRepository(
         return originalContent.content
     }
 
-    private suspend fun processAndSaveImages(entryId: Long, htmlContent: String) {
-        // Extract image URLs from HTML content
-        val imgRegex = Regex("<img[^>]+src=\"([^\"]+)\"", RegexOption.IGNORE_CASE)
-        val imageUrls = imgRegex.findAll(htmlContent)
-            .map { it.groupValues[1] }
-            .filter { it.startsWith("http") } // Only process absolute URLs
+    private suspend fun processAndSaveImages(entryId: Long, htmlContent: String, baseUri: String) {
+        // Extract image URLs from HTML content using Jsoup for robustness
+        val imageUrls = org.jsoup.Jsoup.parse(htmlContent, baseUri).select("img[src]")
+            .map { it.attr("abs:src") }
+            .filterNot { it.isBlank() }
+            .distinct()
             .toList()
 
         // Download each image
