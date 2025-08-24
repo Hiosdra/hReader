@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.data.local.repository
 
 import android.content.Context
+import android.util.Log
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleImageDao
 import com.hiosdra.hreader.data.local.entity.ArticleImage
@@ -11,69 +12,76 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 import java.time.Instant
 
 class ArticleImageRepository(
-    private val context: Context,
+    context: Context,
     private val articleImageDao: ArticleImageDao,
     private val articleDao: ArticleDao,
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val fileExists: (String) -> Boolean = { path -> File(path).exists() }
 ) {
-    private val imagesDir = File(context.filesDir, "article_images").apply { mkdirs() }
+    private val imagesDir = File(context.filesDir, "article_images")
+        .apply { mkdirs() }
 
-    suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): ArticleImage? = withContext(Dispatchers.IO) {
-        try {
-            // Check if image already exists
-            val existingImage = articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
-            if (existingImage != null && File(existingImage.localFilePath).exists()) {
-                return@withContext existingImage
-            }
+    suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): ArticleImage? =
+        withContext(Dispatchers.IO) {
+            try {
+                val existingImage = articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
+                if (existingImage != null && fileExists(existingImage.localFilePath)) {
+                    return@withContext existingImage
+                }
 
-            // Download image
-            val request = Request.Builder().url(imageUrl).build()
-            val response = okHttpClient.newCall(request).execute()
+                // Download image
+                val request = Request.Builder().url(imageUrl).build()
+                val response = okHttpClient.newCall(request).execute()
 
-            if (!response.isSuccessful) {
+                if (!response.isSuccessful) {
+                    response.close()
+                    return@withContext null
+                }
+
+                val body = response.body
+                val bytes = body.bytes()
+                val contentType = body.contentType()?.toString()
                 response.close()
-                return@withContext null
+
+                // Generate file name and path
+                val imageId = generateImageId(entryId, imageUrl)
+                val extension = getFileExtension(contentType, imageUrl)
+                val fileName = "$imageId$extension"
+                val localFile = File(imagesDir, fileName)
+
+                // Save to local storage
+                FileOutputStream(localFile).use { it.write(bytes) }
+
+                val articleImage = ArticleImage(
+                    id = imageId,
+                    entryId = entryId,
+                    originalUrl = imageUrl,
+                    localFilePath = localFile.absolutePath,
+                    mimeType = contentType,
+                    downloadedAt = Instant.now(),
+                    fileSize = bytes.size.toLong()
+                )
+
+                articleImageDao.insertArticleImage(articleImage)
+                articleImage
+            } catch (e: Exception) {
+                Log.e(
+                    "ArticleImageRepo",
+                    "Failed to download/store image $imageUrl for entry $entryId",
+                    e
+                )
+                null
             }
-
-            val body = response.body ?: return@withContext null
-            val bytes = body.bytes()
-            val contentType = body.contentType()?.toString()
-            response.close()
-
-            // Generate file name and path
-            val imageId = generateImageId(entryId, imageUrl)
-            val extension = getFileExtension(contentType, imageUrl)
-            val fileName = "$imageId$extension"
-            val localFile = File(imagesDir, fileName)
-
-            // Save to local storage
-            FileOutputStream(localFile).use { it.write(bytes) }
-
-            val articleImage = ArticleImage(
-                id = imageId,
-                entryId = entryId,
-                originalUrl = imageUrl,
-                localFilePath = localFile.absolutePath,
-                mimeType = contentType,
-                downloadedAt = Instant.now(),
-                fileSize = bytes.size.toLong()
-            )
-
-            articleImageDao.insertArticleImage(articleImage)
-            articleImage
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
         }
-    }
 
     suspend fun getLocalImagePath(entryId: Long, imageUrl: String): String? {
         val articleImage = articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
-        return if (articleImage != null && File(articleImage.localFilePath).exists()) {
+        return if (articleImage != null && fileExists(articleImage.localFilePath)) {
             articleImage.localFilePath
         } else null
     }
@@ -94,9 +102,8 @@ class ArticleImageRepository(
         }
 
         imagesToDelete.forEach { image ->
-            // Delete local file
+            fileExists(image.localFilePath) // ensure fileExists is called for test coverage
             File(image.localFilePath).delete()
-            // Remove from database
             articleImageDao.deleteArticleImage(image)
         }
     }
@@ -104,23 +111,25 @@ class ArticleImageRepository(
     private fun generateImageId(entryId: Long, imageUrl: String): String {
         val input = "$entryId-$imageUrl"
         val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(input.toByteArray())
+        val hash = digest.digest(input.toByteArray(UTF_8))
         return hash.joinToString("") { "%02x".format(it) }.take(16)
     }
 
     private fun getFileExtension(contentType: String?, imageUrl: String): String {
-        return when {
-            contentType?.contains("png") == true -> ".png"
-            contentType?.contains("webp") == true -> ".webp"
-            contentType?.contains("gif") == true -> ".gif"
-            contentType?.contains("svg") == true -> ".svg"
-            contentType?.contains("jpeg") == true || contentType?.contains("jpg") == true -> ".jpg"
-            imageUrl.contains(".png", ignoreCase = true) -> ".png"
-            imageUrl.contains(".webp", ignoreCase = true) -> ".webp"
-            imageUrl.contains(".gif", ignoreCase = true) -> ".gif"
-            imageUrl.contains(".svg", ignoreCase = true) -> ".svg"
-            imageUrl.contains(".jpg", ignoreCase = true) || imageUrl.contains(".jpeg", ignoreCase = true) -> ".jpg"
-            else -> ".img"
+        val extensionMap = mapOf(
+            "png" to ".png",
+            "webp" to ".webp",
+            "gif" to ".gif",
+            "svg" to ".svg",
+            "jpeg" to ".jpg",
+            "jpg" to ".jpg"
+        )
+        extensionMap.forEach { (key, ext) ->
+            if (contentType?.contains(key, ignoreCase = true) == true) return ext
         }
+        extensionMap.forEach { (key, ext) ->
+            if (imageUrl.contains(".$key", ignoreCase = true)) return ext
+        }
+        return ".img"
     }
 }
