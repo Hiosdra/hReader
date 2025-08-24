@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.data.local.repository
 
+import android.util.Log
 import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
@@ -24,10 +25,10 @@ class ArticleContentRepository(
         }
 
         val originalContent = minifluxApiRepository.fetchOriginalContent(entryId)
-        
+
         // Download images from content
         processAndSaveImages(entryId, originalContent.content)
-        
+
         val articleContent = ArticleContent(
             entryId = entryId,
             content = originalContent.content,
@@ -51,7 +52,7 @@ class ArticleContentRepository(
             try {
                 articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ArticleContentRepo", "Failed to download image $imageUrl for entry $entryId", e)
             }
         }
     }
@@ -59,7 +60,7 @@ class ArticleContentRepository(
     suspend fun prefetchArticleContent(entries: List<Pair<Long, String>>, limit: Int? = 50) = coroutineScope {
         // Apply limit if specified (null means no limit for background sync)
         val limitedEntries = if (limit != null) entries.take(limit) else entries
-        
+
         val deferredResults = limitedEntries.map { (entryId, url) ->
             async(Dispatchers.IO) {
                 try {
@@ -67,7 +68,7 @@ class ArticleContentRepository(
                         getArticleContent(entryId, url)
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e("ArticleContentRepo", "Failed to prefetch content for entry $entryId", e)
                 }
             }
         }
@@ -82,7 +83,7 @@ class ArticleContentRepository(
                     try {
                         articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        Log.e("ArticleContentRepo", "Failed to download enclosure image $imageUrl for entry $entryId", e)
                     }
                 }
             }
@@ -93,17 +94,16 @@ class ArticleContentRepository(
     suspend fun cleanupOrphanedContent() {
         // Cleanup orphaned article content
         val allContent = articleContentDao.getAllArticleContents()
-        if (allContent.isNotEmpty()) {
-            val allArticles = articleDao.getAllArticlesOldestFirst().first()
-            val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
-            val contentToDelete = allContent.filter { content ->
-                !currentEntryIds.contains(content.entryId)
-            }
-            if (contentToDelete.isNotEmpty()) {
-                articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
-            }
+        if (allContent.isEmpty()) return
+        val allArticles = articleDao.getAllArticlesOldestFirst().first()
+        val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
+        if (currentEntryIds.isEmpty()) return
+        val contentToDelete = allContent.filter { content ->
+            !currentEntryIds.contains(content.entryId)
         }
-        
+        if (contentToDelete.isEmpty()) return
+        articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
+
         // Cleanup orphaned images
         articleImageRepository.cleanupOrphanedImages()
     }
