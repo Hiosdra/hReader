@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
-import com.hiosdra.hreader.util.SyncPerformanceLogger
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.IOException
@@ -15,21 +14,14 @@ class ContentSyncWorker(
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params), KoinComponent {
     private val repository: ArticleRepository by inject()
-    private val syncPerformanceLogger: SyncPerformanceLogger by inject()
 
     companion object {
         private const val TAG = "ContentSyncWorker"
     }
 
     override suspend fun doWork(): Result {
-        Log.i(TAG, "Starting ContentSyncWorker")
-
         return try {
-            Log.d(TAG, "Refreshing articles from remote source")
-            syncPerformanceLogger.measureSyncTime("Article refresh") {
-                repository.refreshArticles()
-            }
-            Log.i(TAG, "ContentSyncWorker completed successfully")
+            repository.refreshArticles()
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "ContentSyncWorker failed: ${e.message}", e)
