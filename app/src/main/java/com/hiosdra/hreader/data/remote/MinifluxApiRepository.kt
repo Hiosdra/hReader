@@ -59,16 +59,15 @@ private suspend fun <T> withRetries(
     delayMillis: Long = 500,
     block: suspend () -> T
 ): T {
-    var lastError: Throwable? = null
-    repeat(maxAttempts) { attempt ->
+    require(maxAttempts >= 1)
+    var attempts = 0
+    while (true) {
         try {
             return block()
         } catch (e: Throwable) {
-            lastError = e
-            if (attempt < maxAttempts - 1) {
-                delay(delayMillis)
-            }
+            attempts++
+            if (attempts >= maxAttempts) throw e
+            delay(delayMillis)
         }
     }
-    throw lastError ?: RuntimeException("Unknown error in withRetries")
 }
