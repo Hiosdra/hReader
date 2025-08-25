@@ -164,14 +164,16 @@ fun ArticleRow(
 }
 
 private fun extractTextPreview(html: String): String {
-    val noScripts = html.replace(Regex("(?is)<(script|style)[^>]*?>.*?</\\1>"), " ")
-    val noImages = noScripts.replace(Regex("(?is)<img[^>]*?>"), " ")
-    val noSvgs = noImages.replace(Regex("(?is)<svg[^>]*?>.*?</svg>"), " ")
-    val noVideos = noSvgs.replace(Regex("(?is)<(video|source|picture)[^>]*?>.*?</\\1>"), " ")
-    val text = Html.fromHtml(noVideos, Html.FROM_HTML_MODE_LEGACY).toString()
-    return text
+    val cleanedHtml = html
+        .replace(Regex("(?is)<(script|style)[^>]*?>.*?</\\1>"), " ")
+        .replace(Regex("(?is)<img[^>]*?>"), " ")
+        .replace(Regex("(?is)<svg[^>]*?>.*?</svg>"), " ")
+        .replace(Regex("(?is)<(video|source|picture)[^>]*?>.*?</\\1>"), " ")
+    
+    return Html.fromHtml(cleanedHtml, Html.FROM_HTML_MODE_LEGACY).toString()
         .replace('\uFFFC', ' ')
         .lines()
+        .asSequence()
         .map { it.trim() }
         .firstOrNull { it.isNotBlank() }
         .orEmpty()
