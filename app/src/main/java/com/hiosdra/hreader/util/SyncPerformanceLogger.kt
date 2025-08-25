@@ -4,7 +4,9 @@ import android.util.Log
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 
 class SyncPerformanceLogger(private val preferencesManager: PreferencesManager) {
-    private val TAG = "SyncPerformance"
+    companion object {
+        private const val TAG = "SyncPerformance"
+    }
     
     suspend fun <T> measureSyncTime(operationName: String, block: suspend () -> T): T {
         val startTime = System.currentTimeMillis()
@@ -12,14 +14,12 @@ class SyncPerformanceLogger(private val preferencesManager: PreferencesManager) 
         val endTime = System.currentTimeMillis()
         val duration = endTime - startTime
         
-        // Create performance record
         val record = SyncPerformanceRecord(
             timestamp = startTime,
             operationName = operationName,
             durationMs = duration
         )
         
-        // Save to preferences
         preferencesManager.addSyncPerformanceRecord(record)
         
         Log.i(TAG, "$operationName completed in ${duration}ms")
@@ -30,7 +30,6 @@ class SyncPerformanceLogger(private val preferencesManager: PreferencesManager) 
         val batches = (totalArticles + batchSize - 1) / batchSize // Ceiling division
         Log.i(TAG, "Processing $totalArticles articles in $batches batches of $batchSize each")
         
-        // Create performance record with batch info
         val record = SyncPerformanceRecord(
             timestamp = System.currentTimeMillis(),
             operationName = "Batch Processing",
@@ -53,7 +52,6 @@ class SyncPerformanceLogger(private val preferencesManager: PreferencesManager) 
             Log.i(TAG, "Using full sync")
         }
         
-        // Create performance record with sync mode info
         val record = SyncPerformanceRecord(
             timestamp = System.currentTimeMillis(),
             operationName = if (isIncremental) "Incremental Sync" else "Full Sync",
