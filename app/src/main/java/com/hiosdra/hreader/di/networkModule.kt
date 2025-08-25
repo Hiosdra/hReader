@@ -19,7 +19,7 @@ val networkModule = module {
     single<AuthInterceptor> { AuthInterceptor() }
     single<HttpLoggingInterceptor> {
         HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
             redactHeader("X-Auth-Token")
             redactHeader("CF-Access-Client-Id")
             redactHeader("CF-Access-Client-Secret")
