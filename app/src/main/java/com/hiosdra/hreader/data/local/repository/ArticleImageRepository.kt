@@ -44,9 +44,7 @@ class ArticleImageRepository(
                 }
 
                 val body = response.body
-                val bytes = body.bytes()
                 val contentType = body.contentType()?.toString()
-                response.close()
 
                 // Generate file name and path
                 val imageId = generateImageId(entryId, imageUrl)
@@ -54,8 +52,13 @@ class ArticleImageRepository(
                 val fileName = "$imageId$extension"
                 val localFile = File(imagesDir, fileName)
 
-                // Save to local storage
-                FileOutputStream(localFile).use { it.write(bytes) }
+                // Save to local storage by streaming
+                val fileSize = FileOutputStream(localFile).use { output ->
+                    body.byteStream().use { input ->
+                        input.copyTo(output)
+                    }
+                }
+                response.close()
 
                 val articleImage = ArticleImage(
                     id = imageId,
@@ -64,7 +67,7 @@ class ArticleImageRepository(
                     localFilePath = localFile.absolutePath,
                     mimeType = contentType,
                     downloadedAt = Instant.now(),
-                    fileSize = bytes.size.toLong()
+                    fileSize = fileSize
                 )
 
                 articleImageDao.insertArticleImage(articleImage)
