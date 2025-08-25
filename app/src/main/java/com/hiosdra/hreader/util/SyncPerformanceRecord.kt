@@ -1,6 +1,8 @@
 package com.hiosdra.hreader.util
 
 import com.squareup.moshi.JsonClass
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @JsonClass(generateAdapter = true)
 data class SyncPerformanceRecord(
@@ -13,9 +15,9 @@ data class SyncPerformanceRecord(
     val lastSyncHoursAgo: Long? = null
 ) {
     fun getFormattedTimestamp(): String =
-        java.text.SimpleDateFormat("MMM dd, HH:mm:ss", java.util.Locale.getDefault())
+        SimpleDateFormat("MMM dd, HH:mm:ss", Locale.getDefault())
             .format(java.util.Date(timestamp))
-    
+
     fun getFormattedDuration(): String = when {
         durationMs < 1000 -> "${durationMs}ms"
         durationMs < 60000 -> String.format("%.1fs", durationMs / 1000.0)
