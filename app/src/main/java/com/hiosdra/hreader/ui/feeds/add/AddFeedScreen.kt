@@ -58,7 +58,7 @@ fun AddFeedScreen(
                     modifier = Modifier.fillMaxWidth().padding(16.dp)
                 )
                 if (uiState.error != null) {
-                    Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
+                    Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
                 }
                 if (uiState.showFeedPicker && uiState.discoveredFeeds.isNotEmpty()) {
                     Text("Select a feed to add:")

@@ -81,7 +81,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.navigation.NavHostController
-import coil.compose.rememberAsyncImagePainter
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
@@ -176,7 +175,7 @@ fun ArticleScreen(
                 }
             }
             uiState.error != null -> {
-                Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
+                Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
             }
             uiState.entries.isNotEmpty() -> {
                 ArticlePager(
@@ -578,7 +577,7 @@ private fun MetaChips(
                                 tint = when {
                                     credibilityScore == null && isGeneratingScore -> MaterialTheme.colorScheme.primary
                                     credibilityScore != null && credibilityScore >= 0.7f -> androidx.compose.ui.graphics.Color(0xFF4CAF50) // Green
-                                    credibilityScore != null && credibilityScore >= 0.4f -> androidx.compose.ui.graphics.Color(0xFFFF9800) // Orange  
+                                    credibilityScore != null && credibilityScore >= 0.4f -> androidx.compose.ui.graphics.Color(0xFFFF9800) // Orange
                                     credibilityScore != null -> androidx.compose.ui.graphics.Color(0xFFE53935) // Red
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                                 }
