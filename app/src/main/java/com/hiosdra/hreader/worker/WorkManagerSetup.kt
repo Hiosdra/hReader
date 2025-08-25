@@ -1,4 +1,4 @@
-package com.hiosdra.hreader
+package com.hiosdra.hreader.worker
 
 import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
