@@ -2,6 +2,7 @@ package com.hiosdra.hreader.ui.article
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
@@ -100,113 +101,41 @@ class ArticleViewModel(
         }
     }
 
-    fun getContentForEntry(entryId: Long): String? {
-        val originalContent = _uiState.value.originalContent[entryId]
-        if (originalContent != null) {
-            return originalContent
-        }
-        return _uiState.value.entries.find { it.id == entryId }?.content
-    }
+    fun getContentForEntry(entryId: Long): String? =
+        _uiState.value.originalContent[entryId] 
+            ?: _uiState.value.entries.find { it.id == entryId }?.content
 
     fun generateAiOverview(entryId: Long) {
         val entry = _uiState.value.entries.find { it.id == entryId } ?: return
+        if (_uiState.value.aiOverviews.containsKey(entryId)) return
 
-        // Check if overview already exists
-        if (_uiState.value.aiOverviews.containsKey(entryId)) {
-            return
-        }
-
-        _uiState.value = _uiState.value.copy(
-            isGeneratingOverview = true,
-            overviewError = null
+        generateAiContent(
+            entryId = entryId,
+            entry = entry,
+            existingData = _uiState.value.aiOverviews,
+            setGenerating = { generating -> _uiState.value = _uiState.value.copy(isGeneratingOverview = generating, overviewError = null) },
+            setError = { error -> _uiState.value = _uiState.value.copy(isGeneratingOverview = false, overviewError = error) },
+            onSuccess = { content -> _uiState.value = _uiState.value.copy(aiOverviews = _uiState.value.aiOverviews + (entryId to content), isGeneratingOverview = false, overviewError = null) },
+            generateFunction = { title, content, model -> articleAiService.generateArticleOverview(title, content, model) },
+            errorMessage = "Failed to generate overview"
         )
-
-        viewModelScope.launch {
-            try {
-                val content = getContentForEntry(entryId) ?: entry.content ?: ""
-                val model = preferencesManager.getAiModel()
-
-                val result = articleAiService.generateArticleOverview(
-                    title = entry.title,
-                    content = content,
-                    model = model
-                )
-
-                result.fold(
-                    onSuccess = { overview ->
-                        _uiState.value = _uiState.value.copy(
-                            aiOverviews = _uiState.value.aiOverviews + (entryId to overview),
-                            isGeneratingOverview = false,
-                            overviewError = null
-                        )
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(
-                            isGeneratingOverview = false,
-                            overviewError = error.message ?: "Failed to generate overview"
-                        )
-                    }
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isGeneratingOverview = false,
-                    overviewError = e.message ?: "Failed to generate overview"
-                )
-            }
-        }
     }
 
     fun generateCredibilityScore(entryId: Long) {
         val entry = _uiState.value.entries.find { it.id == entryId } ?: return
+        if (_uiState.value.credibilityScores.containsKey(entryId)) return
+        if (!preferencesManager.getCredibilityScoreEnabled()) return
 
-        // Check if score already exists
-        if (_uiState.value.credibilityScores.containsKey(entryId)) {
-            return
-        }
-
-        // Check if feature is enabled
-        if (!preferencesManager.getCredibilityScoreEnabled()) {
-            return
-        }
-
-        _uiState.value = _uiState.value.copy(
-            isGeneratingScore = true,
-            scoreError = null
+        generateAiContent(
+            entryId = entryId,
+            entry = entry,
+            existingData = _uiState.value.credibilityScores,
+            setGenerating = { generating -> _uiState.value = _uiState.value.copy(isGeneratingScore = generating, scoreError = null) },
+            setError = { error -> _uiState.value = _uiState.value.copy(isGeneratingScore = false, scoreError = error) },
+            onSuccess = { score -> _uiState.value = _uiState.value.copy(credibilityScores = _uiState.value.credibilityScores + (entryId to score), isGeneratingScore = false, scoreError = null) },
+            generateFunction = { title, content, model -> articleAiService.generateCredibilityScore(title, content, model) },
+            errorMessage = "Failed to generate credibility score"
         )
-
-        viewModelScope.launch {
-            try {
-                val content = getContentForEntry(entryId) ?: entry.content ?: ""
-                val model = preferencesManager.getAiModel()
-
-                val result = articleAiService.generateCredibilityScore(
-                    title = entry.title,
-                    content = content,
-                    model = model
-                )
-
-                result.fold(
-                    onSuccess = { score ->
-                        _uiState.value = _uiState.value.copy(
-                            credibilityScores = _uiState.value.credibilityScores + (entryId to score),
-                            isGeneratingScore = false,
-                            scoreError = null
-                        )
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(
-                            isGeneratingScore = false,
-                            scoreError = error.message ?: "Failed to generate credibility score"
-                        )
-                    }
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isGeneratingScore = false,
-                    scoreError = e.message ?: "Failed to generate credibility score"
-                )
-            }
-        }
     }
 
     fun clearOverviewError() {
@@ -215,5 +144,34 @@ class ArticleViewModel(
 
     fun clearScoreError() {
         _uiState.value = _uiState.value.copy(scoreError = null)
+    }
+
+    private fun <T> generateAiContent(
+        entryId: Long,
+        entry: Entry,
+        existingData: Map<Long, T>,
+        setGenerating: (Boolean) -> Unit,
+        setError: (String) -> Unit,
+        onSuccess: (T) -> Unit,
+        generateFunction: suspend (String, String, AiModel) -> Result<T>,
+        errorMessage: String
+    ) {
+        setGenerating(true)
+        
+        viewModelScope.launch {
+            try {
+                val content = getContentForEntry(entryId) ?: entry.content ?: ""
+                val model = preferencesManager.getAiModel()
+
+                val result = generateFunction(entry.title, content, model)
+
+                result.fold(
+                    onSuccess = onSuccess,
+                    onFailure = { error -> setError(error.message ?: errorMessage) }
+                )
+            } catch (e: Exception) {
+                setError(e.message ?: errorMessage)
+            }
+        }
     }
 }
