@@ -6,6 +6,7 @@ import org.jsoup.nodes.TextNode
 
 object BionicReadingProcessor {
     private val WORD_REGEX = Regex("([\\p{L}\\p{M}]+)")
+    private val SKIPPED_TAGS = setOf("pre", "code", "script", "style", "svg", "strong", "b")
 
     fun processTextToBionic(html: String): String {
         if (html.isBlank()) return html
@@ -22,7 +23,7 @@ object BionicReadingProcessor {
             when (child) {
                 is TextNode -> {
                     val parentTag = child.parent()?.nodeName()?.lowercase()
-                    if (parentTag !in setOf("pre", "code", "script", "style", "svg", "strong", "b")) {
+                    if (parentTag !in SKIPPED_TAGS) {
                         val processed = processBionicText(child.wholeText)
                         if (processed != child.wholeText) {
                             child.after(processed)
