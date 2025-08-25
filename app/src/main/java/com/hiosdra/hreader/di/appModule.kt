@@ -34,7 +34,7 @@ val appModule = module {
     single { get<AppDatabase>().feedDao() }
     single { get<AppDatabase>().articleContentDao() }
     single { get<AppDatabase>().articleImageDao() }
-    single { ArticleRepository(get(), get(), get(), get(), get(), get()) }
+    single { ArticleRepository(get(), get(), get(), get(), get()) }
     single { ArticleImageRepository(androidApplication(), get(), get(), get()) }
     single { ArticleContentRepository(get(), get(), get(), get()) }
     single { PaywallBypassService() }
@@ -42,7 +42,7 @@ val appModule = module {
     single { SyncPerformanceLogger(get()) }
     single { ImageLoader(get()) }
     worker { ContentSyncWorker(get(), get()) }
-    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get()) }
+    worker { ArticleContentSyncWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get()) }
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get(), get(), get(), get()) }

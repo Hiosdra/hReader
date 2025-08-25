@@ -7,7 +7,6 @@ import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.util.SyncPerformanceLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -16,8 +15,7 @@ class ArticleContentSyncWorker(
     appContext: Context,
     params: WorkerParameters,
     private val articleRepository: ArticleRepository,
-    private val articleContentRepository: ArticleContentRepository,
-    private val syncPerformanceLogger: SyncPerformanceLogger
+    private val articleContentRepository: ArticleContentRepository
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -25,52 +23,31 @@ class ArticleContentSyncWorker(
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        Log.i(TAG, "Starting ArticleContentSyncWorker")
         try {
-            Log.d(TAG, "Cleaning up orphaned content before prefetch")
-            syncPerformanceLogger.measureSyncTime("Orphaned content cleanup") {
-                articleContentRepository.cleanupOrphanedContent()
-            }
-            Log.d(TAG, "Cleanup complete")
-
-            Log.d(TAG, "Fetching local unread articles")
+            articleContentRepository.cleanupOrphanedContent()
+            
             val unreadArticles = articleRepository.getLocalUnreadArticles()
-            Log.i(TAG, "Found ${unreadArticles.size} local unread articles")
+            if (unreadArticles.isEmpty()) {
+                return@withContext Result.success()
+            }
 
             val entriesToFetch = unreadArticles.map { entry ->
                 entry.id to entry.url
             }
 
-            if (entriesToFetch.isNotEmpty()) {
-                syncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
-                Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles (background sync - no limit)")
-                
-                syncPerformanceLogger.measureSyncTime("Article content prefetch") {
-                    articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
-                }
-                Log.i(TAG, "Content prefetching completed")
+            articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
 
-                // Download enclosure images for articles with image enclosures
-                Log.d(TAG, "Downloading enclosure images")
-                val enclosureImageEntries = unreadArticles.mapNotNull { entry ->
-                    entry.getImageEnclosureUrls()?.let { urls ->
-                        if (urls.isNotEmpty()) entry.id.toLong() to urls else null
-                    }
+            // Download enclosure images for articles with image enclosures
+            val enclosureImageEntries = unreadArticles.mapNotNull { entry ->
+                entry.getImageEnclosureUrls()?.let { urls ->
+                    if (urls.isNotEmpty()) entry.id.toLong() to urls else null
                 }
-
-                if (enclosureImageEntries.isNotEmpty()) {
-                    syncPerformanceLogger.measureSyncTime("Enclosure images download") {
-                        articleContentRepository.downloadEnclosureImages(enclosureImageEntries)
-                    }
-                    Log.i(TAG, "Enclosure images downloaded for ${enclosureImageEntries.size} articles")
-                } else {
-                    Log.i(TAG, "No enclosure images to download")
-                }
-            } else {
-                Log.i(TAG, "No articles to prefetch")
             }
 
-            Log.i(TAG, "ArticleContentSyncWorker completed successfully")
+            if (enclosureImageEntries.isNotEmpty()) {
+                articleContentRepository.downloadEnclosureImages(enclosureImageEntries)
+            }
+
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "ArticleContentSyncWorker failed: ${e.message}", e)
