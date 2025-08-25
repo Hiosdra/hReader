@@ -27,54 +27,55 @@ class ArticleContentSyncWorker(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         Log.i(TAG, "Starting ArticleContentSyncWorker")
         try {
-            Log.d(TAG, "Cleaning up orphaned content before prefetch")
-            syncPerformanceLogger.measureSyncTime("Orphaned content cleanup") {
-                articleContentRepository.cleanupOrphanedContent()
-            }
-            Log.d(TAG, "Cleanup complete")
-
-            Log.d(TAG, "Fetching local unread articles")
+            performOrphanedContentCleanup()
+            
             val unreadArticles = articleRepository.getLocalUnreadArticles()
             Log.i(TAG, "Found ${unreadArticles.size} local unread articles")
-
-            val entriesToFetch = unreadArticles.map { entry ->
-                entry.id to entry.url
-            }
-
-            if (entriesToFetch.isNotEmpty()) {
-                syncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
-                Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles (background sync - no limit)")
-                
-                syncPerformanceLogger.measureSyncTime("Article content prefetch") {
-                    articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
-                }
-                Log.i(TAG, "Content prefetching completed")
-
-                // Download enclosure images for articles with image enclosures
-                Log.d(TAG, "Downloading enclosure images")
-                val enclosureImageEntries = unreadArticles.mapNotNull { entry ->
-                    entry.getImageEnclosureUrls()?.let { urls ->
-                        if (urls.isNotEmpty()) entry.id.toLong() to urls else null
-                    }
-                }
-
-                if (enclosureImageEntries.isNotEmpty()) {
-                    syncPerformanceLogger.measureSyncTime("Enclosure images download") {
-                        articleContentRepository.downloadEnclosureImages(enclosureImageEntries)
-                    }
-                    Log.i(TAG, "Enclosure images downloaded for ${enclosureImageEntries.size} articles")
-                } else {
-                    Log.i(TAG, "No enclosure images to download")
-                }
-            } else {
+            
+            if (unreadArticles.isEmpty()) {
                 Log.i(TAG, "No articles to prefetch")
+                return@withContext Result.success()
             }
+
+            prefetchArticleContent(unreadArticles)
+            downloadEnclosureImages(unreadArticles)
 
             Log.i(TAG, "ArticleContentSyncWorker completed successfully")
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "ArticleContentSyncWorker failed: ${e.message}", e)
             if (e is IOException) Result.retry() else Result.failure()
+        }
+    }
+
+    private suspend fun performOrphanedContentCleanup() {
+        syncPerformanceLogger.measureSyncTime("Orphaned content cleanup") {
+            articleContentRepository.cleanupOrphanedContent()
+        }
+    }
+
+    private suspend fun prefetchArticleContent(unreadArticles: List<Entry>) {
+        val entriesToFetch = unreadArticles.map { it.id to it.url }
+        syncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
+        Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles (background sync)")
+        
+        syncPerformanceLogger.measureSyncTime("Article content prefetch") {
+            articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
+        }
+    }
+
+    private suspend fun downloadEnclosureImages(unreadArticles: List<Entry>) {
+        val enclosureImageEntries = unreadArticles.mapNotNull { entry ->
+            entry.getImageEnclosureUrls()?.takeIf { it.isNotEmpty() }?.let { urls ->
+                entry.id.toLong() to urls
+            }
+        }
+
+        if (enclosureImageEntries.isNotEmpty()) {
+            syncPerformanceLogger.measureSyncTime("Enclosure images download") {
+                articleContentRepository.downloadEnclosureImages(enclosureImageEntries)
+            }
+            Log.i(TAG, "Enclosure images downloaded for ${enclosureImageEntries.size} articles")
         }
     }
 }

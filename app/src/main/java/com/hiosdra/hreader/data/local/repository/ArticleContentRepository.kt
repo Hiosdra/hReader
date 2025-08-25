@@ -19,6 +19,9 @@ class ArticleContentRepository(
     private val articleDao: ArticleDao,
     private val articleImageRepository: ArticleImageRepository
 ) {
+    companion object {
+        private const val TAG = "ArticleContentRepo"
+    }
     suspend fun getArticleContent(entryId: Long, url: String): String {
         val localContent = articleContentDao.getArticleContent(entryId)
         if (localContent != null) {
@@ -53,7 +56,7 @@ class ArticleContentRepository(
             try {
                 articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
             } catch (e: Exception) {
-                Log.e("ArticleContentRepo", "Failed to download image $imageUrl for entry $entryId", e)
+                Log.e(TAG, "Failed to download image $imageUrl for entry $entryId", e)
             }
         }
     }
@@ -67,7 +70,7 @@ class ArticleContentRepository(
                         getArticleContent(entryId, url)
                     }
                 } catch (e: Exception) {
-                    Log.e("ArticleContentRepo", "Failed to prefetch content for entry $entryId", e)
+                    Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                 }
             }
         }
@@ -77,13 +80,7 @@ class ArticleContentRepository(
     suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>) = coroutineScope {
         val deferredResults = entries.map { (entryId, imageUrls) ->
             async(Dispatchers.IO) {
-                imageUrls.forEach { imageUrl ->
-                    try {
-                        articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
-                    } catch (e: Exception) {
-                        Log.e("ArticleContentRepo", "Failed to download enclosure image $imageUrl for entry $entryId", e)
-                    }
-                }
+                downloadImagesForEntry(entryId, imageUrls)
             }
         }
         deferredResults.awaitAll()
@@ -104,5 +101,15 @@ class ArticleContentRepository(
 
         // Cleanup orphaned images
         articleImageRepository.cleanupOrphanedImages()
+    }
+
+    private suspend fun downloadImagesForEntry(entryId: Long, imageUrls: List<String>) {
+        imageUrls.forEach { imageUrl ->
+            try {
+                articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to download enclosure image $imageUrl for entry $entryId", e)
+            }
+        }
     }
 }
