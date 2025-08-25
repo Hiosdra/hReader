@@ -84,7 +84,7 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
 
     private fun applyFilterAndEmit(isLoadingDone: Boolean = false, feedTitle: String? = _uiState.value.feedTitle) {
         val filtered = fullList.filter { entry ->
-            if (entry.status != "read") true else sessionReadIds.contains(entry.id)
+            entry.status != "read" || sessionReadIds.contains(entry.id)
         }
         _uiState.value = _uiState.value.copy(
             entries = filtered,
@@ -110,12 +110,13 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
 
     fun updateEntryReadStatus(entryId: Long, checked: Boolean) {
         if (fullList.none { it.id == entryId }) return
+        
         val newStatus = if (checked) "read" else "unread"
-        fullList = fullList.map {
-            if (it.id == entryId) it.copy(status = newStatus) else it
-        }
+        fullList = fullList.map { if (it.id == entryId) it.copy(status = newStatus) else it }
+        
         if (checked) sessionReadIds.add(entryId) else sessionReadIds.remove(entryId)
         applyFilterAndEmit()
+        
         viewModelScope.launch {
             try {
                 articleRepository.updateReadStatus(entryId.toString(), newStatus)
