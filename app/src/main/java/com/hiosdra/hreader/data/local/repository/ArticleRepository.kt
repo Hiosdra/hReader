@@ -27,27 +27,15 @@ class ArticleRepository(
     private val syncPerformanceLogger: SyncPerformanceLogger
 ) {
     fun getAllArticlesOldestFirst(): Flow<List<Entry>> =
-        articleDao.getAllArticlesOldestFirst().map { list ->
-            list.map { article ->
-                val feed = feedDao.getFeedById(article.feedId)
-                    ?: throw IllegalStateException("Feed not found")
-                article.toEntry(feed)
-            }
-        }
+        articleDao.getAllArticlesOldestFirst().map { it.mapToEntries() }
 
     fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
-        articleDao.getArticlesByIds(ids.map { it.toString() }).map { list ->
-            list.map { article ->
-                val feed = feedDao.getFeedById(article.feedId)
-                    ?: throw IllegalStateException("Feed not found")
-                article.toEntry(feed)
-            }
-        }
+        articleDao.getArticlesByIds(ids.map { it.toString() }).map { it.mapToEntries() }
 
     suspend fun getAllArticlesForFeed(feedId: Long): Flow<List<Entry>> {
         val feed = feedDao.getFeedById(feedId) ?: throw IllegalStateException("Feed not found")
-        return articleDao.getAllArticlesForFeed(feedId).map { list ->
-            list.map { article -> article.toEntry(feed) }
+        return articleDao.getAllArticlesForFeed(feedId).map { articles ->
+            articles.map { it.toEntry(feed) }
         }
     }
 
@@ -58,37 +46,17 @@ class ArticleRepository(
         val feedsMap = mutableMapOf<Long, FeedEntity>()
         val syncStartTime = System.currentTimeMillis()
         
-        // Try incremental sync first if we have a previous sync timestamp
-        val lastSyncTimestamp = preferencesManager.getLastSyncTimestamp()
-        val useIncrementalSync = lastSyncTimestamp > 0 && 
-                                 (syncStartTime - lastSyncTimestamp) < 24 * 60 * 60 * 1000L // Last sync within 24h
-        
-        syncPerformanceLogger.logSyncMode(useIncrementalSync, lastSyncTimestamp.takeIf { it > 0 })
+        val useIncrementalSync = shouldUseIncrementalSync(syncStartTime)
+        syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
         
         while (true) {
-            val response = if (useIncrementalSync) {
-                val lastSyncIso = Instant.ofEpochMilli(lastSyncTimestamp)
-                    .atZone(java.time.ZoneOffset.UTC)
-                    .format(DateTimeFormatter.ISO_INSTANT)
-                Log.d("ArticleRepository", "Using incremental sync since: $lastSyncIso")
-                api.getEntriesChangedAfter(lastSyncIso, limit = limit, offset = offset)
-            } else {
-                Log.d("ArticleRepository", "Using full sync")
-                api.getEntries(limit = limit, offset = offset)
-            }
-            
+            val response = fetchArticleBatch(useIncrementalSync, limit, offset)
             val articles = response.entries.map { it.toEntity() }
-            val feeds = response.entries.map { entry ->
-                val f = entry.feed
-                FeedEntity(
-                    id = f.id,
-                    title = f.title,
-                    siteUrl = f.siteUrl,
-                    feedUrl = f.feedUrl,
-                )
-            }
+            val feeds = response.entries.map { entry -> entry.feed.toFeedEntity() }
+            
             fetchedArticles += articles
             feeds.forEach { feedsMap[it.id] = it }
+            
             if (articles.size < limit) break
             offset += limit
         }
@@ -98,20 +66,45 @@ class ArticleRepository(
         syncPerformanceLogger.measureSyncTime("Database transaction") {
             db.withTransaction {
                 feedDao.insertFeeds(feedsMap.values.toList())
-                // Batch query for existing articles to optimize database access
-                val articleIds = fetchedArticles.map { it.id }
-                val existingArticles = articleDao.getArticlesImmediate(articleIds).associateBy { it.id }
-                
-                val toInsert = fetchedArticles.map { remote ->
-                    val existing = existingArticles[remote.id]
-                    if (existing?.status == "read" && remote.status != "read") remote.copy(status = "read") else remote
-                }
-                articleDao.insertArticles(toInsert)
+                insertArticlesWithStatusPreservation(fetchedArticles)
             }
         }
         
-        // Update last sync timestamp
         preferencesManager.setLastSyncTimestamp(syncStartTime)
+    }
+
+    private fun shouldUseIncrementalSync(syncStartTime: Long): Boolean {
+        val lastSyncTimestamp = getLastSyncTime()
+        return lastSyncTimestamp > 0 && (syncStartTime - lastSyncTimestamp) < java.time.Duration.ofHours(24).toMillis()
+    }
+
+    private fun getLastSyncTime(): Long = preferencesManager.getLastSyncTimestamp()
+
+    private suspend fun fetchArticleBatch(useIncremental: Boolean, limit: Int, offset: Int) =
+        if (useIncremental) {
+            val lastSyncIso = Instant.ofEpochMilli(getLastSyncTime())
+                .atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+            Log.d("ArticleRepository", "Using incremental sync since: $lastSyncIso")
+            api.getEntriesChangedAfter(lastSyncIso, limit = limit, offset = offset)
+        } else {
+            Log.d("ArticleRepository", "Using full sync")
+            api.getEntries(limit = limit, offset = offset)
+        }
+
+    private suspend fun insertArticlesWithStatusPreservation(fetchedArticles: List<ArticleEntity>) {
+        val articleIds = fetchedArticles.map { it.id }
+        val existingArticles = articleDao.getArticlesImmediate(articleIds).associateBy { it.id }
+        
+        val articlesToInsert = fetchedArticles.map { remote ->
+            val existing = existingArticles[remote.id]
+            if (existing?.status == "read" && remote.status != "read") {
+                remote.copy(status = "read")
+            } else {
+                remote
+            }
+        }
+        articleDao.insertArticles(articlesToInsert)
     }
 
     suspend fun updateReadStatus(articleIds: List<String>, newStatus: String) {
@@ -132,19 +125,11 @@ class ArticleRepository(
         updateReadStatus(listOf(articleId), newStatus)
     }
 
-    suspend fun getLocalUnreadArticles(): List<Entry> {
-        val unread = articleDao.getArticlesByStatus("unread")
-        return unread.mapToEntries()
-    }
+    suspend fun getLocalUnreadArticles(): List<Entry> =
+        articleDao.getArticlesByStatus("unread").mapToEntries()
 
     fun getUnreadArticlesOldestFirst(): Flow<List<Entry>> =
-        articleDao.getAllUnreadArticlesOldestFirst().map { list ->
-            list.map { article ->
-                val feed = feedDao.getFeedById(article.feedId)
-                    ?: throw IllegalStateException("Feed not found")
-                article.toEntry(feed)
-            }
-        }
+        articleDao.getAllUnreadArticlesOldestFirst().map { it.mapToEntries() }
 
     suspend fun getFeed(feedId: Long): Feed? {
         val entity = feedDao.getFeedById(feedId) ?: return null
@@ -188,4 +173,11 @@ private fun Entry.toEntity(): ArticleEntity = ArticleEntity(
     readingTime = readingTime,
     enclosures = enclosures,
     status = status
+)
+
+private fun com.hiosdra.hreader.data.model.Feed.toFeedEntity(): FeedEntity = FeedEntity(
+    id = id,
+    title = title,
+    siteUrl = siteUrl,
+    feedUrl = feedUrl
 )
