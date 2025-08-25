@@ -11,8 +11,8 @@ class PaywallBypassService {
             throw IllegalArgumentException("Original URL cannot be blank")
         }
         return when (method) {
-            PaywallBypassMethod.SMRY_AI -> "${method.baseUrl}/${originalUrl}"
-            PaywallBypassMethod.REMOVE_PAYWALL -> "${method.baseUrl}?url=${originalUrl}"
+            PaywallBypassMethod.SMRY_AI -> "${method.baseUrl}/$originalUrl"
+            PaywallBypassMethod.REMOVE_PAYWALL -> "${method.baseUrl}?url=$originalUrl"
         }
     }
     
