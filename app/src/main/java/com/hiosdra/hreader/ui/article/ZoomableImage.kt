@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.ui.article
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import coil.compose.rememberAsyncImagePainter
+import coil3.compose.AsyncImage
 
 @Composable
 fun ZoomableImage(url: String, onDismiss: () -> Unit) {
@@ -35,9 +34,8 @@ fun ZoomableImage(url: String, onDismiss: () -> Unit) {
                 },
             contentAlignment = Alignment.Center
         ) {
-            val painter = rememberAsyncImagePainter(url)
-            Image(
-                painter = painter,
+            AsyncImage(
+                model = url,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
