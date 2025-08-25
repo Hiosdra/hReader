@@ -11,9 +11,7 @@ class ImageLoader(
 ) {
     suspend fun getImagePath(entryId: Long, imageUrl: String): String = withContext(Dispatchers.IO) {
         val localPath = articleImageRepository.getLocalImagePath(entryId, imageUrl)
-        if (localPath != null && fileExists(localPath)) {
-            return@withContext "file://$localPath"
-        }
+        localPath?.takeIf { fileExists(it) }?.let { return@withContext "file://$it" }
         return@withContext imageUrl
     }
 }
