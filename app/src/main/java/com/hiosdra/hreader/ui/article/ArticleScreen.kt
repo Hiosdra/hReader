@@ -50,6 +50,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -423,7 +424,7 @@ private fun ArticleContent(
                         onCredibilityScoreClick = if (onCredibilityScore != null) { { onCredibilityScore(entry.id) } } else null
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    androidx.compose.material3.Divider()
+                    HorizontalDivider()
 
                     if (mainImageUrl != null) {
                         Spacer(modifier = Modifier.height(20.dp))
@@ -576,9 +577,9 @@ private fun MetaChips(
                                 modifier = Modifier.size(16.dp),
                                 tint = when {
                                     credibilityScore == null && isGeneratingScore -> MaterialTheme.colorScheme.primary
-                                    credibilityScore != null && credibilityScore >= 0.7f -> androidx.compose.ui.graphics.Color(0xFF4CAF50) // Green
-                                    credibilityScore != null && credibilityScore >= 0.4f -> androidx.compose.ui.graphics.Color(0xFFFF9800) // Orange
-                                    credibilityScore != null -> androidx.compose.ui.graphics.Color(0xFFE53935) // Red
+                                    credibilityScore != null && credibilityScore >= 0.7f -> Color(0xFF4CAF50) // Green
+                                    credibilityScore != null && credibilityScore >= 0.4f -> Color(0xFFFF9800) // Orange
+                                    credibilityScore != null -> Color(0xFFE53935) // Red
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                                 }
                             )
@@ -597,10 +598,10 @@ private fun MetaChips(
                     enabled = !(credibilityScore == null && isGeneratingScore),
                     colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
                         containerColor = when {
-                            credibilityScore != null && credibilityScore >= 0.7f -> androidx.compose.ui.graphics.Color(0xFF4CAF50).copy(alpha = 0.2f)
-                            credibilityScore != null && credibilityScore >= 0.4f -> androidx.compose.ui.graphics.Color(0xFFFF9800).copy(alpha = 0.2f)
-                            credibilityScore != null -> androidx.compose.ui.graphics.Color(0xFFE53935).copy(alpha = 0.2f)
-                            credibilityScore != null || isGeneratingScore -> MaterialTheme.colorScheme.primaryContainer
+                            credibilityScore != null && credibilityScore >= 0.7f -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                            credibilityScore != null && credibilityScore >= 0.4f -> Color(0xFFFF9800).copy(alpha = 0.2f)
+                            credibilityScore != null -> Color(0xFFE53935).copy(alpha = 0.2f)
+                            isGeneratingScore -> MaterialTheme.colorScheme.primaryContainer
                             else -> MaterialTheme.colorScheme.surfaceVariant
                         }
                     )
