@@ -7,7 +7,6 @@ import com.hiosdra.hreader.data.local.repository.ArticleImageRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
-import com.hiosdra.hreader.ui.article.ArticleListViewModel
 import com.hiosdra.hreader.ui.article.ArticleViewModel
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
 import com.hiosdra.hreader.ui.feeds.add.AddFeedViewModel
@@ -47,5 +46,4 @@ val appModule = module {
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get(), get(), get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }
-    viewModel { ArticleListViewModel(get()) }
 }
