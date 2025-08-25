@@ -47,9 +47,7 @@ class ArticleRepository(
     suspend fun getAllArticlesForFeed(feedId: Long): Flow<List<Entry>> {
         val feed = feedDao.getFeedById(feedId) ?: throw IllegalStateException("Feed not found")
         return articleDao.getAllArticlesForFeed(feedId).map { list ->
-            list.map { article ->
-                article.toEntry(feed)
-            }
+            list.map { article -> article.toEntry(feed) }
         }
     }
 
@@ -131,20 +129,12 @@ class ArticleRepository(
     }
 
     suspend fun updateReadStatus(articleId: String, newStatus: String) {
-        articleDao.updateStatus(articleId, newStatus)
-        try {
-            api.updateEntriesStatus(UpdateEntriesStatusRequest(listOf(articleId.toLong()), newStatus))
-        } catch (e: Exception) {
-            Log.w("ArticleRepository", "Failed to push status update for $articleId; keeping local optimistic state: ${e.message}")
-        }
+        updateReadStatus(listOf(articleId), newStatus)
     }
 
     suspend fun getLocalUnreadArticles(): List<Entry> {
         val unread = articleDao.getArticlesByStatus("unread")
-        return unread.map { entity ->
-            val feed = feedDao.getFeedById(entity.feedId) ?: throw IllegalStateException("Feed not found")
-            entity.toEntry(feed)
-        }
+        return unread.mapToEntries()
     }
 
     fun getUnreadArticlesOldestFirst(): Flow<List<Entry>> =
@@ -159,6 +149,11 @@ class ArticleRepository(
     suspend fun getFeed(feedId: Long): Feed? {
         val entity = feedDao.getFeedById(feedId) ?: return null
         return entity.toFeed()
+    }
+
+    private suspend fun List<ArticleEntity>.mapToEntries(): List<Entry> = map { article ->
+        val feed = feedDao.getFeedById(article.feedId) ?: throw IllegalStateException("Feed not found")
+        article.toEntry(feed)
     }
 }
 

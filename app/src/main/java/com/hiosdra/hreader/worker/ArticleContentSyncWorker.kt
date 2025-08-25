@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -52,13 +53,9 @@ class ArticleContentSyncWorker(
                 // Download enclosure images for articles with image enclosures
                 Log.d(TAG, "Downloading enclosure images")
                 val enclosureImageEntries = unreadArticles.mapNotNull { entry ->
-                    val imageUrls = entry.enclosures?.filter { 
-                        it.mimeType?.startsWith("image/") == true 
-                    }?.map { it.url } ?: emptyList()
-                    
-                    if (imageUrls.isNotEmpty()) {
-                        entry.id.toLong() to imageUrls
-                    } else null
+                    entry.getImageEnclosureUrls()?.let { urls ->
+                        if (urls.isNotEmpty()) entry.id.toLong() to urls else null
+                    }
                 }
 
                 if (enclosureImageEntries.isNotEmpty()) {
@@ -81,3 +78,6 @@ class ArticleContentSyncWorker(
         }
     }
 }
+
+private fun Entry.getImageEnclosureUrls(): List<String>? =
+    enclosures?.filter { it.mimeType?.startsWith("image/") == true }?.map { it.url }
