@@ -8,11 +8,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.koin.core.component.KoinComponent
 
 class ArticleListViewModel(
     private val articleRepository: ArticleRepository
-) : ViewModel(), KoinComponent {
+) : ViewModel() {
     private val _uiState = MutableStateFlow(ArticleListUiState())
     val uiState: StateFlow<ArticleListUiState> = _uiState.asStateFlow()
 
