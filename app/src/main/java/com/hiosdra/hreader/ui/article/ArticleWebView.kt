@@ -33,10 +33,10 @@ fun ArticleWebView(
             WebView(context).apply {
                 fun updateScrollProgress(wv: WebView) {
                     if (onScrollProgress == null) return
-                    val contentHeightPx = wv.contentHeight * wv.scale
-                    val viewHeight = wv.height
-                    val range = (contentHeightPx - viewHeight).coerceAtLeast(1f)
-                    val progress = (wv.scrollY / range).coerceIn(0f, 1f)
+                    val contentHeightPx = wv.contentHeight * wv.resources.displayMetrics.density
+                    val viewHeight = wv.height.toFloat()
+                    val denom = (contentHeightPx - viewHeight).coerceAtLeast(1f)
+                    val progress = (wv.scrollY / denom).coerceIn(0f, 1f)
                     onScrollProgress.invoke(progress)
                 }
                 settings.javaScriptEnabled = false
@@ -47,13 +47,6 @@ fun ArticleWebView(
                         val url = request?.url?.toString() ?: return false
                         onLinkClick?.invoke(cleanUrl(url))
                         return true
-                    }
-                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                        if (url != null) {
-                            onLinkClick?.invoke(cleanUrl(url))
-                            return true
-                        }
-                        return false
                     }
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
