@@ -91,8 +91,9 @@ dependencies {
     implementation("io.insert-koin:koin-androidx-compose-navigation")
     implementation("io.insert-koin:koin-androidx-workmanager")
 
-    // Image Loading
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    // Image Loading (Coil 3)
+    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")

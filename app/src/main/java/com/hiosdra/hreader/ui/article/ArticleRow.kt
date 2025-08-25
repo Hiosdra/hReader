@@ -3,7 +3,6 @@ package com.hiosdra.hreader.ui.article
 import android.text.Html
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,10 +33,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil.compose.rememberAsyncImagePainter
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.ui.components.OfflineAwareImage
 import com.hiosdra.hreader.ui.theme.LocalExtendedColors
-import com.hiosdra.hreader.ui.components.rememberOfflineAwareImagePainter
 
 @Composable
 fun ArticleRow(
@@ -132,11 +130,9 @@ fun ArticleRow(
                                 .clip(RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Image(
-                                painter = rememberOfflineAwareImagePainter(
-                                    entryId = entry.id,
-                                    imageUrl = imageUrl
-                                ),
+                            OfflineAwareImage(
+                                entryId = entry.id,
+                                imageUrl = imageUrl,
                                 contentDescription = "Article image",
                                 modifier = Modifier.fillMaxWidth(),
                                 contentScale = ContentScale.Crop
