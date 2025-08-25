@@ -49,7 +49,6 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
 
     internal fun loadEntries() {
         collectionJob?.cancel()
-        Log.i("MainViewModel", "Loading entries for ${currentFeedId?.let { "feed $it" } ?: "all feeds"} (filtering previously read, keeping session newly read visible)")
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         collectionJob = viewModelScope.launch {
             try {

@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.navigation
 
-import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
@@ -56,7 +55,6 @@ fun AppNavigation(
                 ?: throw IllegalArgumentException("Article IDs are required when navigating to article screen")
             val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
             val articleIds = articleIdsString.split(",").mapNotNull { it.toLongOrNull() }
-            Log.i("AppNavigation", "Article IDs: $articleIds, initialIndex: $initialIndex")
             ArticleScreen(navController, articleIds, initialIndex)
         }
         composable(
