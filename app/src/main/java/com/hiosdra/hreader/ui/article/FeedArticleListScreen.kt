@@ -74,7 +74,7 @@ fun FeedArticleListScreen(
                 }
             }
             uiState.error != null -> {
-                Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
+                Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
             }
             else -> {
                 ArticleListGrouped(
