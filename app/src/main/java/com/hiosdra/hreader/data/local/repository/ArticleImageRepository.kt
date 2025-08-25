@@ -89,10 +89,6 @@ class ArticleImageRepository(
         } else null
     }
 
-    suspend fun getImagesForArticle(entryId: Long): List<ArticleImage> {
-        return articleImageDao.getImagesForArticle(entryId)
-    }
-
     suspend fun cleanupOrphanedImages() {
         val allImages = articleImageDao.getAllArticleImages()
         if (allImages.isEmpty()) return
@@ -115,7 +111,7 @@ class ArticleImageRepository(
         val input = "$entryId-$imageUrl"
         val digest = MessageDigest.getInstance("SHA-256")
         val hash = digest.digest(input.toByteArray(UTF_8))
-        return hash.joinToString("") { "%02x".format(it) }.take(16)
+        return hash.joinToString("") { "%02x".format(it) }
     }
 
     private fun getFileExtension(contentType: String?, imageUrl: String): String {
