@@ -21,19 +21,17 @@ class ContentSyncWorker(
         private const val TAG = "ContentSyncWorker"
     }
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = try {
         Log.i(TAG, "Starting ContentSyncWorker")
-
-        return try {
-            Log.d(TAG, "Refreshing articles from remote source")
-            syncPerformanceLogger.measureSyncTime("Article refresh") {
-                repository.refreshArticles()
-            }
-            Log.i(TAG, "ContentSyncWorker completed successfully")
-            Result.success()
-        } catch (e: Exception) {
-            Log.e(TAG, "ContentSyncWorker failed: ${e.message}", e)
-            if (e is IOException) Result.retry() else Result.failure()
+        
+        syncPerformanceLogger.measureSyncTime("Article refresh") {
+            repository.refreshArticles()
         }
+        
+        Log.i(TAG, "ContentSyncWorker completed successfully")
+        Result.success()
+    } catch (e: Exception) {
+        Log.e(TAG, "ContentSyncWorker failed: ${e.message}", e)
+        if (e is IOException) Result.retry() else Result.failure()
     }
 }
