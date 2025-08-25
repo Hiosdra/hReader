@@ -53,6 +53,13 @@ android {
     }
 }
 
+// Configure KSP to export Room schemas
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.generateKotlin", "true")
+}
+
 //noinspection UseTomlInstead
 dependencies {
     // AndroidX Core & Lifecycle
