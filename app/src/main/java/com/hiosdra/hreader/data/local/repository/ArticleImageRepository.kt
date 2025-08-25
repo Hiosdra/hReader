@@ -23,6 +23,10 @@ class ArticleImageRepository(
     private val okHttpClient: OkHttpClient,
     private val fileExists: (String) -> Boolean = { path -> File(path).exists() }
 ) {
+    companion object {
+        private const val TAG = "ArticleImageRepo"
+    }
+    
     private val imagesDir = File(context.filesDir, "article_images")
         .apply { mkdirs() }
 
@@ -73,21 +77,15 @@ class ArticleImageRepository(
                 articleImageDao.insertArticleImage(articleImage)
                 articleImage
             } catch (e: Exception) {
-                Log.e(
-                    "ArticleImageRepo",
-                    "Failed to download/store image $imageUrl for entry $entryId",
-                    e
-                )
+                Log.e(TAG, "Failed to download/store image $imageUrl for entry $entryId", e)
                 null
             }
         }
 
-    suspend fun getLocalImagePath(entryId: Long, imageUrl: String): String? {
-        val articleImage = articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
-        return if (articleImage != null && fileExists(articleImage.localFilePath)) {
-            articleImage.localFilePath
-        } else null
-    }
+    suspend fun getLocalImagePath(entryId: Long, imageUrl: String): String? =
+        articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
+            ?.takeIf { fileExists(it.localFilePath) }
+            ?.localFilePath
 
     suspend fun cleanupOrphanedImages() {
         val allImages = articleImageDao.getAllArticleImages()
@@ -117,18 +115,23 @@ class ArticleImageRepository(
     private fun getFileExtension(contentType: String?, imageUrl: String): String {
         val extensionMap = mapOf(
             "png" to ".png",
-            "webp" to ".webp",
+            "webp" to ".webp", 
             "gif" to ".gif",
             "svg" to ".svg",
             "jpeg" to ".jpg",
             "jpg" to ".jpg"
         )
+        
+        // Check content type first
         extensionMap.forEach { (key, ext) ->
             if (contentType?.contains(key, ignoreCase = true) == true) return ext
         }
+        
+        // Fallback to URL extension
         extensionMap.forEach { (key, ext) ->
             if (imageUrl.contains(".$key", ignoreCase = true)) return ext
         }
+        
         return ".img"
     }
 }
