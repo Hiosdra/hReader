@@ -48,6 +48,27 @@ class ArticleContentSyncWorker(
                     articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
                 }
                 Log.i(TAG, "Content prefetching completed")
+
+                // Download enclosure images for articles with image enclosures
+                Log.d(TAG, "Downloading enclosure images")
+                val enclosureImageEntries = unreadArticles.mapNotNull { entry ->
+                    val imageUrls = entry.enclosures?.filter { 
+                        it.mimeType?.startsWith("image/") == true 
+                    }?.map { it.url } ?: emptyList()
+                    
+                    if (imageUrls.isNotEmpty()) {
+                        entry.id.toLong() to imageUrls
+                    } else null
+                }
+
+                if (enclosureImageEntries.isNotEmpty()) {
+                    syncPerformanceLogger.measureSyncTime("Enclosure images download") {
+                        articleContentRepository.downloadEnclosureImages(enclosureImageEntries)
+                    }
+                    Log.i(TAG, "Enclosure images downloaded for ${enclosureImageEntries.size} articles")
+                } else {
+                    Log.i(TAG, "No enclosure images to download")
+                }
             } else {
                 Log.i(TAG, "No articles to prefetch")
             }

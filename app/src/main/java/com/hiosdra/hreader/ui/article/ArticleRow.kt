@@ -37,6 +37,7 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.ui.theme.LocalExtendedColors
+import com.hiosdra.hreader.ui.components.rememberOfflineAwareImagePainter
 
 @Composable
 fun ArticleRow(
@@ -132,7 +133,10 @@ fun ArticleRow(
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
-                                painter = rememberAsyncImagePainter(imageUrl),
+                                painter = rememberOfflineAwareImagePainter(
+                                    entryId = entry.id,
+                                    imageUrl = imageUrl
+                                ),
                                 contentDescription = "Article image",
                                 modifier = Modifier.fillMaxWidth(),
                                 contentScale = ContentScale.Crop

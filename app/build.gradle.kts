@@ -102,7 +102,7 @@ dependencies {
 
     // Testing - JUnit
     testImplementation("junit:junit:4.13.2")
-    
+
     // Testing - Android
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
@@ -114,6 +114,9 @@ dependencies {
     // Testing - Architecture
     testImplementation("com.tngtech.archunit:archunit:1.4.1")
     testImplementation("com.tngtech.archunit:archunit-junit4:1.4.1")
+
+    // MockK for mocking in unit tests
+    testImplementation("io.mockk:mockk:1.14.5")
 
     // Debug Tools
     debugImplementation("androidx.compose.ui:ui-test-manifest")
