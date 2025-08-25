@@ -75,7 +75,7 @@ class ArticleRepository(
 
     private fun shouldUseIncrementalSync(syncStartTime: Long): Boolean {
         val lastSyncTimestamp = getLastSyncTime()
-        return lastSyncTimestamp > 0 && (syncStartTime - lastSyncTimestamp) < 24 * 60 * 60 * 1000L
+        return lastSyncTimestamp > 0 && (syncStartTime - lastSyncTimestamp) < java.time.Duration.ofHours(24).toMillis()
     }
 
     private fun getLastSyncTime(): Long = preferencesManager.getLastSyncTimestamp()
