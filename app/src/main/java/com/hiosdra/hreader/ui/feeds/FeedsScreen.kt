@@ -68,7 +68,7 @@ fun FeedsScreen(
                 }
             }
             uiState.error != null -> {
-                Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
+                Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
             }
             else -> {
                 Column(modifier = Modifier.padding(paddingValues)) {
@@ -122,7 +122,7 @@ fun FeedsScreen(
 }
 
 @Composable
-fun FeedItem(
+private fun FeedItem(
     feed: Feed,
     unreadCount: Int = 0,
     onFeedClick: () -> Unit,
