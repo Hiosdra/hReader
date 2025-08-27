@@ -1,0 +1,46 @@
+name: Gemini CLI
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Prompt text to send to Gemini (leave empty to print CLI help)'
+        required: false
+        default: ''
+      model:
+        description: 'Gemini model name (e.g., gemini-1.5-flash, gemini-1.5-pro)'
+        required: false
+        default: 'gemini-1.5-flash'
+
+jobs:
+  gemini:
+    name: Run Gemini CLI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Safe default: show CLI help (no API key needed)
+      - name: Show Gemini CLI help
+        if: ${{ github.event.inputs.prompt == '' }}
+        uses: google-github-actions/run-gemini-cli@v1
+        with:
+          args: '--help'
+
+      # Actual prompt (requires repository secret GOOGLE_API_KEY)
+      - name: Ask Gemini
+        if: ${{ github.event.inputs.prompt != '' }}
+        uses: google-github-actions/run-gemini-cli@v1
+        with:
+          # CLI docs: https://github.com/google-github-actions/run-gemini-cli
+          # This command prompts the model with the provided text.
+          # Adjust args as needed per the action/CLI documentation updates.
+          args: >
+            prompt
+            --model "${{ github.event.inputs.model }}"
+            --text "${{ github.event.inputs.prompt }}"
+        env:
+          # Add this secret in your repository settings: Settings -> Secrets and variables -> Actions
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
