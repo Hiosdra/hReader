@@ -21,7 +21,7 @@ HReader is an Android app built with Kotlin and Jetpack Compose. It follows a mo
 - Background work: WorkManager with Koin worker injection.
 
 ## Package Structure
-- com.hiosdra.hreader.app
+- com.hiosdra.hreader
   - MyApplication: Application entry point and Koin initialization.
 - com.hiosdra.hreader.navigation
   - AppNavigation, ChromeCustomTabs.
@@ -40,14 +40,16 @@ HReader is an Android app built with Kotlin and Jetpack Compose. It follows a mo
   - paywall: PaywallBypassService.
 - com.hiosdra.hreader.di
   - appModule, networkModule: Koin modules and Worker bindings.
+- com.hiosdra.hreader.config
+  - WorkManager setup utilities.
 - com.hiosdra.hreader.worker
-  - Workers and WorkManager setup utilities.
+  - Worker implementations (ContentSyncWorker, ArticleContentSyncWorker).
 - com.hiosdra.hreader.util
   - Utilities (BionicReadingProcessor, ImageLoader, etc.).
 
 ## Recent Refactor (Aug 2025)
-- Moved MyApplication to package `com.hiosdra.hreader.app` and updated AndroidManifest accordingly.
-- Moved WorkManager setup functions to `com.hiosdra.hreader.worker` to colocate with Workers.
+- Kept MyApplication in root package `com.hiosdra.hreader` for better discoverability; updated AndroidManifest accordingly.
+- Moved WorkManager setup functions to `com.hiosdra.hreader.config` to distinguish them from Worker implementations.
 - Removed redundant FeedArticleListScreen and ArticleListViewModel; unified article logic in ArticleViewModel and ArticleScreen.
 - Cleaned up DI bindings for removed ViewModel.
 
