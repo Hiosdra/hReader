@@ -110,7 +110,7 @@ fun FeedsScreen(
                                     navController.navigate("main?feedId=${feed.id}")
                                 },
                                 onDetailsClick = {
-                                    navController.navigate("feed_details/${feed.id}")
+                                    navController.navigate("feed/${feed.id}")
                                 }
                             )
                         }
