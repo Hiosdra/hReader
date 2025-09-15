@@ -64,7 +64,7 @@ This codebase was recently refactored for better organization and maintainabilit
 
 3. **Navigation Simplification**:
    - Uses modern Navigation Compose with type-safe arguments
-   - Parameterized routes for filtering (`main?feedId=...`)
+   - Parameterized routes for filtering (`main?feedId={feedId}`)
    - Chrome Custom Tabs integration for external links
 
 ## Build & Test
