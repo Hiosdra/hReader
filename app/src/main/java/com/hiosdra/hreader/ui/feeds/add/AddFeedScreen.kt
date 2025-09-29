@@ -49,19 +49,22 @@ fun AddFeedScreen(
         },
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = uiState.feedUrl,
                     onValueChange = { addFeedViewModel.onFeedUrlChange(it) },
                     label = { Text("Feed URL or Site URL") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    isError = uiState.error != null
                 )
                 if (uiState.error != null) {
-                    Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
+                    Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp))
+                } else if (uiState.feedUrl.isNotBlank() && !uiState.canSubmit) {
+                    Text(text = "Enter a valid URL like https://example.com or example.com/feed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp))
                 }
                 if (uiState.showFeedPicker && uiState.discoveredFeeds.isNotEmpty()) {
-                    Text("Select a feed to add:")
+                    Text("Select a feed to add:", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
                     uiState.discoveredFeeds.forEach { discovered ->
                         Button(
                             onClick = {
@@ -84,7 +87,7 @@ fun AddFeedScreen(
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         },
-                        enabled = !uiState.isLoading && uiState.feedUrl.isNotBlank(),
+                        enabled = uiState.canSubmit && !uiState.isLoading,
                         modifier = Modifier.padding(16.dp)
                     ) {
                         if (uiState.isLoading) {
