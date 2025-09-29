@@ -2,10 +2,8 @@ package com.hiosdra.hreader.ui.feeds.add
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hiosdra.hreader.data.remote.MinifluxApiRepository
-import com.hiosdra.hreader.data.remote.dto.CreateFeedRequest
-import com.hiosdra.hreader.data.remote.dto.DiscoverRequest
-import com.hiosdra.hreader.data.remote.dto.DiscoverResponse
+import com.hiosdra.hreader.data.model.DiscoveredFeed
+import com.hiosdra.hreader.data.repository.FeedRepository
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,18 +15,17 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
-// UI state for AddFeedScreen
 data class AddFeedUiState(
     val feedUrl: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val discoveredFeeds: List<DiscoverResponse> = emptyList(),
+    val discoveredFeeds: List<DiscoveredFeed> = emptyList(),
     val showFeedPicker: Boolean = false,
     val canSubmit: Boolean = false
 )
 
 class AddFeedViewModel(
-    private val apiRepository: MinifluxApiRepository,
+    private val feedRepository: FeedRepository,
     private val feedsViewModel: FeedsViewModel
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AddFeedUiState())
@@ -36,11 +33,7 @@ class AddFeedViewModel(
 
     private fun normalizeUrl(url: String): String {
         val trimmed = url.trim()
-        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            trimmed
-        } else {
-            "https://$trimmed"
-        }
+        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else "https://$trimmed"
     }
 
     private fun isLikelyUrl(text: String): Boolean {
@@ -74,10 +67,7 @@ class AddFeedViewModel(
         _uiState.value = _uiState.value.copy(feedUrl = newUrl, error = null, canSubmit = valid && newUrl.isNotBlank())
     }
 
-    fun onAddFeed(
-        onFeedAdded: () -> Unit,
-        onNavigateBack: () -> Unit
-    ) {
+    fun onAddFeed(onFeedAdded: () -> Unit, onNavigateBack: () -> Unit) {
         val feedUrl = _uiState.value.feedUrl.trim()
         if (!_uiState.value.canSubmit) {
             _uiState.value = _uiState.value.copy(error = "Enter a valid feed or site URL.")
@@ -92,18 +82,13 @@ class AddFeedViewModel(
             }
             val normalizedUrl = normalizeUrl(feedUrl)
             try {
-                apiRepository.createFeed(
-                    request = CreateFeedRequest(feed_url = normalizedUrl)
-                )
+                feedRepository.createFeed(normalizedUrl)
                 _uiState.value = _uiState.value.copy(isLoading = false)
                 onFeedAdded()
                 onNavigateBack()
             } catch (e: Exception) {
-                // If failed, try discover
                 try {
-                    val discovered = apiRepository.discoverFeeds(
-                        request = DiscoverRequest(url = normalizedUrl)
-                    )
+                    val discovered = feedRepository.discoverFeeds(normalizedUrl)
                     if (discovered.isNotEmpty()) {
                         _uiState.value = _uiState.value.copy(discoveredFeeds = discovered, showFeedPicker = true, isLoading = false)
                     } else {
@@ -116,18 +101,12 @@ class AddFeedViewModel(
         }
     }
 
-    fun onSelectDiscoveredFeed(
-        discovered: DiscoverResponse,
-        onFeedAdded: () -> Unit,
-        onNavigateBack: () -> Unit
-    ) {
+    fun onSelectDiscoveredFeed(discovered: DiscoveredFeed, onFeedAdded: () -> Unit, onNavigateBack: () -> Unit) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val normalizedDiscoveredUrl = normalizeUrl(discovered.url)
-                apiRepository.createFeed(
-                    request = CreateFeedRequest(feed_url = normalizedDiscoveredUrl)
-                )
+                feedRepository.createFeed(normalizedDiscoveredUrl)
                 _uiState.value = _uiState.value.copy(isLoading = false)
                 onFeedAdded()
                 onNavigateBack()
