@@ -1,10 +1,12 @@
-# TODO
 
-## High Prio
+
+## TODO
+
+### High Priority
 1. Cache original article content images
 
-## Med Prio
+### Medium Priority
 1. AI article score for bullshit
 
-## Low prio
+### Low Priority
 1. Detect if youtube miniplayer is open and shorten list of articles
