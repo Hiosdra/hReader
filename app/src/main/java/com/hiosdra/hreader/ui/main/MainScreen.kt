@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -254,11 +255,39 @@ fun MainScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "No articles",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (uiState.error != null) {
+                        Text(
+                            text = uiState.error ?: "",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                        ElevatedButton(
+                            onClick = { viewModel.refreshFromNetwork() },
+                            modifier = Modifier.padding(top = 20.dp)
+                        ) { Text("Retry") }
+                    } else {
+                        Text(
+                            text = if (feedId == null) "No articles yet" else "No articles for this feed",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                            textAlign = TextAlign.Center
+                        )
+                        ElevatedButton(
+                            onClick = { if (feedId == null) navController.navigate("feeds") else navController.popBackStack() },
+                            modifier = Modifier.padding(top = 20.dp)
+                        ) { Text(if (feedId == null) "Browse subscriptions" else "Back to all items") }
+                        OutlinedButton(
+                            onClick = { navController.navigate("add_feed") },
+                            modifier = Modifier.padding(top = 12.dp)
+                        ) { Text("Add subscription") }
+                        OutlinedButton(
+                            onClick = { viewModel.refreshFromNetwork() },
+                            modifier = Modifier.padding(top = 12.dp)
+                        ) { Text("Refresh now") }
+                    }
+                }
             }
         } else {
             ArticleListGrouped(

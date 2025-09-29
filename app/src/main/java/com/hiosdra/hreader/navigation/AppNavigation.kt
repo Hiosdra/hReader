@@ -41,6 +41,7 @@ fun AppNavigation(
             AddFeedScreen(
                 navController = navController,
                 onFeedAdded = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set("feed_added", true)
                     navController.popBackStack("feeds", inclusive = false)
                 }
             )

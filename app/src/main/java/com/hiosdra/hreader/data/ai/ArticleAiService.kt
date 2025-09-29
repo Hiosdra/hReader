@@ -105,7 +105,9 @@ class ArticleAiService(
         val systemMessage = ChatMessage(
             role = "system",
             content = """
-You are a helpful assistant that creates concise, informative overviews of articles. Provide a summary in 2-3 sentences that captures the main points and key insights.
+You are a helpful assistant that creates concise, informative overviews of articles. 
+Provide a summary in 2-3 sentences that captures the main points and key insights.
+Language of the summary should be the same as the language of the article.
 
 DO NOT INCLUDE "Here's your summary" or "Here's your overview" in the response.
                 """.trimIndent()

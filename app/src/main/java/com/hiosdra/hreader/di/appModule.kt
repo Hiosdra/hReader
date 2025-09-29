@@ -11,8 +11,9 @@ import com.hiosdra.hreader.ui.article.ArticleViewModel
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
 import com.hiosdra.hreader.ui.feeds.add.AddFeedViewModel
 import com.hiosdra.hreader.ui.main.MainViewModel
-import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.util.ImageLoader
+import com.hiosdra.hreader.util.NetworkMonitor
+import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.worker.ContentSyncWorker
 import org.koin.android.ext.koin.androidApplication
@@ -40,6 +41,7 @@ val appModule = module {
     single { PreferencesManager(androidApplication()) }
     single { SyncPerformanceLogger(get()) }
     single { ImageLoader(get()) }
+    single { NetworkMonitor(androidApplication()) }
     worker { ContentSyncWorker(get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get()) }
     viewModel { MainViewModel(get()) }
