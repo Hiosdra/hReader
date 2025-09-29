@@ -28,6 +28,10 @@ class FeedsViewModel(private val apiRepository: MinifluxApiRepository) : ViewMod
         loadFeeds()
     }
 
+    fun reload() {
+        loadFeeds()
+    }
+
     fun updateSearchQuery(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
         filterFeeds()

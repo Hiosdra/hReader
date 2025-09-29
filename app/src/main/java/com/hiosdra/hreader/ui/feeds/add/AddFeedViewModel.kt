@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import retrofit2.HttpException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 // UI state for AddFeedScreen
 data class AddFeedUiState(
@@ -20,7 +23,8 @@ data class AddFeedUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val discoveredFeeds: List<DiscoverResponse> = emptyList(),
-    val showFeedPicker: Boolean = false
+    val showFeedPicker: Boolean = false,
+    val canSubmit: Boolean = false
 )
 
 class AddFeedViewModel(
@@ -39,28 +43,46 @@ class AddFeedViewModel(
         }
     }
 
+    private fun isLikelyUrl(text: String): Boolean {
+        if (text.isBlank()) return false
+        val candidate = text.trim()
+        if (candidate.length < 4) return false
+        val hasDot = candidate.contains('.')
+        val noSpaces = !candidate.contains(' ') && !candidate.contains('\n')
+        return hasDot && noSpaces
+    }
+
     private fun extractErrorMessage(e: Exception): String {
         if (e is HttpException) {
             val errorBody = e.response()?.errorBody()?.string()
             if (!errorBody.isNullOrEmpty()) {
                 try {
                     val json = JSONObject(errorBody)
-                    return json.optString("error_message", e.message ?: "Unknown error")
+                    val msg = json.optString("error_message")
+                    if (msg.isNotBlank()) return msg
                 } catch (_: Exception) {}
             }
+            return e.message ?: "HTTP error"
         }
+        if (e is UnknownHostException || e is ConnectException) return "Cannot reach server. Check backend availability and network connection."
+        if (e is SocketTimeoutException) return "Connection timed out. Try again."
         return e.message ?: "Unknown error"
     }
 
     fun onFeedUrlChange(newUrl: String) {
-        _uiState.value = _uiState.value.copy(feedUrl = newUrl, error = null)
+        val valid = isLikelyUrl(newUrl)
+        _uiState.value = _uiState.value.copy(feedUrl = newUrl, error = null, canSubmit = valid && newUrl.isNotBlank())
     }
 
     fun onAddFeed(
         onFeedAdded: () -> Unit,
         onNavigateBack: () -> Unit
     ) {
-        val feedUrl = _uiState.value.feedUrl
+        val feedUrl = _uiState.value.feedUrl.trim()
+        if (!_uiState.value.canSubmit) {
+            _uiState.value = _uiState.value.copy(error = "Enter a valid feed or site URL.")
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val alreadyExists = feedsViewModel.uiState.value.feeds.any { it.feedUrl == feedUrl || it.siteUrl == feedUrl }
@@ -85,10 +107,10 @@ class AddFeedViewModel(
                     if (discovered.isNotEmpty()) {
                         _uiState.value = _uiState.value.copy(discoveredFeeds = discovered, showFeedPicker = true, isLoading = false)
                     } else {
-                        _uiState.value = _uiState.value.copy(error = "No feeds discovered at this URL.", isLoading = false)
+                        _uiState.value = _uiState.value.copy(error = extractErrorMessage(e), isLoading = false)
                     }
                 } catch (e2: Exception) {
-                    _uiState.value = _uiState.value.copy(error = "Failed to discover feeds: ${extractErrorMessage(e2)}", isLoading = false)
+                    _uiState.value = _uiState.value.copy(error = extractErrorMessage(e2), isLoading = false)
                 }
             }
         }
