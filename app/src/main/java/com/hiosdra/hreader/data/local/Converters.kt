@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.data.local
 
 import androidx.room.TypeConverter
+import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Enclosure
 import com.hiosdra.hreader.data.model.Feed
 import com.squareup.moshi.Moshi
@@ -39,4 +40,15 @@ class Converters {
     @TypeConverter
     fun toInstant(epochMillis: Long?): Instant? =
         epochMillis?.let { Instant.ofEpochMilli(it) }
+
+    @TypeConverter
+    fun articleStatusToString(status: ArticleStatus?): String? = status?.wire
+
+    @TypeConverter
+    fun stringToArticleStatus(value: String?): ArticleStatus? = when (value) {
+        ArticleStatus.READ.wire -> ArticleStatus.READ
+        ArticleStatus.UNREAD.wire -> ArticleStatus.UNREAD
+        null -> null
+        else -> ArticleStatus.UNREAD
+    }
 }

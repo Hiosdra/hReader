@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -80,9 +79,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.navigation.NavHostController
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.navigation.openChromeCustomTab
@@ -276,7 +277,7 @@ private fun ArticlePager(
                     onCredibilityScore = onCredibilityScore
                 )
                 LaunchedEffect(entry.id) {
-                    if (entry.status != "read") {
+                    if (!entry.isRead) {
                         onReadStatusChange?.invoke(page, true)
                     }
                 }
@@ -395,7 +396,7 @@ private fun ArticleContent(
                             modifier = Modifier.weight(1f)
                         )
                         Checkbox(
-                            checked = entry.status == "read",
+                            checked = entry.isRead,
                             onCheckedChange = { checked -> onReadStatusChange?.invoke(checked) }
                         )
                     }
@@ -723,9 +724,9 @@ private fun copyTextToClipboard(context: Context, label: String, text: String) {
 private fun enqueueImageDownload(context: Context, url: String) {
     runCatching {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val request = DownloadManager.Request(Uri.parse(url))
+        val request = DownloadManager.Request(url.toUri())
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, Uri.parse(url).lastPathSegment ?: "image")
+            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, url.toUri().lastPathSegment ?: "image")
         dm.enqueue(request)
         Toast.makeText(context, "Downloading", Toast.LENGTH_SHORT).show()
     }
@@ -740,7 +741,7 @@ private suspend fun shareImageFile(context: Context, title: String?, url: String
         val resp = imageShareClient.newCall(request).execute()
         try {
             if (!resp.isSuccessful) return@withContext false
-            val body = resp.body ?: return@withContext false
+            val body = resp.body
             val bytes = body.bytes()
             val contentType = body.contentType()?.toString() ?: "image/jpeg"
             var ext = when {
@@ -751,7 +752,7 @@ private suspend fun shareImageFile(context: Context, title: String?, url: String
                 contentType.contains("jpeg") || contentType.contains("jpg") -> ".jpg"
                 else -> ".img"
             }
-            val lastSeg = Uri.parse(url).lastPathSegment
+            val lastSeg = url.toUri().lastPathSegment
             if (lastSeg != null && lastSeg.contains('.')) ext = "" // already has extension
             val safeNameBase = (lastSeg ?: "image_${System.currentTimeMillis()}").take(80)
             val fileName = if (ext.isEmpty()) safeNameBase else safeNameBase + ext
@@ -772,7 +773,7 @@ private suspend fun shareImageFile(context: Context, title: String?, url: String
         } finally {
             resp.close()
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         false
     }
 }

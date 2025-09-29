@@ -6,6 +6,7 @@ import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,21 +37,6 @@ class ArticleViewModel(
     private val _uiState = MutableStateFlow(ArticleUiState())
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
-    fun refreshArticles() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            try {
-                articleRepository.refreshArticles()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = "Error refreshing articles: ${e.message}"
-                )
-            } finally {
-                _uiState.value = _uiState.value.copy(isLoading = false)
-            }
-        }
-    }
-
     fun setCurrentIndex(index: Int) {
         _uiState.value = _uiState.value.copy(currentIndex = index)
         val entry = _uiState.value.entries.getOrNull(index)
@@ -76,7 +62,7 @@ class ArticleViewModel(
     fun updateReadStatus(index: Int, isRead: Boolean) {
         val entries = _uiState.value.entries.toMutableList()
         val entry = entries.getOrNull(index) ?: return
-        val newStatus = if (isRead) "read" else "unread"
+        val newStatus = if (isRead) ArticleStatus.READ else ArticleStatus.UNREAD
         entries[index] = entry.copy(status = newStatus)
         _uiState.value = _uiState.value.copy(entries = entries)
         viewModelScope.launch {
@@ -102,7 +88,7 @@ class ArticleViewModel(
     }
 
     fun getContentForEntry(entryId: Long): String? =
-        _uiState.value.originalContent[entryId] 
+        _uiState.value.originalContent[entryId]
             ?: _uiState.value.entries.find { it.id == entryId }?.content
 
     fun generateAiOverview(entryId: Long) {
@@ -112,7 +98,6 @@ class ArticleViewModel(
         generateAiContent(
             entryId = entryId,
             entry = entry,
-            existingData = _uiState.value.aiOverviews,
             setGenerating = { generating -> _uiState.value = _uiState.value.copy(isGeneratingOverview = generating, overviewError = null) },
             setError = { error -> _uiState.value = _uiState.value.copy(isGeneratingOverview = false, overviewError = error) },
             onSuccess = { content -> _uiState.value = _uiState.value.copy(aiOverviews = _uiState.value.aiOverviews + (entryId to content), isGeneratingOverview = false, overviewError = null) },
@@ -129,7 +114,6 @@ class ArticleViewModel(
         generateAiContent(
             entryId = entryId,
             entry = entry,
-            existingData = _uiState.value.credibilityScores,
             setGenerating = { generating -> _uiState.value = _uiState.value.copy(isGeneratingScore = generating, scoreError = null) },
             setError = { error -> _uiState.value = _uiState.value.copy(isGeneratingScore = false, scoreError = error) },
             onSuccess = { score -> _uiState.value = _uiState.value.copy(credibilityScores = _uiState.value.credibilityScores + (entryId to score), isGeneratingScore = false, scoreError = null) },
@@ -149,7 +133,6 @@ class ArticleViewModel(
     private fun <T> generateAiContent(
         entryId: Long,
         entry: Entry,
-        existingData: Map<Long, T>,
         setGenerating: (Boolean) -> Unit,
         setError: (String) -> Unit,
         onSuccess: (T) -> Unit,
@@ -157,7 +140,7 @@ class ArticleViewModel(
         errorMessage: String
     ) {
         setGenerating(true)
-        
+
         viewModelScope.launch {
             try {
                 val content = getContentForEntry(entryId) ?: entry.content ?: ""
