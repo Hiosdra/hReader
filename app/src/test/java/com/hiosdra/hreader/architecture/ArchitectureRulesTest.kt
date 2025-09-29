@@ -20,6 +20,12 @@ class ArchitectureRulesTest {
         .resideInAnyPackage("com.hiosdra.hreader.data.remote..")
 
     @ArchTest
+    val uiShouldNotDependOnEntities: ArchRule = noClasses()
+        .that().resideInAPackage("com.hiosdra.hreader.ui..")
+        .should().dependOnClassesThat()
+        .resideInAnyPackage("com.hiosdra.hreader.data.local.entity..")
+
+    @ArchTest
     val uiShouldNotDependOnDaos: ArchRule = noClasses()
         .that().resideInAPackage("com.hiosdra.hreader.ui..")
         .should().dependOnClassesThat()
