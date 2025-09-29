@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
+import com.hiosdra.hreader.data.model.ArticleStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,10 +23,10 @@ interface ArticleDao {
     suspend fun deleteById(articleId: String)
 
     @Query("UPDATE articles SET status = :status WHERE id = :articleId")
-    suspend fun updateStatus(articleId: String, status: String)
+    suspend fun updateStatus(articleId: String, status: ArticleStatus)
 
     @Query("UPDATE articles SET status = :status WHERE id IN (:ids)")
-    suspend fun updateStatusForIds(ids: List<String>, status: String)
+    suspend fun updateStatusForIds(ids: List<String>, status: ArticleStatus)
 
     @Query("SELECT * FROM articles WHERE id IN (:ids) ORDER BY publishedAt ASC")
     fun getArticlesByIds(ids: List<String>): Flow<List<ArticleEntity>>
@@ -34,7 +35,7 @@ interface ArticleDao {
     fun getAllArticlesForFeed(feedId: Long): Flow<List<ArticleEntity>>
 
     @Query("SELECT * FROM articles WHERE status = :status")
-    suspend fun getArticlesByStatus(status: String): List<ArticleEntity>
+    suspend fun getArticlesByStatus(status: ArticleStatus): List<ArticleEntity>
 
     @Query("SELECT * FROM articles WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): ArticleEntity?
@@ -45,6 +46,6 @@ interface ArticleDao {
     @Query("SELECT * FROM articles")
     suspend fun getAllArticlesImmediate(): List<ArticleEntity>
 
-    @Query("SELECT * FROM articles WHERE status != 'read' ORDER BY publishedAt ASC")
-    fun getAllUnreadArticlesOldestFirst(): Flow<List<ArticleEntity>>
+    @Query("SELECT * FROM articles WHERE status != :readStatus ORDER BY publishedAt ASC")
+    fun getAllUnreadArticlesOldestFirst(readStatus: ArticleStatus = ArticleStatus.READ): Flow<List<ArticleEntity>>
 }

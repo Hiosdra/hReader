@@ -34,6 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.data.model.isRead
+import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
 import com.hiosdra.hreader.ui.theme.LocalExtendedColors
 
@@ -45,9 +47,9 @@ fun ArticleRow(
     articleIndex: Int,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
-    val checked = entry.status == "read"
+    val checked = entry.isRead
     val extendedColors = LocalExtendedColors.current
-    val openArticle = { navController.navigate("article/${articleIds.joinToString(",")}/$articleIndex") }
+    val openArticle = { navController.navigate(Routes.article(articleIds, articleIndex)) }
 
     val contentAlpha by animateFloatAsState(targetValue = if (checked) 0.55f else 1f, label = "alpha")
     val titleWeight = if (checked) FontWeight.Normal else FontWeight.SemiBold
@@ -169,7 +171,7 @@ private fun extractTextPreview(html: String): String {
         .replace(Regex("(?is)<img[^>]*?>"), " ")
         .replace(Regex("(?is)<svg[^>]*?>.*?</svg>"), " ")
         .replace(Regex("(?is)<(video|source|picture)[^>]*?>.*?</\\1>"), " ")
-    
+
     return Html.fromHtml(cleanedHtml, Html.FROM_HTML_MODE_LEGACY).toString()
         .replace('\uFFFC', ' ')
         .lines()

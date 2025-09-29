@@ -2,6 +2,7 @@ package com.hiosdra.hreader.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Enclosure
 
 @Entity(tableName = "articles")
@@ -15,5 +16,5 @@ data class ArticleEntity(
     val feedId: Long,
     val readingTime: Int?,
     val enclosures: List<Enclosure>?,
-    val status: String?
+    val status: ArticleStatus? = ArticleStatus.UNREAD
 )

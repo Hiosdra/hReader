@@ -20,34 +20,32 @@ import com.hiosdra.hreader.ui.settings.SettingsScreen
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
 ) {
-    NavHost(navController = navController, startDestination = "main") {
-        composable("main") {
+    NavHost(navController = navController, startDestination = Routes.MAIN) {
+        composable(Routes.MAIN) {
             MainScreen(navController = navController)
         }
         composable(
-            route = "main?feedId={feedId}",
+            route = Routes.MAIN_WITH_OPTIONAL_FEED,
             arguments = listOf(
-                navArgument("feedId") { type = NavType.LongType; defaultValue = -1L }
+                navArgument("feedId") { type = NavType.LongType; defaultValue = Routes.FEED_ID_NONE }
             )
         ) { backStackEntry ->
-            val raw = backStackEntry.arguments?.getLong("feedId") ?: -1L
-            val feedId = if (raw == -1L) null else raw
+            val raw = backStackEntry.arguments?.getLong("feedId") ?: Routes.FEED_ID_NONE
+            val feedId = if (raw == Routes.FEED_ID_NONE) null else raw
             MainScreen(navController = navController, feedId = feedId)
         }
-        composable("feeds") {
-            FeedsScreen(navController = navController)
-        }
-        composable("add_feed") {
+        composable(Routes.FEEDS) { FeedsScreen(navController = navController) }
+        composable(Routes.ADD_FEED) {
             AddFeedScreen(
                 navController = navController,
                 onFeedAdded = {
                     navController.previousBackStackEntry?.savedStateHandle?.set("feed_added", true)
-                    navController.popBackStack("feeds", inclusive = false)
+                    navController.popBackStack(Routes.FEEDS, inclusive = false)
                 }
             )
         }
         composable(
-            route = "article/{articleIds}/{initialIndex}",
+            route = Routes.ARTICLE,
             arguments = listOf(
                 navArgument("articleIds") { type = NavType.StringType },
                 navArgument("initialIndex") { type = NavType.IntType }
@@ -61,7 +59,7 @@ fun AppNavigation(
             ArticleScreen(navController, articleIds, initialIndex)
         }
         composable(
-            route = "feed/{feedId}",
+            route = Routes.FEED,
             arguments = listOf(
                 navArgument("feedId") { type = NavType.LongType }
             )
@@ -73,7 +71,7 @@ fun AppNavigation(
                 Text(text = "Feed not found.")
             }
         }
-        composable("settings") { _ ->
+        composable(Routes.SETTINGS) { _ ->
             SettingsScreen(navController)
         }
     }
