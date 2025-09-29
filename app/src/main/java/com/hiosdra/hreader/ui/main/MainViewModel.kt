@@ -16,7 +16,8 @@ data class MainUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
-    val feedTitle: String? = null
+    val feedTitle: String? = null,
+    val searchQuery: String = ""
 )
 
 class MainViewModel(private val articleRepository: ArticleRepository) : ViewModel() {
@@ -28,6 +29,7 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
     private var collectionJob: Job? = null
     private var currentFeedId: Long? = null
     private var lastStatuses: Map<Long, String> = emptyMap()
+    private var searchQuery: String = ""
 
     init {
         loadEntries() // default: all items
@@ -83,14 +85,27 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
     }
 
     private fun applyFilterAndEmit(isLoadingDone: Boolean = false, feedTitle: String? = _uiState.value.feedTitle) {
+        val trimmedQuery = searchQuery.trim().lowercase()
         val filtered = fullList.filter { entry ->
-            entry.status != "read" || sessionReadIds.contains(entry.id)
+            (entry.status != "read" || sessionReadIds.contains(entry.id)) && (
+                trimmedQuery.isBlank() ||
+                    entry.title.lowercase().contains(trimmedQuery) ||
+                    (entry.author?.lowercase()?.contains(trimmedQuery) == true) ||
+                    entry.feed.title.lowercase().contains(trimmedQuery) ||
+                    (entry.content?.lowercase()?.contains(trimmedQuery) == true)
+                )
         }
         _uiState.value = _uiState.value.copy(
             entries = filtered,
             isLoading = if (isLoadingDone) false else _uiState.value.isLoading,
-            feedTitle = feedTitle
+            feedTitle = feedTitle,
+            searchQuery = searchQuery
         )
+    }
+
+    fun updateSearchQuery(query: String) {
+        searchQuery = query
+        applyFilterAndEmit()
     }
 
     fun refreshFromNetwork() {
@@ -110,13 +125,13 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
 
     fun updateEntryReadStatus(entryId: Long, checked: Boolean) {
         if (fullList.none { it.id == entryId }) return
-        
+
         val newStatus = if (checked) "read" else "unread"
         fullList = fullList.map { if (it.id == entryId) it.copy(status = newStatus) else it }
-        
+
         if (checked) sessionReadIds.add(entryId) else sessionReadIds.remove(entryId)
         applyFilterAndEmit()
-        
+
         viewModelScope.launch {
             try {
                 articleRepository.updateReadStatus(entryId.toString(), newStatus)
