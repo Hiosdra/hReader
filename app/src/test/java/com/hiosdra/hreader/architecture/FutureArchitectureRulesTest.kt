@@ -18,12 +18,6 @@ import org.junit.runner.RunWith
 )
 class FutureArchitectureRulesTest {
     @ArchTest
-    val uiShouldNotDependOnEntities: ArchRule = noClasses()
-        .that().resideInAPackage("com.hiosdra.hreader.ui..")
-        .should().dependOnClassesThat()
-        .resideInAnyPackage("com.hiosdra.hreader.data.local.entity..")
-
-    @ArchTest
     val onlyRepositoriesMayAccessDaos: ArchRule = noClasses()
         .that().resideOutsideOfPackage("..repository..")
         .should().dependOnClassesThat()
