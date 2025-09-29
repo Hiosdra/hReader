@@ -1,8 +1,10 @@
-package com.hiosdra.hreader
+package com.hiosdra.hreader.application
 
 import android.app.Application
 import com.hiosdra.hreader.di.appModule
 import com.hiosdra.hreader.di.networkModule
+import com.hiosdra.hreader.worker.setupArticleContentSyncWorker
+import com.hiosdra.hreader.worker.setupContentSyncWorker
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.androidx.workmanager.koin.workManagerFactory
