@@ -7,6 +7,7 @@ import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.FeedDao
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
 import com.hiosdra.hreader.data.local.entity.FeedEntity
+import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.preferences.PreferencesManager
@@ -45,31 +46,31 @@ class ArticleRepository(
         val fetchedArticles = mutableListOf<ArticleEntity>()
         val feedsMap = mutableMapOf<Long, FeedEntity>()
         val syncStartTime = System.currentTimeMillis()
-        
+
         val useIncrementalSync = shouldUseIncrementalSync(syncStartTime)
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
-        
+
         while (true) {
             val response = fetchArticleBatch(useIncrementalSync, limit, offset)
             val articles = response.entries.map { it.toEntity() }
             val feeds = response.entries.map { entry -> entry.feed.toFeedEntity() }
-            
+
             fetchedArticles += articles
             feeds.forEach { feedsMap[it.id] = it }
-            
+
             if (articles.size < limit) break
             offset += limit
         }
-        
+
         syncPerformanceLogger.logBatchInfo(limit, fetchedArticles.size)
-        
+
         syncPerformanceLogger.measureSyncTime("Database transaction") {
             db.withTransaction {
                 feedDao.insertFeeds(feedsMap.values.toList())
                 insertArticlesWithStatusPreservation(fetchedArticles)
             }
         }
-        
+
         preferencesManager.setLastSyncTimestamp(syncStartTime)
     }
 
@@ -95,25 +96,22 @@ class ArticleRepository(
     private suspend fun insertArticlesWithStatusPreservation(fetchedArticles: List<ArticleEntity>) {
         val articleIds = fetchedArticles.map { it.id }
         val existingArticles = articleDao.getArticlesImmediate(articleIds).associateBy { it.id }
-        
         val articlesToInsert = fetchedArticles.map { remote ->
             val existing = existingArticles[remote.id]
-            if (existing?.status == "read" && remote.status != "read") {
-                remote.copy(status = "read")
-            } else {
-                remote
-            }
+            if (existing?.status == ArticleStatus.READ && remote.status != ArticleStatus.READ) {
+                remote.copy(status = ArticleStatus.READ)
+            } else remote
         }
         articleDao.insertArticles(articlesToInsert)
     }
 
-    suspend fun updateReadStatus(articleIds: List<String>, newStatus: String) {
+    suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus) {
         articleDao.updateStatusForIds(articleIds, newStatus)
         try {
             api.updateEntriesStatus(
                 UpdateEntriesStatusRequest(
                     articleIds.map { it.toLong() },
-                    newStatus
+                    newStatus.wire
                 )
             )
         } catch (e: Exception) {
@@ -121,15 +119,12 @@ class ArticleRepository(
         }
     }
 
-    suspend fun updateReadStatus(articleId: String, newStatus: String) {
+    suspend fun updateReadStatus(articleId: String, newStatus: ArticleStatus) {
         updateReadStatus(listOf(articleId), newStatus)
     }
 
     suspend fun getLocalUnreadArticles(): List<Entry> =
-        articleDao.getArticlesByStatus("unread").mapToEntries()
-
-    fun getUnreadArticlesOldestFirst(): Flow<List<Entry>> =
-        articleDao.getAllUnreadArticlesOldestFirst().map { it.mapToEntries() }
+        articleDao.getArticlesByStatus(ArticleStatus.UNREAD).mapToEntries()
 
     suspend fun getFeed(feedId: Long): Feed? {
         val entity = feedDao.getFeedById(feedId) ?: return null
@@ -152,7 +147,7 @@ private fun ArticleEntity.toEntry(feedEntity: FeedEntity): Entry = Entry(
     feed = feedEntity.toFeed(),
     readingTime = readingTime,
     enclosures = enclosures,
-    status = status
+    status = status ?: ArticleStatus.UNREAD
 )
 
 private fun FeedEntity.toFeed(): Feed = Feed(
@@ -175,7 +170,7 @@ private fun Entry.toEntity(): ArticleEntity = ArticleEntity(
     status = status
 )
 
-private fun com.hiosdra.hreader.data.model.Feed.toFeedEntity(): FeedEntity = FeedEntity(
+private fun Feed.toFeedEntity(): FeedEntity = FeedEntity(
     id = id,
     title = title,
     siteUrl = siteUrl,

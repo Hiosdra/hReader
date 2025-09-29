@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +29,7 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
     private val sessionReadIds = mutableSetOf<Long>()
     private var collectionJob: Job? = null
     private var currentFeedId: Long? = null
-    private var lastStatuses: Map<Long, String> = emptyMap()
+    private var lastStatuses: Map<Long, ArticleStatus> = emptyMap()
     private var searchQuery: String = ""
 
     init {
@@ -63,15 +64,14 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
                 }
                 val feedTitle = feedId?.let { articleRepository.getFeed(it)?.title }
                 flow.collect { fetchedEntries ->
-                    // detect unread -> read transitions not initiated via updateEntryReadStatus (e.g. article screen auto-mark)
                     fetchedEntries.forEach { entry ->
                         val previous = lastStatuses[entry.id]
-                        if (previous != null && previous != "read" && entry.status == "read") {
+                        if (previous != null && previous != ArticleStatus.READ && entry.status == ArticleStatus.READ) {
                             sessionReadIds.add(entry.id)
                         }
                     }
                     fullList = fetchedEntries
-                    lastStatuses = fetchedEntries.associate { it.id to (it.status ?: "unread") }
+                    lastStatuses = fetchedEntries.associate { it.id to it.status }
                     applyFilterAndEmit(isLoadingDone = true, feedTitle = feedTitle)
                 }
             } catch (e: Exception) {
@@ -87,7 +87,7 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
     private fun applyFilterAndEmit(isLoadingDone: Boolean = false, feedTitle: String? = _uiState.value.feedTitle) {
         val trimmedQuery = searchQuery.trim().lowercase()
         val filtered = fullList.filter { entry ->
-            (entry.status != "read" || sessionReadIds.contains(entry.id)) && (
+            (entry.status != ArticleStatus.READ || sessionReadIds.contains(entry.id)) && (
                 trimmedQuery.isBlank() ||
                     entry.title.lowercase().contains(trimmedQuery) ||
                     (entry.author?.lowercase()?.contains(trimmedQuery) == true) ||
@@ -126,7 +126,7 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
     fun updateEntryReadStatus(entryId: Long, checked: Boolean) {
         if (fullList.none { it.id == entryId }) return
 
-        val newStatus = if (checked) "read" else "unread"
+        val newStatus = if (checked) ArticleStatus.READ else ArticleStatus.UNREAD
         fullList = fullList.map { if (it.id == entryId) it.copy(status = newStatus) else it }
 
         if (checked) sessionReadIds.add(entryId) else sessionReadIds.remove(entryId)
@@ -141,12 +141,12 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
 
     fun markAllAsRead() {
         val ids = fullList.map { it.id }
-        fullList = fullList.map { it.copy(status = "read") }
+        fullList = fullList.map { it.copy(status = ArticleStatus.READ) }
         sessionReadIds.addAll(ids)
         applyFilterAndEmit()
         viewModelScope.launch {
             try {
-                articleRepository.updateReadStatus(ids.map { it.toString() }, "read")
+                articleRepository.updateReadStatus(ids.map { it.toString() }, ArticleStatus.READ)
             } catch (_: Exception) { }
         }
     }

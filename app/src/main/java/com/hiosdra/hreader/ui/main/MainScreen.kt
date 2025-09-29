@@ -55,6 +55,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.hiosdra.hreader.data.model.isRead
+import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.article.ArticleListGrouped
 import com.hiosdra.hreader.ui.theme.LocalExtendedColors
 import org.koin.androidx.compose.koinViewModel
@@ -73,7 +75,7 @@ fun MainScreen(
         if (feedId != null) viewModel.setFeed(feedId) else viewModel.clearFeed()
     }
 
-    val unreadCount = uiState.entries.count { it.status != "read" }
+    val unreadCount = uiState.entries.count { !it.isRead }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val searchActive = remember { mutableStateOf(false) }
 
@@ -93,7 +95,7 @@ fun MainScreen(
                     navigationIcon = {
                         if (feedId == null) {
                             IconButton(
-                                onClick = { navController.navigate("feeds") },
+                                onClick = { navController.navigate(Routes.FEEDS) },
                                 modifier = Modifier.padding(8.dp)
                             ) {
                                 Icon(
@@ -166,7 +168,7 @@ fun MainScreen(
                                 text = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
                                 onClick = {
                                     expanded.value = false
-                                    navController.navigate("settings")
+                                    navController.navigate(Routes.SETTINGS)
                                 },
                                 leadingIcon = {
                                     Icon(
@@ -299,11 +301,11 @@ fun MainScreen(
                             textAlign = TextAlign.Center
                         )
                         ElevatedButton(
-                            onClick = { if (feedId == null) navController.navigate("feeds") else navController.popBackStack() },
+                            onClick = { if (feedId == null) navController.navigate(Routes.FEEDS) else navController.popBackStack() },
                             modifier = Modifier.padding(top = 20.dp)
                         ) { Text(if (feedId == null) "Browse subscriptions" else "Back to all items") }
                         OutlinedButton(
-                            onClick = { navController.navigate("add_feed") },
+                            onClick = { navController.navigate(Routes.ADD_FEED) },
                             modifier = Modifier.padding(top = 12.dp)
                         ) { Text("Add subscription") }
                         OutlinedButton(
