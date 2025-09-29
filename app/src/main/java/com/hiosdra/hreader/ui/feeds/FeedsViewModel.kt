@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.model.Feed
-import com.hiosdra.hreader.data.remote.MinifluxApiRepository
+import com.hiosdra.hreader.data.repository.FeedRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +19,7 @@ data class FeedsUiState(
     val error: String? = null
 )
 
-class FeedsViewModel(private val apiRepository: MinifluxApiRepository) : ViewModel() {
+class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FeedsUiState())
     val uiState: StateFlow<FeedsUiState> = _uiState.asStateFlow()
@@ -56,9 +56,8 @@ class FeedsViewModel(private val apiRepository: MinifluxApiRepository) : ViewMod
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                val fetchedFeeds = apiRepository.getFeeds()
-                val counters = apiRepository.getFeedCounters()
-                val unreadCounts = counters.unreads.mapKeys { it.key.toLong() }
+                val fetchedFeeds = feedRepository.getFeeds()
+                val unreadCounts = feedRepository.getUnreadCounts()
                 _uiState.value = _uiState.value.copy(
                     feeds = fetchedFeeds,
                     filteredFeeds = fetchedFeeds,

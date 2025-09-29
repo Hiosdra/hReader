@@ -14,6 +14,12 @@ import org.junit.runner.RunWith
 )
 class ArchitectureRulesTest {
     @ArchTest
+    val uiShouldNotDependOnRemote: ArchRule = noClasses()
+        .that().resideInAPackage("com.hiosdra.hreader.ui..")
+        .should().dependOnClassesThat()
+        .resideInAnyPackage("com.hiosdra.hreader.data.remote..")
+
+    @ArchTest
     val uiShouldNotDependOnDaos: ArchRule = noClasses()
         .that().resideInAPackage("com.hiosdra.hreader.ui..")
         .should().dependOnClassesThat()
