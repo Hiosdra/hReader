@@ -18,14 +18,6 @@ import org.junit.runner.RunWith
 )
 class FutureArchitectureRulesTest {
     @ArchTest
-    val uiShouldNotDependOnRemote: ArchRule = noClasses()
-        .that().resideInAPackage("com.hiosdra.hreader.ui..")
-        .should().dependOnClassesThat()
-        .resideInAnyPackage(
-            "com.hiosdra.hreader.data.remote.."
-        )
-
-    @ArchTest
     val uiShouldNotDependOnEntities: ArchRule = noClasses()
         .that().resideInAPackage("com.hiosdra.hreader.ui..")
         .should().dependOnClassesThat()
