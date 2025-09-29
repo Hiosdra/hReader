@@ -8,17 +8,21 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -32,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -70,108 +75,138 @@ fun MainScreen(
 
     val unreadCount = uiState.entries.count { it.status != "read" }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val searchActive = remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier
             .background(MaterialTheme.colorScheme.background)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        (uiState.feedTitle ?: "All Items") + if (unreadCount > 0) "  •  $unreadCount" else "",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                },
-                navigationIcon = {
-                    if (feedId == null) {
-                        IconButton(
-                            onClick = { navController.navigate("feeds") },
-                            modifier = Modifier.padding(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.Menu,
-                                contentDescription = "Feeds",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    } else {
-                        IconButton(
-                            onClick = { navController.popBackStack() },
-                            modifier = Modifier.padding(8.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { if (!uiState.isRefreshing) viewModel.refreshFromNetwork() },
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    ) {
-                        if (uiState.isRefreshing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        } else {
-                            Icon(
-                                Icons.Filled.Refresh,
-                                contentDescription = "Refresh",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                    val expanded = remember { mutableStateOf(false) }
-                    IconButton(
-                        onClick = { expanded.value = true },
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = "More",
-                            tint = MaterialTheme.colorScheme.onSurface
+            Column(modifier = Modifier.fillMaxWidth()) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            (uiState.feedTitle ?: "All Items") + if (unreadCount > 0) "  •  $unreadCount" else "",
+                            style = MaterialTheme.typography.titleLarge
                         )
-                    }
-                    DropdownMenu(
-                        expanded = expanded.value,
-                        onDismissRequest = { expanded.value = false },
-                        modifier = Modifier
-                            .background(extendedColors.cardBackground)
-                            .clip(RoundedCornerShape(8.dp))
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "Settings",
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            },
-                            onClick = {
-                                expanded.value = false
-                                navController.navigate("settings")
-                            },
-                            leadingIcon = {
+                    },
+                    navigationIcon = {
+                        if (feedId == null) {
+                            IconButton(
+                                onClick = { navController.navigate("feeds") },
+                                modifier = Modifier.padding(8.dp)
+                            ) {
                                 Icon(
-                                    Icons.Filled.Settings,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
+                                    Icons.Filled.Menu,
+                                    contentDescription = "Feeds",
+                                    tint = MaterialTheme.colorScheme.onSurface
                                 )
                             }
+                        } else {
+                            IconButton(
+                                onClick = { navController.popBackStack() },
+                                modifier = Modifier.padding(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { searchActive.value = !searchActive.value },
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            Icon(
+                                if (searchActive.value) Icons.Filled.Close else Icons.Filled.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        IconButton(
+                            onClick = { if (!uiState.isRefreshing) viewModel.refreshFromNetwork() },
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            if (uiState.isRefreshing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.Refresh,
+                                    contentDescription = "Refresh",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                        val expanded = remember { mutableStateOf(false) }
+                        IconButton(
+                            onClick = { expanded.value = true },
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = "More",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = expanded.value,
+                            onDismissRequest = { expanded.value = false },
+                            modifier = Modifier
+                                .background(extendedColors.cardBackground)
+                                .clip(RoundedCornerShape(8.dp))
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
+                                onClick = {
+                                    expanded.value = false
+                                    navController.navigate("settings")
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Settings,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    scrollBehavior = scrollBehavior
+                )
+                AnimatedVisibility(visible = searchActive.value) {
+                    Row(modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 12.dp, vertical = 4.dp)) {
+                        OutlinedTextField(
+                            value = uiState.searchQuery,
+                            onValueChange = { viewModel.updateSearchQuery(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            placeholder = { Text("Search articles") },
+                            trailingIcon = {
+                                if (uiState.searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                        Icon(Icons.Filled.Close, contentDescription = "Clear")
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(24.dp)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                scrollBehavior = scrollBehavior
-            )
+                }
+            }
         },
         floatingActionButton = {
             val showDialog = remember { mutableStateOf(false) }
@@ -198,19 +233,8 @@ fun MainScreen(
             if (showDialog.value) {
                 AlertDialog(
                     onDismissRequest = { showDialog.value = false },
-                    title = {
-                        Text(
-                            "Mark all as read?",
-                            style = MaterialTheme.typography.titleMedium,
-                            textAlign = TextAlign.Start
-                        )
-                    },
-                    text = {
-                        Text(
-                            "Are you sure you want to mark all articles as read?",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
+                    title = { Text("Mark all as read?", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Start) },
+                    text = { Text("Are you sure you want to mark all articles as read?", style = MaterialTheme.typography.bodyMedium) },
                     confirmButton = {
                         ElevatedButton(
                             onClick = {
