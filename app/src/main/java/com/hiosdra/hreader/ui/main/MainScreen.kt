@@ -89,10 +89,6 @@ fun MainScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
     var searchActive by rememberSaveable(feedId) { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.searchQuery) {
-        if (uiState.searchQuery.isNotBlank()) searchActive = true
-    }
-
     val onSearchToggle: (Boolean) -> Unit = { active ->
         searchActive = active
         if (!active) viewModel.updateSearchQuery("")
