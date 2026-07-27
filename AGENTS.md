@@ -234,6 +234,8 @@ archunit = "1.4.1"
 - Backend choice, server address, credentials and the optional OpenRouter API key live in
   `PreferencesManager`, edited in Settings and offered during first-launch setup
 - No secrets in `BuildConfig` or the build script
+- The AI model list is fetched from `GET /api/v1/models` rather than hardcoded; the selected
+  model is stored as an OpenRouter id and validated against that list on startup
 - Each backend has a placeholder host; `BackendUrlInterceptor` rewrites it per request so the
   server can change without rebuilding Retrofit
 - `EntriesPage.cursor` is opaque: a Google Reader continuation token for FreshRSS, an offset

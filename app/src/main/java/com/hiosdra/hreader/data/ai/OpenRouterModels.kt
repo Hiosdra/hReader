@@ -6,7 +6,6 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class OpenRouterRequest(
     val model: String,
-    val models: List<String> = AiModel.get3MostImportant().map { it.modelId },
     val messages: List<ChatMessage>,
     @field:Json(name = "max_tokens") val maxTokens: Int,
     val temperature: Double
@@ -44,4 +43,24 @@ data class ErrorDetail(
     val message: String,
     val type: String? = null,
     val code: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class OpenRouterModelsResponse(
+    val data: List<OpenRouterModel> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class OpenRouterModel(
+    val id: String,
+    val name: String? = null,
+    val description: String? = null,
+    @field:Json(name = "context_length") val contextLength: Int? = null,
+    val pricing: OpenRouterPricing? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class OpenRouterPricing(
+    val prompt: String? = null,
+    val completion: String? = null
 )

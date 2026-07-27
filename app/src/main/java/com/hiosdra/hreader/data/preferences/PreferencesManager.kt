@@ -106,14 +106,14 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
-    fun getAiModel(): AiModel {
-        val savedModel = sharedPreferences.getString(KEY_AI_MODEL, AiModel.getDefault().name)
-        return AiModel.entries.find { it.name == savedModel } ?: AiModel.getDefault()
+    fun getAiModelId(): String {
+        val saved = sharedPreferences.getString(KEY_AI_MODEL, null)
+        return saved?.takeIf { it.contains('/') } ?: AiModel.DEFAULT_ID
     }
 
-    fun setAiModel(model: AiModel) {
+    fun setAiModelId(modelId: String) {
         sharedPreferences.edit()
-            .putString(KEY_AI_MODEL, model.name)
+            .putString(KEY_AI_MODEL, modelId)
             .apply()
     }
 

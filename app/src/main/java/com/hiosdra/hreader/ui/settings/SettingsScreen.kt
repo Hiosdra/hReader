@@ -42,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.SyncPerformanceRecord
@@ -58,8 +57,8 @@ fun SettingsScreen(
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsState()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsState()
+    val aiModels by settingsViewModel.aiModels.collectAsState()
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
-    var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
     var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
     var credibilityScoreEnabled by remember { mutableStateOf(preferencesManager.getCredibilityScoreEnabled()) }
     var showPerformanceDialog by remember { mutableStateOf(false) }
@@ -310,69 +309,28 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-            }
-            items(AiModel.entries.toList()) { model ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    ListItem(
-                        headlineContent = { 
-                            Text(
-                                text = model.displayName,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (selectedAiModel == model) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
-                            ) 
-                        },
-                        supportingContent = { 
-                            Text(
-                                text = model.description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (selectedAiModel == model) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                maxLines = 2
-                            ) 
-                        },
-                        leadingContent = {
-                            Icon(
-                                imageVector = Icons.Filled.Star,
-                                contentDescription = null,
-                                tint = if (selectedAiModel == model) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
-                        },
-                        trailingContent = {
-                            if (selectedAiModel == model) {
-                                Icon(
-                                    imageVector = Icons.Filled.CheckCircle,
-                                    contentDescription = "Selected",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        },
-                        colors = androidx.compose.material3.ListItemDefaults.colors(
-                            containerColor = if (selectedAiModel == model) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surface
-                            }
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectedAiModel = model
-                                preferencesManager.setAiModel(model)
-                            }
+                    AiModelSearchBar(
+                        state = aiModels,
+                        onSearchQueryChange = settingsViewModel::onModelSearchQueryChange,
+                        onFreeOnlyChange = settingsViewModel::onFreeOnlyChange,
+                        onReload = { settingsViewModel.loadAiModels(forceRefresh = true) },
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+            items(aiModels.visibleModels, key = { it.id }) { model ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    AiModelRow(
+                        model = model,
+                        isSelected = aiModels.selectedModelId == model.id,
+                        onClick = { settingsViewModel.onModelSelected(model) }
                     )
                 }
             }
