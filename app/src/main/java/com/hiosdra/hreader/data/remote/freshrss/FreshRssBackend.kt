@@ -123,8 +123,16 @@ private fun StreamItem.resolveId(): Long =
     numericId?.toLongOrNull() ?: parseItemId(id)
 
 private fun parseItemId(rawId: String): Long {
+    // Only the long form (tag:google.com,2005:reader/item/<hex>) carries a hexadecimal id.
+    // A short-form id is decimal, and a 16-digit decimal id is also a valid hex string,
+    // so the prefix — not the shape of the token — decides how to read it.
+    val isLongForm = rawId.startsWith(ITEM_ID_TAG_PREFIX)
     val token = rawId.removePrefix(ITEM_ID_TAG_PREFIX).substringAfterLast('/')
-    return if (HEX_ITEM_ID.matches(token)) java.lang.Long.parseUnsignedLong(token, 16) else token.toLong()
+    return if (isLongForm && HEX_ITEM_ID.matches(token)) {
+        java.lang.Long.parseUnsignedLong(token, 16)
+    } else {
+        token.toLong()
+    }
 }
 
 private fun StreamOrigin?.toFeed(): Feed = Feed(

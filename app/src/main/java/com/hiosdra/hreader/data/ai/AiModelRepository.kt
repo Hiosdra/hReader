@@ -32,6 +32,9 @@ class AiModelRepository(
     }
 
     suspend fun checkSelectedModel(): SelectedModelStatus {
+        // Without a key the AI features are unusable anyway, so there is nothing to warn about
+        // and no reason to pull the whole catalogue over the network.
+        if (preferencesManager.getOpenRouterApiKey().isBlank()) return SelectedModelStatus.Unknown
         val selectedId = preferencesManager.getAiModelId()
         val models = runCatching { getModels() }.getOrNull() ?: return SelectedModelStatus.Unknown
         if (models.isEmpty()) return SelectedModelStatus.Unknown

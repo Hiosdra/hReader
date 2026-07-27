@@ -118,9 +118,11 @@ class SettingsViewModel(
     private fun switchBackendTo(backendType: BackendType) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, pendingBackendType = null)
-            localCacheRepository.clearBackendData()
-            preferencesManager.setBackendType(backendType)
-            _uiState.value = currentSettings()
+            val cleared = runCatching { localCacheRepository.clearBackendData() }
+            if (cleared.isSuccess) {
+                preferencesManager.setBackendType(backendType)
+            }
+            _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
         }
     }
 
@@ -128,10 +130,12 @@ class SettingsViewModel(
         val backendType = _uiState.value.backendType
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true)
-            localCacheRepository.clearBackendData()
+            val cleared = runCatching { localCacheRepository.clearBackendData() }
             preferencesManager.setBackendSecret(backendType, "")
-            preferencesManager.setFreshRssUsername("")
-            _uiState.value = currentSettings()
+            if (backendType.requiresUsername) {
+                preferencesManager.setFreshRssUsername("")
+            }
+            _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
         }
     }
 
@@ -178,3 +182,7 @@ class SettingsViewModel(
 
 private fun ServerSettingsUiState.cleared(): ServerSettingsUiState =
     copy(statusMessage = null, isConnected = false)
+
+private fun ServerSettingsUiState.withClearFailure(failure: Throwable?): ServerSettingsUiState =
+    if (failure == null) this
+    else copy(statusMessage = failure.message ?: "Could not clear the downloaded articles.")
