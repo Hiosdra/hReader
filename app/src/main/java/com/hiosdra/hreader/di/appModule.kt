@@ -38,7 +38,7 @@ val appModule = module {
     single { get<AppDatabase>().articleImageDao() }
     single { ArticleRepository(get(), get(), get(), get(), get(), get()) }
     single { ArticleImageRepository(androidApplication(), get(), get(), get()) }
-    single { ArticleContentRepository(get(), get(), get(), get(), get()) }
+    single { ArticleContentRepository(get(), get(), get(), get()) }
     single<FeedRepository> { FeedRepository(get()) }
     single { PaywallBypassService() }
     single { PreferencesManager(androidApplication()) }

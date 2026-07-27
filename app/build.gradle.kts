@@ -106,7 +106,6 @@ dependencies {
 
     // HTML Parsing
     implementation("org.jsoup:jsoup:1.21.2")
-    implementation("net.dankito.readability4j:readability4j:1.0.8")
 
     // Testing - JUnit
     testImplementation("junit:junit:4.13.2")
