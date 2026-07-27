@@ -6,7 +6,7 @@ This guide helps contributors and AI assistants make safe, minimal, and behavior
 
 **Tech Stack:** Kotlin 2.2.10 • Android Gradle 8.12.1 • Compose BOM 2025.08.00 • Room 2.7.2 • Koin 4.1.0 • Retrofit 3.0.0  
 **Build Times:** Clean build 9+ min • Cached 3+ min • Test/Lint/Assemble 20-60s each  
-**Architecture:** MVVM with Jetpack Compose • FreshRSS (Google Reader API) backend • Room local storage
+**Architecture:** MVVM with Jetpack Compose • FreshRSS or Miniflux backend • Room local storage
 
 ## Project Structure & Module Organization
 
@@ -133,7 +133,7 @@ Always run before committing:
 
 ### Data Layer Patterns
 - **Database changes:** Add migrations in Room setup (no destructive fallbacks)
-- **API changes:** Update `FreshRssApiService`, wrap in `FreshRssApiRepository`
+- **API changes:** Extend `FeedBackend`, then implement it in both `freshrss/` and `miniflux/`
 - **Domain models:** Define in `data/model/`, map from entities in repositories
 - **DTOs:** Use Moshi annotations for JSON serialization
 
@@ -226,15 +226,22 @@ archunit = "1.4.1"
 - Don't measure/log execution times for operations
 - Handle sensitive data appropriately in preferences
 
-### FreshRSS Backend
-- Server address, username and API password live in `PreferencesManager`, edited in Settings
-- `FreshRssServerConfig` turns the server address into the `/api/greader.php/` base URL
-- Retrofit is pinned to a placeholder host; `FreshRssUrlInterceptor` rewrites it per request
-- `GoogleReaderAuthenticator` performs ClientLogin and caches the `GoogleLogin` token
-- Entry paging uses Google Reader continuation tokens, not offsets
+### Feed Backends
+- `FeedBackend` is the single interface the app talks to; `DelegatingFeedBackend` picks the
+  active implementation per call from `ServerConfig`
+- `freshrss/` speaks the Google Reader API at `/api/greader.php/`, `miniflux/` speaks the
+  Miniflux REST API
+- Backend choice, server address and credentials live in `PreferencesManager`, edited in
+  Settings and requested on first launch
+- Each backend has a placeholder host; `BackendUrlInterceptor` rewrites it per request so the
+  server can change without rebuilding Retrofit
+- `EntriesPage.cursor` is opaque: a Google Reader continuation token for FreshRSS, an offset
+  for Miniflux
+- Full article text falls back in order: backend-provided, then local Readability4J
+  extraction, then the content already synced from the feed
 
 ### Existing Stack (DO NOT CHANGE)
-- Retrofit + Moshi + OkHttp (with GoogleReaderAuthInterceptor)
+- Retrofit + Moshi + OkHttp (with per-backend auth interceptors)
 - Koin for dependency injection
 - Room database (migrations required, no destructive fallbacks)
 - WorkManager for background sync

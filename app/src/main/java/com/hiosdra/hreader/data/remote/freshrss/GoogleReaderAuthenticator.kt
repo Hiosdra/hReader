@@ -1,5 +1,7 @@
-package com.hiosdra.hreader.data.remote
+package com.hiosdra.hreader.data.remote.freshrss
 
+import com.hiosdra.hreader.data.model.BackendType
+import com.hiosdra.hreader.data.remote.ServerConfig
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -9,7 +11,7 @@ private const val CLIENT_LOGIN_PATH = "accounts/ClientLogin"
 private const val AUTH_LINE_PREFIX = "Auth="
 
 class GoogleReaderAuthenticator(
-    private val config: FreshRssServerConfig,
+    private val config: ServerConfig,
     private val clientProvider: () -> OkHttpClient
 ) {
     private var cachedToken: String? = null
@@ -35,7 +37,7 @@ class GoogleReaderAuthenticator(
         val baseUrl = config.googleReaderBaseUrl()
             ?: throw IOException("FreshRSS server address is not configured")
         val username = config.username()
-        val apiPassword = config.apiPassword()
+        val apiPassword = config.secretFor(BackendType.FRESHRSS)
         if (username.isEmpty() || apiPassword.isEmpty()) {
             throw IOException("FreshRSS username or API password is not configured")
         }

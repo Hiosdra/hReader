@@ -1,9 +1,9 @@
-package com.hiosdra.hreader.data.remote
+package com.hiosdra.hreader.data.remote.freshrss
 
-import com.hiosdra.hreader.data.remote.dto.QuickAddResponse
-import com.hiosdra.hreader.data.remote.dto.StreamContentsResponse
-import com.hiosdra.hreader.data.remote.dto.SubscriptionListResponse
-import com.hiosdra.hreader.data.remote.dto.UnreadCountResponse
+import com.hiosdra.hreader.data.remote.freshrss.dto.QuickAddResponse
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamContentsResponse
+import com.hiosdra.hreader.data.remote.freshrss.dto.SubscriptionListResponse
+import com.hiosdra.hreader.data.remote.freshrss.dto.UnreadCountResponse
 import okhttp3.ResponseBody
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded

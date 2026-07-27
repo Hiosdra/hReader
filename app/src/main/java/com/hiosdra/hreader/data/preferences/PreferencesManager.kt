@@ -2,6 +2,7 @@ package com.hiosdra.hreader.data.preferences
 
 import android.content.Context
 import com.hiosdra.hreader.data.ai.AiModel
+import com.hiosdra.hreader.data.model.BackendType
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.util.SyncPerformanceRecord
 import com.squareup.moshi.Moshi
@@ -19,12 +20,31 @@ class PreferencesManager(context: Context) {
         Types.newParameterizedType(List::class.java, SyncPerformanceRecord::class.java)
     )
 
-    fun getFreshRssServerUrl(): String =
-        sharedPreferences.getString(KEY_FRESHRSS_SERVER_URL, DEFAULT_FRESHRSS_SERVER_URL) ?: DEFAULT_FRESHRSS_SERVER_URL
+    fun getBackendType(): BackendType = BackendType.fromName(sharedPreferences.getString(KEY_BACKEND_TYPE, null))
 
-    fun setFreshRssServerUrl(url: String) {
+    fun setBackendType(backendType: BackendType) {
         sharedPreferences.edit()
-            .putString(KEY_FRESHRSS_SERVER_URL, url)
+            .putString(KEY_BACKEND_TYPE, backendType.name)
+            .apply()
+    }
+
+    fun getServerUrl(backendType: BackendType): String {
+        val default = defaultServerUrlFor(backendType)
+        return sharedPreferences.getString(serverUrlKeyFor(backendType), default) ?: default
+    }
+
+    fun setServerUrl(backendType: BackendType, url: String) {
+        sharedPreferences.edit()
+            .putString(serverUrlKeyFor(backendType), url)
+            .apply()
+    }
+
+    fun getBackendSecret(backendType: BackendType): String =
+        sharedPreferences.getString(secretKeyFor(backendType), "").orEmpty()
+
+    fun setBackendSecret(backendType: BackendType, secret: String) {
+        sharedPreferences.edit()
+            .putString(secretKeyFor(backendType), secret)
             .apply()
     }
 
@@ -36,18 +56,26 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
-    fun getFreshRssApiPassword(): String = sharedPreferences.getString(KEY_FRESHRSS_API_PASSWORD, "").orEmpty()
-
-    fun setFreshRssApiPassword(apiPassword: String) {
-        sharedPreferences.edit()
-            .putString(KEY_FRESHRSS_API_PASSWORD, apiPassword)
-            .apply()
+    fun hasBackendCredentials(): Boolean {
+        val backendType = getBackendType()
+        if (getServerUrl(backendType).isBlank() || getBackendSecret(backendType).isBlank()) return false
+        return !backendType.requiresUsername || getFreshRssUsername().isNotBlank()
     }
 
-    fun hasFreshRssCredentials(): Boolean =
-        getFreshRssServerUrl().isNotBlank() &&
-            getFreshRssUsername().isNotBlank() &&
-            getFreshRssApiPassword().isNotBlank()
+    private fun defaultServerUrlFor(backendType: BackendType) = when (backendType) {
+        BackendType.FRESHRSS -> DEFAULT_FRESHRSS_SERVER_URL
+        BackendType.MINIFLUX -> ""
+    }
+
+    private fun serverUrlKeyFor(backendType: BackendType) = when (backendType) {
+        BackendType.FRESHRSS -> KEY_FRESHRSS_SERVER_URL
+        BackendType.MINIFLUX -> KEY_MINIFLUX_SERVER_URL
+    }
+
+    private fun secretKeyFor(backendType: BackendType) = when (backendType) {
+        BackendType.FRESHRSS -> KEY_FRESHRSS_API_PASSWORD
+        BackendType.MINIFLUX -> KEY_MINIFLUX_API_TOKEN
+    }
 
     fun getPaywallBypassMethod(): PaywallBypassMethod {
         val savedMethod = sharedPreferences.getString(KEY_PAYWALL_BYPASS_METHOD, PaywallBypassMethod.SMRY_AI.name)
@@ -137,9 +165,12 @@ class PreferencesManager(context: Context) {
 
     companion object {
         const val DEFAULT_FRESHRSS_SERVER_URL = "https://rss.hiosdra.com"
+        private const val KEY_BACKEND_TYPE = "backend_type"
         private const val KEY_FRESHRSS_SERVER_URL = "freshrss_server_url"
         private const val KEY_FRESHRSS_USERNAME = "freshrss_username"
         private const val KEY_FRESHRSS_API_PASSWORD = "freshrss_api_password"
+        private const val KEY_MINIFLUX_SERVER_URL = "miniflux_server_url"
+        private const val KEY_MINIFLUX_API_TOKEN = "miniflux_api_token"
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_AI_MODEL = "ai_model"

@@ -1,5 +1,6 @@
-package com.hiosdra.hreader.data.remote
+package com.hiosdra.hreader.data.remote.freshrss
 
+import com.hiosdra.hreader.data.remote.FRESHRSS_PLACEHOLDER_HOST
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
