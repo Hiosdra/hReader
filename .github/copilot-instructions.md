@@ -2,7 +2,7 @@
 
 **ALWAYS follow these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.**
 
-hReader is an Android RSS/Feed reader app built with Kotlin, Jetpack Compose, and MVVM architecture. It connects to a FreshRSS backend through the Google Reader compatible API to synchronize feeds and articles.
+hReader is an Android RSS/Feed reader app built with Kotlin, Jetpack Compose, and MVVM architecture. It connects to a FreshRSS backend (Google Reader compatible API) or a Miniflux backend to synchronize feeds and articles.
 
 ## Quick Start & Build System
 
@@ -151,7 +151,7 @@ Notes:
 
 ### Working with API (Retrofit)
 - API services defined in `data/remote/`
-- FreshRSS server address and credentials are stored in `PreferencesManager` and edited in Settings
+- Backend choice, server address and credentials are stored in `PreferencesManager` and edited in Settings
 - DTOs use Moshi for JSON serialization
 
 ### Background Processing (WorkManager)

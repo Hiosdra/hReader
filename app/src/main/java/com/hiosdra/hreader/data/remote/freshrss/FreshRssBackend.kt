@@ -1,23 +1,26 @@
-package com.hiosdra.hreader.data.remote
+package com.hiosdra.hreader.data.remote.freshrss
 
 import com.hiosdra.hreader.data.model.ArticleStatus
+import com.hiosdra.hreader.data.model.DiscoveredFeed
 import com.hiosdra.hreader.data.model.Enclosure
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
-import com.hiosdra.hreader.data.remote.dto.EntriesPage
-import com.hiosdra.hreader.data.remote.dto.StreamContentsResponse
-import com.hiosdra.hreader.data.remote.dto.StreamEnclosure
-import com.hiosdra.hreader.data.remote.dto.StreamItem
-import com.hiosdra.hreader.data.remote.dto.StreamOrigin
-import com.hiosdra.hreader.data.remote.dto.Subscription
-import kotlinx.coroutines.delay
+import com.hiosdra.hreader.data.remote.ENTRIES_PAGE_LIMIT
+import com.hiosdra.hreader.data.remote.EntriesPage
+import com.hiosdra.hreader.data.remote.FeedBackend
+import com.hiosdra.hreader.data.remote.FeedDiscoveryService
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamContentsResponse
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamEnclosure
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamItem
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamOrigin
+import com.hiosdra.hreader.data.remote.freshrss.dto.Subscription
+import com.hiosdra.hreader.data.remote.withRetries
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlin.math.absoluteValue
 
-private const val ENTRIES_DOWNLOAD_DEFAULT_LIMIT = 200
 private const val JSON_OUTPUT = "json"
 private const val OLDEST_FIRST = "o"
 private const val READ_STATE = "user/-/state/com.google/read"
@@ -25,55 +28,41 @@ private const val FEED_STREAM_PREFIX = "feed/"
 private const val ITEM_ID_TAG_PREFIX = "tag:google.com,2005:reader/item/"
 private const val WORDS_PER_MINUTE = 250
 
-class FreshRssApiRepository(private val apiService: FreshRssApiService) {
+class FreshRssBackend(
+    private val apiService: FreshRssApiService,
+    private val feedDiscoveryService: FeedDiscoveryService
+) : FeedBackend {
 
-    suspend fun getUnreadEntries(
-        limit: Int = ENTRIES_DOWNLOAD_DEFAULT_LIMIT,
-        continuation: String? = null
-    ): EntriesPage = withRetries {
-        apiService.getStreamContents(
-            output = JSON_OUTPUT,
-            count = limit,
-            order = OLDEST_FIRST,
-            excludeTarget = READ_STATE,
-            startTimeSeconds = null,
-            continuation = continuation
-        ).toEntriesPage()
-    }
+    override suspend fun getUnreadEntries(limit: Int, cursor: String?): EntriesPage =
+        withRetries { streamContents(limit, cursor, startTimeSeconds = null) }
 
-    suspend fun getUnreadEntriesChangedAfter(
+    override suspend fun getUnreadEntriesChangedAfter(
         changedAfter: Instant,
-        limit: Int = ENTRIES_DOWNLOAD_DEFAULT_LIMIT,
-        continuation: String? = null
-    ): EntriesPage = withRetries {
-        apiService.getStreamContents(
-            output = JSON_OUTPUT,
-            count = limit,
-            order = OLDEST_FIRST,
-            excludeTarget = READ_STATE,
-            startTimeSeconds = changedAfter.epochSecond,
-            continuation = continuation
-        ).toEntriesPage()
-    }
+        limit: Int,
+        cursor: String?
+    ): EntriesPage = withRetries { streamContents(limit, cursor, changedAfter.epochSecond) }
 
-    suspend fun getFeeds(): List<Feed> = withRetries { fetchFeeds() }
+    override suspend fun getFeeds(): List<Feed> = withRetries { fetchFeeds() }
 
-    suspend fun verifyConnection(): Int = fetchFeeds().size
+    override suspend fun verifyConnection(): Int = fetchFeeds().size
 
-    suspend fun getUnreadCounts(): Map<Long, Int> = withRetries {
+    override suspend fun getUnreadCounts(): Map<Long, Int> = withRetries {
         apiService.getUnreadCounts(JSON_OUTPUT).unreadCounts
             .filter { it.id.startsWith(FEED_STREAM_PREFIX) }
             .associate { streamIdToFeedId(it.id) to it.count }
     }
 
-    suspend fun createFeed(feedUrl: String) = withRetries {
+    override suspend fun createFeed(feedUrl: String) = withRetries {
         val response = apiService.quickAddSubscription(feedUrl, writeToken())
         if (response.numResults < 1) {
             throw IOException(response.error ?: "FreshRSS could not subscribe to $feedUrl")
         }
     }
 
-    suspend fun updateEntriesStatus(entryIds: List<Long>, status: ArticleStatus) {
+    override suspend fun discoverFeeds(url: String): List<DiscoveredFeed> =
+        feedDiscoveryService.discoverFeeds(url)
+
+    override suspend fun updateEntriesStatus(entryIds: List<Long>, status: ArticleStatus) {
         if (entryIds.isEmpty()) return
         val markAsRead = status == ArticleStatus.READ
         withRetries {
@@ -85,6 +74,18 @@ class FreshRssApiRepository(private val apiService: FreshRssApiService) {
             ).close()
         }
     }
+
+    override suspend fun fetchFullContent(entryId: Long): String? = null
+
+    private suspend fun streamContents(limit: Int, cursor: String?, startTimeSeconds: Long?): EntriesPage =
+        apiService.getStreamContents(
+            output = JSON_OUTPUT,
+            count = limit.coerceAtMost(ENTRIES_PAGE_LIMIT),
+            order = OLDEST_FIRST,
+            excludeTarget = READ_STATE,
+            startTimeSeconds = startTimeSeconds,
+            continuation = cursor
+        ).toEntriesPage()
 
     private suspend fun fetchFeeds(): List<Feed> =
         apiService.getSubscriptions(JSON_OUTPUT).subscriptions.map { it.toFeed() }
@@ -99,7 +100,7 @@ private val HEX_ITEM_ID = Regex("[0-9a-fA-F]{16}")
 
 internal fun StreamContentsResponse.toEntriesPage(): EntriesPage = EntriesPage(
     entries = items.map { it.toEntry() },
-    continuation = continuation?.takeIf { it.isNotBlank() }
+    cursor = continuation?.takeIf { it.isNotBlank() }
 )
 
 private fun StreamItem.toEntry(): Entry {
@@ -163,22 +164,4 @@ private fun estimateReadingTimeMinutes(html: String): Int {
     val words = html.replace(Regex("<[^>]*>"), " ").split(Regex("\\s+")).count { it.isNotBlank() }
     if (words == 0) return 0
     return ((words + WORDS_PER_MINUTE - 1) / WORDS_PER_MINUTE).coerceAtLeast(1)
-}
-
-private suspend fun <T> withRetries(
-    maxAttempts: Int = 5,
-    delayMillis: Long = 500,
-    block: suspend () -> T
-): T {
-    require(maxAttempts >= 1)
-    var attempts = 0
-    while (true) {
-        try {
-            return block()
-        } catch (e: Throwable) {
-            attempts++
-            if (attempts >= maxAttempts) throw e
-            delay(delayMillis)
-        }
-    }
 }

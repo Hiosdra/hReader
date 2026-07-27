@@ -104,7 +104,7 @@ fun SettingsScreen(
             // FreshRSS Server Card
             item {
                 Text(
-                    text = "FreshRSS Server",
+                    text = "Feed server",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -113,11 +113,12 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    FreshRssServerFields(
+                    BackendServerFields(
                         state = serverSettings,
+                        onBackendTypeChange = settingsViewModel::onBackendTypeChange,
                         onServerUrlChange = settingsViewModel::onServerUrlChange,
                         onUsernameChange = settingsViewModel::onUsernameChange,
-                        onApiPasswordChange = settingsViewModel::onApiPasswordChange,
+                        onSecretChange = settingsViewModel::onSecretChange,
                         onTestConnection = settingsViewModel::testConnection,
                         modifier = Modifier.padding(16.dp)
                     )

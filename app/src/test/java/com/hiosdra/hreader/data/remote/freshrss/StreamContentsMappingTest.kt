@@ -1,12 +1,12 @@
-package com.hiosdra.hreader.data.remote
+package com.hiosdra.hreader.data.remote.freshrss
 
 import com.hiosdra.hreader.data.model.ArticleStatus
-import com.hiosdra.hreader.data.remote.dto.StreamContent
-import com.hiosdra.hreader.data.remote.dto.StreamContentsResponse
-import com.hiosdra.hreader.data.remote.dto.StreamEnclosure
-import com.hiosdra.hreader.data.remote.dto.StreamItem
-import com.hiosdra.hreader.data.remote.dto.StreamLink
-import com.hiosdra.hreader.data.remote.dto.StreamOrigin
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamContent
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamContentsResponse
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamEnclosure
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamItem
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamLink
+import com.hiosdra.hreader.data.remote.freshrss.dto.StreamOrigin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -86,14 +86,14 @@ class StreamContentsMappingTest {
     fun `blank continuation is treated as the last page`() {
         val page = StreamContentsResponse(items = emptyList(), continuation = "  ").toEntriesPage()
 
-        assertNull(page.continuation)
+        assertNull(page.cursor)
     }
 
     @Test
     fun `continuation is preserved when more pages are available`() {
         val page = StreamContentsResponse(items = emptyList(), continuation = "1519").toEntriesPage()
 
-        assertEquals("1519", page.continuation)
+        assertEquals("1519", page.cursor)
     }
 
     private fun StreamItem.toEntry() =

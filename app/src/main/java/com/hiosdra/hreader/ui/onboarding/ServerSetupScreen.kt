@@ -20,7 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.hiosdra.hreader.ui.settings.FreshRssServerFields
+import com.hiosdra.hreader.ui.settings.BackendServerFields
 import com.hiosdra.hreader.ui.settings.SettingsViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -34,7 +34,7 @@ fun ServerSetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Connect to FreshRSS", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("Connect your feed server", style = MaterialTheme.typography.titleLarge) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -51,8 +51,9 @@ fun ServerSetupScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "hReader syncs with your own FreshRSS instance over the Google Reader API. " +
-                    "Create an API password in FreshRSS under Profile → API management, then enter it below.",
+                text = "hReader syncs with your own FreshRSS or Miniflux instance. Pick the backend, " +
+                    "enter its address, and paste the ${serverSettings.backendType.secretLabel.lowercase()} " +
+                    "from ${serverSettings.backendType.secretHint}.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -60,11 +61,12 @@ fun ServerSetupScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium
             ) {
-                FreshRssServerFields(
+                BackendServerFields(
                     state = serverSettings,
+                    onBackendTypeChange = settingsViewModel::onBackendTypeChange,
                     onServerUrlChange = settingsViewModel::onServerUrlChange,
                     onUsernameChange = settingsViewModel::onUsernameChange,
-                    onApiPasswordChange = settingsViewModel::onApiPasswordChange,
+                    onSecretChange = settingsViewModel::onSecretChange,
                     onTestConnection = settingsViewModel::testConnection,
                     modifier = Modifier.padding(16.dp)
                 )

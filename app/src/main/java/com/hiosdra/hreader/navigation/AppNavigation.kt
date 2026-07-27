@@ -26,7 +26,7 @@ fun AppNavigation(
     preferencesManager: PreferencesManager = koinInject()
 ) {
     val startDestination = remember {
-        if (preferencesManager.hasFreshRssCredentials()) Routes.MAIN else Routes.SERVER_SETUP
+        if (preferencesManager.hasBackendCredentials()) Routes.MAIN else Routes.SERVER_SETUP
     }
     NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.SERVER_SETUP) {

@@ -11,7 +11,7 @@ import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.preferences.PreferencesManager
-import com.hiosdra.hreader.data.remote.FreshRssApiRepository
+import com.hiosdra.hreader.data.remote.FeedBackend
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -22,7 +22,7 @@ private const val ENTRIES_BATCH_LIMIT = 200
 class ArticleRepository(
     private val articleDao: ArticleDao,
     private val feedDao: FeedDao,
-    private val api: FreshRssApiRepository,
+    private val api: FeedBackend,
     private val db: AppDatabase,
     private val preferencesManager: PreferencesManager,
     private val syncPerformanceLogger: SyncPerformanceLogger
@@ -49,15 +49,15 @@ class ArticleRepository(
         val useIncrementalSync = shouldUseIncrementalSync(syncStartTime)
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
 
-        var continuation: String? = null
+        var cursor: String? = null
         while (true) {
-            val page = fetchArticleBatch(useIncrementalSync, limit, continuation)
+            val page = fetchArticleBatch(useIncrementalSync, limit, cursor)
 
             fetchedArticles += page.entries.map { it.toEntity() }
             page.entries.forEach { feedsMap[it.feed.id] = it.feed.toFeedEntity() }
 
-            continuation = page.continuation
-            if (continuation == null || page.entries.isEmpty()) break
+            cursor = page.cursor
+            if (cursor == null || page.entries.isEmpty()) break
         }
 
         api.getFeeds().forEach { feedsMap[it.id] = it.toFeedEntity() }
@@ -81,14 +81,14 @@ class ArticleRepository(
 
     private fun getLastSyncTime(): Long = preferencesManager.getLastSyncTimestamp()
 
-    private suspend fun fetchArticleBatch(useIncremental: Boolean, limit: Int, continuation: String?) =
+    private suspend fun fetchArticleBatch(useIncremental: Boolean, limit: Int, cursor: String?) =
         if (useIncremental) {
             val changedAfter = Instant.ofEpochMilli(getLastSyncTime())
             Log.d("ArticleRepository", "Using incremental sync since: $changedAfter")
-            api.getUnreadEntriesChangedAfter(changedAfter, limit = limit, continuation = continuation)
+            api.getUnreadEntriesChangedAfter(changedAfter, limit = limit, cursor = cursor)
         } else {
             Log.d("ArticleRepository", "Using full sync")
-            api.getUnreadEntries(limit = limit, continuation = continuation)
+            api.getUnreadEntries(limit = limit, cursor = cursor)
         }
 
     private suspend fun insertArticlesWithStatusPreservation(fetchedArticles: List<ArticleEntity>) {

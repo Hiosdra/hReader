@@ -2,6 +2,7 @@ package com.hiosdra.hreader.data.remote
 
 import com.hiosdra.hreader.data.model.DiscoveredFeed
 import okhttp3.OkHttpClient
+import org.jsoup.Jsoup
 
 private val FEED_MIME_TYPES = setOf(
     "application/rss+xml",
@@ -14,7 +15,7 @@ private val FEED_MIME_TYPES = setOf(
 
 class FeedDiscoveryService(private val client: OkHttpClient) {
     suspend fun discoverFeeds(url: String): List<DiscoveredFeed> =
-        client.fetchDocument(url)
+        Jsoup.parse(client.fetchHtml(url), url)
             .select("link[rel~=(?i)alternate][href]")
             .filter { it.attr("type").lowercase() in FEED_MIME_TYPES }
             .map {

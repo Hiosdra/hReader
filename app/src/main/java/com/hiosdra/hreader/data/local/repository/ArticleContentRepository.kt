@@ -5,6 +5,7 @@ import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
 import com.hiosdra.hreader.data.remote.ArticleContentFetcher
+import com.hiosdra.hreader.data.remote.FeedBackend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -14,6 +15,7 @@ import org.jsoup.Jsoup
 import java.time.Instant
 
 class ArticleContentRepository(
+    private val backend: FeedBackend,
     private val articleContentFetcher: ArticleContentFetcher,
     private val articleContentDao: ArticleContentDao,
     private val articleDao: ArticleDao,
@@ -44,10 +46,15 @@ class ArticleContentRepository(
     }
 
     private suspend fun fetchFullContent(entryId: Long, url: String): String {
-        val scraped = runCatching { articleContentFetcher.fetchReadableContent(url) }
-            .onFailure { Log.w(TAG, "Failed to scrape full content for entry $entryId: ${it.message}") }
+        val serverSide = runCatching { backend.fetchFullContent(entryId) }
+            .onFailure { Log.w(TAG, "Backend could not provide full content for entry $entryId: ${it.message}") }
             .getOrNull()
-        if (!scraped.isNullOrBlank()) return scraped
+        if (!serverSide.isNullOrBlank()) return serverSide
+
+        val extracted = runCatching { articleContentFetcher.fetchReadableContent(url) }
+            .onFailure { Log.w(TAG, "Failed to extract full content for entry $entryId: ${it.message}") }
+            .getOrNull()
+        if (!extracted.isNullOrBlank()) return extracted
 
         return articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull()?.content
             ?: throw IllegalStateException("No content available for entry $entryId")
