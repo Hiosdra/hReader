@@ -237,8 +237,8 @@ archunit = "1.4.1"
   server can change without rebuilding Retrofit
 - `EntriesPage.cursor` is opaque: a Google Reader continuation token for FreshRSS, an offset
   for Miniflux
-- Full article text falls back in order: backend-provided, then local Readability4J
-  extraction, then the content already synced from the feed
+- Full article text always comes from the server: `fetch-content` on Miniflux, the per-feed
+  original-article selector on FreshRSS, falling back to the content synced with the feed
 
 ### Existing Stack (DO NOT CHANGE)
 - Retrofit + Moshi + OkHttp (with per-backend auth interceptors)

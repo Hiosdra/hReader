@@ -3,7 +3,6 @@ package com.hiosdra.hreader.di
 import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.ai.OpenRouterApiService
-import com.hiosdra.hreader.data.remote.ArticleContentFetcher
 import com.hiosdra.hreader.data.remote.BackendUrlInterceptor
 import com.hiosdra.hreader.data.remote.DelegatingFeedBackend
 import com.hiosdra.hreader.data.remote.FRESHRSS_PLACEHOLDER_BASE_URL
@@ -65,7 +64,6 @@ val networkModule = module {
     single<FreshRssApiService> { get<Retrofit>(named(FRESHRSS_RETROFIT)).create(FreshRssApiService::class.java) }
     single<MinifluxApiService> { get<Retrofit>(named(MINIFLUX_RETROFIT)).create(MinifluxApiService::class.java) }
 
-    single { ArticleContentFetcher(get()) }
     single { FeedDiscoveryService(get()) }
 
     single<FeedBackend>(named(FRESHRSS_RETROFIT)) { FreshRssBackend(get(), get()) }
