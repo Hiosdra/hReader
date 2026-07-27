@@ -1,4 +1,4 @@
-package com.hiosdra.hreader.data.remote.dto
+package com.hiosdra.hreader.data.remote.miniflux.dto
 
 data class UpdateEntriesStatusRequest(
     val entry_ids: List<Long>,

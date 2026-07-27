@@ -14,6 +14,9 @@ interface ArticleContentDao {
     @Query("SELECT * FROM article_contents WHERE entryId = :entryId")
     suspend fun getArticleContent(entryId: Long): ArticleContent?
 
+    @Query("DELETE FROM article_contents")
+    suspend fun clearAll()
+
     @Query("DELETE FROM article_contents WHERE entryId IN (:entryIds)")
     suspend fun deleteArticlesContent(entryIds: List<Long>)
 

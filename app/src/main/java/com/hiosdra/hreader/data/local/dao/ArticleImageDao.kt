@@ -24,6 +24,9 @@ interface ArticleImageDao {
     @Query("SELECT * FROM article_images")
     suspend fun getAllArticleImages(): List<ArticleImage>
 
+    @Query("DELETE FROM article_images")
+    suspend fun clearAll()
+
     @Query("DELETE FROM article_images WHERE entryId IN (:entryIds)")
     suspend fun deleteImagesForArticles(entryIds: List<Long>)
 

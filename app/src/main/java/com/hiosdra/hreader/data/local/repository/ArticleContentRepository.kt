@@ -4,7 +4,7 @@ import android.util.Log
 import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
-import com.hiosdra.hreader.data.remote.MinifluxApiRepository
+import com.hiosdra.hreader.data.remote.FeedBackend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -14,7 +14,7 @@ import org.jsoup.Jsoup
 import java.time.Instant
 
 class ArticleContentRepository(
-    private val minifluxApiRepository: MinifluxApiRepository,
+    private val backend: FeedBackend,
     private val articleContentDao: ArticleContentDao,
     private val articleDao: ArticleDao,
     private val articleImageRepository: ArticleImageRepository
@@ -28,19 +28,29 @@ class ArticleContentRepository(
             return localContent.content
         }
 
-        val originalContent = minifluxApiRepository.fetchOriginalContent(entryId)
+        val content = fetchFullContent(entryId)
 
         // Download images from content
-        processAndSaveImages(entryId, originalContent.content, url)
+        processAndSaveImages(entryId, content, url)
 
         val articleContent = ArticleContent(
             entryId = entryId,
-            content = originalContent.content,
+            content = content,
             fetchedAt = Instant.now(),
             url = url
         )
         articleContentDao.insertArticleContent(articleContent)
-        return originalContent.content
+        return content
+    }
+
+    private suspend fun fetchFullContent(entryId: Long): String {
+        val serverSide = runCatching { backend.fetchFullContent(entryId) }
+            .onFailure { Log.w(TAG, "Backend could not provide full content for entry $entryId: ${it.message}") }
+            .getOrNull()
+        if (!serverSide.isNullOrBlank()) return serverSide
+
+        return articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull()?.content
+            ?: throw IllegalStateException("No content available for entry $entryId")
     }
 
     private suspend fun processAndSaveImages(entryId: Long, htmlContent: String, baseUri: String) {
