@@ -44,11 +44,18 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew assembleDebug
 
+      # `archive: false` uploads the APK as-is instead of wrapping it in a zip,
+      # but it takes the artifact name from the file name, hence the rename.
+      - name: Name the debug APK
+        run: |
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk artifacts/hreader-debug.apk
+
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: hreader-debug
-          path: app/build/outputs/apk/debug/*.apk
+          path: artifacts/hreader-debug.apk
+          archive: false
           if-no-files-found: error
 
   release:
@@ -106,11 +113,16 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           "$APKSIGNER" verify --verbose app/build/outputs/apk/release/*.apk
 
+      - name: Name the release APK
+        run: |
+          mkdir -p artifacts
+          cp app/build/outputs/apk/release/app-release.apk artifacts/hreader-release.apk
+
       - name: Upload release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: hreader-release
-          path: app/build/outputs/apk/release/*.apk
+          path: artifacts/hreader-release.apk
+          archive: false
           if-no-files-found: error
 
       - name: Remove keystore
