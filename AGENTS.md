@@ -48,6 +48,10 @@ app/src/main/java/com/hiosdra/hreader/
 ## Architecture Patterns & Rules
 
 ### Layer Separation (Enforced by ArchUnit)
+- **Domain models** (`data/model/`) → depend on nothing but `java.time`; no Moshi, Room,
+  Retrofit or OkHttp, and no knowledge of any backend's wire format
+- **Backends** (`data/remote/freshrss/`, `data/remote/miniflux/`) → own their DTOs and map them
+  to domain models; they must not reference each other
 - **UI Layer** (`ui/`) → may depend on ViewModels, domain models, and util
 - **UI Layer** → **MUST NOT** depend on Room entities (`data/local/entity/`)
 - **Data Layer** → exposes domain models from `data/model/` to UI
@@ -227,6 +231,8 @@ archunit = "1.4.1"
 - Handle sensitive data appropriately in preferences
 
 ### Feed Backends
+- **Exactly one backend is active at a time.** Switching wipes every article, feed, content and
+  image downloaded from the previous one, then resyncs
 - `FeedBackend` is the single interface the app talks to; `DelegatingFeedBackend` picks the
   active implementation per call from `ServerConfig`
 - `freshrss/` speaks the Google Reader API at `/api/greader.php/`, `miniflux/` speaks the

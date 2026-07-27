@@ -22,15 +22,16 @@ class Converters {
     }
 
     @TypeConverter
-    fun enclosuresToJson(enclosures: List<Enclosure>?): String? = enclosures?.let {
-        val type = Types.newParameterizedType(List::class.java, Enclosure::class.java)
-        moshi.adapter<List<Enclosure>>(type).toJson(it)
-    }
+    fun enclosuresToStorage(enclosures: List<Enclosure>): String =
+        enclosures.joinToString(RECORD_SEPARATOR) { "${'$'}{it.url}${'$'}FIELD_SEPARATOR${'$'}{it.mimeType.orEmpty()}" }
 
     @TypeConverter
-    fun jsonToEnclosures(json: String?): List<Enclosure>? = json?.let {
-        val type = Types.newParameterizedType(List::class.java, Enclosure::class.java)
-        moshi.adapter<List<Enclosure>>(type).fromJson(it)
+    fun storageToEnclosures(stored: String?): List<Enclosure> {
+        if (stored.isNullOrEmpty()) return emptyList()
+        return stored.split(RECORD_SEPARATOR).mapNotNull { record ->
+            val url = record.substringBefore(FIELD_SEPARATOR).takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            Enclosure(url = url, mimeType = record.substringAfter(FIELD_SEPARATOR, "").takeIf { it.isNotBlank() })
+        }
     }
 
     @TypeConverter
@@ -42,13 +43,12 @@ class Converters {
         epochMillis?.let { Instant.ofEpochMilli(it) }
 
     @TypeConverter
-    fun articleStatusToString(status: ArticleStatus?): String? = status?.wire
+    fun articleStatusToString(status: ArticleStatus?): String? = status?.name
 
     @TypeConverter
-    fun stringToArticleStatus(value: String?): ArticleStatus? = when (value) {
-        ArticleStatus.READ.wire -> ArticleStatus.READ
-        ArticleStatus.UNREAD.wire -> ArticleStatus.UNREAD
-        null -> null
-        else -> ArticleStatus.UNREAD
-    }
+    fun stringToArticleStatus(value: String?): ArticleStatus? =
+        value?.let { name -> ArticleStatus.entries.find { it.name == name } ?: ArticleStatus.UNREAD }
 }
+
+private const val RECORD_SEPARATOR = "\u001e"
+private const val FIELD_SEPARATOR = "\u001f"
