@@ -106,10 +106,8 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
-    fun getAiModelId(): String {
-        val saved = sharedPreferences.getString(KEY_AI_MODEL, null)
-        return saved?.takeIf { it.contains('/') } ?: AiModel.DEFAULT_ID
-    }
+    fun getAiModelId(): String =
+        sharedPreferences.getString(KEY_AI_MODEL, AiModel.DEFAULT_ID) ?: AiModel.DEFAULT_ID
 
     fun setAiModelId(modelId: String) {
         sharedPreferences.edit()
