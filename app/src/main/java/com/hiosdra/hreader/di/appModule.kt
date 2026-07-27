@@ -12,6 +12,7 @@ import com.hiosdra.hreader.ui.article.ArticleViewModel
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
 import com.hiosdra.hreader.ui.feeds.add.AddFeedViewModel
 import com.hiosdra.hreader.ui.main.MainViewModel
+import com.hiosdra.hreader.ui.settings.SettingsViewModel
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.SyncPerformanceLogger
@@ -38,7 +39,7 @@ val appModule = module {
     single { ArticleRepository(get(), get(), get(), get(), get(), get()) }
     single { ArticleImageRepository(androidApplication(), get(), get(), get()) }
     single { ArticleContentRepository(get(), get(), get(), get()) }
-    single<FeedRepository> { FeedRepository(get()) }
+    single<FeedRepository> { FeedRepository(get(), get()) }
     single { PaywallBypassService() }
     single { PreferencesManager(androidApplication()) }
     single { SyncPerformanceLogger(get()) }
@@ -50,4 +51,5 @@ val appModule = module {
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get(), get(), get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }
+    viewModel { SettingsViewModel(get(), get()) }
 }

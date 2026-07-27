@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,14 +46,17 @@ import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.SyncPerformanceRecord
+import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController? = null,
-    preferencesManager: PreferencesManager = koinInject()
+    preferencesManager: PreferencesManager = koinInject(),
+    settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
+    val serverSettings by settingsViewModel.uiState.collectAsState()
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
     var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
     var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
@@ -97,6 +101,29 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // FreshRSS Server Card
+            item {
+                Text(
+                    text = "FreshRSS Server",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    FreshRssServerFields(
+                        state = serverSettings,
+                        onServerUrlChange = settingsViewModel::onServerUrlChange,
+                        onUsernameChange = settingsViewModel::onUsernameChange,
+                        onApiPasswordChange = settingsViewModel::onApiPasswordChange,
+                        onTestConnection = settingsViewModel::testConnection,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
             // Reading Experience Card
             item {
                 Text(

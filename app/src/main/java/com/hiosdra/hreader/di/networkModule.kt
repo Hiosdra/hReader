@@ -3,9 +3,15 @@ package com.hiosdra.hreader.di
 import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.ai.OpenRouterApiService
-import com.hiosdra.hreader.data.remote.AuthInterceptor
-import com.hiosdra.hreader.data.remote.MinifluxApiRepository
-import com.hiosdra.hreader.data.remote.MinifluxApiService
+import com.hiosdra.hreader.data.remote.ArticleContentFetcher
+import com.hiosdra.hreader.data.remote.FRESHRSS_PLACEHOLDER_BASE_URL
+import com.hiosdra.hreader.data.remote.FeedDiscoveryService
+import com.hiosdra.hreader.data.remote.FreshRssApiRepository
+import com.hiosdra.hreader.data.remote.FreshRssApiService
+import com.hiosdra.hreader.data.remote.FreshRssServerConfig
+import com.hiosdra.hreader.data.remote.FreshRssUrlInterceptor
+import com.hiosdra.hreader.data.remote.GoogleReaderAuthInterceptor
+import com.hiosdra.hreader.data.remote.GoogleReaderAuthenticator
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -16,19 +22,20 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
 val networkModule = module {
-    single<AuthInterceptor> { AuthInterceptor() }
+    single { FreshRssServerConfig(get()) }
+    single { GoogleReaderAuthenticator(get()) { get<OkHttpClient>() } }
+    single { GoogleReaderAuthInterceptor(get()) }
+    single { FreshRssUrlInterceptor(get()) }
     single<HttpLoggingInterceptor> {
         HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
-            redactHeader("X-Auth-Token")
-            redactHeader("CF-Access-Client-Id")
-            redactHeader("CF-Access-Client-Secret")
             redactHeader("Authorization")
         }
     }
     single<OkHttpClient> {
         OkHttpClient.Builder()
-            .addInterceptor(get<AuthInterceptor>())
+            .addInterceptor(get<GoogleReaderAuthInterceptor>())
+            .addInterceptor(get<FreshRssUrlInterceptor>())
             .addInterceptor(get<HttpLoggingInterceptor>())
             .build()
     }
@@ -39,15 +46,17 @@ val networkModule = module {
     }
     single<Retrofit> {
         Retrofit.Builder()
-            .baseUrl(BuildConfig.MINIFLUX_BASE_URL)
+            .baseUrl(FRESHRSS_PLACEHOLDER_BASE_URL)
             .client(get<OkHttpClient>())
             .addConverterFactory(MoshiConverterFactory.create(get<Moshi>()))
             .build()
     }
 
-    single<MinifluxApiService> { get<Retrofit>().create(MinifluxApiService::class.java) }
-    single<MinifluxApiRepository> { MinifluxApiRepository(get()) }
-    
+    single<FreshRssApiService> { get<Retrofit>().create(FreshRssApiService::class.java) }
+    single<FreshRssApiRepository> { FreshRssApiRepository(get()) }
+    single { ArticleContentFetcher(get()) }
+    single { FeedDiscoveryService(get()) }
+
     // OpenRouter AI Services
     single<Retrofit>(named("openrouter")) {
         Retrofit.Builder()

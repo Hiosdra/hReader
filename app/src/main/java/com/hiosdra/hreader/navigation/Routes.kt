@@ -3,6 +3,7 @@ package com.hiosdra.hreader.navigation
 object Routes {
     const val FEED_ID_NONE: Long = -1L
 
+    const val SERVER_SETUP = "server_setup"
     const val MAIN = "main"
     const val MAIN_WITH_OPTIONAL_FEED = "main?feedId={feedId}"
     const val FEEDS = "feeds"

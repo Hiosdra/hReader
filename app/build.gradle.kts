@@ -20,10 +20,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "MINIFLUX_BASE_URL", "\"https://miniflux.hiosdra.com\"")
-        buildConfigField("String", "MINIFLUX_API_KEY", "\"REDACTED_MINIFLUX_API_KEY\"")
-        buildConfigField("String", "CLOUDFLARE_CLIENT_ID", "\"REDACTED_CLOUDFLARE_CLIENT_ID\"")
-        buildConfigField("String", "CLOUDFLARE_CLIENT_SECRET", "\"REDACTED_CLOUDFLARE_CLIENT_SECRET\"")
         buildConfigField("String", "OPENROUTER_KEY", "\"REDACTED_OPENROUTER_KEY\"")
     }
 
