@@ -29,6 +29,13 @@ class StreamContentsMappingTest {
     }
 
     @Test
+    fun `a short form id is read as decimal even when it looks hexadecimal`() {
+        val entry = itemWith(id = "1721234567890123").toEntry()
+
+        assertEquals(1721234567890123L, entry.id)
+    }
+
+    @Test
     fun `numeric id provided by FreshRSS takes precedence`() {
         val entry = itemWith(
             id = "tag:google.com,2005:reader/item/00000000000005a7",
