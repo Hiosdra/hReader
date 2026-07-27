@@ -248,7 +248,7 @@ private fun ArticlePager(
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val entry = entries[page]
-            val mainImageUrl = entry.enclosures?.firstOrNull { it.mimeType?.startsWith("image/") == true }?.url
+            val mainImageUrl = entry.enclosures.firstOrNull { it.isImage }?.url
                 ?: Regex("<img[^>]+src=\"([^\"]+)\"").find(entry.content ?: "")?.groupValues?.getOrNull(1)
             if (isWebViewMode) {
                 AndroidView(
@@ -674,12 +674,8 @@ private fun MetaChips(
     }
 }
 
-private fun formatPublishedDate(raw: String): String {
-    return runCatching {
-        val instant = Instant.parse(raw)
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(instant)
-    }.getOrElse { raw }
-}
+private fun formatPublishedDate(publishedAt: Instant): String =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(publishedAt)
 
 @Composable
 private fun ImageActionsDialog(

@@ -10,6 +10,7 @@ import com.hiosdra.hreader.data.remote.freshrss.dto.StreamOrigin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.time.Instant
 
 class StreamContentsMappingTest {
 
@@ -47,10 +48,15 @@ class StreamContentsMappingTest {
     }
 
     @Test
-    fun `published timestamp is formatted as a fixed width instant`() {
+    fun `the published unix timestamp becomes an instant`() {
         val entry = itemWith(published = 1_700_000_000L).toEntry()
 
-        assertEquals("2023-11-14T22:13:20Z", entry.publishedAt)
+        assertEquals(Instant.ofEpochSecond(1_700_000_000L), entry.publishedAt)
+    }
+
+    @Test
+    fun `a missing published timestamp falls back to the epoch`() {
+        assertEquals(Instant.EPOCH, itemWith(published = null).toEntry().publishedAt)
     }
 
     @Test
@@ -78,8 +84,8 @@ class StreamContentsMappingTest {
             )
         ).toEntry()
 
-        assertEquals(1, entry.enclosures?.size)
-        assertEquals("https://example.com/a.jpg", entry.enclosures?.first()?.url)
+        assertEquals(1, entry.enclosures.size)
+        assertEquals("https://example.com/a.jpg", entry.enclosures.first().url)
     }
 
     @Test

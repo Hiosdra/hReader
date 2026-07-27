@@ -17,8 +17,6 @@ import com.hiosdra.hreader.data.remote.freshrss.dto.Subscription
 import com.hiosdra.hreader.data.remote.withRetries
 import java.io.IOException
 import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import kotlin.math.absoluteValue
 
 private const val JSON_OUTPUT = "json"
@@ -93,9 +91,6 @@ class FreshRssBackend(
     private suspend fun writeToken(): String = apiService.getWriteToken().use { it.string().trim() }
 }
 
-private val PUBLISHED_AT_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC)
-
 private val HEX_ITEM_ID = Regex("[0-9a-fA-F]{16}")
 
 internal fun StreamContentsResponse.toEntriesPage(): EntriesPage = EntriesPage(
@@ -104,33 +99,24 @@ internal fun StreamContentsResponse.toEntriesPage(): EntriesPage = EntriesPage(
 )
 
 private fun StreamItem.toEntry(): Entry {
-    val entryId = resolveId()
     val body = content?.content ?: summary?.content
     return Entry(
-        id = entryId,
+        id = resolveId(),
         title = title.orEmpty(),
         author = author?.takeIf { it.isNotBlank() },
         url = canonical.firstNotNullOfOrNull { it.href } ?: alternate.firstNotNullOfOrNull { it.href }.orEmpty(),
-        publishedAt = PUBLISHED_AT_FORMATTER.format(Instant.ofEpochSecond(published ?: 0L)),
+        publishedAt = Instant.ofEpochSecond(published ?: 0L),
         content = body,
         feed = origin.toFeed(),
         readingTime = body?.let { estimateReadingTimeMinutes(it) },
-        enclosures = enclosure.toEnclosures(entryId),
+        enclosures = enclosure.toEnclosures(),
         status = if (categories.any { it == READ_STATE }) ArticleStatus.READ else ArticleStatus.UNREAD
     )
 }
 
-private fun List<StreamEnclosure>.toEnclosures(entryId: Long): List<Enclosure> = mapNotNull { enclosure ->
-    val href = enclosure.href ?: return@mapNotNull null
-    Enclosure(
-        id = 0L,
-        userId = 0L,
-        entryId = entryId,
-        url = href,
-        mimeType = enclosure.type,
-        size = null,
-        mediaProgression = null
-    )
+private fun List<StreamEnclosure>.toEnclosures(): List<Enclosure> = mapNotNull { enclosure ->
+    val href = enclosure.href?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+    Enclosure(url = href, mimeType = enclosure.type)
 }
 
 private fun StreamItem.resolveId(): Long =

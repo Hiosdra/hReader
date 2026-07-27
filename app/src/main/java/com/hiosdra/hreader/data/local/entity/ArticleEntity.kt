@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Enclosure
+import java.time.Instant
 
 @Entity(tableName = "articles")
 data class ArticleEntity(
@@ -11,10 +12,10 @@ data class ArticleEntity(
     val title: String,
     val author: String?,
     val url: String,
-    val publishedAt: String,
+    val publishedAt: Instant,
     val content: String?,
     val feedId: Long,
     val readingTime: Int?,
-    val enclosures: List<Enclosure>?,
+    val enclosures: List<Enclosure>,
     val status: ArticleStatus? = ArticleStatus.UNREAD
 )

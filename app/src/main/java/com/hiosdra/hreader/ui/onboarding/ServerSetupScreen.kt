@@ -65,7 +65,7 @@ fun ServerSetupScreen(
             ) {
                 BackendServerFields(
                     state = serverSettings,
-                    onBackendTypeChange = settingsViewModel::onBackendTypeChange,
+                    onBackendTypeChange = settingsViewModel::onBackendTypeRequested,
                     onServerUrlChange = settingsViewModel::onServerUrlChange,
                     onUsernameChange = settingsViewModel::onUsernameChange,
                     onSecretChange = settingsViewModel::onSecretChange,

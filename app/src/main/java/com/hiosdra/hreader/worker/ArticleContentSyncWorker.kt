@@ -81,4 +81,4 @@ class ArticleContentSyncWorker(
 }
 
 private fun Entry.getImageEnclosureUrls(): List<String>? =
-    enclosures?.filter { it.mimeType?.startsWith("image/") == true }?.map { it.url }
+    enclosures.filter { it.isImage }.map { it.url }

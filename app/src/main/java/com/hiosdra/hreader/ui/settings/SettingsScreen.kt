@@ -115,12 +115,13 @@ fun SettingsScreen(
                 ) {
                     BackendServerFields(
                         state = serverSettings,
-                        onBackendTypeChange = settingsViewModel::onBackendTypeChange,
+                        onBackendTypeChange = settingsViewModel::onBackendTypeRequested,
                         onServerUrlChange = settingsViewModel::onServerUrlChange,
                         onUsernameChange = settingsViewModel::onUsernameChange,
                         onSecretChange = settingsViewModel::onSecretChange,
                         onTestConnection = settingsViewModel::testConnection,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
+                        onSignOut = settingsViewModel::signOut
                     )
                 }
             }
@@ -357,6 +358,14 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+        serverSettings.pendingBackendType?.let { target ->
+            BackendSwitchDialog(
+                currentBackend = serverSettings.backendType,
+                targetBackend = target,
+                onConfirm = settingsViewModel::confirmBackendSwitch,
+                onDismiss = settingsViewModel::cancelBackendSwitch
+            )
         }
         if (showPerformanceDialog) {
             PerformanceInfoDialog(

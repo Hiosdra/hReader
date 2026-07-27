@@ -34,6 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
@@ -98,7 +100,7 @@ fun ArticleRow(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = entry.publishedAt.substring(11, 16),
+                                text = TIME_FORMATTER.format(entry.publishedAt),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = extendedColors.date
                             )
@@ -124,7 +126,7 @@ fun ArticleRow(
                         }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    val imageUrl = entry.enclosures?.firstOrNull { it.mimeType?.startsWith("image/") == true }?.url
+                    val imageUrl = entry.enclosures.firstOrNull { it.isImage }?.url
                     if (imageUrl != null) {
                         Box(
                             modifier = Modifier
@@ -180,3 +182,6 @@ private fun extractTextPreview(html: String): String {
         .firstOrNull { it.isNotBlank() }
         .orEmpty()
 }
+
+private val TIME_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())

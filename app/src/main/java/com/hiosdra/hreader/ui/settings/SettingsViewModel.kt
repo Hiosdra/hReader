@@ -7,6 +7,7 @@ import com.hiosdra.hreader.data.ai.AiModelRepository
 import com.hiosdra.hreader.data.model.BackendType
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.repository.FeedRepository
+import com.hiosdra.hreader.data.repository.LocalCacheRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +20,9 @@ data class ServerSettingsUiState(
     val secret: String = "",
     val isTesting: Boolean = false,
     val statusMessage: String? = null,
-    val isConnected: Boolean = false
+    val isConnected: Boolean = false,
+    val pendingBackendType: BackendType? = null,
+    val isSwitchingBackend: Boolean = false
 ) {
     val hasAllFields: Boolean
         get() = serverUrl.isNotBlank() &&
@@ -45,7 +48,8 @@ data class AiModelsUiState(
 class SettingsViewModel(
     private val preferencesManager: PreferencesManager,
     private val feedRepository: FeedRepository,
-    private val aiModelRepository: AiModelRepository
+    private val aiModelRepository: AiModelRepository,
+    private val localCacheRepository: LocalCacheRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(currentSettings())
     val uiState: StateFlow<ServerSettingsUiState> = _uiState.asStateFlow()
@@ -94,10 +98,41 @@ class SettingsViewModel(
         _aiModels.value = _aiModels.value.copy(selectedModelId = model.id)
     }
 
-    fun onBackendTypeChange(backendType: BackendType) {
+    fun onBackendTypeRequested(backendType: BackendType) {
         if (backendType == _uiState.value.backendType) return
-        preferencesManager.setBackendType(backendType)
-        _uiState.value = currentSettings()
+        if (preferencesManager.getLastSyncTimestamp() == 0L) {
+            switchBackendTo(backendType)
+            return
+        }
+        _uiState.value = _uiState.value.copy(pendingBackendType = backendType)
+    }
+
+    fun cancelBackendSwitch() {
+        _uiState.value = _uiState.value.copy(pendingBackendType = null)
+    }
+
+    fun confirmBackendSwitch() {
+        switchBackendTo(_uiState.value.pendingBackendType ?: return)
+    }
+
+    private fun switchBackendTo(backendType: BackendType) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSwitchingBackend = true, pendingBackendType = null)
+            localCacheRepository.clearBackendData()
+            preferencesManager.setBackendType(backendType)
+            _uiState.value = currentSettings()
+        }
+    }
+
+    fun signOut() {
+        val backendType = _uiState.value.backendType
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSwitchingBackend = true)
+            localCacheRepository.clearBackendData()
+            preferencesManager.setBackendSecret(backendType, "")
+            preferencesManager.setFreshRssUsername("")
+            _uiState.value = currentSettings()
+        }
     }
 
     fun onServerUrlChange(serverUrl: String) {

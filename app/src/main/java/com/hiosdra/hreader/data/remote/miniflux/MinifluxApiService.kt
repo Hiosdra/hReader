@@ -1,12 +1,12 @@
 package com.hiosdra.hreader.data.remote.miniflux
 
-import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.remote.miniflux.dto.CreateFeedRequest
 import com.hiosdra.hreader.data.remote.miniflux.dto.CreateFeedResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.DiscoverRequest
 import com.hiosdra.hreader.data.remote.miniflux.dto.DiscoverResponse
-import com.hiosdra.hreader.data.remote.miniflux.dto.EntriesResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.FeedCountersResponse
+import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxEntriesResponse
+import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxFeed
 import com.hiosdra.hreader.data.remote.miniflux.dto.OriginalContentResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.UpdateEntriesStatusRequest
 import retrofit2.http.Body
@@ -24,7 +24,7 @@ interface MinifluxApiService {
         @Query("direction") direction: String,
         @Query("limit") limit: Int,
         @Query("offset") offset: Int
-    ): EntriesResponse
+    ): MinifluxEntriesResponse
 
     @GET("v1/entries")
     suspend fun getEntriesChangedAfter(
@@ -34,11 +34,11 @@ interface MinifluxApiService {
         @Query("limit") limit: Int,
         @Query("offset") offset: Int,
         @Query("changed_after") changedAfter: String
-    ): EntriesResponse
+    ): MinifluxEntriesResponse
 
     @GET("v1/feeds")
     suspend fun getFeeds(
-    ): List<Feed>
+    ): List<MinifluxFeed>
 
     @GET("v1/feeds/counters")
     suspend fun getFeedCounters(): FeedCountersResponse
