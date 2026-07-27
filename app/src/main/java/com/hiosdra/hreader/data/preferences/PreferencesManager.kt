@@ -19,6 +19,36 @@ class PreferencesManager(context: Context) {
         Types.newParameterizedType(List::class.java, SyncPerformanceRecord::class.java)
     )
 
+    fun getFreshRssServerUrl(): String =
+        sharedPreferences.getString(KEY_FRESHRSS_SERVER_URL, DEFAULT_FRESHRSS_SERVER_URL) ?: DEFAULT_FRESHRSS_SERVER_URL
+
+    fun setFreshRssServerUrl(url: String) {
+        sharedPreferences.edit()
+            .putString(KEY_FRESHRSS_SERVER_URL, url)
+            .apply()
+    }
+
+    fun getFreshRssUsername(): String = sharedPreferences.getString(KEY_FRESHRSS_USERNAME, "").orEmpty()
+
+    fun setFreshRssUsername(username: String) {
+        sharedPreferences.edit()
+            .putString(KEY_FRESHRSS_USERNAME, username)
+            .apply()
+    }
+
+    fun getFreshRssApiPassword(): String = sharedPreferences.getString(KEY_FRESHRSS_API_PASSWORD, "").orEmpty()
+
+    fun setFreshRssApiPassword(apiPassword: String) {
+        sharedPreferences.edit()
+            .putString(KEY_FRESHRSS_API_PASSWORD, apiPassword)
+            .apply()
+    }
+
+    fun hasFreshRssCredentials(): Boolean =
+        getFreshRssServerUrl().isNotBlank() &&
+            getFreshRssUsername().isNotBlank() &&
+            getFreshRssApiPassword().isNotBlank()
+
     fun getPaywallBypassMethod(): PaywallBypassMethod {
         val savedMethod = sharedPreferences.getString(KEY_PAYWALL_BYPASS_METHOD, PaywallBypassMethod.SMRY_AI.name)
         return PaywallBypassMethod.entries.find { it.name == savedMethod } ?: PaywallBypassMethod.SMRY_AI
@@ -106,6 +136,10 @@ class PreferencesManager(context: Context) {
     }
 
     companion object {
+        const val DEFAULT_FRESHRSS_SERVER_URL = "https://rss.hiosdra.com"
+        private const val KEY_FRESHRSS_SERVER_URL = "freshrss_server_url"
+        private const val KEY_FRESHRSS_USERNAME = "freshrss_username"
+        private const val KEY_FRESHRSS_API_PASSWORD = "freshrss_api_password"
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_AI_MODEL = "ai_model"

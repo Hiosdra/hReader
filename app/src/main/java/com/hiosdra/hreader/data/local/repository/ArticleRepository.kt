@@ -11,18 +11,18 @@ import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.preferences.PreferencesManager
-import com.hiosdra.hreader.data.remote.MinifluxApiRepository
-import com.hiosdra.hreader.data.remote.dto.UpdateEntriesStatusRequest
+import com.hiosdra.hreader.data.remote.FreshRssApiRepository
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
-import java.time.format.DateTimeFormatter
+
+private const val ENTRIES_BATCH_LIMIT = 200
 
 class ArticleRepository(
     private val articleDao: ArticleDao,
     private val feedDao: FeedDao,
-    private val api: MinifluxApiRepository,
+    private val api: FreshRssApiRepository,
     private val db: AppDatabase,
     private val preferencesManager: PreferencesManager,
     private val syncPerformanceLogger: SyncPerformanceLogger
@@ -41,8 +41,7 @@ class ArticleRepository(
     }
 
     suspend fun refreshArticles() {
-        val limit = 200
-        var offset = 0
+        val limit = ENTRIES_BATCH_LIMIT
         val fetchedArticles = mutableListOf<ArticleEntity>()
         val feedsMap = mutableMapOf<Long, FeedEntity>()
         val syncStartTime = System.currentTimeMillis()
@@ -50,17 +49,18 @@ class ArticleRepository(
         val useIncrementalSync = shouldUseIncrementalSync(syncStartTime)
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
 
+        var continuation: String? = null
         while (true) {
-            val response = fetchArticleBatch(useIncrementalSync, limit, offset)
-            val articles = response.entries.map { it.toEntity() }
-            val feeds = response.entries.map { entry -> entry.feed.toFeedEntity() }
+            val page = fetchArticleBatch(useIncrementalSync, limit, continuation)
 
-            fetchedArticles += articles
-            feeds.forEach { feedsMap[it.id] = it }
+            fetchedArticles += page.entries.map { it.toEntity() }
+            page.entries.forEach { feedsMap[it.feed.id] = it.feed.toFeedEntity() }
 
-            if (articles.size < limit) break
-            offset += limit
+            continuation = page.continuation
+            if (continuation == null || page.entries.isEmpty()) break
         }
+
+        api.getFeeds().forEach { feedsMap[it.id] = it.toFeedEntity() }
 
         syncPerformanceLogger.logBatchInfo(limit, fetchedArticles.size)
 
@@ -81,16 +81,14 @@ class ArticleRepository(
 
     private fun getLastSyncTime(): Long = preferencesManager.getLastSyncTimestamp()
 
-    private suspend fun fetchArticleBatch(useIncremental: Boolean, limit: Int, offset: Int) =
+    private suspend fun fetchArticleBatch(useIncremental: Boolean, limit: Int, continuation: String?) =
         if (useIncremental) {
-            val lastSyncIso = Instant.ofEpochMilli(getLastSyncTime())
-                .atZone(java.time.ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_INSTANT)
-            Log.d("ArticleRepository", "Using incremental sync since: $lastSyncIso")
-            api.getEntriesChangedAfter(lastSyncIso, limit = limit, offset = offset)
+            val changedAfter = Instant.ofEpochMilli(getLastSyncTime())
+            Log.d("ArticleRepository", "Using incremental sync since: $changedAfter")
+            api.getUnreadEntriesChangedAfter(changedAfter, limit = limit, continuation = continuation)
         } else {
             Log.d("ArticleRepository", "Using full sync")
-            api.getEntries(limit = limit, offset = offset)
+            api.getUnreadEntries(limit = limit, continuation = continuation)
         }
 
     private suspend fun insertArticlesWithStatusPreservation(fetchedArticles: List<ArticleEntity>) {
@@ -108,12 +106,7 @@ class ArticleRepository(
     suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus) {
         articleDao.updateStatusForIds(articleIds, newStatus)
         try {
-            api.updateEntriesStatus(
-                UpdateEntriesStatusRequest(
-                    articleIds.map { it.toLong() },
-                    newStatus.wire
-                )
-            )
+            api.updateEntriesStatus(articleIds.map { it.toLong() }, newStatus)
         } catch (e: Exception) {
             Log.w("ArticleRepository", "Failed to push bulk status update; will retry on next sync: ${e.message}")
         }

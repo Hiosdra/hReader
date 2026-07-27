@@ -6,7 +6,7 @@ This guide helps contributors and AI assistants make safe, minimal, and behavior
 
 **Tech Stack:** Kotlin 2.2.10 • Android Gradle 8.12.1 • Compose BOM 2025.08.00 • Room 2.7.2 • Koin 4.1.0 • Retrofit 3.0.0  
 **Build Times:** Clean build 9+ min • Cached 3+ min • Test/Lint/Assemble 20-60s each  
-**Architecture:** MVVM with Jetpack Compose • Miniflux API backend • Room local storage
+**Architecture:** MVVM with Jetpack Compose • FreshRSS (Google Reader API) backend • Room local storage
 
 ## Project Structure & Module Organization
 
@@ -133,7 +133,7 @@ Always run before committing:
 
 ### Data Layer Patterns
 - **Database changes:** Add migrations in Room setup (no destructive fallbacks)
-- **API changes:** Update `MinifluxApiService`, wrap in repositories
+- **API changes:** Update `FreshRssApiService`, wrap in `FreshRssApiRepository`
 - **Domain models:** Define in `data/model/`, map from entities in repositories
 - **DTOs:** Use Moshi annotations for JSON serialization
 
@@ -226,8 +226,15 @@ archunit = "1.4.1"
 - Don't measure/log execution times for operations
 - Handle sensitive data appropriately in preferences
 
+### FreshRSS Backend
+- Server address, username and API password live in `PreferencesManager`, edited in Settings
+- `FreshRssServerConfig` turns the server address into the `/api/greader.php/` base URL
+- Retrofit is pinned to a placeholder host; `FreshRssUrlInterceptor` rewrites it per request
+- `GoogleReaderAuthenticator` performs ClientLogin and caches the `GoogleLogin` token
+- Entry paging uses Google Reader continuation tokens, not offsets
+
 ### Existing Stack (DO NOT CHANGE)
-- Retrofit + Moshi + OkHttp (with AuthInterceptor)
+- Retrofit + Moshi + OkHttp (with GoogleReaderAuthInterceptor)
 - Koin for dependency injection
 - Room database (migrations required, no destructive fallbacks)
 - WorkManager for background sync
