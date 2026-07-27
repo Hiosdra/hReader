@@ -7,8 +7,6 @@ plugins {
     id("androidx.room")
 }
 
-fun secret(name: String): String =
-    (project.findProperty(name) as String?) ?: System.getenv(name) ?: ""
 
 android {
     namespace = "com.hiosdra.hreader"
@@ -23,7 +21,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "OPENROUTER_KEY", "\"${secret("OPENROUTER_KEY")}\"")
     }
 
     buildTypes {

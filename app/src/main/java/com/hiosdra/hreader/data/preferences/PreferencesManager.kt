@@ -77,6 +77,14 @@ class PreferencesManager(context: Context) {
         BackendType.MINIFLUX -> KEY_MINIFLUX_API_TOKEN
     }
 
+    fun getOpenRouterApiKey(): String = sharedPreferences.getString(KEY_OPENROUTER_API_KEY, "").orEmpty()
+
+    fun setOpenRouterApiKey(apiKey: String) {
+        sharedPreferences.edit()
+            .putString(KEY_OPENROUTER_API_KEY, apiKey)
+            .apply()
+    }
+
     fun getPaywallBypassMethod(): PaywallBypassMethod {
         val savedMethod = sharedPreferences.getString(KEY_PAYWALL_BYPASS_METHOD, PaywallBypassMethod.SMRY_AI.name)
         return PaywallBypassMethod.entries.find { it.name == savedMethod } ?: PaywallBypassMethod.SMRY_AI
@@ -171,6 +179,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_FRESHRSS_API_PASSWORD = "freshrss_api_password"
         private const val KEY_MINIFLUX_SERVER_URL = "miniflux_server_url"
         private const val KEY_MINIFLUX_API_TOKEN = "miniflux_api_token"
+        private const val KEY_OPENROUTER_API_KEY = "openrouter_api_key"
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_AI_MODEL = "ai_model"

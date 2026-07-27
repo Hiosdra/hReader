@@ -32,6 +32,14 @@ class SettingsViewModel(
     private val _uiState = MutableStateFlow(currentSettings())
     val uiState: StateFlow<ServerSettingsUiState> = _uiState.asStateFlow()
 
+    private val _openRouterApiKey = MutableStateFlow(preferencesManager.getOpenRouterApiKey())
+    val openRouterApiKey: StateFlow<String> = _openRouterApiKey.asStateFlow()
+
+    fun onOpenRouterApiKeyChange(apiKey: String) {
+        preferencesManager.setOpenRouterApiKey(apiKey)
+        _openRouterApiKey.value = apiKey
+    }
+
     fun onBackendTypeChange(backendType: BackendType) {
         if (backendType == _uiState.value.backendType) return
         preferencesManager.setBackendType(backendType)
