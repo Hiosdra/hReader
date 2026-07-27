@@ -32,6 +32,18 @@ class AiModelTest {
     }
 
     @Test
+    fun `the free models router is detected as free through its pricing`() {
+        val router = openRouterModel(
+            id = AiModel.DEFAULT_ID,
+            name = "Free Models Router",
+            prompt = "0",
+            completion = "0"
+        ).toAiModel()
+
+        assertTrue(router.isFree)
+    }
+
+    @Test
     fun `missing pricing is not treated as free`() {
         assertFalse(OpenRouterModel(id = "vendor/model", name = "Model").toAiModel().isFree)
     }

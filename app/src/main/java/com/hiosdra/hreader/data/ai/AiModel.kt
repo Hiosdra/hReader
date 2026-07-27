@@ -14,6 +14,6 @@ data class AiModel(
     }
 
     companion object {
-        const val DEFAULT_ID = "openai/gpt-oss-20b:free"
+        const val DEFAULT_ID = "openrouter/free"
     }
 }
