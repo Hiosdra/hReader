@@ -57,6 +57,7 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsState()
+    val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsState()
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
     var selectedAiModel by remember { mutableStateOf(preferencesManager.getAiModel()) }
     var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
@@ -278,6 +279,26 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+            }
+
+            // OpenRouter Key Section
+            item {
+                Text(
+                    text = "OpenRouter",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    OpenRouterKeyField(
+                        apiKey = openRouterApiKey,
+                        onApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
+                        modifier = Modifier.padding(16.dp)
+                    )
                 }
             }
 

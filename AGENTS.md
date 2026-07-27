@@ -231,8 +231,9 @@ archunit = "1.4.1"
   active implementation per call from `ServerConfig`
 - `freshrss/` speaks the Google Reader API at `/api/greader.php/`, `miniflux/` speaks the
   Miniflux REST API
-- Backend choice, server address and credentials live in `PreferencesManager`, edited in
-  Settings and requested on first launch
+- Backend choice, server address, credentials and the optional OpenRouter API key live in
+  `PreferencesManager`, edited in Settings and offered during first-launch setup
+- No secrets in `BuildConfig` or the build script
 - Each backend has a placeholder host; `BackendUrlInterceptor` rewrites it per request so the
   server can change without rebuilding Retrofit
 - `EntriesPage.cursor` is opaque: a Google Reader continuation token for FreshRSS, an offset

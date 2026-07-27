@@ -1,21 +1,24 @@
 package com.hiosdra.hreader.data.ai
 
 import android.util.Log
-import com.hiosdra.hreader.BuildConfig
+import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private const val MISSING_API_KEY_MESSAGE = "Add an OpenRouter API key in Settings to use AI features."
+
 class ArticleAiService(
-    private val openRouterApiService: OpenRouterApiService
+    private val openRouterApiService: OpenRouterApiService,
+    private val preferencesManager: PreferencesManager
 ) {
-    private val apiKey = BuildConfig.OPENROUTER_KEY
+    private fun apiKeyOrNull(): String? = preferencesManager.getOpenRouterApiKey().takeIf { it.isNotBlank() }
 
     suspend fun generateArticleOverview(
         title: String,
         content: String,
         model: AiModel
     ): Result<String> = withContext(Dispatchers.IO) {
-        if (apiKey.isBlank()) return@withContext Result.failure(Exception("Missing OpenRouter API key"))
+        val apiKey = apiKeyOrNull() ?: return@withContext Result.failure(Exception(MISSING_API_KEY_MESSAGE))
         try {
             val cleanContent = cleanArticleContent(content)
             val request = createSummaryRequest(title, cleanContent, model)
@@ -54,7 +57,7 @@ class ArticleAiService(
         content: String,
         model: AiModel
     ): Result<Float> = withContext(Dispatchers.IO) {
-        if (apiKey.isBlank()) return@withContext Result.failure(Exception("Missing OpenRouter API key"))
+        val apiKey = apiKeyOrNull() ?: return@withContext Result.failure(Exception(MISSING_API_KEY_MESSAGE))
         try {
             val cleanContent = cleanArticleContent(content)
             val request = createCredibilityRequest(title, cleanContent, model)

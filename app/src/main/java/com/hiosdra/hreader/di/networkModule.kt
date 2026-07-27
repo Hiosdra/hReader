@@ -77,7 +77,7 @@ val networkModule = module {
     }
 
     single<OpenRouterApiService> { get<Retrofit>(named(OPENROUTER_RETROFIT)).create(OpenRouterApiService::class.java) }
-    single<ArticleAiService> { ArticleAiService(get()) }
+    single<ArticleAiService> { ArticleAiService(get(), get()) }
 }
 
 private fun retrofitFor(baseUrl: String, client: OkHttpClient, moshi: Moshi): Retrofit =

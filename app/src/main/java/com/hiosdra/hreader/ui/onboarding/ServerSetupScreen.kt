@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.ui.settings.BackendServerFields
+import com.hiosdra.hreader.ui.settings.OpenRouterKeyField
 import com.hiosdra.hreader.ui.settings.SettingsViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -31,6 +32,7 @@ fun ServerSetupScreen(
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsState()
+    val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -68,6 +70,16 @@ fun ServerSetupScreen(
                     onUsernameChange = settingsViewModel::onUsernameChange,
                     onSecretChange = settingsViewModel::onSecretChange,
                     onTestConnection = settingsViewModel::testConnection,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                OpenRouterKeyField(
+                    apiKey = openRouterApiKey,
+                    onApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
                     modifier = Modifier.padding(16.dp)
                 )
             }
