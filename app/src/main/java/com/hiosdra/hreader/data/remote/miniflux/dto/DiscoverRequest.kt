@@ -1,4 +1,4 @@
-package com.hiosdra.hreader.data.remote.dto
+package com.hiosdra.hreader.data.remote.miniflux.dto
 
 import com.squareup.moshi.JsonClass
 

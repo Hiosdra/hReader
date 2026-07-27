@@ -1,0 +1,49 @@
+package com.hiosdra.hreader.data.remote
+
+import com.hiosdra.hreader.data.model.BackendType
+import com.hiosdra.hreader.data.preferences.PreferencesManager
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+
+private const val GOOGLE_READER_ENDPOINT = "api/greader.php"
+
+class ServerConfig(private val preferencesManager: PreferencesManager) {
+
+    fun backendType(): BackendType = preferencesManager.getBackendType()
+
+    fun serverUrlFor(backendType: BackendType): String = preferencesManager.getServerUrl(backendType).trim()
+
+    fun secretFor(backendType: BackendType): String = preferencesManager.getBackendSecret(backendType)
+
+    fun username(): String = preferencesManager.getFreshRssUsername().trim()
+
+    fun isComplete(): Boolean = when (val backendType = backendType()) {
+        BackendType.FRESHRSS ->
+            googleReaderBaseUrl() != null && username().isNotEmpty() && secretFor(backendType).isNotEmpty()
+        BackendType.MINIFLUX ->
+            minifluxBaseUrl() != null && secretFor(backendType).isNotEmpty()
+    }
+
+    fun googleReaderBaseUrl(): HttpUrl? {
+        val root = normalizedRootFor(BackendType.FRESHRSS) ?: return null
+        val endpoint = if (root.endsWith(GOOGLE_READER_ENDPOINT)) root else "$root/$GOOGLE_READER_ENDPOINT"
+        return "$endpoint/".toHttpUrlOrNull()
+    }
+
+    fun minifluxBaseUrl(): HttpUrl? {
+        val root = normalizedRootFor(BackendType.MINIFLUX) ?: return null
+        return "$root/".toHttpUrlOrNull()
+    }
+
+    fun credentialsFingerprint(): String {
+        val backendType = backendType()
+        return "$backendType|${serverUrlFor(backendType)}|${username()}|${secretFor(backendType).hashCode()}"
+    }
+
+    private fun normalizedRootFor(backendType: BackendType): String? {
+        val server = serverUrlFor(backendType)
+        if (server.isEmpty()) return null
+        val absolute = if (server.startsWith("http://") || server.startsWith("https://")) server else "https://$server"
+        return absolute.trimEnd('/')
+    }
+}

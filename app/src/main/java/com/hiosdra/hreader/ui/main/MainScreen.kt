@@ -7,6 +7,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -85,6 +88,13 @@ fun MainScreen(
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                uiState.unavailableAiModelId?.let { modelId ->
+                    AiModelUnavailableBanner(
+                        modelId = modelId,
+                        onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                        onDismiss = viewModel::dismissAiModelWarning
+                    )
+                }
                 TopAppBar(
                     title = {
                         Text(
@@ -325,6 +335,34 @@ fun MainScreen(
                     viewModel.updateEntryReadStatus(entryId, checked)
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun AiModelUnavailableBanner(
+    modelId: String,
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                text = "AI model unavailable",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Text(
+                text = "OpenRouter no longer offers $modelId. Article overviews and credibility scoring will fail until you pick another model.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onOpenSettings) { Text("Open settings") }
+                TextButton(onClick = onDismiss) { Text("Dismiss") }
+            }
         }
     }
 }

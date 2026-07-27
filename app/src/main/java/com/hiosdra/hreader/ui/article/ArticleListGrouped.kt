@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.ui.theme.LocalExtendedColors
-import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -30,7 +30,7 @@ fun ArticleListGrouped(
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
     val sortedEntries = entries.sortedBy { it.publishedAt }
-    val grouped = sortedEntries.groupBy { it.publishedAt.substring(0, 10) }
+    val grouped = sortedEntries.groupBy { it.publishedAt.atZone(ZoneId.systemDefault()).toLocalDate() }
     val sortedKeys = grouped.keys.sorted() // oldest date first
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")
     val allArticleIds = sortedEntries.map { it.id }
@@ -53,11 +53,7 @@ fun ArticleListGrouped(
                             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
                     ) {
                         Text(
-                            text = try {
-                                LocalDate.parse(date).format(dateFormatter)
-                            } catch (_: Exception) {
-                                date
-                            },
+                            text = date.format(dateFormatter),
                             style = MaterialTheme.typography.titleMedium,
                             color = extendedColors.header,
                             modifier = Modifier.align(Alignment.CenterStart)

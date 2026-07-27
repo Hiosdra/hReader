@@ -3,6 +3,7 @@ package com.hiosdra.hreader.navigation
 import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -13,14 +14,30 @@ import com.hiosdra.hreader.ui.article.ArticleScreen
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
 import com.hiosdra.hreader.ui.feeds.FeedsScreen
 import com.hiosdra.hreader.ui.feeds.add.AddFeedScreen
+import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.ui.main.MainScreen
+import com.hiosdra.hreader.ui.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.ui.settings.SettingsScreen
+import org.koin.compose.koinInject
 
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
+    preferencesManager: PreferencesManager = koinInject()
 ) {
-    NavHost(navController = navController, startDestination = Routes.MAIN) {
+    val startDestination = remember {
+        if (preferencesManager.hasBackendCredentials()) Routes.MAIN else Routes.SERVER_SETUP
+    }
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable(Routes.SERVER_SETUP) {
+            ServerSetupScreen(
+                onSetupFinished = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.SERVER_SETUP) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Routes.MAIN) {
             MainScreen(navController = navController)
         }

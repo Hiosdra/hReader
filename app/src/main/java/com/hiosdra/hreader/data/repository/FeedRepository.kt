@@ -2,18 +2,12 @@ package com.hiosdra.hreader.data.repository
 
 import com.hiosdra.hreader.data.model.DiscoveredFeed
 import com.hiosdra.hreader.data.model.Feed
-import com.hiosdra.hreader.data.remote.MinifluxApiRepository
-import com.hiosdra.hreader.data.remote.dto.CreateFeedRequest
-import com.hiosdra.hreader.data.remote.dto.DiscoverRequest
-import com.hiosdra.hreader.data.remote.dto.DiscoverResponse
+import com.hiosdra.hreader.data.remote.FeedBackend
 
-class FeedRepository(private val api: MinifluxApiRepository) {
-    suspend fun getFeeds(): List<Feed> = api.getFeeds()
-    suspend fun getUnreadCounts(): Map<Long, Int> = api.getFeedCounters().unreads.mapKeys { it.key.toLong() }
-    suspend fun createFeed(url: String) { api.createFeed(CreateFeedRequest(feed_url = url)) }
-    suspend fun discoverFeeds(url: String): List<DiscoveredFeed> = api.discoverFeeds(DiscoverRequest(url)).map { it.toDomain() }
+class FeedRepository(private val backend: FeedBackend) {
+    suspend fun getFeeds(): List<Feed> = backend.getFeeds()
+    suspend fun getUnreadCounts(): Map<Long, Int> = backend.getUnreadCounts()
+    suspend fun createFeed(url: String) = backend.createFeed(url)
+    suspend fun discoverFeeds(url: String): List<DiscoveredFeed> = backend.discoverFeeds(url)
+    suspend fun verifyConnection(): Int = backend.verifyConnection()
 }
-
-private fun DiscoverResponse.toDomain(): DiscoveredFeed =
-    DiscoveredFeed(url = url, title = title, type = type)
-

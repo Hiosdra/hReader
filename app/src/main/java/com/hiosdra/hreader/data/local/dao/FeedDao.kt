@@ -17,4 +17,7 @@ interface FeedDao {
 
     @Query("SELECT * FROM feeds")
     fun getAllFeeds(): Flow<List<FeedEntity>>
+
+    @Query("DELETE FROM feeds")
+    suspend fun clearAll()
 }

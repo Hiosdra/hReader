@@ -2,10 +2,14 @@ package com.hiosdra.hreader.data.ai
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 
 interface OpenRouterApiService {
+    @GET("models")
+    suspend fun getModels(): OpenRouterModelsResponse
+
     @POST("chat/completions")
     suspend fun chatCompletion(
         @Header("Authorization") authorization: String,

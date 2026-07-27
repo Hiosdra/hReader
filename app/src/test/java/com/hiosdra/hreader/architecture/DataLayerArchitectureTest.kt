@@ -12,6 +12,35 @@ class DataLayerArchitectureTest {
         .importPackages("com.hiosdra.hreader")
 
     @Test
+    fun domainModelsShouldNotDependOnAnyDataSource() {
+        val rule: ArchRule = noClasses()
+            .that().resideInAPackage("..data.model..")
+            .should().dependOnClassesThat()
+            .resideInAnyPackage("..data.remote..", "..data.local..", "..data.ai..", "..data.preferences..")
+
+        rule.check(allClasses)
+    }
+
+    @Test
+    fun domainModelsShouldNotDependOnSerializationOrPersistenceLibraries() {
+        val rule: ArchRule = noClasses()
+            .that().resideInAPackage("..data.model..")
+            .should().dependOnClassesThat()
+            .resideInAnyPackage("com.squareup.moshi..", "androidx.room..", "retrofit2..", "okhttp3..")
+
+        rule.check(allClasses)
+    }
+
+    @Test
+    fun backendImplementationsShouldNotDependOnEachOther() {
+        val rule: ArchRule = noClasses()
+            .that().resideInAPackage("..data.remote.freshrss..")
+            .should().dependOnClassesThat().resideInAPackage("..data.remote.miniflux..")
+
+        rule.check(allClasses)
+    }
+
+    @Test
     fun remoteShouldNotDependOnLocal() {
         val rule: ArchRule = noClasses()
             .that().resideInAPackage("..data.remote..")
