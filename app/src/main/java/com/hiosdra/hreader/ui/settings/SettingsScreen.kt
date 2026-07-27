@@ -249,7 +249,7 @@ fun SettingsScreen(
                                 },
                                 supportingContent = { 
                                     Text(
-                                        method.baseUrl, 
+                                        method.host,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     ) 
