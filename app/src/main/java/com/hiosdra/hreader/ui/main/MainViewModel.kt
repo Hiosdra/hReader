@@ -3,6 +3,8 @@ package com.hiosdra.hreader.ui.main
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hiosdra.hreader.data.ai.AiModelRepository
+import com.hiosdra.hreader.data.ai.SelectedModelStatus
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
@@ -18,10 +20,14 @@ data class MainUiState(
     val isRefreshing: Boolean = false,
     val error: String? = null,
     val feedTitle: String? = null,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val unavailableAiModelId: String? = null
 )
 
-class MainViewModel(private val articleRepository: ArticleRepository) : ViewModel() {
+class MainViewModel(
+    private val articleRepository: ArticleRepository,
+    private val aiModelRepository: AiModelRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
@@ -34,6 +40,20 @@ class MainViewModel(private val articleRepository: ArticleRepository) : ViewMode
 
     init {
         loadEntries() // default: all items
+        checkSelectedAiModel()
+    }
+
+    fun dismissAiModelWarning() {
+        _uiState.value = _uiState.value.copy(unavailableAiModelId = null)
+    }
+
+    private fun checkSelectedAiModel() {
+        viewModelScope.launch {
+            val status = runCatching { aiModelRepository.checkSelectedModel() }.getOrNull()
+            if (status is SelectedModelStatus.Unavailable) {
+                _uiState.value = _uiState.value.copy(unavailableAiModelId = status.modelId)
+            }
+        }
     }
 
     internal fun setFeed(feedId: Long) {

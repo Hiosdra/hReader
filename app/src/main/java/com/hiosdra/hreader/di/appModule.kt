@@ -47,9 +47,9 @@ val appModule = module {
     single { NetworkMonitor(androidApplication()) }
     worker { ContentSyncWorker(get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get()) }
-    viewModel { MainViewModel(get()) }
+    viewModel { MainViewModel(get(), get()) }
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get(), get(), get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }
-    viewModel { SettingsViewModel(get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get()) }
 }

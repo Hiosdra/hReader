@@ -2,7 +2,6 @@ package com.hiosdra.hreader.ui.article
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
@@ -136,7 +135,7 @@ class ArticleViewModel(
         setGenerating: (Boolean) -> Unit,
         setError: (String) -> Unit,
         onSuccess: (T) -> Unit,
-        generateFunction: suspend (String, String, AiModel) -> Result<T>,
+        generateFunction: suspend (String, String, String) -> Result<T>,
         errorMessage: String
     ) {
         setGenerating(true)
@@ -144,9 +143,9 @@ class ArticleViewModel(
         viewModelScope.launch {
             try {
                 val content = getContentForEntry(entryId) ?: entry.content ?: ""
-                val model = preferencesManager.getAiModel()
+                val modelId = preferencesManager.getAiModelId()
 
-                val result = generateFunction(entry.title, content, model)
+                val result = generateFunction(entry.title, content, modelId)
 
                 result.fold(
                     onSuccess = onSuccess,
