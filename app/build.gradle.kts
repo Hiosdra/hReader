@@ -7,6 +7,9 @@ plugins {
     id("androidx.room")
 }
 
+fun secret(name: String): String =
+    (project.findProperty(name) as String?) ?: System.getenv(name) ?: ""
+
 android {
     namespace = "com.hiosdra.hreader"
     compileSdk = 36
@@ -20,7 +23,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "OPENROUTER_KEY", "\"REDACTED_OPENROUTER_KEY\"")
+        buildConfigField("String", "OPENROUTER_KEY", "\"${secret("OPENROUTER_KEY")}\"")
     }
 
     buildTypes {
