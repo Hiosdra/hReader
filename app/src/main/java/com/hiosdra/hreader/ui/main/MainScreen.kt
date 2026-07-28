@@ -61,7 +61,6 @@ import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.article.ArticleListGrouped
-import com.hiosdra.hreader.ui.theme.LocalExtendedColors
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,7 +71,6 @@ fun MainScreen(
     viewModel: MainViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val extendedColors = LocalExtendedColors.current
 
     LaunchedEffect(feedId) {
         if (feedId != null) viewModel.setFeed(feedId) else viewModel.clearFeed()
@@ -171,7 +169,7 @@ fun MainScreen(
                             expanded = expanded.value,
                             onDismissRequest = { expanded.value = false },
                             modifier = Modifier
-                                .background(extendedColors.cardBackground)
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
                                 .clip(RoundedCornerShape(8.dp))
                         ) {
                             DropdownMenuItem(
@@ -275,7 +273,9 @@ fun MainScreen(
     ) { paddingValues ->
         if (uiState.isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(

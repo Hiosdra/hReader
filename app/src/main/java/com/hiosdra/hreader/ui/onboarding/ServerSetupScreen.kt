@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.ui.settings.BackendServerFields
 import com.hiosdra.hreader.ui.settings.OpenRouterKeyField
 import com.hiosdra.hreader.ui.settings.SettingsViewModel
+import com.hiosdra.hreader.ui.theme.sectionCardColors
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,7 +62,8 @@ fun ServerSetupScreen(
             )
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                colors = sectionCardColors()
             ) {
                 BackendServerFields(
                     state = serverSettings,
@@ -75,7 +77,8 @@ fun ServerSetupScreen(
             }
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                colors = sectionCardColors()
             ) {
                 OpenRouterKeyField(
                     apiKey = openRouterApiKey,
