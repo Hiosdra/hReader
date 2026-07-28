@@ -12,7 +12,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 class CredibilityPromptBuilderTest {
-    private val builder = CredibilityPromptBuilder()
+    private val builder = CredibilityPromptBuilder(Clock.systemDefaultZone())
 
     private fun sourceWith(
         title: String = "A plain headline",

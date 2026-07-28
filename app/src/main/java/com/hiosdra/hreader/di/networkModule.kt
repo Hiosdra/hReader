@@ -28,6 +28,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.time.Clock
 import java.util.concurrent.TimeUnit
 
 private const val FRESHRSS_RETROFIT = "freshrss"
@@ -92,7 +93,8 @@ val networkModule = module {
     }
 
     single<OpenRouterApiService> { get<Retrofit>(named(OPENROUTER_RETROFIT)).create(OpenRouterApiService::class.java) }
-    single { CredibilityPromptBuilder() }
+    single<Clock> { Clock.systemDefaultZone() }
+    single { CredibilityPromptBuilder(get()) }
     single { CredibilityResponseParser(get()) }
     single<ArticleAiService> { ArticleAiService(get(), get(), get(), get()) }
     single { AiModelRepository(get(), get()) }

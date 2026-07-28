@@ -21,6 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Response
+import java.time.Clock
 import java.time.Instant
 
 class ArticleAiServiceCredibilityTest {
@@ -29,7 +30,7 @@ class ArticleAiServiceCredibilityTest {
     private val service = ArticleAiService(
         openRouterApiService = api,
         preferencesManager = preferences,
-        credibilityPromptBuilder = CredibilityPromptBuilder(),
+        credibilityPromptBuilder = CredibilityPromptBuilder(Clock.systemDefaultZone()),
         credibilityResponseParser = CredibilityResponseParser(
             Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
         )
