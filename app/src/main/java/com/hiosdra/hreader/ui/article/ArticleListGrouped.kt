@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.Entry
-import com.hiosdra.hreader.ui.theme.LocalExtendedColors
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -34,7 +33,6 @@ fun ArticleListGrouped(
     val sortedKeys = grouped.keys.sorted() // oldest date first
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")
     val allArticleIds = sortedEntries.map { it.id }
-    val extendedColors = LocalExtendedColors.current
 
     LazyColumn(
         modifier = modifier.background(MaterialTheme.colorScheme.background)
@@ -55,14 +53,14 @@ fun ArticleListGrouped(
                         Text(
                             text = date.format(dateFormatter),
                             style = MaterialTheme.typography.titleMedium,
-                            color = extendedColors.header,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.align(Alignment.CenterStart)
                         )
                     }
                 }
                 HorizontalDivider(
                     thickness = 1.dp,
-                    color = extendedColors.divider,
+                    color = MaterialTheme.colorScheme.outlineVariant,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
@@ -78,7 +76,7 @@ fun ArticleListGrouped(
                 if (index < items.size - 1) {
                     HorizontalDivider(
                         thickness = 0.5.dp,
-                        color = extendedColors.divider,
+                        color = MaterialTheme.colorScheme.outlineVariant,
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
                 }
