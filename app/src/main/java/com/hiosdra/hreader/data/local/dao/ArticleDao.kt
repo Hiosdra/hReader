@@ -22,9 +22,6 @@ interface ArticleDao {
     @Query("DELETE FROM articles")
     suspend fun clearAll()
 
-    @Query("DELETE FROM articles WHERE id = :articleId")
-    suspend fun deleteById(articleId: String)
-
     /**
      * The only way to change a status: it always queues the change for the backend. [readAt] is
      * the moment the article was read, or null when it is being marked unread again. An article
@@ -69,21 +66,9 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE feedId = :feedId ORDER BY publishedAt ASC")
     fun getAllArticlesForFeed(feedId: Long): Flow<List<ArticleEntity>>
 
-    @Query("SELECT * FROM articles WHERE status = :status")
-    suspend fun getArticlesByStatus(status: ArticleStatus): List<ArticleEntity>
-
     @Query("SELECT id, url, enclosures FROM articles WHERE status != :readStatus")
     suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
 
-    @Query("SELECT * FROM articles WHERE id = :id LIMIT 1")
-    suspend fun findById(id: String): ArticleEntity?
-
     @Query("SELECT * FROM articles WHERE id IN (:ids)")
     suspend fun getArticlesImmediate(ids: List<String>): List<ArticleEntity>
-
-    @Query("SELECT * FROM articles")
-    suspend fun getAllArticlesImmediate(): List<ArticleEntity>
-
-    @Query("SELECT * FROM articles WHERE status != :readStatus ORDER BY publishedAt ASC")
-    fun getAllUnreadArticlesOldestFirst(readStatus: ArticleStatus = ArticleStatus.READ): Flow<List<ArticleEntity>>
 }

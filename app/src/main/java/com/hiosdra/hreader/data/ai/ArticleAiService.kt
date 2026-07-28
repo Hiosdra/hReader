@@ -1,15 +1,24 @@
 package com.hiosdra.hreader.data.ai
 
 import android.util.Log
+import com.hiosdra.hreader.data.model.CredibilityReport
+import com.hiosdra.hreader.data.model.CredibilitySource
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.Instant
 
+private const val TAG = "ArticleAiService"
 private const val MISSING_API_KEY_MESSAGE = "Add an OpenRouter API key in Settings to use AI features."
+private const val EMPTY_CONTENT_MESSAGE = "The article text has not been downloaded yet. Open the article and try again."
+
+class OpenRouterException(val code: Int?, message: String) : Exception(message)
 
 class ArticleAiService(
     private val openRouterApiService: OpenRouterApiService,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val credibilityPromptBuilder: CredibilityPromptBuilder,
+    private val credibilityResponseParser: CredibilityResponseParser
 ) {
     private fun apiKeyOrNull(): String? = preferencesManager.getOpenRouterApiKey().takeIf { it.isNotBlank() }
 
@@ -18,86 +27,83 @@ class ArticleAiService(
         content: String,
         modelId: String
     ): Result<String> = withContext(Dispatchers.IO) {
-        val apiKey = apiKeyOrNull() ?: return@withContext Result.failure(Exception(MISSING_API_KEY_MESSAGE))
-        try {
-            val cleanContent = cleanArticleContent(content)
-            val request = createSummaryRequest(title, cleanContent, modelId)
-
-            Log.d("ArticleAiService", "Generating overview with model: $modelId")
-
-            val response = openRouterApiService.chatCompletion(
-                authorization = "Bearer $apiKey",
-                request = request
-            )
-
-            if (response.isSuccessful) {
-                val body = response.body()
-                if (body?.error != null) {
-                    Log.e("ArticleAiService", "API Error: ${body.error.message}")
-                    Result.failure(Exception("AI Error: ${body.error.message}"))
-                } else {
-                    val overview = body?.choices?.firstOrNull()?.message?.content
-                        ?: throw Exception("No content in response")
-                    Log.d("ArticleAiService", "Successfully generated overview")
-                    Result.success(overview.trim())
-                }
-            } else {
-                val errorMsg = "API call failed: ${response.code()} - ${response.message()}"
-                Log.e("ArticleAiService", errorMsg)
-                Result.failure(Exception(errorMsg))
-            }
-        } catch (e: Exception) {
-            Log.e("ArticleAiService", "Error generating overview", e)
-            Result.failure(e)
+        val plainText = stripToPlainText(content)
+        if (plainText.isBlank()) {
+            return@withContext Result.failure(Exception(EMPTY_CONTENT_MESSAGE))
         }
+        Log.d(TAG, "Generating overview with model: $modelId")
+        executeChat(createSummaryRequest(title, plainText, modelId)).map { it.trim() }
     }
 
-    suspend fun generateCredibilityScore(
-        title: String,
-        content: String,
+    suspend fun analyzeCredibility(
+        source: CredibilitySource,
         modelId: String
-    ): Result<Float> = withContext(Dispatchers.IO) {
-        val apiKey = apiKeyOrNull() ?: return@withContext Result.failure(Exception(MISSING_API_KEY_MESSAGE))
-        try {
-            val cleanContent = cleanArticleContent(content)
-            val request = createCredibilityRequest(title, cleanContent, modelId)
+    ): Result<CredibilityReport> = withContext(Dispatchers.IO) {
+        val prompt = credibilityPromptBuilder.build(source, modelId)
+            ?: return@withContext Result.failure(Exception(EMPTY_CONTENT_MESSAGE))
 
-            Log.d("ArticleAiService", "Generating credibility score with model: $modelId")
+        Log.d(TAG, "Analyzing credibility with model: $modelId")
 
+        executeChat(prompt.request)
+            .recoverCatching { error ->
+                if (!isUnsupportedResponseFormat(error)) throw error
+                Log.i(TAG, "Model $modelId rejected response_format, retrying without it")
+                executeChat(prompt.request.copy(responseFormat = null)).getOrThrow()
+            }
+            .mapCatching { raw ->
+                val parsed = credibilityResponseParser.parse(raw)
+                CredibilityReport(
+                    score = parsed.score,
+                    confidence = parsed.confidence,
+                    summary = parsed.summary,
+                    reasons = parsed.reasons,
+                    redFlags = parsed.redFlags,
+                    factors = parsed.factors,
+                    modelId = modelId,
+                    analyzedAt = Instant.now(),
+                    contentTruncated = prompt.contentTruncated
+                )
+            }
+            .onFailure { Log.e(TAG, "Credibility analysis failed", it) }
+    }
+
+    private suspend fun executeChat(request: OpenRouterRequest): Result<String> {
+        val apiKey = apiKeyOrNull() ?: return Result.failure(Exception(MISSING_API_KEY_MESSAGE))
+        return try {
             val response = openRouterApiService.chatCompletion(
                 authorization = "Bearer $apiKey",
                 request = request
             )
 
-            if (response.isSuccessful) {
-                val body = response.body()
-                if (body?.error != null) {
-                    Log.e("ArticleAiService", "API Error: ${body.error.message}")
-                    Result.failure(Exception("AI Error: ${body.error.message}"))
-                } else {
-                    val scoreText = body?.choices?.firstOrNull()?.message?.content
-                        ?: throw Exception("No content in response")
-
-                    val score = parseCredibilityScore(scoreText.trim())
-                    Log.d("ArticleAiService", "Successfully generated credibility score: $score")
-                    Result.success(score)
-                }
-            } else {
-                val errorMsg = "API call failed: ${response.code()} - ${response.message()}"
-                Log.e("ArticleAiService", errorMsg)
-                Result.failure(Exception(errorMsg))
+            if (!response.isSuccessful) {
+                val message = "API call failed: ${response.code()} - ${response.message()}"
+                Log.e(TAG, message)
+                return Result.failure(OpenRouterException(response.code(), message))
             }
+
+            val body = response.body()
+            val apiError = body?.error
+            if (apiError != null) {
+                Log.e(TAG, "API Error: ${apiError.message}")
+                return Result.failure(OpenRouterException(null, "AI Error: ${apiError.message}"))
+            }
+
+            val content = body?.choices?.firstOrNull()?.message?.content
+            if (content.isNullOrBlank()) {
+                return Result.failure(OpenRouterException(null, "The model returned an empty response."))
+            }
+            Result.success(content)
         } catch (e: Exception) {
-            Log.e("ArticleAiService", "Error generating credibility score", e)
+            Log.e(TAG, "Chat completion failed", e)
             Result.failure(e)
         }
     }
 
-    private fun cleanArticleContent(content: String): String {
-        return content
-            .replace(Regex("<[^>]+>"), " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
+    private fun isUnsupportedResponseFormat(error: Throwable): Boolean {
+        val openRouterError = error as? OpenRouterException ?: return false
+        if (openRouterError.code?.let { it == 400 || it == 404 || it == 422 } == true) return true
+        val message = openRouterError.message.orEmpty().lowercase()
+        return "response_format" in message || "json mode" in message
     }
 
     private fun createSummaryRequest(
@@ -108,7 +114,7 @@ class ArticleAiService(
         val systemMessage = ChatMessage(
             role = "system",
             content = """
-You are a helpful assistant that creates concise, informative overviews of articles. 
+You are a helpful assistant that creates concise, informative overviews of articles.
 Provide a summary in 2-3 sentences that captures the main points and key insights.
 Language of the summary should be the same as the language of the article.
 
@@ -131,64 +137,5 @@ Content: $content
             maxTokens = 500,
             temperature = 0.5
         )
-    }
-
-    private fun createCredibilityRequest(
-        title: String,
-        content: String,
-        modelId: String
-    ): OpenRouterRequest {
-        val systemMessage = ChatMessage(
-            role = "system",
-            content = """
-You are an expert fact-checker and media analyst. Analyze the given article for credibility and trustworthiness.
-
-Provide a credibility score from 0.0 to 1.0 where:
-- 0.0-0.3: High risk of misinformation (sensationalized, unsubstantiated claims, propaganda)
-- 0.4-0.6: Moderate credibility concerns (some bias, partial information, requires verification)
-- 0.7-1.0: High credibility (well-sourced, factual, balanced reporting)
-
-Consider these factors:
-- Source credibility and citations
-- Language tone and sensationalism
-- Factual claims vs. opinion
-- Balanced perspective vs. heavy bias
-- Evidence provided for claims
-
-Respond with ONLY the numerical score (e.g., 0.73). Do not include explanations or additional text.
-                """.trimIndent()
-        )
-
-        val userMessage = ChatMessage(
-            role = "user",
-            content = """
-Analyze this article for credibility:
-Title: $title
-Content: $content
-""".trimIndent()
-        )
-
-        return OpenRouterRequest(
-            model = modelId,
-            messages = listOf(systemMessage, userMessage),
-            maxTokens = 5000,
-            temperature = 0.3
-        )
-    }
-
-    private fun parseCredibilityScore(scoreText: String): Float {
-        return try {
-            val cleanText = scoreText.replace(Regex("[^0-9.]"), "")
-            val score = cleanText.toFloatOrNull()
-            when {
-                score == null -> 0.5f // Default neutral score if parsing fails
-                score < 0f -> 0f
-                score > 1f -> 1f
-                else -> score
-            }
-        } catch (e: Exception) {
-            Log.w("ArticleAiService", "Failed to parse credibility score: $scoreText", e)
-            0.5f // Default neutral score
-        }
     }
 }

@@ -21,7 +21,10 @@ data class ExtendedColors(
     val preview: Color,
     val checked: Color,
     val unchecked: Color,
-    val header: Color
+    val header: Color,
+    val credibilityHigh: Color,
+    val credibilityMixed: Color,
+    val credibilityLow: Color
 )
 
 val LocalExtendedColors = staticCompositionLocalOf {
@@ -33,7 +36,10 @@ val LocalExtendedColors = staticCompositionLocalOf {
         preview = Color.Unspecified,
         checked = Color.Unspecified,
         unchecked = Color.Unspecified,
-        header = Color.Unspecified
+        header = Color.Unspecified,
+        credibilityHigh = Color.Unspecified,
+        credibilityMixed = Color.Unspecified,
+        credibilityLow = Color.Unspecified
     )
 }
 
@@ -65,7 +71,10 @@ private val DarkExtendedColors = ExtendedColors(
     preview = MainPreview,
     checked = MainChecked,
     unchecked = MainUnchecked,
-    header = MainHeader
+    header = MainHeader,
+    credibilityHigh = GreenDark,
+    credibilityMixed = AmberDark,
+    credibilityLow = RedDark
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -96,7 +105,10 @@ private val LightExtendedColors = ExtendedColors(
     preview = Gray30,
     checked = Blue40,
     unchecked = Gray50,
-    header = Gray40
+    header = Gray40,
+    credibilityHigh = GreenLight,
+    credibilityMixed = AmberLight,
+    credibilityLow = RedLight
 )
 
 @Composable

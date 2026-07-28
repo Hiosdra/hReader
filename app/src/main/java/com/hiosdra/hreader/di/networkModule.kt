@@ -3,6 +3,8 @@ package com.hiosdra.hreader.di
 import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.data.ai.AiModelRepository
 import com.hiosdra.hreader.data.ai.ArticleAiService
+import com.hiosdra.hreader.data.ai.CredibilityPromptBuilder
+import com.hiosdra.hreader.data.ai.CredibilityResponseParser
 import com.hiosdra.hreader.data.ai.OpenRouterApiService
 import com.hiosdra.hreader.data.remote.BackendUrlInterceptor
 import com.hiosdra.hreader.data.remote.DelegatingFeedBackend
@@ -90,7 +92,9 @@ val networkModule = module {
     }
 
     single<OpenRouterApiService> { get<Retrofit>(named(OPENROUTER_RETROFIT)).create(OpenRouterApiService::class.java) }
-    single<ArticleAiService> { ArticleAiService(get(), get()) }
+    single { CredibilityPromptBuilder() }
+    single { CredibilityResponseParser(get()) }
+    single<ArticleAiService> { ArticleAiService(get(), get(), get(), get()) }
     single { AiModelRepository(get(), get()) }
 }
 
