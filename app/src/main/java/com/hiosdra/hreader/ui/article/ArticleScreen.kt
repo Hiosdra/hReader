@@ -125,7 +125,7 @@ fun ArticleScreen(
     val preferencesManager: PreferencesManager = koinInject()
     val paywallBypassService: PaywallBypassService = koinInject()
 
-    LaunchedEffect(articleIds) {
+    LaunchedEffect(articleIds, initialIndex) {
         viewModel.loadArticlesByIds(articleIds, initialIndex)
     }
 
@@ -150,6 +150,8 @@ fun ArticleScreen(
         }
     }
 
+    // Reporting back only once the pager has been placed keeps page 0 - where it
+    // still sits on the first frame - from overwriting the position it was sent to.
     LaunchedEffect(pagerState.currentPage, pagerPositioned) {
         if (!pagerPositioned) return@LaunchedEffect
         if (pagerState.currentPage != uiState.currentIndex && pagerState.currentPage in uiState.entries.indices) {
