@@ -2,9 +2,11 @@ package com.hiosdra.hreader.di
 
 import androidx.room.Room
 import com.hiosdra.hreader.data.local.AppDatabase
+import com.hiosdra.hreader.data.local.MIGRATION_4_5
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleImageRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.data.local.repository.CredibilityRepository
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.repository.FeedRepository
@@ -31,18 +33,21 @@ val appModule = module {
                 androidApplication(),
                 AppDatabase::class.java,
                 "hreader-db"
-            ).fallbackToDestructiveMigration(false)
+            ).addMigrations(MIGRATION_4_5)
+            .fallbackToDestructiveMigration(false)
             .build()
     }
     single { get<AppDatabase>().articleDao() }
     single { get<AppDatabase>().feedDao() }
     single { get<AppDatabase>().articleContentDao() }
     single { get<AppDatabase>().articleImageDao() }
+    single { get<AppDatabase>().articleCredibilityDao() }
     single { ArticleRepository(get(), get(), get(), get(), get(), get()) }
     single { ArticleImageRepository(androidApplication(), get(), get(), get()) }
-    single { ArticleContentRepository(get(), get(), get(), get()) }
+    single { CredibilityRepository(get(), get()) }
+    single { ArticleContentRepository(get(), get(), get(), get(), get()) }
     single<FeedRepository> { FeedRepository(get()) }
-    single { LocalCacheRepository(get(), get(), get(), get(), get(), get(), File(androidApplication().filesDir, "article_images")) }
+    single { LocalCacheRepository(get(), get(), get(), get(), get(), get(), get(), File(androidApplication().filesDir, "article_images")) }
     single { PaywallBypassService() }
     single { PreferencesManager(androidApplication()) }
     single { SyncPerformanceLogger(get()) }
@@ -52,7 +57,7 @@ val appModule = module {
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }
     viewModel { FeedsViewModel(get()) }
-    viewModel { ArticleViewModel(get(), get(), get(), get()) }
+    viewModel { ArticleViewModel(get(), get(), get(), get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get(), get()) }
 }
