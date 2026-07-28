@@ -34,6 +34,14 @@ val hasReleaseSigning = releaseStoreFile.exists() &&
     releaseKeyAlias != null &&
     releaseKeyPassword != null
 
+// The debug keystore is not a secret — Google fixes its password and alias — but
+// it has to be the same everywhere, otherwise a CI build cannot update an app
+// installed from a different build. CI decodes it from a secret; without the file
+// AGP falls back to the local ~/.android/debug.keystore.
+val debugStoreFile = rootProject.file(
+    signingValue("DEBUG_KEYSTORE_PATH") ?: "keystore/debug.keystore"
+)
+
 android {
     namespace = "com.hiosdra.hreader"
     compileSdk = 36
@@ -50,6 +58,14 @@ android {
     }
 
     signingConfigs {
+        if (debugStoreFile.exists()) {
+            getByName("debug") {
+                storeFile = debugStoreFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
         if (hasReleaseSigning) {
             create("release") {
                 storeFile = releaseStoreFile

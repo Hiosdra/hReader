@@ -38,11 +38,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      # A runner has no ~/.android, so AGP would generate a throwaway debug key on
+      # every run. Android refuses to update an app whose signing certificate
+      # changed, which surfaces as a bare "App not installed" on the phone.
+      - name: Decode debug keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "::warning::DEBUG_KEYSTORE_BASE64 is not set; the debug APK gets a random signing key and will not install over an existing build"
+            exit 0
+          fi
+          mkdir -p keystore
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > keystore/debug.keystore
+
       - name: Build with Gradle
         run: ./gradlew build
 
       - name: Assemble debug APK
         run: ./gradlew assembleDebug
+
+      - name: Verify the debug APK signature
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk
 
       # `archive: false` uploads the APK as-is instead of wrapping it in a zip,
       # but it takes the artifact name from the file name, hence the rename.
