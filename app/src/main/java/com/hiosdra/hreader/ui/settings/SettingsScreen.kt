@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.ui.theme.sectionCardColors
 import com.hiosdra.hreader.util.SyncPerformanceRecord
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -113,7 +114,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     BackendServerFields(
                         state = serverSettings,
@@ -138,7 +140,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -178,7 +181,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -242,7 +246,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {
                         PaywallBypassMethod.entries.forEach { method ->
@@ -299,7 +304,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     OpenRouterKeyField(
                         apiKey = openRouterApiKey,
@@ -319,7 +325,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     AiModelSearchBar(
                         state = aiModels,
@@ -333,7 +340,8 @@ fun SettingsScreen(
             items(aiModels.visibleModels, key = { it.id }) { model ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     AiModelRow(
                         model = model,
@@ -353,7 +361,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Button(
