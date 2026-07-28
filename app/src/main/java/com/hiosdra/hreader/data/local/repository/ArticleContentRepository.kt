@@ -114,8 +114,8 @@ class ArticleContentRepository(
 
     suspend fun cleanupOrphanedContent() {
         // No early return on an empty article set: retention and full-sync reconciliation both
-        // delete articles now, so "no articles left" is precisely when content and images have
-        // all become orphans. Credibility reports keep their own guard, by their own test.
+        // delete articles now, so "no articles left" is precisely when everything stored here has
+        // become an orphan.
         val allArticles = articleDao.getAllArticlesOldestFirst().first()
         val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
         credibilityRepository.cleanupOrphanedReports(currentEntryIds)
