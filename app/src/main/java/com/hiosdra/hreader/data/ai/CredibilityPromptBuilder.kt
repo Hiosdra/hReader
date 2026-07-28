@@ -3,6 +3,8 @@ package com.hiosdra.hreader.data.ai
 import com.hiosdra.hreader.data.model.CredibilitySource
 import org.jsoup.Jsoup
 import java.net.URI
+import java.time.Clock
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -59,7 +61,9 @@ data class CredibilityPrompt(
     val contentTruncated: Boolean
 )
 
-class CredibilityPromptBuilder {
+class CredibilityPromptBuilder(
+    private val clock: Clock = Clock.systemDefaultZone()
+) {
     fun build(source: CredibilitySource, modelId: String): CredibilityPrompt? {
         val content = cleanContent(source.content)
         if (content.text.isBlank()) return null
@@ -68,6 +72,7 @@ class CredibilityPromptBuilder {
             role = "user",
             content = buildString {
                 append("Assess the article delimited below.")
+                append("\nCurrent date for the user: ${LocalDate.now(clock)}.")
                 if (content.truncated) {
                     append("\nThe article text was truncated to fit; lower your confidence accordingly.")
                 }
