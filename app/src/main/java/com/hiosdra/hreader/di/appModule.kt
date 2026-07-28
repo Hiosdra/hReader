@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.di
 
 import androidx.room.Room
+import com.hiosdra.hreader.data.local.ALL_MIGRATIONS
 import com.hiosdra.hreader.data.local.AppDatabase
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleImageRepository
@@ -31,7 +32,8 @@ val appModule = module {
                 androidApplication(),
                 AppDatabase::class.java,
                 "hreader-db"
-            ).fallbackToDestructiveMigration(false)
+            ).addMigrations(*ALL_MIGRATIONS)
+            .fallbackToDestructiveMigration(false)
             .build()
     }
     single { get<AppDatabase>().articleDao() }
@@ -48,7 +50,7 @@ val appModule = module {
     single { SyncPerformanceLogger(get()) }
     single { ImageLoader(get()) }
     single { NetworkMonitor(androidApplication()) }
-    worker { ContentSyncWorker(get(), get()) }
+    worker { ContentSyncWorker(get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }
     viewModel { FeedsViewModel(get()) }

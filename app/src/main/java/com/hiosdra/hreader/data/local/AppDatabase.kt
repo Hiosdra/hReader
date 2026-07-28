@@ -19,7 +19,7 @@ import com.hiosdra.hreader.data.local.entity.FeedEntity
         ArticleContent::class,
         ArticleImage::class
     ],
-    version = 4
+    version = 6
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

@@ -3,7 +3,6 @@ package com.hiosdra.hreader.application
 import android.app.Application
 import com.hiosdra.hreader.di.appModule
 import com.hiosdra.hreader.di.networkModule
-import com.hiosdra.hreader.worker.setupArticleContentSyncWorker
 import com.hiosdra.hreader.worker.setupContentSyncWorker
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -21,7 +20,7 @@ class MyApplication : Application() {
             workManagerFactory()
             modules(appModule, networkModule)
         }
+        // Content prefetching is chained off each successful sync, not scheduled separately.
         setupContentSyncWorker(this)
-        setupArticleContentSyncWorker(this)
     }
 }

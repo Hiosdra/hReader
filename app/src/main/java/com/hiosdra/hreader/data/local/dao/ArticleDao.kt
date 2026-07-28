@@ -5,8 +5,11 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
+import com.hiosdra.hreader.data.local.entity.PendingStatus
+import com.hiosdra.hreader.data.local.entity.PrefetchTarget
 import com.hiosdra.hreader.data.model.ArticleStatus
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 @Dao
 interface ArticleDao {
@@ -22,11 +25,43 @@ interface ArticleDao {
     @Query("DELETE FROM articles WHERE id = :articleId")
     suspend fun deleteById(articleId: String)
 
-    @Query("UPDATE articles SET status = :status WHERE id = :articleId")
-    suspend fun updateStatus(articleId: String, status: ArticleStatus)
+    /**
+     * The only way to change a status: it always queues the change for the backend. [readAt] is
+     * the moment the article was read, or null when it is being marked unread again. An article
+     * that was already read keeps its original read time — "mark all as read" sweeps over entries
+     * that are already read, and restamping them would keep pushing back their retention.
+     */
+    @Query(
+        "UPDATE articles SET status = :status, pendingSync = 1, " +
+            "readAt = CASE WHEN :readAt IS NULL THEN NULL ELSE COALESCE(readAt, :readAt) END " +
+            "WHERE id IN (:ids)"
+    )
+    suspend fun updateStatusForIds(ids: List<String>, status: ArticleStatus, readAt: Instant?)
 
-    @Query("UPDATE articles SET status = :status WHERE id IN (:ids)")
-    suspend fun updateStatusForIds(ids: List<String>, status: ArticleStatus)
+    /**
+     * Dequeues only rows still holding the status that was pushed. If the user flipped the status
+     * again while the request was in flight, the newer value stays queued instead of being lost.
+     */
+    @Query("UPDATE articles SET pendingSync = 0 WHERE id IN (:ids) AND status = :pushedStatus")
+    suspend fun clearPendingSync(ids: List<String>, pushedStatus: ArticleStatus)
+
+    @Query("SELECT id, status FROM articles WHERE pendingSync = 1")
+    suspend fun getPendingStatuses(): List<PendingStatus>
+
+    @Query("SELECT id FROM articles WHERE status != :readStatus AND pendingSync = 0")
+    suspend fun getSyncedUnreadIds(readStatus: ArticleStatus = ArticleStatus.READ): List<String>
+
+    @Query("DELETE FROM articles WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+
+    @Query(
+        "DELETE FROM articles WHERE status = :readStatus AND pendingSync = 0 " +
+            "AND readAt IS NOT NULL AND readAt < :readBefore"
+    )
+    suspend fun deleteArticlesReadBefore(
+        readBefore: Instant,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): Int
 
     @Query("SELECT * FROM articles WHERE id IN (:ids) ORDER BY publishedAt ASC")
     fun getArticlesByIds(ids: List<String>): Flow<List<ArticleEntity>>
@@ -36,6 +71,9 @@ interface ArticleDao {
 
     @Query("SELECT * FROM articles WHERE status = :status")
     suspend fun getArticlesByStatus(status: ArticleStatus): List<ArticleEntity>
+
+    @Query("SELECT id, url, enclosures FROM articles WHERE status != :readStatus")
+    suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
 
     @Query("SELECT * FROM articles WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): ArticleEntity?
