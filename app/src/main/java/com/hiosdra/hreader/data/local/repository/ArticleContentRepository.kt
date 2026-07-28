@@ -10,6 +10,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.jsoup.Jsoup
 import java.time.Instant
 
@@ -22,7 +24,16 @@ class ArticleContentRepository(
 ) {
     companion object {
         private const val TAG = "ArticleContentRepo"
+
+        /**
+         * Background prefetch used to submit every unread article at once, and each of those also
+         * downloads the images it references. On a large backlog that put thousands of requests in
+         * flight at the same time.
+         */
+        private const val MAX_CONCURRENT_PREFETCH = 100
     }
+
+    private val prefetchLimiter = Semaphore(MAX_CONCURRENT_PREFETCH)
     suspend fun getArticleContent(entryId: Long, url: String): String {
         val localContent = articleContentDao.getArticleContent(entryId)
         if (localContent != null) {
@@ -76,12 +87,14 @@ class ArticleContentRepository(
         val limitedEntries = if (limit != null) entries.take(limit) else entries
         val deferredResults = limitedEntries.map { (entryId, url) ->
             async(Dispatchers.IO) {
-                try {
-                    if (articleContentDao.getArticleContent(entryId) == null) {
-                        getArticleContent(entryId, url)
+                prefetchLimiter.withPermit {
+                    try {
+                        if (articleContentDao.getArticleContent(entryId) == null) {
+                            getArticleContent(entryId, url)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                 }
             }
         }
@@ -91,28 +104,33 @@ class ArticleContentRepository(
     suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>) = coroutineScope {
         val deferredResults = entries.map { (entryId, imageUrls) ->
             async(Dispatchers.IO) {
-                downloadImagesForEntry(entryId, imageUrls)
+                prefetchLimiter.withPermit {
+                    downloadImagesForEntry(entryId, imageUrls)
+                }
             }
         }
         deferredResults.awaitAll()
     }
 
     suspend fun cleanupOrphanedContent() {
+        // No early return on an empty article set: retention and full-sync reconciliation both
+        // delete articles now, so "no articles left" is precisely when everything stored here has
+        // become an orphan.
         val allArticles = articleDao.getAllArticlesOldestFirst().first()
         val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
-        if (currentEntryIds.isEmpty()) return
         credibilityRepository.cleanupOrphanedReports(currentEntryIds)
 
         // Cleanup orphaned article content
         val allContent = articleContentDao.getAllArticleContents()
-        if (allContent.isEmpty()) return
         val contentToDelete = allContent.filter { content ->
             !currentEntryIds.contains(content.entryId)
         }
-        if (contentToDelete.isEmpty()) return
-        articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
+        if (contentToDelete.isNotEmpty()) {
+            articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
+        }
 
-        // Cleanup orphaned images
+        // Runs unconditionally: images outlive their content rows, and bailing out when no
+        // articles are left is exactly when every stored image has become an orphan.
         articleImageRepository.cleanupOrphanedImages()
     }
 

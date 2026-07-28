@@ -160,7 +160,11 @@ class MainViewModel(
     }
 
     fun markAllAsRead() {
-        val ids = fullList.map { it.id }
+        // Only the entries this actually changes. Sweeping in the already-read ones would push a
+        // no-op update for every article the cache holds.
+        val ids = fullList.filter { it.status != ArticleStatus.READ }.map { it.id }
+        if (ids.isEmpty()) return
+
         fullList = fullList.map { it.copy(status = ArticleStatus.READ) }
         sessionReadIds.addAll(ids)
         applyFilterAndEmit()

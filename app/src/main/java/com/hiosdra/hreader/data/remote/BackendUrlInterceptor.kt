@@ -3,7 +3,6 @@ package com.hiosdra.hreader.data.remote
 import com.hiosdra.hreader.data.model.BackendType
 import okhttp3.Interceptor
 import okhttp3.Response
-import java.io.IOException
 
 const val FRESHRSS_PLACEHOLDER_HOST = "freshrss.invalid"
 const val MINIFLUX_PLACEHOLDER_HOST = "miniflux.invalid"
@@ -15,9 +14,13 @@ class BackendUrlInterceptor(private val config: ServerConfig) : Interceptor {
         val request = chain.request()
         val baseUrl = when (request.url.host) {
             FRESHRSS_PLACEHOLDER_HOST -> config.googleReaderBaseUrl()
-                ?: throw IOException("${BackendType.FRESHRSS.displayName} server address is not configured")
+                ?: throw BackendNotConfiguredException(
+                    "${BackendType.FRESHRSS.displayName} server address is not configured"
+                )
             MINIFLUX_PLACEHOLDER_HOST -> config.minifluxBaseUrl()
-                ?: throw IOException("${BackendType.MINIFLUX.displayName} server address is not configured")
+                ?: throw BackendNotConfiguredException(
+                    "${BackendType.MINIFLUX.displayName} server address is not configured"
+                )
             else -> return chain.proceed(request)
         }
         val target = request.url.newBuilder()

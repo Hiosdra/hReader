@@ -13,35 +13,35 @@ import java.time.Instant
 class MinifluxMappingTest {
 
     @Test
-    fun `absent cursor starts at the first offset`() {
-        assertEquals(0, null.toOffset())
+    fun `absent cursor starts before the first entry id`() {
+        assertNull(null.toEntryIdCursor())
     }
 
     @Test
-    fun `malformed cursor falls back to the first offset`() {
-        assertEquals(0, "not-a-number".toOffset())
+    fun `malformed cursor starts before the first entry id`() {
+        assertNull("not-a-number".toEntryIdCursor())
     }
 
     @Test
-    fun `cursor carries the offset forward`() {
-        assertEquals(200, "200".toOffset())
+    fun `cursor carries the entry id forward`() {
+        assertEquals(4711L, "4711".toEntryIdCursor())
     }
 
     @Test
-    fun `a full page advances the cursor by the page size`() {
-        val page = responseWith(entryCount = 50).toEntriesPage(offset = 100, limit = 50)
+    fun `a full page resumes after its last entry id`() {
+        val page = responseWith(entryCount = 50).toEntriesPage(limit = 50)
 
-        assertEquals("150", page.cursor)
+        assertEquals("50", page.cursor)
     }
 
     @Test
     fun `a partial page ends the pagination`() {
-        assertNull(responseWith(entryCount = 12).toEntriesPage(offset = 100, limit = 50).cursor)
+        assertNull(responseWith(entryCount = 12).toEntriesPage(limit = 50).cursor)
     }
 
     @Test
     fun `an empty page ends the pagination`() {
-        val page = responseWith(entryCount = 0).toEntriesPage(offset = 0, limit = 50)
+        val page = responseWith(entryCount = 0).toEntriesPage(limit = 50)
 
         assertNull(page.cursor)
         assertEquals(0, page.entries.size)

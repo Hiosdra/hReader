@@ -18,42 +18,26 @@ import com.hiosdra.hreader.data.remote.miniflux.dto.UpdateEntriesStatusRequest
 import com.hiosdra.hreader.data.remote.withRetries
 import java.time.Instant
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 private const val UNREAD_STATUS = "unread"
 private const val READ_STATUS = "read"
-private const val ORDER_PUBLISHED_AT = "published_at"
+private const val ORDER_ID = "id"
 private const val DIRECTION_ASCENDING = "asc"
+
+private val UNREAD_ONLY = listOf(UNREAD_STATUS)
+private val READ_AND_UNREAD = listOf(UNREAD_STATUS, READ_STATUS)
 
 class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend {
 
-    override suspend fun getUnreadEntries(limit: Int, cursor: String?): EntriesPage {
-        val offset = cursor.toOffset()
-        return withRetries {
-            apiService.getEntries(UNREAD_STATUS, ORDER_PUBLISHED_AT, DIRECTION_ASCENDING, limit, offset)
-                .toEntriesPage(offset, limit)
-        }
-    }
+    override suspend fun getUnreadEntries(limit: Int, cursor: String?): EntriesPage =
+        fetchEntries(UNREAD_ONLY, changedAfter = null, limit = limit, cursor = cursor)
 
-    override suspend fun getUnreadEntriesChangedAfter(
+    override suspend fun getEntriesChangedAfter(
         changedAfter: Instant,
         limit: Int,
         cursor: String?
-    ): EntriesPage {
-        val offset = cursor.toOffset()
-        val changedAfterIso = DateTimeFormatter.ISO_INSTANT.format(changedAfter.atZone(ZoneOffset.UTC))
-        return withRetries {
-            apiService.getEntriesChangedAfter(
-                UNREAD_STATUS,
-                ORDER_PUBLISHED_AT,
-                DIRECTION_ASCENDING,
-                limit,
-                offset,
-                changedAfterIso
-            ).toEntriesPage(offset, limit)
-        }
-    }
+    ): EntriesPage =
+        fetchEntries(READ_AND_UNREAD, changedAfter = changedAfter.epochSecond, limit = limit, cursor = cursor)
 
     override suspend fun getFeeds(): List<Feed> = withRetries { fetchFeeds() }
 
@@ -63,9 +47,10 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
         apiService.getFeedCounters().unreads.mapKeys { it.key.toLong() }
     }
 
-    override suspend fun createFeed(feedUrl: String) = withRetries {
+    // Creating a feed is not idempotent: a retried POST after a client-side timeout would
+    // subscribe twice, so this call takes the failure instead.
+    override suspend fun createFeed(feedUrl: String) {
         apiService.createFeed(CreateFeedRequest(feed_url = feedUrl))
-        Unit
     }
 
     override suspend fun discoverFeeds(url: String): List<DiscoveredFeed> = withRetries {
@@ -81,6 +66,22 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
         withRetries { apiService.fetchOriginalContent(entryId).content.takeIf { it.isNotBlank() } }
 
     private suspend fun fetchFeeds(): List<Feed> = apiService.getFeeds().map { it.toDomain() }
+
+    private suspend fun fetchEntries(
+        statuses: List<String>,
+        changedAfter: Long?,
+        limit: Int,
+        cursor: String?
+    ): EntriesPage = withRetries {
+        apiService.getEntries(
+            statuses = statuses,
+            order = ORDER_ID,
+            direction = DIRECTION_ASCENDING,
+            limit = limit,
+            afterEntryId = cursor.toEntryIdCursor(),
+            changedAfter = changedAfter
+        ).toEntriesPage(limit)
+    }
 }
 
 private fun ArticleStatus.toWire(): String = when (this) {
@@ -91,11 +92,12 @@ private fun ArticleStatus.toWire(): String = when (this) {
 private fun String?.toArticleStatus(): ArticleStatus =
     if (this == READ_STATUS) ArticleStatus.READ else ArticleStatus.UNREAD
 
-internal fun String?.toOffset(): Int = this?.toIntOrNull() ?: 0
+internal fun String?.toEntryIdCursor(): Long? = this?.toLongOrNull()
 
-internal fun MinifluxEntriesResponse.toEntriesPage(offset: Int, limit: Int): EntriesPage = EntriesPage(
+internal fun MinifluxEntriesResponse.toEntriesPage(limit: Int): EntriesPage = EntriesPage(
     entries = entries.map { it.toDomain() },
-    cursor = (offset + limit).toString().takeIf { entries.size >= limit }
+    // Entries come back ordered by id, so the last id of a full page is where the next one resumes.
+    cursor = entries.lastOrNull()?.id?.toString()?.takeIf { entries.size >= limit }
 )
 
 internal fun MinifluxEntry.toDomain(): Entry = Entry(

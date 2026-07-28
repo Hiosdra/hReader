@@ -5,12 +5,15 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
+import com.hiosdra.hreader.data.local.entity.PrefetchTarget
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
-import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.util.SyncPerformanceLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.IOException
+
+private const val MAX_RUN_ATTEMPTS = 5
 
 class ArticleContentSyncWorker(
     appContext: Context,
@@ -29,22 +32,24 @@ class ArticleContentSyncWorker(
         try {
             performOrphanedContentCleanup()
             
-            val unreadArticles = articleRepository.getLocalUnreadArticles()
-            Log.i(TAG, "Found ${unreadArticles.size} local unread articles")
-            
-            if (unreadArticles.isEmpty()) {
+            val targets = articleRepository.getPrefetchTargets()
+            Log.i(TAG, "Found ${targets.size} local unread articles")
+
+            if (targets.isEmpty()) {
                 Log.i(TAG, "No articles to prefetch")
                 return@withContext Result.success()
             }
 
-            prefetchArticleContent(unreadArticles)
-            downloadEnclosureImages(unreadArticles)
+            prefetchArticleContent(targets)
+            downloadEnclosureImages(targets)
 
             Log.i(TAG, "ArticleContentSyncWorker completed successfully")
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "ArticleContentSyncWorker failed: ${e.message}", e)
-            if (e is IOException) Result.retry() else Result.failure()
+            if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) Result.retry() else Result.failure()
         }
     }
 
@@ -54,20 +59,20 @@ class ArticleContentSyncWorker(
         }
     }
 
-    private suspend fun prefetchArticleContent(unreadArticles: List<Entry>) {
-        val entriesToFetch = unreadArticles.map { it.id to it.url }
+    private suspend fun prefetchArticleContent(targets: List<PrefetchTarget>) {
+        val entriesToFetch = targets.map { it.id.toLong() to it.url }
         syncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
         Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles (background sync)")
-        
+
         syncPerformanceLogger.measureSyncTime("Article content prefetch") {
             articleContentRepository.prefetchArticleContent(entriesToFetch, limit = null)
         }
     }
 
-    private suspend fun downloadEnclosureImages(unreadArticles: List<Entry>) {
-        val enclosureImageEntries = unreadArticles.mapNotNull { entry ->
-            entry.getImageEnclosureUrls()?.takeIf { it.isNotEmpty() }?.let { urls ->
-                entry.id.toLong() to urls
+    private suspend fun downloadEnclosureImages(targets: List<PrefetchTarget>) {
+        val enclosureImageEntries = targets.mapNotNull { target ->
+            target.imageEnclosureUrls().takeIf { it.isNotEmpty() }?.let { urls ->
+                target.id.toLong() to urls
             }
         }
 
@@ -80,5 +85,5 @@ class ArticleContentSyncWorker(
     }
 }
 
-private fun Entry.getImageEnclosureUrls(): List<String>? =
+private fun PrefetchTarget.imageEnclosureUrls(): List<String> =
     enclosures.filter { it.isImage }.map { it.url }
