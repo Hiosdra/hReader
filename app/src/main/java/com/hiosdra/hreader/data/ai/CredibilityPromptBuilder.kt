@@ -62,7 +62,7 @@ data class CredibilityPrompt(
 )
 
 class CredibilityPromptBuilder(
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock
 ) {
     fun build(source: CredibilitySource, modelId: String): CredibilityPrompt? {
         val content = cleanContent(source.content)
