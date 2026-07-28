@@ -19,9 +19,6 @@ interface ArticleDao {
     @Query("DELETE FROM articles")
     suspend fun clearAll()
 
-    @Query("DELETE FROM articles WHERE id = :articleId")
-    suspend fun deleteById(articleId: String)
-
     @Query("UPDATE articles SET status = :status WHERE id = :articleId")
     suspend fun updateStatus(articleId: String, status: ArticleStatus)
 
@@ -37,15 +34,6 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE status = :status")
     suspend fun getArticlesByStatus(status: ArticleStatus): List<ArticleEntity>
 
-    @Query("SELECT * FROM articles WHERE id = :id LIMIT 1")
-    suspend fun findById(id: String): ArticleEntity?
-
     @Query("SELECT * FROM articles WHERE id IN (:ids)")
     suspend fun getArticlesImmediate(ids: List<String>): List<ArticleEntity>
-
-    @Query("SELECT * FROM articles")
-    suspend fun getAllArticlesImmediate(): List<ArticleEntity>
-
-    @Query("SELECT * FROM articles WHERE status != :readStatus ORDER BY publishedAt ASC")
-    fun getAllUnreadArticlesOldestFirst(readStatus: ArticleStatus = ArticleStatus.READ): Flow<List<ArticleEntity>>
 }
