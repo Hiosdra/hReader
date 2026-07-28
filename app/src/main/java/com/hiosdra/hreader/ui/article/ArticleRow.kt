@@ -38,6 +38,7 @@ import java.time.format.DateTimeFormatter
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
+import com.hiosdra.hreader.ui.theme.sectionCardColors
 
 @Composable
 fun ArticleRow(
@@ -68,7 +69,7 @@ fun ArticleRow(
             .padding(horizontal = 12.dp, vertical = 6.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        colors = sectionCardColors()
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Row(
