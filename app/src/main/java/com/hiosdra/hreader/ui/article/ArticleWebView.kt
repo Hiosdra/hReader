@@ -27,6 +27,7 @@ fun ArticleWebView(
     val textColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.onSurface.toArgb())
     val linkColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.primary.toArgb())
     val codeBg = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.surfaceVariant.toArgb())
+    val ruleColor = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.outlineVariant.toArgb())
 
     AndroidView(
         factory = { context ->
@@ -84,9 +85,9 @@ fun ArticleWebView(
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
-                        :root { --text:$textColorHex; --link:$linkColorHex; --code:$codeBg; }
+                        :root { --text:$textColorHex; --link:$linkColorHex; --code:$codeBg; --rule:$ruleColor; }
                         body { font-family: system-ui,-apple-system,Roboto,sans-serif; line-height:1.6; margin:0; padding:0 0 32px 0; color:var(--text); background:transparent; }
                         h1,h2,h3 { line-height:1.25; margin:1.4em 0 .6em; }
                         h1 { font-size:1.5em; }
@@ -99,9 +100,9 @@ fun ArticleWebView(
                         blockquote { margin:16px 0; padding:4px 16px; border-left:4px solid var(--link); opacity:.9; }
                         a { color:var(--link); text-decoration:underline; }
                         table { border-collapse:collapse; width:100%; margin:16px 0; }
-                        th,td { border:1px solid rgba(255,255,255,.12); padding:6px 8px; text-align:left; }
+                        th,td { border:1px solid var(--rule); padding:6px 8px; text-align:left; }
                         ul,ol { padding-left:1.25em; }
-                        hr { border:none; height:1px; background:rgba(255,255,255,.15); margin:32px 0; }
+                        hr { border:none; height:1px; background:var(--rule); margin:32px 0; }
                     </style>
                 </head>
                 <body>$processedContent</body>
