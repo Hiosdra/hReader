@@ -42,8 +42,13 @@ class CredibilityRepository(
             }
     }
 
+    /**
+     * An empty [currentEntryIds] is not treated as suspicious. It used to be — nothing deleted
+     * articles then, so an empty table could only mean something had gone wrong. Retention and
+     * full-sync reconciliation delete them routinely now, which makes "no articles left" a normal
+     * state and exactly the point at which every stored report has become an orphan.
+     */
     suspend fun cleanupOrphanedReports(currentEntryIds: Set<Long>) {
-        if (currentEntryIds.isEmpty()) return
         val stored = articleCredibilityDao.getAllEntryIds()
         val orphaned = stored.filterNot { currentEntryIds.contains(it) }
         if (orphaned.isEmpty()) return
