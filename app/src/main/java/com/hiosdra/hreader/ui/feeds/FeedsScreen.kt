@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Feed
+import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.util.NetworkMonitor
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
@@ -75,7 +76,7 @@ fun FeedsScreen(
             TopAppBar(
                 title = { Text("Subscriptions") },
                 actions = {
-                    IconButton(onClick = { navController.navigate("add_feed") }) {
+                    IconButton(onClick = { navController.navigate(Routes.ADD_FEED) }) {
                         Icon(Icons.Filled.Add, contentDescription = "Add Feed")
                     }
                 },
@@ -107,7 +108,7 @@ fun FeedsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
                             Button(onClick = { viewModel.reload() }, modifier = Modifier.padding(top = 16.dp)) { Text("Retry") }
-                            OutlinedButton(onClick = { navController.navigate("add_feed") }, modifier = Modifier.padding(top = 8.dp)) { Text("Add Feed") }
+                            OutlinedButton(onClick = { navController.navigate(Routes.ADD_FEED) }, modifier = Modifier.padding(top = 8.dp)) { Text("Add Feed") }
                         }
                     }
                 }
@@ -116,9 +117,9 @@ fun FeedsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             if (uiState.searchQuery.isEmpty()) {
                                 Text("No subscriptions yet", style = MaterialTheme.typography.titleMedium)
-                                Button(onClick = { navController.navigate("add_feed") }, modifier = Modifier.padding(top = 16.dp)) { Text("Add your first feed") }
+                                Button(onClick = { navController.navigate(Routes.ADD_FEED) }, modifier = Modifier.padding(top = 16.dp)) { Text("Add your first feed") }
                             } else {
-                                Text("No matches for '${'$'}{uiState.searchQuery}'", style = MaterialTheme.typography.titleMedium)
+                                Text("No matches for '${uiState.searchQuery}'", style = MaterialTheme.typography.titleMedium)
                                 OutlinedButton(onClick = { viewModel.updateSearchQuery("") }, modifier = Modifier.padding(top = 16.dp)) { Text("Clear search") }
                             }
                         }
@@ -146,8 +147,8 @@ fun FeedsScreen(
                             FeedItem(
                                 feed = feed,
                                 unreadCount = unreadCount,
-                                onFeedClick = { navController.navigate("main?feedId=${'$'}{feed.id}") },
-                                onDetailsClick = { navController.navigate("feed_details/${'$'}{feed.id}") }
+                                onFeedClick = { navController.navigate(Routes.main(feed.id)) },
+                                onDetailsClick = { navController.navigate(Routes.feed(feed.id)) }
                             )
                         }
                     }

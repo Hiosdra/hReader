@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,7 +38,7 @@ import java.time.format.DateTimeFormatter
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
-import com.hiosdra.hreader.ui.theme.LocalExtendedColors
+import com.hiosdra.hreader.ui.theme.sectionCardColors
 
 @Composable
 fun ArticleRow(
@@ -50,13 +49,16 @@ fun ArticleRow(
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
     val checked = entry.isRead
-    val extendedColors = LocalExtendedColors.current
     val openArticle = { navController.navigate(Routes.article(articleIds, articleIndex)) }
 
     val contentAlpha by animateFloatAsState(targetValue = if (checked) 0.55f else 1f, label = "alpha")
     val titleWeight = if (checked) FontWeight.Normal else FontWeight.SemiBold
     val indicatorColor by animateColorAsState(
-        targetValue = if (checked) extendedColors.unchecked.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary,
+        targetValue = if (checked) {
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+        } else {
+            MaterialTheme.colorScheme.primary
+        },
         label = "indicator"
     )
 
@@ -67,7 +69,7 @@ fun ArticleRow(
             .padding(horizontal = 12.dp, vertical = 6.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = extendedColors.cardBackground)
+        colors = sectionCardColors()
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -96,13 +98,13 @@ fun ArticleRow(
                             Text(
                                 text = entry.feed.title,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = extendedColors.author
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = TIME_FORMATTER.format(entry.publishedAt),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = extendedColors.date
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Text(
@@ -118,7 +120,7 @@ fun ArticleRow(
                             Text(
                                 text = preview,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = extendedColors.author,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 4,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(bottom = 4.dp)
@@ -156,11 +158,7 @@ fun ArticleRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 Checkbox(
                     checked = checked,
-                    onCheckedChange = { onCheckedChange(entry.id, it) },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = extendedColors.checked,
-                        uncheckedColor = extendedColors.unchecked
-                    )
+                    onCheckedChange = { onCheckedChange(entry.id, it) }
                 )
             }
         }

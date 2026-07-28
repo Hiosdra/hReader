@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,11 +40,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.ui.theme.sectionCardColors
 import com.hiosdra.hreader.util.SyncPerformanceRecord
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -113,7 +114,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     BackendServerFields(
                         state = serverSettings,
@@ -138,7 +140,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -179,9 +182,7 @@ fun SettingsScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    colors = sectionCardColors()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -245,7 +246,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {
                         PaywallBypassMethod.entries.forEach { method ->
@@ -279,6 +281,7 @@ fun SettingsScreen(
                                         }
                                     )
                                 },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
@@ -301,7 +304,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     OpenRouterKeyField(
                         apiKey = openRouterApiKey,
@@ -321,7 +325,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     AiModelSearchBar(
                         state = aiModels,
@@ -335,7 +340,8 @@ fun SettingsScreen(
             items(aiModels.visibleModels, key = { it.id }) { model ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     AiModelRow(
                         model = model,
@@ -355,7 +361,8 @@ fun SettingsScreen(
                 )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Button(

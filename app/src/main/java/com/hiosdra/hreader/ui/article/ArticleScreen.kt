@@ -76,6 +76,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -93,7 +94,7 @@ import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
-import com.hiosdra.hreader.ui.theme.LocalExtendedColors
+import com.hiosdra.hreader.ui.theme.LocalCredibilityColors
 import com.hiosdra.hreader.util.cleanUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -192,12 +193,30 @@ fun ArticleScreen(
     ) { paddingValues ->
         when {
             uiState.isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
             uiState.error != null -> {
-                Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = uiState.error ?: "",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
             uiState.entries.isNotEmpty() -> {
                 ArticlePager(
@@ -693,6 +712,7 @@ private fun CredibilityChip(
     onClick: () -> Unit
 ) {
     val accent = credibilityAccent(report)
+    val container = report?.let { credibilityContainerColor(it.level) }
     androidx.compose.material3.AssistChip(
         onClick = onClick,
         label = {
@@ -715,7 +735,7 @@ private fun CredibilityChip(
         enabled = !isAnalyzing,
         colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
             containerColor = when {
-                accent != null -> accent.copy(alpha = 0.18f)
+                container != null -> container
                 isAnalyzing -> MaterialTheme.colorScheme.primaryContainer
                 else -> MaterialTheme.colorScheme.surfaceVariant
             }
@@ -792,7 +812,7 @@ private fun CredibilityCard(
                 CredibilityBulletList(
                     title = "Red flags",
                     items = report.redFlags,
-                    color = LocalExtendedColors.current.credibilityLow
+                    color = LocalCredibilityColors.current.low
                 )
             }
 
@@ -868,11 +888,21 @@ private fun credibilityLevelLabel(level: CredibilityLevel): String = when (level
 
 @Composable
 private fun credibilityColor(level: CredibilityLevel): Color {
-    val extended = LocalExtendedColors.current
+    val credibility = LocalCredibilityColors.current
     return when (level) {
-        CredibilityLevel.HIGH -> extended.credibilityHigh
-        CredibilityLevel.MIXED -> extended.credibilityMixed
-        CredibilityLevel.LOW -> extended.credibilityLow
+        CredibilityLevel.HIGH -> credibility.high
+        CredibilityLevel.MIXED -> credibility.mixed
+        CredibilityLevel.LOW -> credibility.low
+    }
+}
+
+@Composable
+private fun credibilityContainerColor(level: CredibilityLevel): Color {
+    val credibility = LocalCredibilityColors.current
+    return when (level) {
+        CredibilityLevel.HIGH -> credibility.highContainer
+        CredibilityLevel.MIXED -> credibility.mixedContainer
+        CredibilityLevel.LOW -> credibility.lowContainer
     }
 }
 
