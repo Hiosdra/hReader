@@ -34,7 +34,14 @@ class FreshRssBackend(
     override suspend fun getUnreadEntries(limit: Int, cursor: String?): EntriesPage =
         withRetries { streamContents(limit, cursor, startTimeSeconds = null) }
 
-    override suspend fun getUnreadEntriesChangedAfter(
+    /**
+     * Unlike Miniflux this cannot surface entries read on another client, so it keeps excluding
+     * read ones. The Google Reader `ot` parameter filters on the entry date or `lastModified`
+     * (a content change), while marking an entry read updates `lastUserModified` — a different
+     * column that `ot` never looks at. Dropping the exclusion would only enlarge every response.
+     * Reconciling read state here needs the `stream/items/ids` diff instead.
+     */
+    override suspend fun getEntriesChangedAfter(
         changedAfter: Instant,
         limit: Int,
         cursor: String?
@@ -50,7 +57,9 @@ class FreshRssBackend(
             .associate { streamIdToFeedId(it.id) to it.count }
     }
 
-    override suspend fun createFeed(feedUrl: String) = withRetries {
+    // Subscribing is not idempotent, so a retry after a client-side timeout could add the feed
+    // twice. The caller sees the failure instead.
+    override suspend fun createFeed(feedUrl: String) {
         val response = apiService.quickAddSubscription(feedUrl, writeToken())
         if (response.numResults < 1) {
             throw IOException(response.error ?: "FreshRSS could not subscribe to $feedUrl")
