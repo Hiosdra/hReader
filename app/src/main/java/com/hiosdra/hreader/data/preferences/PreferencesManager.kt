@@ -125,6 +125,16 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
+    fun getLastFullSyncTimestamp(): Long {
+        return sharedPreferences.getLong(KEY_LAST_FULL_SYNC_TIMESTAMP, 0L)
+    }
+
+    fun setLastFullSyncTimestamp(timestamp: Long) {
+        sharedPreferences.edit()
+            .putLong(KEY_LAST_FULL_SYNC_TIMESTAMP, timestamp)
+            .apply()
+    }
+
     fun getSyncPerformanceRecords(): List<SyncPerformanceRecord> {
         val json = sharedPreferences.getString(KEY_SYNC_PERFORMANCE_RECORDS, null)
         return if (json != null) {
@@ -182,6 +192,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_AI_MODEL = "ai_model"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
+        private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
         private const val MAX_PERFORMANCE_RECORDS = 50

@@ -17,5 +17,16 @@ data class ArticleEntity(
     val feedId: Long,
     val readingTime: Int?,
     val enclosures: List<Enclosure>,
-    val status: ArticleStatus? = ArticleStatus.UNREAD
+    val status: ArticleStatus? = ArticleStatus.UNREAD,
+    /**
+     * A [status] change made locally that the backend has not accepted yet. It survives sync
+     * reconciliation and is pushed again on the next run, so reading offline is not lost.
+     */
+    val pendingSync: Boolean = false,
+    /**
+     * When this article became [ArticleStatus.READ], and null while it is unread. Retention is
+     * keyed on it rather than on [publishedAt] so catching up on an old article does not delete it
+     * the moment it is read.
+     */
+    val readAt: Instant? = null
 )
