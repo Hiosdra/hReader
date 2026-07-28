@@ -21,11 +21,11 @@ class DelegatingFeedBackend(
     override suspend fun getUnreadEntries(limit: Int, cursor: String?): EntriesPage =
         active.getUnreadEntries(limit, cursor)
 
-    override suspend fun getUnreadEntriesChangedAfter(
+    override suspend fun getEntriesChangedAfter(
         changedAfter: Instant,
         limit: Int,
         cursor: String?
-    ): EntriesPage = active.getUnreadEntriesChangedAfter(changedAfter, limit, cursor)
+    ): EntriesPage = active.getEntriesChangedAfter(changedAfter, limit, cursor)
 
     override suspend fun getFeeds(): List<Feed> = active.getFeeds()
 

@@ -85,7 +85,7 @@ class ArticleRepository(
         if (useIncremental) {
             val changedAfter = Instant.ofEpochMilli(getLastSyncTime())
             Log.d("ArticleRepository", "Using incremental sync since: $changedAfter")
-            api.getUnreadEntriesChangedAfter(changedAfter, limit = limit, cursor = cursor)
+            api.getEntriesChangedAfter(changedAfter, limit = limit, cursor = cursor)
         } else {
             Log.d("ArticleRepository", "Using full sync")
             api.getUnreadEntries(limit = limit, cursor = cursor)
