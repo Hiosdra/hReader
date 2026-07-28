@@ -118,22 +118,23 @@ fun ArticleScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(initialPage = 0) { uiState.entries.size }
     var isWebViewMode by remember { mutableStateOf(false) }
-    // The pager opens on page 0 and only then jumps to the article that was tapped,
-    // so read state must not be touched before it has landed there.
+    // The pager opens on page 0 and only then jumps to the article being read, so
+    // neither read state nor the reader's position may be touched before it lands.
     var pagerPositioned by remember { mutableStateOf(false) }
 
     val preferencesManager: PreferencesManager = koinInject()
     val paywallBypassService: PaywallBypassService = koinInject()
 
     LaunchedEffect(articleIds) {
-        viewModel.loadArticlesByIds(articleIds)
+        viewModel.loadArticlesByIds(articleIds, initialIndex)
     }
 
-    LaunchedEffect(initialIndex, uiState.entries.size) {
-        if (uiState.entries.isNotEmpty()) {
-            pagerState.scrollToPage(initialIndex.coerceIn(uiState.entries.indices))
-            pagerPositioned = true
-        }
+    // The view model owns where the reader is, so it also survives a configuration
+    // change; the pager is placed from it once and reports back from then on.
+    LaunchedEffect(uiState.entries.size) {
+        if (pagerPositioned || uiState.entries.isEmpty()) return@LaunchedEffect
+        pagerState.scrollToPage(uiState.currentIndex.coerceIn(uiState.entries.indices))
+        pagerPositioned = true
     }
 
     // Read state follows the page the pager settles on. Pages that are merely
@@ -149,15 +150,10 @@ fun ArticleScreen(
         }
     }
 
-    // Sync pager with state
-    LaunchedEffect(pagerState.currentPage) {
+    LaunchedEffect(pagerState.currentPage, pagerPositioned) {
+        if (!pagerPositioned) return@LaunchedEffect
         if (pagerState.currentPage != uiState.currentIndex && pagerState.currentPage in uiState.entries.indices) {
             viewModel.setCurrentIndex(pagerState.currentPage)
-        }
-    }
-    LaunchedEffect(uiState.currentIndex) {
-        if (uiState.currentIndex in uiState.entries.indices && pagerState.currentPage != uiState.currentIndex) {
-            pagerState.scrollToPage(uiState.currentIndex)
         }
     }
 

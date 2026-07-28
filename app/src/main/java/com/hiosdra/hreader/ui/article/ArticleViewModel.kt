@@ -47,6 +47,8 @@ class ArticleViewModel(
     )
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
+    private var initialIndexApplied = false
+
     fun setCurrentIndex(index: Int) {
         _uiState.update { it.copy(currentIndex = index) }
         val entry = _uiState.value.entries.getOrNull(index) ?: return
@@ -79,13 +81,17 @@ class ArticleViewModel(
         }
     }
 
-    fun loadArticlesByIds(ids: List<Long>) {
+    fun loadArticlesByIds(ids: List<Long>, initialIndex: Int) {
         _uiState.update {
             it.copy(
                 isLoading = true,
+                // A configuration change re-runs this load, and the reader may have
+                // paged well past the article the list was opened at by then.
+                currentIndex = if (initialIndexApplied) it.currentIndex else initialIndex,
                 credibilityEnabled = preferencesManager.getCredibilityScoreEnabled()
             )
         }
+        initialIndexApplied = true
         viewModelScope.launch {
             try {
                 articleRepository.getArticlesByIds(ids).collect { articles ->
