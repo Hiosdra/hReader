@@ -33,6 +33,9 @@ class LocalCacheRepository(
         withContext(Dispatchers.IO) {
             imagesDir.listFiles()?.forEach { it.delete() }
         }
+        // Both timestamps, or the next sync against a different backend would still consider the
+        // cache recently reconciled against a full server state that was never this backend's.
         preferencesManager.setLastSyncTimestamp(0L)
+        preferencesManager.setLastFullSyncTimestamp(0L)
     }
 }

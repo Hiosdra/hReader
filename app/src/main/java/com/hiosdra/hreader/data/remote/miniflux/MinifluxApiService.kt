@@ -17,23 +17,19 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface MinifluxApiService {
+    /**
+     * [afterEntryId] drives keyset pagination: offsets shift underneath a sync whenever an entry
+     * changes status mid-run, which silently skips entries. [changedAfter] is a unix timestamp —
+     * Miniflux parses these filters as int64 and quietly ignores anything else.
+     */
     @GET("v1/entries")
     suspend fun getEntries(
-        @Query("status") status: String,
+        @Query("status") statuses: List<String>,
         @Query("order") order: String,
         @Query("direction") direction: String,
         @Query("limit") limit: Int,
-        @Query("offset") offset: Int
-    ): MinifluxEntriesResponse
-
-    @GET("v1/entries")
-    suspend fun getEntriesChangedAfter(
-        @Query("status") status: String,
-        @Query("order") order: String,
-        @Query("direction") direction: String,
-        @Query("limit") limit: Int,
-        @Query("offset") offset: Int,
-        @Query("changed_after") changedAfter: String
+        @Query("after_entry_id") afterEntryId: Long?,
+        @Query("changed_after") changedAfter: Long?
     ): MinifluxEntriesResponse
 
     @GET("v1/feeds")

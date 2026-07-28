@@ -16,7 +16,14 @@ data class EntriesPage(
 interface FeedBackend {
     suspend fun getUnreadEntries(limit: Int = ENTRIES_PAGE_LIMIT, cursor: String? = null): EntriesPage
 
-    suspend fun getUnreadEntriesChangedAfter(
+    /**
+     * Entries that changed since [changedAfter]. Backends that can express "status changed after"
+     * must include read entries: filtering them down to unread would hide entries read on another
+     * client, and since those also drop out of [getUnreadEntries] the local cache would keep
+     * showing them as unread forever. Backends that cannot express it return unread only, and the
+     * caller falls back on a periodic full sync to reconcile.
+     */
+    suspend fun getEntriesChangedAfter(
         changedAfter: Instant,
         limit: Int = ENTRIES_PAGE_LIMIT,
         cursor: String? = null

@@ -28,10 +28,15 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.util.concurrent.TimeUnit
 
 private const val FRESHRSS_RETROFIT = "freshrss"
 private const val MINIFLUX_RETROFIT = "miniflux"
 private const val OPENROUTER_RETROFIT = "openrouter"
+
+private const val CONNECT_TIMEOUT_SECONDS = 15L
+private const val READ_TIMEOUT_SECONDS = 60L
+private const val WRITE_TIMEOUT_SECONDS = 30L
 
 val networkModule = module {
     single { ServerConfig(get()) }
@@ -48,6 +53,13 @@ val networkModule = module {
     }
     single<OkHttpClient> {
         OkHttpClient.Builder()
+            // OkHttp defaults to a 10s read timeout, which a self-hosted backend serving a page of
+            // 200 entries with full content routinely exceeds. No callTimeout on purpose: it also
+            // counts time spent queued in the dispatcher, and content prefetching submits every
+            // unread article at once, so a whole-call deadline would fail the tail of that queue.
+            .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .addInterceptor(get<GoogleReaderAuthInterceptor>())
             .addInterceptor(get<MinifluxAuthInterceptor>())
             .addInterceptor(get<BackendUrlInterceptor>())

@@ -137,10 +137,24 @@ class CredibilityRepositoryTest {
     }
 
     @Test
-    fun cleanupOrphanedReports_doesNothingWhenThereAreNoArticles() = runBlocking {
+    fun cleanupOrphanedReports_deletesEverythingWhenThereAreNoArticles() = runBlocking {
+        coEvery { dao.getAllEntryIds() } returns listOf(1L, 2L)
+        val deleted = slot<List<Long>>()
+        coEvery { dao.deleteAll(capture(deleted)) } returns Unit
+
         repo.cleanupOrphanedReports(emptySet())
 
-        coVerify(exactly = 0) { dao.getAllEntryIds() }
+        // Articles are deleted routinely now — by retention and by full-sync reconciliation — so
+        // an empty article table is a normal state, not a signal that something went wrong.
+        assertEquals(listOf(1L, 2L), deleted.captured)
+    }
+
+    @Test
+    fun cleanupOrphanedReports_deletesNothingWhenNoReportsAreStored() = runBlocking {
+        coEvery { dao.getAllEntryIds() } returns emptyList()
+
+        repo.cleanupOrphanedReports(emptySet())
+
         coVerify(exactly = 0) { dao.deleteAll(any()) }
     }
 
