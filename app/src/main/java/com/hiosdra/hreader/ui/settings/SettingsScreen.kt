@@ -4,7 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -168,7 +170,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Credibility Score Section
             item {
                 Text(
                     text = "AI Credibility Analysis",
@@ -193,12 +194,12 @@ fun SettingsScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Credibility Scoring",
+                                    text = "Show credibility chip",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "AI analysis of article reliability and trustworthiness",
+                                    text = "Adds a chip to every article that rates the text for sourcing, tone and balance",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -211,13 +212,21 @@ fun SettingsScreen(
                         if (credibilityScoreEnabled) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                             Text(
-                                text = "Score Meaning:",
+                                text = "What the rating means:",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
                             Text(
-                                text = "• 70-100%: High credibility (well-sourced, factual)\n• 40-69%: Moderate credibility (some bias or verification needed)\n• 0-39%: Low credibility (high risk of misinformation)",
+                                text = "• Strong signals: sourced, evidenced, balanced\n• Mixed signals: verify before relying on it\n• Weak signals: sensational or unsupported claims",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "This is an AI impression of the article text, not a fact check — " +
+                                    "the model cannot browse the web or verify claims. Each analysis sends " +
+                                    "the article to OpenRouter and is cached until you re-analyze it.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -249,7 +258,7 @@ fun SettingsScreen(
                                 },
                                 supportingContent = { 
                                     Text(
-                                        method.baseUrl, 
+                                        method.host,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     ) 

@@ -8,8 +8,18 @@ data class OpenRouterRequest(
     val model: String,
     val messages: List<ChatMessage>,
     @field:Json(name = "max_tokens") val maxTokens: Int,
-    val temperature: Double
+    val temperature: Double,
+    @field:Json(name = "response_format") val responseFormat: ResponseFormat? = null
 )
+
+@JsonClass(generateAdapter = true)
+data class ResponseFormat(
+    val type: String
+) {
+    companion object {
+        val JsonObject = ResponseFormat("json_object")
+    }
+}
 
 @JsonClass(generateAdapter = true)
 data class ChatMessage(
