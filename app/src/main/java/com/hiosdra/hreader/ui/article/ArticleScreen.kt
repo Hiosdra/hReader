@@ -67,6 +67,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,6 +118,9 @@ fun ArticleScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(initialPage = 0) { uiState.entries.size }
     var isWebViewMode by remember { mutableStateOf(false) }
+    // The pager opens on page 0 and only then jumps to the article that was tapped,
+    // so read state must not be touched before it has landed there.
+    var pagerPositioned by remember { mutableStateOf(false) }
 
     val preferencesManager: PreferencesManager = koinInject()
     val paywallBypassService: PaywallBypassService = koinInject()
@@ -126,8 +130,22 @@ fun ArticleScreen(
     }
 
     LaunchedEffect(initialIndex, uiState.entries.size) {
-        if (uiState.entries.isNotEmpty() && initialIndex in uiState.entries.indices) {
-            pagerState.scrollToPage(initialIndex)
+        if (uiState.entries.isNotEmpty()) {
+            pagerState.scrollToPage(initialIndex.coerceIn(uiState.entries.indices))
+            pagerPositioned = true
+        }
+    }
+
+    // Read state follows the page the pager settles on. Pages that are merely
+    // composed - the ones passed on the way to the opened article, or a neighbour
+    // revealed by a swipe that snaps back - stay unread.
+    LaunchedEffect(pagerPositioned) {
+        if (!pagerPositioned) return@LaunchedEffect
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            val entry = viewModel.uiState.value.entries.getOrNull(page) ?: return@collect
+            if (!entry.isRead) {
+                viewModel.updateReadStatus(page, true)
+            }
         }
     }
 
@@ -284,11 +302,6 @@ private fun ArticlePager(
                     isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
                     onAnalyzeCredibility = onAnalyzeCredibility
                 )
-                LaunchedEffect(entry.id) {
-                    if (!entry.isRead) {
-                        onReadStatusChange?.invoke(page, true)
-                    }
-                }
             }
         }
     }
