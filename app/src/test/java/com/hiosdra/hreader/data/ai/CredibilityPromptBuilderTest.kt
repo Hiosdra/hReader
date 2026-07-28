@@ -7,7 +7,9 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 
 class CredibilityPromptBuilderTest {
     private val builder = CredibilityPromptBuilder()
@@ -29,6 +31,26 @@ class CredibilityPromptBuilderTest {
 
     private fun userMessageOf(source: CredibilitySource): String =
         builder.build(source, "test/model")!!.request.messages.last().content
+
+    @Test
+    fun includesTheUsersCurrentDateInTheTrustedPromptInstructions() {
+        val builder = CredibilityPromptBuilder(
+            Clock.fixed(
+                Instant.parse("2026-07-27T22:30:00Z"),
+                ZoneId.of("Europe/Warsaw")
+            )
+        )
+
+        val message = builder.build(sourceWith(), "test/model")!!.request.messages.last().content
+        val instructions = message.substringBefore(CONTENT_START)
+        val article = message.substringAfter(CONTENT_START).substringBefore(CONTENT_END)
+
+        assertEquals(
+            "Assess the article delimited below.\nCurrent date for the user: 2026-07-28.\n\n",
+            instructions
+        )
+        assertFalse(article.contains("Current date for the user:"))
+    }
 
     @Test
     fun putsEveryFeedSuppliedValueInsideTheDelimiters() {
