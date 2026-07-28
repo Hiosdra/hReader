@@ -26,6 +26,14 @@ val Green40 = Color(0xFF4CAF50)
 val Orange40 = Color(0xFFFF9800)
 val Red40 = Color(0xFFF44336)
 
+// Credibility signal colors
+val GreenLight = Color(0xFF2E7D32)
+val AmberLight = Color(0xFFB26500)
+val RedLight = Color(0xFFC62828)
+val GreenDark = Color(0xFF81C784)
+val AmberDark = Color(0xFFFFB74D)
+val RedDark = Color(0xFFEF9A9A)
+
 // Dark theme colors
 val MainBackground = Gray10
 val MainSurface = Gray20

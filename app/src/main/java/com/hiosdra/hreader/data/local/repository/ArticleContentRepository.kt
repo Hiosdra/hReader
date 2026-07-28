@@ -17,7 +17,8 @@ class ArticleContentRepository(
     private val backend: FeedBackend,
     private val articleContentDao: ArticleContentDao,
     private val articleDao: ArticleDao,
-    private val articleImageRepository: ArticleImageRepository
+    private val articleImageRepository: ArticleImageRepository,
+    private val credibilityRepository: CredibilityRepository
 ) {
     companion object {
         private const val TAG = "ArticleContentRepo"
@@ -97,12 +98,14 @@ class ArticleContentRepository(
     }
 
     suspend fun cleanupOrphanedContent() {
-        // Cleanup orphaned article content
-        val allContent = articleContentDao.getAllArticleContents()
-        if (allContent.isEmpty()) return
         val allArticles = articleDao.getAllArticlesOldestFirst().first()
         val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
         if (currentEntryIds.isEmpty()) return
+        credibilityRepository.cleanupOrphanedReports(currentEntryIds)
+
+        // Cleanup orphaned article content
+        val allContent = articleContentDao.getAllArticleContents()
+        if (allContent.isEmpty()) return
         val contentToDelete = allContent.filter { content ->
             !currentEntryIds.contains(content.entryId)
         }
