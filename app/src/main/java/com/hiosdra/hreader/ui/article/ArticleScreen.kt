@@ -65,6 +65,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,12 +83,16 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.navigation.NavHostController
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.data.model.CredibilityConfidence
+import com.hiosdra.hreader.data.model.CredibilityLevel
+import com.hiosdra.hreader.data.model.CredibilityReport
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
+import com.hiosdra.hreader.ui.theme.LocalExtendedColors
 import com.hiosdra.hreader.util.cleanUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -187,11 +192,12 @@ fun ArticleScreen(
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
                     getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                     aiOverviews = uiState.aiOverviews,
-                    isGeneratingOverview = uiState.isGeneratingOverview,
+                    generatingOverviewIds = uiState.generatingOverviewIds,
                     onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
-                    credibilityScores = uiState.credibilityScores,
-                    isGeneratingScore = uiState.isGeneratingScore,
-                    onCredibilityScore = { entryId -> viewModel.generateCredibilityScore(entryId) }
+                    credibilityEnabled = uiState.credibilityEnabled,
+                    credibilityReports = uiState.credibilityReports,
+                    analyzingCredibilityIds = uiState.analyzingCredibilityIds,
+                    onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) }
                 )
             }
         }
@@ -236,11 +242,12 @@ private fun ArticlePager(
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
     getContentForEntry: (Long) -> String?,
     aiOverviews: Map<Long, String> = emptyMap(),
-    isGeneratingOverview: Boolean = false,
+    generatingOverviewIds: Set<Long> = emptySet(),
     onAiOverview: ((Long) -> Unit)? = null,
-    credibilityScores: Map<Long, Float> = emptyMap(),
-    isGeneratingScore: Boolean = false,
-    onCredibilityScore: ((Long) -> Unit)? = null
+    credibilityEnabled: Boolean = false,
+    credibilityReports: Map<Long, CredibilityReport> = emptyMap(),
+    analyzingCredibilityIds: Set<Long> = emptySet(),
+    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
@@ -270,11 +277,12 @@ private fun ArticlePager(
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
                     articleContent = getContentForEntry(entry.id) ?: "No content available",
                     aiOverview = aiOverviews[entry.id],
-                    isGeneratingOverview = isGeneratingOverview && pagerState.currentPage == page,
+                    isGeneratingOverview = generatingOverviewIds.contains(entry.id),
                     onAiOverview = onAiOverview,
-                    credibilityScore = credibilityScores[entry.id],
-                    isGeneratingScore = isGeneratingScore && pagerState.currentPage == page,
-                    onCredibilityScore = onCredibilityScore
+                    credibilityEnabled = credibilityEnabled,
+                    credibilityReport = credibilityReports[entry.id],
+                    isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
+                    onAnalyzeCredibility = onAnalyzeCredibility
                 )
                 LaunchedEffect(entry.id) {
                     if (!entry.isRead) {
@@ -358,11 +366,12 @@ private fun ArticleContent(
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
     onAiOverview: ((Long) -> Unit)? = null,
-    credibilityScore: Float? = null,
-    isGeneratingScore: Boolean = false,
-    onCredibilityScore: ((Long) -> Unit)? = null
+    credibilityEnabled: Boolean = false,
+    credibilityReport: CredibilityReport? = null,
+    isAnalyzingCredibility: Boolean = false,
+    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
 ) {
-    val dateText = remember(entry.publishedAt) { formatPublishedDate(entry.publishedAt) }
+    val dateText = remember(entry.publishedAt) { formatTimestamp(entry.publishedAt) }
     val progressState = remember { mutableFloatStateOf(0f) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
@@ -419,9 +428,12 @@ private fun ArticleContent(
                         aiOverview = aiOverview,
                         isGeneratingOverview = isGeneratingOverview,
                         onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null,
-                        credibilityScore = credibilityScore,
-                        isGeneratingScore = isGeneratingScore,
-                        onCredibilityScoreClick = if (onCredibilityScore != null) { { onCredibilityScore(entry.id) } } else null
+                        credibilityEnabled = credibilityEnabled,
+                        credibilityReport = credibilityReport,
+                        isAnalyzingCredibility = isAnalyzingCredibility,
+                        onAnalyzeCredibility = if (onAnalyzeCredibility != null) {
+                            { force -> onAnalyzeCredibility(entry.id, force) }
+                        } else null
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     HorizontalDivider()
@@ -501,11 +513,13 @@ private fun MetaChips(
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
     onAiOverviewClick: (() -> Unit)? = null,
-    credibilityScore: Float? = null,
-    isGeneratingScore: Boolean = false,
-    onCredibilityScoreClick: (() -> Unit)? = null
+    credibilityEnabled: Boolean = false,
+    credibilityReport: CredibilityReport? = null,
+    isAnalyzingCredibility: Boolean = false,
+    onAnalyzeCredibility: ((Boolean) -> Unit)? = null
 ) {
-    val isAiExpanded = remember { mutableStateOf(false) }
+    val isAiExpanded = rememberSaveable { mutableStateOf(false) }
+    val isCredibilityExpanded = rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         @OptIn(ExperimentalLayoutApi::class)
@@ -562,47 +576,18 @@ private fun MetaChips(
                     )
                 )
             }
-            if (entryId != null && onCredibilityScoreClick != null) {
-                androidx.compose.material3.AssistChip(
+            if (entryId != null && credibilityEnabled && onAnalyzeCredibility != null) {
+                CredibilityChip(
+                    report = credibilityReport,
+                    isAnalyzing = isAnalyzingCredibility,
                     onClick = {
-                        onCredibilityScoreClick()
-                    },
-                    label = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.Info,
-                                contentDescription = "Credibility Score",
-                                modifier = Modifier.size(16.dp),
-                                tint = when {
-                                    credibilityScore == null && isGeneratingScore -> MaterialTheme.colorScheme.primary
-                                    credibilityScore != null && credibilityScore >= 0.7f -> Color(0xFF4CAF50) // Green
-                                    credibilityScore != null && credibilityScore >= 0.4f -> Color(0xFFFF9800) // Orange
-                                    credibilityScore != null -> Color(0xFFE53935) // Red
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            val chipText = when {
-                                credibilityScore == null && isGeneratingScore -> "Analyzing..."
-                                credibilityScore == null -> "Check Credibility"
-                                else -> {
-                                    val percentage = (credibilityScore * 100).toInt()
-                                    "$percentage% credible"
-                                }
-                            }
-                            Text(chipText)
+                        if (credibilityReport == null) {
+                            isCredibilityExpanded.value = true
+                            onAnalyzeCredibility(false)
+                        } else {
+                            isCredibilityExpanded.value = !isCredibilityExpanded.value
                         }
-                    },
-                    enabled = !(credibilityScore == null && isGeneratingScore),
-                    colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
-                        containerColor = when {
-                            credibilityScore != null && credibilityScore >= 0.7f -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                            credibilityScore != null && credibilityScore >= 0.4f -> Color(0xFFFF9800).copy(alpha = 0.2f)
-                            credibilityScore != null -> Color(0xFFE53935).copy(alpha = 0.2f)
-                            isGeneratingScore -> MaterialTheme.colorScheme.primaryContainer
-                            else -> MaterialTheme.colorScheme.surfaceVariant
-                        }
-                    )
+                    }
                 )
             }
         }
@@ -671,11 +656,234 @@ private fun MetaChips(
                 }
             }
         }
+
+        if (entryId != null && credibilityEnabled && isCredibilityExpanded.value &&
+            (credibilityReport != null || isAnalyzingCredibility)
+        ) {
+            AnimatedVisibility(
+                visible = isCredibilityExpanded.value,
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut()
+            ) {
+                CredibilityCard(
+                    report = credibilityReport,
+                    isAnalyzing = isAnalyzingCredibility,
+                    onReanalyze = { onAnalyzeCredibility?.invoke(true) }
+                )
+            }
+        }
     }
 }
 
-private fun formatPublishedDate(publishedAt: Instant): String =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(publishedAt)
+@Composable
+private fun CredibilityChip(
+    report: CredibilityReport?,
+    isAnalyzing: Boolean,
+    onClick: () -> Unit
+) {
+    val accent = credibilityAccent(report)
+    androidx.compose.material3.AssistChip(
+        onClick = onClick,
+        label = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = accent ?: MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                val chipText = when {
+                    isAnalyzing -> "Analyzing..."
+                    report == null -> "Check credibility"
+                    else -> credibilityLevelLabel(report.level)
+                }
+                Text(chipText)
+            }
+        },
+        enabled = !isAnalyzing,
+        colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
+            containerColor = when {
+                accent != null -> accent.copy(alpha = 0.18f)
+                isAnalyzing -> MaterialTheme.colorScheme.primaryContainer
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
+        )
+    )
+}
+
+@Composable
+private fun CredibilityCard(
+    report: CredibilityReport?,
+    isAnalyzing: Boolean,
+    onReanalyze: () -> Unit
+) {
+    val accent = credibilityAccent(report) ?: MaterialTheme.colorScheme.primary
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Icon(
+                    Icons.Filled.Info,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (report == null) "Credibility" else credibilityLevelLabel(report.level),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = accent
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (isAnalyzing || report == null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Analyzing the article...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                return@Column
+            }
+
+            if (report.summary.isNotBlank()) {
+                Text(
+                    text = report.summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (report.reasons.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                CredibilityBulletList(
+                    title = "What the model saw",
+                    items = report.reasons,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (report.redFlags.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                CredibilityBulletList(
+                    title = "Red flags",
+                    items = report.redFlags,
+                    color = LocalExtendedColors.current.credibilityLow
+                )
+            }
+
+            if (report.factors.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                report.factors.forEach { factor ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = factor.name.replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(0.4f)
+                        )
+                        LinearProgressIndicator(
+                            progress = { factor.score },
+                            color = credibilityColor(CredibilityLevel.fromScore(factor.score)),
+                            modifier = Modifier
+                                .weight(0.6f)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(50))
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = credibilityDisclaimer(report),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            TextButton(
+                onClick = onReanalyze,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Re-analyze")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CredibilityBulletList(title: String, items: List<String>, color: Color) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+    items.forEach { item ->
+        Row(modifier = Modifier.padding(vertical = 1.dp)) {
+            Text(text = "• ", style = MaterialTheme.typography.bodySmall, color = color)
+            Text(text = item, style = MaterialTheme.typography.bodySmall, color = color)
+        }
+    }
+}
+
+private fun credibilityLevelLabel(level: CredibilityLevel): String = when (level) {
+    CredibilityLevel.HIGH -> "Credibility: strong signals"
+    CredibilityLevel.MIXED -> "Credibility: mixed signals"
+    CredibilityLevel.LOW -> "Credibility: weak signals"
+}
+
+@Composable
+private fun credibilityColor(level: CredibilityLevel): Color {
+    val extended = LocalExtendedColors.current
+    return when (level) {
+        CredibilityLevel.HIGH -> extended.credibilityHigh
+        CredibilityLevel.MIXED -> extended.credibilityMixed
+        CredibilityLevel.LOW -> extended.credibilityLow
+    }
+}
+
+@Composable
+private fun credibilityAccent(report: CredibilityReport?): Color? =
+    report?.let { credibilityColor(it.level) }
+
+private fun credibilityDisclaimer(report: CredibilityReport): String = buildString {
+    append("AI estimate from the article text only — not a fact check. ")
+    append(
+        when (report.confidence) {
+            CredibilityConfidence.HIGH -> "Model confidence: high. "
+            CredibilityConfidence.MEDIUM -> "Model confidence: medium. "
+            CredibilityConfidence.LOW -> "Model confidence: low. "
+        }
+    )
+    if (report.contentTruncated) append("Long article, only the first part was analyzed. ")
+    append("Analyzed ${formatTimestamp(report.analyzedAt)} with ${report.modelId}.")
+}
+
+private fun formatTimestamp(instant: Instant): String =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(instant)
 
 @Composable
 private fun ImageActionsDialog(

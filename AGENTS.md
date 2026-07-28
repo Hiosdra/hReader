@@ -54,7 +54,8 @@ build script.
 ## Making changes
 
 - A new backend capability means extending `FeedBackend` and implementing it in both backends.
-- Room schema changes need a version bump in `AppDatabase`. The builder uses
-  `fallbackToDestructiveMigration`, so local data is dropped rather than migrated.
+- Room schema changes need a version bump in `AppDatabase` and a `Migration` in
+  `data/local/Migrations.kt`, registered on the builder in `di/appModule.kt`. Destructive
+  fallback stays enabled as a last resort, so a missing migration costs the user their cache.
 - Update `di/appModule.kt` or `di/networkModule.kt` when adding types.
 - Do not add dependencies without discussion.
