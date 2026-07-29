@@ -1,6 +1,9 @@
 package com.hiosdra.hreader.navigation
 
 import android.util.Log
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -11,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hiosdra.hreader.ui.article.ArticleScreen
+import com.hiosdra.hreader.ui.components.SwipeFromLeftEdge
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
 import com.hiosdra.hreader.ui.feeds.FeedsScreen
 import com.hiosdra.hreader.ui.feeds.add.AddFeedScreen
@@ -20,6 +24,8 @@ import com.hiosdra.hreader.ui.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.ui.settings.SettingsScreen
 import org.koin.compose.koinInject
 
+private const val FeedsSlideMillis = 280
+
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
@@ -28,6 +34,7 @@ fun AppNavigation(
     val startDestination = remember {
         if (preferencesManager.hasBackendCredentials()) Routes.MAIN else Routes.SERVER_SETUP
     }
+    val openFeeds = { navController.navigate(Routes.FEEDS) { launchSingleTop = true } }
     NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.SERVER_SETUP) {
             ServerSetupScreen(
@@ -39,7 +46,9 @@ fun AppNavigation(
             )
         }
         composable(Routes.MAIN) {
-            MainScreen(navController = navController)
+            SwipeFromLeftEdge(onOpen = openFeeds) {
+                MainScreen(navController = navController)
+            }
         }
         composable(
             route = Routes.MAIN_WITH_OPTIONAL_FEED,
@@ -49,9 +58,17 @@ fun AppNavigation(
         ) { backStackEntry ->
             val raw = backStackEntry.arguments?.getLong("feedId") ?: Routes.FEED_ID_NONE
             val feedId = if (raw == Routes.FEED_ID_NONE) null else raw
-            MainScreen(navController = navController, feedId = feedId)
+            SwipeFromLeftEdge(onOpen = openFeeds, enabled = feedId == null) {
+                MainScreen(navController = navController, feedId = feedId)
+            }
         }
-        composable(Routes.FEEDS) { FeedsScreen(navController = navController) }
+        composable(
+            route = Routes.FEEDS,
+            enterTransition = { slideInHorizontally(animationSpec = tween(FeedsSlideMillis)) { -it } },
+            exitTransition = { slideOutHorizontally(animationSpec = tween(FeedsSlideMillis)) { -it } },
+            popEnterTransition = { slideInHorizontally(animationSpec = tween(FeedsSlideMillis)) { -it } },
+            popExitTransition = { slideOutHorizontally(animationSpec = tween(FeedsSlideMillis)) { -it } }
+        ) { FeedsScreen(navController = navController) }
         composable(Routes.ADD_FEED) {
             AddFeedScreen(
                 navController = navController,
