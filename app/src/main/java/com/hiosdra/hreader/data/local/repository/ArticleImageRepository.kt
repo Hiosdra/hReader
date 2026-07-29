@@ -5,6 +5,7 @@ import android.util.Log
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleImageDao
 import com.hiosdra.hreader.data.local.entity.ArticleImage
+import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -21,10 +22,19 @@ class ArticleImageRepository(
     private val articleImageDao: ArticleImageDao,
     private val articleDao: ArticleDao,
     private val okHttpClient: OkHttpClient,
+    private val preferencesManager: PreferencesManager,
     private val fileExists: (String) -> Boolean = { path -> File(path).exists() }
 ) {
     companion object {
         private const val TAG = "ArticleImageRepo"
+
+        /**
+         * A single hero image this large is a photographer's export, not something a phone screen
+         * needs, and one of them can eat a noticeable slice of the whole cache budget.
+         */
+        private const val MAX_IMAGE_BYTES = 2L * 1024 * 1024
+
+        private const val BYTES_PER_MEGABYTE = 1024L * 1024
     }
 
     private val imagesDir = File(context.filesDir, "article_images")
@@ -33,6 +43,8 @@ class ArticleImageRepository(
     suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): ArticleImage? =
         withContext(Dispatchers.IO) {
             try {
+                if (!preferencesManager.getImageDownloadEnabled()) return@withContext null
+
                 val existingImage = articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
                 if (existingImage != null && fileExists(existingImage.localFilePath)) {
                     return@withContext existingImage
@@ -49,6 +61,15 @@ class ArticleImageRepository(
 
                 val body = response.body
                 val contentType = body.contentType()?.toString()
+
+                // The declared length is checked before a byte is written: streaming it to disk
+                // first and deleting it afterwards spends the bandwidth either way.
+                val declaredLength = body.contentLength()
+                if (declaredLength > MAX_IMAGE_BYTES) {
+                    Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
+                    response.close()
+                    return@withContext null
+                }
 
                 // Generate file name and path
                 val imageId = generateImageId(entryId, imageUrl)
@@ -74,7 +95,14 @@ class ArticleImageRepository(
                     fileSize = fileSize
                 )
 
+                if (fileSize > MAX_IMAGE_BYTES) {
+                    Log.d(TAG, "Discarding $imageUrl: $fileSize bytes exceeds the per-image cap")
+                    localFile.delete()
+                    return@withContext null
+                }
+
                 articleImageDao.insertArticleImage(articleImage)
+                enforceCacheBudget()
                 articleImage
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to download/store image $imageUrl for entry $entryId", e)
@@ -92,6 +120,27 @@ class ArticleImageRepository(
         articleImageDao.getImagesForArticle(entryId)
             .filter { fileExists(it.localFilePath) }
             .associate { it.originalUrl to it.localFilePath }
+
+    /**
+     * Keeps the image directory under the configured budget by dropping the oldest downloads
+     * first. Without it a large backlog fills the device, and offline is exactly when the user
+     * cannot free space by re-downloading anything.
+     */
+    suspend fun enforceCacheBudget() {
+        val budgetBytes = preferencesManager.getImageCacheBudgetMegabytes() * BYTES_PER_MEGABYTE
+        if (budgetBytes <= 0) return
+
+        var storedBytes = articleImageDao.getTotalImageBytes()
+        if (storedBytes <= budgetBytes) return
+
+        for (image in articleImageDao.getImagesOldestFirst()) {
+            if (storedBytes <= budgetBytes) break
+            File(image.localFilePath).delete()
+            articleImageDao.deleteArticleImage(image)
+            storedBytes -= image.fileSize ?: 0L
+        }
+        Log.i(TAG, "Image cache trimmed to $storedBytes bytes")
+    }
 
     suspend fun cleanupOrphanedImages() {
         val allImages = articleImageDao.getAllArticleImages()

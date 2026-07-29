@@ -183,6 +183,25 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
+    fun getImageDownloadEnabled(): Boolean =
+        sharedPreferences.getBoolean(KEY_IMAGE_DOWNLOAD_ENABLED, true)
+
+    fun setImageDownloadEnabled(enabled: Boolean) {
+        sharedPreferences.edit()
+            .putBoolean(KEY_IMAGE_DOWNLOAD_ENABLED, enabled)
+            .apply()
+    }
+
+    /** Ceiling on the downloaded-image directory. Oldest images are evicted to stay under it. */
+    fun getImageCacheBudgetMegabytes(): Int =
+        sharedPreferences.getInt(KEY_IMAGE_CACHE_BUDGET_MB, DEFAULT_IMAGE_CACHE_BUDGET_MB)
+
+    fun setImageCacheBudgetMegabytes(megabytes: Int) {
+        sharedPreferences.edit()
+            .putInt(KEY_IMAGE_CACHE_BUDGET_MB, megabytes.coerceAtLeast(0))
+            .apply()
+    }
+
     /** When the app last enqueued a background sync chain, so the throttle survives process death. */
     fun getLastChainedSyncTimestamp(): Long =
         sharedPreferences.getLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, 0L)
@@ -220,8 +239,11 @@ class PreferencesManager(context: Context) {
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
         private const val KEY_OFFLINE_BACKLOG_TARGET = "offline_backlog_target"
+        private const val KEY_IMAGE_DOWNLOAD_ENABLED = "image_download_enabled"
+        private const val KEY_IMAGE_CACHE_BUDGET_MB = "image_cache_budget_mb"
         private const val KEY_LAST_CHAINED_SYNC_TIMESTAMP = "last_chained_sync_timestamp"
         private const val MAX_PERFORMANCE_RECORDS = 50
         private const val DEFAULT_OFFLINE_BACKLOG_TARGET = 0
+        private const val DEFAULT_IMAGE_CACHE_BUDGET_MB = 500
     }
 }

@@ -147,6 +147,8 @@ fun SettingsScreen(
                         state = offline,
                         onPrepare = settingsViewModel::prepareForOffline,
                         onBacklogTargetChange = settingsViewModel::onBacklogTargetChange,
+                        onImageDownloadEnabledChange = settingsViewModel::onImageDownloadEnabledChange,
+                        onImageCacheBudgetChange = settingsViewModel::onImageCacheBudgetChange,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
