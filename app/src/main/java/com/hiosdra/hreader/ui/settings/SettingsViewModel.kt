@@ -46,6 +46,10 @@ data class AiModelsUiState(
 
     val selectedModelIsMissing: Boolean
         get() = models.isNotEmpty() && models.none { it.id == selectedModelId }
+
+    /** Falls back to the id: the list may not have loaded yet, or may never load offline. */
+    val selectedModelName: String
+        get() = models.find { it.id == selectedModelId }?.displayName ?: selectedModelId
 }
 
 data class OfflineUiState(
