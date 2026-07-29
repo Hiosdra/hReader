@@ -1,13 +1,23 @@
 package com.hiosdra.hreader.data.local.repository
 
 import android.util.Log
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import androidx.room.withTransaction
 import com.hiosdra.hreader.data.local.AppDatabase
+import com.hiosdra.hreader.data.local.buildFtsMatchQuery
+import com.hiosdra.hreader.data.local.buildLikePattern
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.FeedDao
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
+import com.hiosdra.hreader.data.local.entity.ArticleListItem
+import com.hiosdra.hreader.data.local.entity.ArticleWithFeed
 import com.hiosdra.hreader.data.local.entity.FeedEntity
 import com.hiosdra.hreader.data.local.entity.PrefetchTarget
+import com.hiosdra.hreader.data.model.ArticleListEntry
+import com.hiosdra.hreader.data.model.ArticleListQuery
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
@@ -15,6 +25,7 @@ import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.ENTRIES_PAGE_LIMIT
 import com.hiosdra.hreader.data.remote.FeedBackend
 import com.hiosdra.hreader.util.SyncPerformanceLogger
+import com.hiosdra.hreader.util.extractArticlePreview
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,8 +37,12 @@ private const val TAG = "ArticleRepository"
 /** Miniflux and FreshRSS both take the ids inline, so one huge request is split into chunks. */
 private const val STATUS_UPDATE_CHUNK = 200
 
-/** Deleting in chunks keeps the statement below SQLite's bound-variable ceiling. */
+/**
+ * Deleting and updating in chunks keeps the statement below SQLite's bound-variable ceiling, which
+ * on Android is 999. "Mark all as read" over a large backlog reaches that on its own.
+ */
 private const val DELETE_CHUNK = 500
+private const val LOCAL_UPDATE_CHUNK = 400
 
 private val INCREMENTAL_SYNC_WINDOW: Duration = Duration.ofHours(24)
 
@@ -47,6 +62,26 @@ private val READ_ARTICLE_RETENTION: Duration = Duration.ofDays(30)
 /** Bounds a backlog top-up against a backend that keeps handing back entries already stored. */
 private const val MAX_BACKLOG_PAGES = 25
 
+/** Unread articles as the home-screen widget needs them: a total and the newest few titles. */
+data class UnreadSummary(
+    val unreadCount: Int,
+    val headlines: List<String>
+)
+
+/** A feed unsubscribed elsewhere leaves its articles behind; the list still has to name them. */
+private const val UNKNOWN_FEED_TITLE = "Unknown feed"
+
+/**
+ * A page is a little over a screenful, so scrolling stays ahead of the reader without loading the
+ * cache back into memory. Placeholders are off: the list groups rows by publication day, and a
+ * header cannot be derived from a row that is not there yet.
+ */
+private val PAGING_CONFIG = PagingConfig(
+    pageSize = 40,
+    prefetchDistance = 20,
+    enablePlaceholders = false
+)
+
 class ArticleRepository(
     private val articleDao: ArticleDao,
     private val feedDao: FeedDao,
@@ -55,18 +90,66 @@ class ArticleRepository(
     private val preferencesManager: PreferencesManager,
     private val syncPerformanceLogger: SyncPerformanceLogger
 ) {
-    fun getAllArticlesOldestFirst(): Flow<List<Entry>> =
-        articleDao.getAllArticlesOldestFirst().map { it.mapToEntries() }
+    /**
+     * The article list, filtered and searched in SQLite and read a page at a time. All three used
+     * to happen in the view model over the whole cache: every article body in memory, scanned again
+     * on each keystroke.
+     */
+    fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListEntry>> {
+        val match = buildFtsMatchQuery(query.searchQuery.trim())
+        return Pager(PAGING_CONFIG) {
+            if (match == null) {
+                articleDao.pageArticles(
+                    feedId = query.feedId,
+                    starredOnly = query.starredOnly,
+                    includeRead = query.includeRead,
+                    sessionStart = query.sessionStart
+                )
+            } else {
+                articleDao.pageSearchResults(
+                    feedId = query.feedId,
+                    starredOnly = query.starredOnly,
+                    includeRead = query.includeRead,
+                    sessionStart = query.sessionStart,
+                    ftsQuery = match,
+                    titleQuery = buildLikePattern(query.searchQuery)
+                )
+            }
+        }.flow.map { page -> page.map { it.toListEntry() } }
+    }
+
+    /**
+     * The same list as ids, for the reader to page through. A search is deliberately not applied:
+     * opening an article from a search result and swiping on should walk the feed, not the handful
+     * of matches, and a query that changes underneath would resize the pager mid-read.
+     */
+    suspend fun listIds(query: ArticleListQuery): List<Long> =
+        articleDao.getListIds(
+            feedId = query.feedId,
+            starredOnly = query.starredOnly,
+            includeRead = query.includeRead,
+            sessionStart = query.sessionStart
+        ).mapNotNull { it.toLongOrNull() }
+
+    suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
+        articleDao.getUnreadIds(feedId, starredOnly).mapNotNull { it.toLongOrNull() }
+
+    /** What the home-screen widget shows, in one read rather than two round trips per refresh. */
+    suspend fun unreadSummary(headlineLimit: Int): UnreadSummary = UnreadSummary(
+        unreadCount = articleDao.countUnread(),
+        headlines = articleDao.getNewestUnreadTitles(headlineLimit)
+    )
+
+    fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
+        articleDao.observeUnreadCountFor(feedId, starredOnly)
+
+    fun observeReadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
+        articleDao.observeReadCountFor(feedId, starredOnly)
 
     fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
-        articleDao.getArticlesByIds(ids.map { it.toString() }).map { it.mapToEntries() }
-
-    suspend fun getAllArticlesForFeed(feedId: Long): Flow<List<Entry>> {
-        val feed = feedDao.getFeedById(feedId) ?: throw IllegalStateException("Feed not found")
-        return articleDao.getAllArticlesForFeed(feedId).map { articles ->
-            articles.map { it.toEntry(feed) }
+        articleDao.getArticlesWithFeedByIds(ids.map { it.toString() }).map { rows ->
+            rows.map { it.toEntry() }
         }
-    }
 
     suspend fun refreshArticles(forceFullSync: Boolean = false) {
         val syncStartTime = System.currentTimeMillis()
@@ -74,6 +157,7 @@ class ArticleRepository(
         // Local changes go up before the server state comes down, so reconciliation below can
         // treat the backend as authoritative without discarding anything the user just did.
         pushPendingStatuses()
+        pushPendingStars()
 
         val useIncrementalSync = !forceFullSync && shouldUseIncrementalSync(syncStartTime)
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
@@ -235,6 +319,15 @@ class ArticleRepository(
         }
     }
 
+    private suspend fun pushPendingStars() {
+        val pending = articleDao.getPendingStars()
+        if (pending.isEmpty()) return
+        Log.i(TAG, "Pushing ${pending.size} queued stars")
+        pending.groupBy { it.starred }.forEach { (starred, queued) ->
+            pushStarOrLeaveQueued(queued.map { it.id }, starred)
+        }
+    }
+
     /**
      * A failed push is not an error the caller has to handle: the change stays queued and the next
      * sync tries again. Cancellation is not a failure and has to keep propagating.
@@ -253,16 +346,55 @@ class ArticleRepository(
         }
     }
 
+    private suspend fun pushStarOrLeaveQueued(articleIds: List<String>, starred: Boolean) {
+        try {
+            articleIds.chunked(STATUS_UPDATE_CHUNK).forEach { chunk ->
+                api.updateEntriesStarred(chunk.map { it.toLong() }, starred)
+                articleDao.clearStarredPendingSync(chunk, starred)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Star push failed; queued for the next sync: ${e.message}")
+        }
+    }
+
     suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus) {
         if (articleIds.isEmpty()) return
         // Queued first: if the push fails (offline, server down) the next sync picks it up.
         val readAt = Instant.now().takeIf { newStatus == ArticleStatus.READ }
-        articleDao.updateStatusForIds(articleIds, newStatus, readAt)
+        articleIds.chunked(LOCAL_UPDATE_CHUNK).forEach { chunk ->
+            articleDao.updateStatusForIds(chunk, newStatus, readAt)
+        }
         pushStatusOrLeaveQueued(articleIds, newStatus)
     }
 
     suspend fun updateReadStatus(articleId: String, newStatus: ArticleStatus) {
         updateReadStatus(listOf(articleId), newStatus)
+    }
+
+    suspend fun updateStarred(articleId: Long, starred: Boolean) {
+        val ids = listOf(articleId.toString())
+        articleDao.updateStarredForIds(ids, starred)
+        pushStarOrLeaveQueued(ids, starred)
+    }
+
+    /**
+     * Articles only carry a preview from the version that introduced the column, so everything
+     * cached before it has none. Filling them in from the background beats a migration that would
+     * have to run an HTML parser over every stored body inside one transaction.
+     */
+    suspend fun backfillMissingPreviews(limit: Int = PREVIEW_BACKFILL_LIMIT): Int {
+        val stale = articleDao.getArticlesMissingPreview(limit)
+        if (stale.isEmpty()) return 0
+        var filled = 0
+        stale.forEach { article ->
+            val preview = extractArticlePreview(article.content) ?: return@forEach
+            articleDao.setPreview(article.id, preview)
+            filled++
+        }
+        if (filled > 0) Log.d(TAG, "Backfilled $filled article previews")
+        return filled
     }
 
     /**
@@ -272,14 +404,10 @@ class ArticleRepository(
      */
     suspend fun getPrefetchTargets(): List<PrefetchTarget> = articleDao.getPrefetchTargets()
 
-    suspend fun getFeed(feedId: Long): Feed? {
-        val entity = feedDao.getFeedById(feedId) ?: return null
-        return entity.toFeed()
-    }
+    suspend fun getFeed(feedId: Long): Feed? = feedDao.getFeedById(feedId)?.toFeed()
 
-    private suspend fun List<ArticleEntity>.mapToEntries(): List<Entry> = map { article ->
-        val feed = feedDao.getFeedById(article.feedId) ?: throw IllegalStateException("Feed not found")
-        article.toEntry(feed)
+    companion object {
+        internal const val PREVIEW_BACKFILL_LIMIT = 500
     }
 }
 
@@ -295,23 +423,55 @@ internal fun ArticleEntity.reconciledWith(local: ArticleEntity?, now: Instant): 
     val merged = if (local != null && local.pendingSync) {
         copy(status = local.status, pendingSync = true)
     } else this
+    // A star waiting to be pushed outranks what the backend reports, for the same reason a read
+    // state does: the backend has not been told about it yet.
+    val starPending = local?.starredPendingSync == true
     val readAt = if (merged.status == ArticleStatus.READ) local?.readAt ?: now else null
     // A freshly fetched entity never knows it was downloaded as backlog, so the local marker is
     // carried over; losing it would expose the article to full-sync reconciliation.
-    return merged.copy(readAt = readAt, backlogFetchedAt = local?.backlogFetchedAt)
+    return merged.copy(
+        readAt = readAt,
+        backlogFetchedAt = local?.backlogFetchedAt,
+        starred = if (starPending) local.starred else merged.starred,
+        starredPendingSync = starPending
+    )
 }
 
-private fun ArticleEntity.toEntry(feedEntity: FeedEntity): Entry = Entry(
+private fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
+    id = id.toLong(),
+    title = title,
+    preview = preview,
+    author = author,
+    publishedAt = publishedAt,
+    feed = Feed(
+        id = feedId,
+        title = feedTitle ?: UNKNOWN_FEED_TITLE,
+        siteUrl = feedSiteUrl,
+        feedUrl = feedUrl.orEmpty()
+    ),
+    imageUrl = enclosures.firstOrNull { it.isImage }?.url,
+    status = status ?: ArticleStatus.UNREAD,
+    starred = starred,
+    isBacklog = backlogFetchedAt != null
+)
+
+private fun ArticleWithFeed.toEntry(): Entry = Entry(
     id = id.toLong(),
     title = title,
     author = author,
     url = url,
     publishedAt = publishedAt,
     content = content,
-    feed = feedEntity.toFeed(),
+    feed = Feed(
+        id = feedId,
+        title = feedTitle ?: UNKNOWN_FEED_TITLE,
+        siteUrl = feedSiteUrl,
+        feedUrl = feedUrl.orEmpty()
+    ),
     readingTime = readingTime,
     enclosures = enclosures,
     status = status ?: ArticleStatus.UNREAD,
+    starred = starred,
     isBacklog = backlogFetchedAt != null
 )
 
@@ -329,10 +489,12 @@ private fun Entry.toEntity(): ArticleEntity = ArticleEntity(
     url = url,
     publishedAt = publishedAt,
     content = content,
+    preview = extractArticlePreview(content),
     feedId = feed.id,
     readingTime = readingTime,
     enclosures = enclosures,
-    status = status
+    status = status,
+    starred = starred
 )
 
 private fun Feed.toFeedEntity(): FeedEntity = FeedEntity(

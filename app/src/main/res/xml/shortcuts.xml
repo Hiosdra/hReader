@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Long-press shortcut on the launcher icon. Subscribing is otherwise three taps in from the
+   article list, and it is the one thing people arrive at the app to do rather than to read.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_feed"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_monochrome"
+        android:shortcutShortLabel="@string/shortcut_add_feed_short"
+        android:shortcutLongLabel="@string/shortcut_add_feed_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="hreader://add-feed"
+            android:targetPackage="com.hiosdra.hreader"
+            android:targetClass="com.hiosdra.hreader.MainActivity" />
+    </shortcut>
+</shortcuts>

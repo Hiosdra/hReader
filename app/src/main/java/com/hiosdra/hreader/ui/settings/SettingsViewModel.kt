@@ -57,7 +57,22 @@ data class OfflineUiState(
     val backlogTarget: Int = 0,
     val imageDownloadEnabled: Boolean = true,
     val imageCacheBudgetMegabytes: Int = 0,
-    val isPreparing: Boolean = false
+    val isPreparing: Boolean = false,
+    val preparationDone: Int = 0,
+    val preparationTotal: Int = 0
+) {
+    /** Null while the worker has not reported counts yet, which reads as indeterminate. */
+    val preparationProgress: Float?
+        get() = if (preparationTotal > 0) preparationDone.toFloat() / preparationTotal else null
+}
+
+data class SyncUiState(
+    val intervalMinutes: Int = PreferencesManager.DEFAULT_SYNC_INTERVAL_MINUTES,
+    val unmeteredOnly: Boolean = false,
+    val syncWhileRoaming: Boolean = true,
+    val quietHoursEnabled: Boolean = false,
+    val quietHoursStart: Int = PreferencesManager.DEFAULT_QUIET_HOURS_START,
+    val quietHoursEnd: Int = PreferencesManager.DEFAULT_QUIET_HOURS_END
 )
 
 class SettingsViewModel(
@@ -80,6 +95,9 @@ class SettingsViewModel(
     private val _offline = MutableStateFlow(currentOfflineSettings())
     val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
 
+    private val _sync = MutableStateFlow(currentSyncSettings())
+    val sync: StateFlow<SyncUiState> = _sync.asStateFlow()
+
     init {
         loadAiModels()
         viewModelScope.launch {
@@ -88,16 +106,65 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
-            syncScheduler.isPreparingForOffline().collect { preparing ->
-                _offline.value = _offline.value.copy(isPreparing = preparing)
+            syncScheduler.observeOfflinePreparation().collect { progress ->
+                _offline.value = _offline.value.copy(
+                    isPreparing = progress.isRunning,
+                    preparationDone = progress.done,
+                    preparationTotal = progress.total
+                )
             }
         }
     }
 
     fun prepareForOffline() {
-        _offline.value = _offline.value.copy(isPreparing = true)
+        _offline.value = _offline.value.copy(isPreparing = true, preparationDone = 0, preparationTotal = 0)
         syncScheduler.prepareForOffline()
     }
+
+    fun onSyncIntervalChange(minutes: Int) {
+        preferencesManager.setSyncIntervalMinutes(minutes)
+        _sync.value = _sync.value.copy(intervalMinutes = preferencesManager.getSyncIntervalMinutes())
+        rescheduleSync()
+    }
+
+    fun onUnmeteredOnlyChange(enabled: Boolean) {
+        preferencesManager.setSyncOnUnmeteredOnly(enabled)
+        _sync.value = _sync.value.copy(unmeteredOnly = enabled)
+        rescheduleSync()
+    }
+
+    fun onSyncWhileRoamingChange(enabled: Boolean) {
+        preferencesManager.setSyncWhileRoaming(enabled)
+        _sync.value = _sync.value.copy(syncWhileRoaming = enabled)
+        rescheduleSync()
+    }
+
+    fun onQuietHoursEnabledChange(enabled: Boolean) {
+        preferencesManager.setQuietHoursEnabled(enabled)
+        _sync.value = _sync.value.copy(quietHoursEnabled = enabled)
+    }
+
+    fun onQuietHoursChange(startHour: Int, endHour: Int) {
+        preferencesManager.setQuietHours(startHour, endHour)
+        _sync.value = _sync.value.copy(
+            quietHoursStart = preferencesManager.getQuietHoursStartHour(),
+            quietHoursEnd = preferencesManager.getQuietHoursEndHour()
+        )
+    }
+
+    /** Constraints and period are fixed at registration, so a changed setting has to re-register. */
+    private fun rescheduleSync() {
+        syncScheduler.schedulePeriodicSync()
+    }
+
+    private fun currentSyncSettings() = SyncUiState(
+        intervalMinutes = preferencesManager.getSyncIntervalMinutes(),
+        unmeteredOnly = preferencesManager.getSyncOnUnmeteredOnly(),
+        syncWhileRoaming = preferencesManager.getSyncWhileRoaming(),
+        quietHoursEnabled = preferencesManager.getQuietHoursEnabled(),
+        quietHoursStart = preferencesManager.getQuietHoursStartHour(),
+        quietHoursEnd = preferencesManager.getQuietHoursEndHour()
+    )
 
     fun onBacklogTargetChange(target: Int) {
         preferencesManager.setOfflineBacklogTarget(target)

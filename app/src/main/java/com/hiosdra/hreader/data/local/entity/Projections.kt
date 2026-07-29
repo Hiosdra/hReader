@@ -2,6 +2,65 @@ package com.hiosdra.hreader.data.local.entity
 
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Enclosure
+import java.time.Instant
+
+/**
+ * A row of the article list, joined to its feed in one statement. Reading whole articles here
+ * pulled every cached body into memory for a screen that shows a title and four lines of preview,
+ * and looked the feed up once per row on top of it.
+ *
+ * [feedTitle] is nullable because the join is outer: an article whose feed was unsubscribed
+ * elsewhere used to abort the whole list with "Feed not found".
+ */
+data class ArticleListItem(
+    val id: String,
+    val title: String,
+    val author: String?,
+    val url: String,
+    val publishedAt: Instant,
+    val preview: String?,
+    val readingTime: Int?,
+    val enclosures: List<Enclosure>,
+    val status: ArticleStatus?,
+    val starred: Boolean,
+    val backlogFetchedAt: Instant?,
+    val feedId: Long,
+    val feedTitle: String?,
+    val feedSiteUrl: String?,
+    val feedUrl: String?
+)
+
+/** The full article plus its feed, for the reader. Same join, without dropping the body. */
+data class ArticleWithFeed(
+    val id: String,
+    val title: String,
+    val author: String?,
+    val url: String,
+    val publishedAt: Instant,
+    val content: String?,
+    val preview: String?,
+    val readingTime: Int?,
+    val enclosures: List<Enclosure>,
+    val status: ArticleStatus?,
+    val starred: Boolean,
+    val backlogFetchedAt: Instant?,
+    val feedId: Long,
+    val feedTitle: String?,
+    val feedSiteUrl: String?,
+    val feedUrl: String?
+)
+
+/** Just enough of an article to derive its stored preview from the body. */
+data class ArticleBody(
+    val id: String,
+    val content: String?
+)
+
+/** Stars queued for the backend, the starred counterpart of [PendingStatus]. */
+data class PendingStar(
+    val id: String,
+    val starred: Boolean
+)
 
 /**
  * Projection of the sync queue. Loading whole articles here would pull every cached article body

@@ -1,6 +1,8 @@
 package com.hiosdra.hreader.worker
 
 import android.content.Context
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.Data
@@ -8,7 +10,9 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +30,16 @@ private const val CHAINED_SYNC_THROTTLE_MILLIS = 2 * 60 * 1000L
 
 internal const val KEY_FORCE_FULL_SYNC = "force_full_sync"
 internal const val KEY_PREFETCH_CHAINED = "prefetch_chained"
+internal const val KEY_IGNORE_QUIET_HOURS = "ignore_quiet_hours"
+internal const val KEY_PROGRESS_DONE = "progress_done"
+internal const val KEY_PROGRESS_TOTAL = "progress_total"
+
+/** How far along a "prepare for offline" run is, for the screen that started it. */
+data class OfflinePreparationProgress(
+    val isRunning: Boolean = false,
+    val done: Int = 0,
+    val total: Int = 0
+)
 
 /**
  * Every enqueue point in the app, so they cannot drift apart on constraints. They did: the periodic
@@ -39,19 +53,48 @@ class SyncScheduler(
     private val workManager: WorkManager
         get() = WorkManager.getInstance(context)
 
-    private val networkConstraints = Constraints.Builder()
-        .setRequiredNetworkType(NetworkType.CONNECTED)
-        .build()
+    /**
+     * Built per enqueue rather than once: the reader can change the metered and roaming rules at
+     * any time, and a cached Constraints would keep scheduling against the old ones.
+     *
+     * Roaming is expressed as a capability on a [NetworkRequest] because [NetworkType] has no term
+     * for it. `NOT_ROAMING` needs API 28 and the app requires 29.
+     */
+    private fun networkConstraints(): Constraints {
+        val unmeteredOnly = preferencesManager.getSyncOnUnmeteredOnly()
+        val networkType = if (unmeteredOnly) NetworkType.UNMETERED else NetworkType.CONNECTED
+        val builder = Constraints.Builder()
+
+        if (preferencesManager.getSyncWhileRoaming()) {
+            builder.setRequiredNetworkType(networkType)
+        } else {
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+                .apply {
+                    if (unmeteredOnly) addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                }
+                .build()
+            // The NetworkType is kept as the fallback for platforms that cannot honour the request,
+            // so the constraint degrades to "any connection" rather than to none at all.
+            builder.setRequiredNetworkRequest(request, networkType)
+        }
+        return builder.build()
+    }
 
     fun schedulePeriodicSync() {
         workManager.cancelUniqueWork(LEGACY_ARTICLE_CONTENT_SYNC_WORK)
 
-        val workRequest = PeriodicWorkRequestBuilder<ContentSyncWorker>(1, TimeUnit.HOURS)
-            .setConstraints(networkConstraints)
+        val workRequest = PeriodicWorkRequestBuilder<ContentSyncWorker>(
+            preferencesManager.getSyncIntervalMinutes().toLong(),
+            TimeUnit.MINUTES
+        )
+            .setConstraints(networkConstraints())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
             .build()
         // UPDATE rather than KEEP so installs that registered this worker without constraints pick
-        // the new ones up instead of keeping the old registration forever.
+        // the new ones up instead of keeping the old registration forever. It is also what applies
+        // a changed interval or a newly turned-on Wi-Fi-only rule.
         workManager.enqueueUniquePeriodicWork(
             CONTENT_SYNC_WORK,
             ExistingPeriodicWorkPolicy.UPDATE,
@@ -90,37 +133,57 @@ class SyncScheduler(
      * A full sync followed by a prefetch of everything, for the reader about to lose connectivity.
      * Forced full rather than incremental: an incremental run right after a recent sync would
      * fetch nothing, which is the opposite of what "prepare for offline" is asked to do.
+     *
+     * Expedited and exempt from quiet hours, because someone is standing in front of the screen
+     * waiting for it. As ordinary background work it could sit queued past the train leaving.
      */
     fun prepareForOffline() {
         workManager
             .beginUniqueWork(
                 OFFLINE_PREPARATION_WORK,
                 ExistingWorkPolicy.REPLACE,
-                syncRequest(forceFullSync = true)
+                syncRequest(forceFullSync = true, expedited = true, ignoreQuietHours = true)
             )
-            .then(prefetchRequest())
+            .then(prefetchRequest(expedited = true, ignoreQuietHours = true))
             .enqueue()
     }
 
-    fun isPreparingForOffline(): Flow<Boolean> =
-        workManager.getWorkInfosForUniqueWorkFlow(OFFLINE_PREPARATION_WORK)
-            .map { infos -> infos.any { !it.state.isFinished } }
-
-    private fun syncRequest(forceFullSync: Boolean) =
-        OneTimeWorkRequestBuilder<ContentSyncWorker>()
-            .setConstraints(networkConstraints)
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
-            .setInputData(
-                Data.Builder()
-                    .putBoolean(KEY_FORCE_FULL_SYNC, forceFullSync)
-                    .putBoolean(KEY_PREFETCH_CHAINED, true)
-                    .build()
+    /**
+     * The prefetch stage reports how many articles it has stored, so the settings screen can show
+     * progress rather than an indeterminate spinner of unknown length.
+     */
+    fun observeOfflinePreparation(): Flow<OfflinePreparationProgress> =
+        workManager.getWorkInfosForUniqueWorkFlow(OFFLINE_PREPARATION_WORK).map { infos ->
+            val progress = infos.firstOrNull { it.state == WorkInfo.State.RUNNING }?.progress
+            OfflinePreparationProgress(
+                isRunning = infos.any { !it.state.isFinished },
+                done = progress?.getInt(KEY_PROGRESS_DONE, 0) ?: 0,
+                total = progress?.getInt(KEY_PROGRESS_TOTAL, 0) ?: 0
             )
-            .build()
+        }
 
-    private fun prefetchRequest() =
+    private fun syncRequest(
+        forceFullSync: Boolean,
+        expedited: Boolean = false,
+        ignoreQuietHours: Boolean = false
+    ) = OneTimeWorkRequestBuilder<ContentSyncWorker>()
+        .setConstraints(networkConstraints())
+        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
+        .setInputData(
+            Data.Builder()
+                .putBoolean(KEY_FORCE_FULL_SYNC, forceFullSync)
+                .putBoolean(KEY_PREFETCH_CHAINED, true)
+                .putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours)
+                .build()
+        )
+        .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
+        .build()
+
+    private fun prefetchRequest(expedited: Boolean = false, ignoreQuietHours: Boolean = false) =
         OneTimeWorkRequestBuilder<ArticleContentSyncWorker>()
-            .setConstraints(networkConstraints)
+            .setConstraints(networkConstraints())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
+            .setInputData(Data.Builder().putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours).build())
+            .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
             .build()
 }

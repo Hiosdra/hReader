@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp") version "2.3.10"
     id("androidx.room")
+    id("androidx.baselineprofile")
 }
 
 
@@ -52,8 +53,8 @@ android {
         applicationId = "com.hiosdra.hreader"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -81,7 +82,10 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("release")
-            isMinifyEnabled = false
+            // R8 on: an unshrunk Compose build ships every unused library class and skips the
+            // optimisation passes the runtime benefits most from.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -118,6 +122,19 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
     implementation("androidx.navigation:navigation-compose:2.9.8")
     implementation("androidx.work:work-runtime-ktx:2.11.2")
+
+    // Paging: the article list is read a page at a time rather than as one list in memory.
+    implementation("androidx.paging:paging-runtime-ktx:3.3.6")
+    implementation("androidx.paging:paging-compose:3.3.6")
+    implementation("androidx.room:room-paging:${rootProject.extra["roomVersion"]}")
+
+    // Home-screen widget.
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-material3:1.1.1")
+
+    // Installs the shipped ART profile on first run; without it the baseline profile is inert.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    baselineProfile(project(":baselineprofile"))
 
     // Compose BOM and related libraries
     implementation(platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}"))

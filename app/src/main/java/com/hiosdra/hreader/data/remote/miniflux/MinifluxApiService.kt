@@ -9,7 +9,9 @@ import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxEntriesResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxFeed
 import com.hiosdra.hreader.data.remote.miniflux.dto.OriginalContentResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.UpdateEntriesStatusRequest
+import com.hiosdra.hreader.data.remote.miniflux.dto.UpdateFeedRequest
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -44,6 +46,23 @@ interface MinifluxApiService {
     suspend fun createFeed(
         @Body request: CreateFeedRequest
     ): CreateFeedResponse
+
+    @DELETE("v1/feeds/{feedId}")
+    suspend fun deleteFeed(
+        @Path("feedId") feedId: Long
+    )
+
+    @PUT("v1/feeds/{feedId}")
+    suspend fun updateFeed(
+        @Path("feedId") feedId: Long,
+        @Body request: UpdateFeedRequest
+    ): MinifluxFeed
+
+    /** Miniflux has no "set" for bookmarks, only a per-entry flip of whatever is stored. */
+    @PUT("v1/entries/{entryId}/bookmark")
+    suspend fun toggleBookmark(
+        @Path("entryId") entryId: Long
+    )
 
     @POST("v1/discover")
     suspend fun discoverFeeds(

@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?><!--
    Backup and device-transfer rules for API 31+.
-   Backend API tokens live in hreader_prefs and must not leave the device. The cache holds nothing
-   the server cannot rebuild, so it is excluded from both paths.
+   Backend API tokens and the OpenRouter key live in hreader_secrets and must not leave the device.
+   They have a file of their own precisely so this exclusion can be narrow: excluding the whole of
+   hreader_prefs kept the secrets off backup but took every reading preference with them.
+   The cache holds nothing the server cannot rebuild, so it is excluded from both paths.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="sharedpref" path="hreader_prefs.xml" />
+        <exclude domain="sharedpref" path="hreader_secrets.xml" />
         <exclude domain="database" path="hreader-db" />
         <exclude domain="file" path="article_images" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="sharedpref" path="hreader_prefs.xml" />
+        <exclude domain="sharedpref" path="hreader_secrets.xml" />
         <exclude domain="database" path="hreader-db" />
         <exclude domain="file" path="article_images" />
     </device-transfer>

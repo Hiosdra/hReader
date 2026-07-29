@@ -83,9 +83,35 @@ fun OfflineReadinessSection(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
                 Spacer(modifier = Modifier.size(8.dp))
-                Text("Downloading…")
+                Text(
+                    if (state.preparationTotal > 0) {
+                        "Downloading ${state.preparationDone} of ${state.preparationTotal}…"
+                    } else {
+                        "Downloading…"
+                    }
+                )
             } else {
                 Text("Prepare for offline")
+            }
+        }
+        // A real count rather than a spinner of unknown length: the reader is deciding whether
+        // there is time to finish before leaving.
+        if (state.isPreparing) {
+            Spacer(modifier = Modifier.height(8.dp))
+            val progress = state.preparationProgress
+            if (progress != null) {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                )
+            } else {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                )
             }
         }
         Text(

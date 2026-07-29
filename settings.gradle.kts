@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "hReader"
 include(":app")
+include(":baselineprofile")

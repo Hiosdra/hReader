@@ -1,24 +1,55 @@
 package com.hiosdra.hreader.ui.main
 
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.hiosdra.hreader.data.ai.AiModelRepository
 import com.hiosdra.hreader.data.ai.SelectedModelStatus
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.data.model.ArticleListEntry
+import com.hiosdra.hreader.data.model.ArticleListQuery
 import com.hiosdra.hreader.data.model.ArticleStatus
-import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.util.NetworkMonitor
+import com.hiosdra.hreader.widget.UnreadWidgetUpdater
 import com.hiosdra.hreader.worker.SyncScheduler
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
+
+private const val TAG = "MainViewModel"
+
+/** Long enough that typing does not run a query per keystroke, short enough to feel immediate. */
+private const val SEARCH_DEBOUNCE_MILLIS = 250L
+
+private const val KEY_SHOW_READ = "show_read_articles"
+private const val KEY_STARRED_ONLY = "starred_only"
+private const val KEY_SEARCH_QUERY = "search_query"
+
+/** A completed action the reader can still take back, surfaced as a snackbar. */
+data class UndoableAction(
+    val id: Long,
+    val message: String,
+    val articleIds: List<Long>
+)
 
 data class MainUiState(
-    val entries: List<Entry> = emptyList(),
-    val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
     val feedTitle: String? = null,
@@ -31,180 +62,233 @@ data class MainUiState(
      * definition.
      */
     val showReadArticles: Boolean = false,
-    val readCount: Int = 0
+    val starredOnly: Boolean = false,
+    val unreadCount: Int = 0,
+    val readCount: Int = 0,
+    val undo: UndoableAction? = null
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(
     private val articleRepository: ArticleRepository,
     private val aiModelRepository: AiModelRepository,
     private val syncScheduler: SyncScheduler,
+    private val unreadWidgetUpdater: UnreadWidgetUpdater,
+    private val savedStateHandle: SavedStateHandle,
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(MainUiState(isOnline = networkMonitor.isOnline.value))
+    private val _uiState = MutableStateFlow(
+        MainUiState(
+            isOnline = networkMonitor.isOnline.value,
+            showReadArticles = savedStateHandle[KEY_SHOW_READ] ?: false,
+            starredOnly = savedStateHandle[KEY_STARRED_ONLY] ?: false,
+            searchQuery = savedStateHandle[KEY_SEARCH_QUERY] ?: ""
+        )
+    )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
-    private var fullList: List<Entry> = emptyList()
-    private val sessionReadIds = mutableSetOf<Long>()
-    private var collectionJob: Job? = null
-    private var currentFeedId: Long? = null
-    private var lastStatuses: Map<Long, ArticleStatus> = emptyMap()
-    private var searchQuery: String = ""
+    private val query = MutableStateFlow(
+        ArticleListQuery(
+            starredOnly = _uiState.value.starredOnly,
+            includeRead = _uiState.value.showReadArticles,
+            searchQuery = _uiState.value.searchQuery
+        )
+    )
+
+    /** What the text field holds, which lags the query it drives by one debounce. */
+    private val searchInput = MutableStateFlow(_uiState.value.searchQuery)
+
+    /**
+     * Cached in the view-model scope so a configuration change re-collects the pages already
+     * loaded instead of starting the list again from the top.
+     */
+    val articles: Flow<PagingData<ArticleListEntry>> = query
+        .flatMapLatest { articleRepository.pageArticles(it) }
+        .cachedIn(viewModelScope)
 
     init {
-        loadEntries() // default: all items
+        observeSearchInput()
+        observeCounts()
+        observeFeedTitle()
         checkSelectedAiModel()
         viewModelScope.launch {
             networkMonitor.isOnline.collect { online ->
-                _uiState.value = _uiState.value.copy(isOnline = online)
+                _uiState.update { it.copy(isOnline = online) }
             }
         }
     }
 
+    /**
+     * Only what the reader types afterwards is debounced. The first value is the query the screen
+     * opened with, which [query] already holds — running it again would rebuild the list a quarter
+     * of a second after it appeared.
+     */
+    @OptIn(FlowPreview::class)
+    private fun observeSearchInput() {
+        searchInput
+            .debounce(SEARCH_DEBOUNCE_MILLIS)
+            .distinctUntilChanged()
+            .drop(1)
+            .onEach { text -> query.update { it.withSearch(text) } }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * Counted in SQLite over the whole list rather than over the loaded pages: with the list read
+     * a page at a time, counting what is on screen would report a fraction of the real total.
+     */
+    private fun observeCounts() {
+        query
+            .map { it.feedId to it.starredOnly }
+            .distinctUntilChanged()
+            .flatMapLatest { (feedId, starredOnly) ->
+                combine(
+                    articleRepository.observeUnreadCount(feedId, starredOnly),
+                    articleRepository.observeReadCount(feedId, starredOnly)
+                ) { unread, read -> unread to read }
+            }
+            .onEach { (unread, read) ->
+                _uiState.update { it.copy(unreadCount = unread, readCount = read) }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeFeedTitle() {
+        query
+            .map { it.feedId }
+            .distinctUntilChanged()
+            .onEach { feedId ->
+                val title = feedId?.let { runCatching { articleRepository.getFeed(it)?.title }.getOrNull() }
+                _uiState.update { it.copy(feedTitle = title) }
+            }
+            .launchIn(viewModelScope)
+    }
+
     fun setShowReadArticles(show: Boolean) {
         if (_uiState.value.showReadArticles == show) return
-        _uiState.value = _uiState.value.copy(showReadArticles = show)
-        applyFilterAndEmit()
+        savedStateHandle[KEY_SHOW_READ] = show
+        _uiState.update { it.copy(showReadArticles = show) }
+        query.update { it.withIncludeRead(show) }
+    }
+
+    fun setStarredOnly(starredOnly: Boolean) {
+        if (_uiState.value.starredOnly == starredOnly) return
+        savedStateHandle[KEY_STARRED_ONLY] = starredOnly
+        _uiState.update { it.copy(starredOnly = starredOnly) }
+        query.update { it.withStarredOnly(starredOnly, Instant.now()) }
     }
 
     fun dismissAiModelWarning() {
-        _uiState.value = _uiState.value.copy(unavailableAiModelId = null)
+        _uiState.update { it.copy(unavailableAiModelId = null) }
     }
 
     private fun checkSelectedAiModel() {
         viewModelScope.launch {
             val status = runCatching { aiModelRepository.checkSelectedModel() }.getOrNull()
             if (status is SelectedModelStatus.Unavailable) {
-                _uiState.value = _uiState.value.copy(unavailableAiModelId = status.modelId)
+                _uiState.update { it.copy(unavailableAiModelId = status.modelId) }
             }
         }
     }
 
-    internal fun setFeed(feedId: Long) {
-        if (currentFeedId == feedId) return
-        currentFeedId = feedId
-        sessionReadIds.clear()
-        loadEntries()
+    internal fun setFeed(feedId: Long?) {
+        query.update { it.withFeed(feedId, Instant.now()) }
     }
 
-    internal fun clearFeed() {
-        if (currentFeedId == null) return
-        currentFeedId = null
-        sessionReadIds.clear()
-        loadEntries()
-    }
+    /** The query the reader is looking at, for opening one of its articles. */
+    internal fun currentQuery(): ArticleListQuery = query.value
 
-    internal fun loadEntries() {
-        collectionJob?.cancel()
-        Log.i("MainViewModel", "Loading entries for ${currentFeedId?.let { "feed $it" } ?: "all feeds"} (filtering previously read, keeping session newly read visible)")
-        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-        collectionJob = viewModelScope.launch {
-            try {
-                val feedId = currentFeedId
-                val flow = if (feedId == null) {
-                    articleRepository.getAllArticlesOldestFirst()
-                } else {
-                    articleRepository.getAllArticlesForFeed(feedId)
-                }
-                val feedTitle = feedId?.let { articleRepository.getFeed(it)?.title }
-                flow.collect { fetchedEntries ->
-                    fetchedEntries.forEach { entry ->
-                        val previous = lastStatuses[entry.id]
-                        if (previous != null && previous != ArticleStatus.READ && entry.status == ArticleStatus.READ) {
-                            sessionReadIds.add(entry.id)
-                        }
-                    }
-                    fullList = fetchedEntries
-                    lastStatuses = fetchedEntries.associate { it.id to it.status }
-                    applyFilterAndEmit(isLoadingDone = true, feedTitle = feedTitle)
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = "Error loading entries: ${e.message}",
-                    isLoading = false
-                )
-                Log.e("MainViewModel", "Error loading entries", e)
-            }
-        }
-    }
-
-    private fun applyFilterAndEmit(isLoadingDone: Boolean = false, feedTitle: String? = _uiState.value.feedTitle) {
-        val trimmedQuery = searchQuery.trim().lowercase()
-        val showReadArticles = _uiState.value.showReadArticles
-        val filtered = fullList.filter { entry ->
-            (
-                showReadArticles ||
-                    entry.status != ArticleStatus.READ ||
-                    sessionReadIds.contains(entry.id)
-                ) && (
-                trimmedQuery.isBlank() ||
-                    entry.title.lowercase().contains(trimmedQuery) ||
-                    (entry.author?.lowercase()?.contains(trimmedQuery) == true) ||
-                    entry.feed.title.lowercase().contains(trimmedQuery) ||
-                    (entry.content?.lowercase()?.contains(trimmedQuery) == true)
-                )
-        }
-        _uiState.value = _uiState.value.copy(
-            entries = filtered,
-            isLoading = if (isLoadingDone) false else _uiState.value.isLoading,
-            feedTitle = feedTitle,
-            searchQuery = searchQuery,
-            readCount = fullList.count { it.status == ArticleStatus.READ }
-        )
-    }
-
-    fun updateSearchQuery(query: String) {
-        searchQuery = query
-        applyFilterAndEmit()
+    fun updateSearchQuery(text: String) {
+        savedStateHandle[KEY_SEARCH_QUERY] = text
+        _uiState.update { it.copy(searchQuery = text) }
+        searchInput.value = text
     }
 
     fun refreshFromNetwork() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRefreshing = true, error = null)
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
-                sessionReadIds.clear()
                 articleRepository.refreshArticles()
                 // The refresh brings down the article list; the bodies and images that make those
                 // articles readable offline are what this queues. Without it a pull-to-refresh
                 // right before losing signal left a list of titles and nothing behind them.
                 syncScheduler.enqueuePrefetch()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "Network refresh failed: ${e.message}")
+                _uiState.update { it.copy(error = "Network refresh failed: ${e.message}") }
             } finally {
-                _uiState.value = _uiState.value.copy(isRefreshing = false)
-                applyFilterAndEmit()
+                _uiState.update { it.copy(isRefreshing = false) }
             }
         }
     }
 
+    fun dismissError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
     fun updateEntryReadStatus(entryId: Long, checked: Boolean) {
-        if (fullList.none { it.id == entryId }) return
+        applyReadStatus(listOf(entryId), read = checked)
+    }
 
-        val newStatus = if (checked) ArticleStatus.READ else ArticleStatus.UNREAD
-        fullList = fullList.map { if (it.id == entryId) it.copy(status = newStatus) else it }
-
-        if (checked) sessionReadIds.add(entryId) else sessionReadIds.remove(entryId)
-        applyFilterAndEmit()
-
+    fun setStarred(entryId: Long, starred: Boolean) {
         viewModelScope.launch {
-            try {
-                articleRepository.updateReadStatus(entryId.toString(), newStatus)
-            } catch (_: Exception) { }
+            runCatching { articleRepository.updateStarred(entryId, starred) }
+                .onFailure { Log.w(TAG, "Could not star article $entryId", it) }
         }
     }
 
+    /**
+     * Marking everything read happens at once and is offered back afterwards, rather than being
+     * guarded by a confirmation dialog: the dialog cost a tap every single time and still could not
+     * put anything right when the answer was wrong.
+     */
     fun markAllAsRead() {
-        // Only the entries this actually changes. Sweeping in the already-read ones would push a
-        // no-op update for every article the cache holds.
-        val ids = fullList.filter { it.status != ArticleStatus.READ }.map { it.id }
-        if (ids.isEmpty()) return
-
-        fullList = fullList.map { it.copy(status = ArticleStatus.READ) }
-        sessionReadIds.addAll(ids)
-        applyFilterAndEmit()
         viewModelScope.launch {
-            try {
-                articleRepository.updateReadStatus(ids.map { it.toString() }, ArticleStatus.READ)
-            } catch (_: Exception) { }
+            val current = query.value
+            // Only what this actually changes. Sweeping in the already-read ones would push a
+            // no-op update for every article the cache holds.
+            val ids = runCatching { articleRepository.unreadIds(current.feedId, current.starredOnly) }
+                .getOrElse {
+                    Log.w(TAG, "Could not read the unread set", it)
+                    return@launch
+                }
+            if (ids.isEmpty()) return@launch
+
+            applyReadStatus(ids, read = true)
+            _uiState.update {
+                it.copy(
+                    undo = UndoableAction(
+                        id = System.currentTimeMillis(),
+                        message = "Marked ${ids.size} as read",
+                        articleIds = ids
+                    )
+                )
+            }
+        }
+    }
+
+    fun undoLastAction() {
+        val action = _uiState.value.undo ?: return
+        _uiState.update { it.copy(undo = null) }
+        applyReadStatus(action.articleIds, read = false)
+    }
+
+    fun dismissUndo() {
+        _uiState.update { it.copy(undo = null) }
+    }
+
+    /**
+     * Written straight to the cache; the list is a view over it and redraws itself. The failure is
+     * logged rather than surfaced — the change is stored locally and queued for the next sync, so
+     * the reader has lost nothing worth a dialog.
+     */
+    private fun applyReadStatus(entryIds: List<Long>, read: Boolean) {
+        val newStatus = if (read) ArticleStatus.READ else ArticleStatus.UNREAD
+        viewModelScope.launch {
+            runCatching { articleRepository.updateReadStatus(entryIds.map { it.toString() }, newStatus) }
+                .onFailure { Log.w(TAG, "Could not store read state for ${entryIds.size} articles", it) }
+            // The widget cannot read the database for itself, so whatever changes the unread set
+            // has to tell it; otherwise it reports the count from the last sync.
+            unreadWidgetUpdater.requestRefresh()
         }
     }
 }

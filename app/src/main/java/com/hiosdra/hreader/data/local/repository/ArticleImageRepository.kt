@@ -146,8 +146,7 @@ class ArticleImageRepository(
         val allImages = articleImageDao.getAllArticleImages()
         if (allImages.isEmpty()) return
 
-        val allArticles = articleDao.getAllArticlesOldestFirst().first()
-        val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
+        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
 
         val imagesToDelete = allImages.filter { image ->
             !currentEntryIds.contains(image.entryId)

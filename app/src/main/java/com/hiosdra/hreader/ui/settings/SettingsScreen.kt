@@ -57,6 +57,7 @@ fun SettingsScreen(
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsState()
     val aiModels by settingsViewModel.aiModels.collectAsState()
     val offline by settingsViewModel.offline.collectAsState()
+    val sync by settingsViewModel.sync.collectAsState()
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
     var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
     var credibilityScoreEnabled by remember { mutableStateOf(preferencesManager.getCredibilityScoreEnabled()) }
@@ -124,6 +125,30 @@ fun SettingsScreen(
                         onTestConnection = settingsViewModel::testConnection,
                         modifier = Modifier.padding(16.dp),
                         onSignOut = settingsViewModel::signOut
+                    )
+                }
+            }
+
+            item {
+                Text(
+                    text = "Synchronisation",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
+                ) {
+                    SyncSection(
+                        state = sync,
+                        onIntervalChange = settingsViewModel::onSyncIntervalChange,
+                        onUnmeteredOnlyChange = settingsViewModel::onUnmeteredOnlyChange,
+                        onSyncWhileRoamingChange = settingsViewModel::onSyncWhileRoamingChange,
+                        onQuietHoursEnabledChange = settingsViewModel::onQuietHoursEnabledChange,
+                        onQuietHoursChange = settingsViewModel::onQuietHoursChange,
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             }
