@@ -6,7 +6,6 @@ object Routes {
     const val SERVER_SETUP = "server_setup"
     const val MAIN = "main"
     const val MAIN_WITH_OPTIONAL_FEED = "main?feedId={feedId}"
-    const val FEEDS = "feeds"
     const val FEED = "feed/{feedId}"
     const val ADD_FEED = "add_feed"
     const val ARTICLE = "article/{articleIds}/{initialIndex}"
