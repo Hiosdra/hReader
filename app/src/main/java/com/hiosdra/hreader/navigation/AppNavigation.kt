@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,12 +13,14 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hiosdra.hreader.ui.article.ArticleScreen
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
-import com.hiosdra.hreader.ui.feeds.FeedsScreen
+import com.hiosdra.hreader.ui.feeds.SubscriptionsDrawer
+import com.hiosdra.hreader.ui.feeds.rememberSubscriptionsDrawerState
 import com.hiosdra.hreader.ui.feeds.add.AddFeedScreen
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.ui.main.MainScreen
 import com.hiosdra.hreader.ui.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.ui.settings.SettingsScreen
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 @Composable
@@ -39,7 +42,7 @@ fun AppNavigation(
             )
         }
         composable(Routes.MAIN) {
-            MainScreen(navController = navController)
+            MainWithSubscriptions(navController = navController, feedId = null)
         }
         composable(
             route = Routes.MAIN_WITH_OPTIONAL_FEED,
@@ -49,16 +52,12 @@ fun AppNavigation(
         ) { backStackEntry ->
             val raw = backStackEntry.arguments?.getLong("feedId") ?: Routes.FEED_ID_NONE
             val feedId = if (raw == Routes.FEED_ID_NONE) null else raw
-            MainScreen(navController = navController, feedId = feedId)
+            MainWithSubscriptions(navController = navController, feedId = feedId)
         }
-        composable(Routes.FEEDS) { FeedsScreen(navController = navController) }
         composable(Routes.ADD_FEED) {
             AddFeedScreen(
                 navController = navController,
-                onFeedAdded = {
-                    navController.previousBackStackEntry?.savedStateHandle?.set("feed_added", true)
-                    navController.popBackStack(Routes.FEEDS, inclusive = false)
-                }
+                onFeedAdded = { navController.popBackStack() }
             )
         }
         composable(
@@ -91,5 +90,33 @@ fun AppNavigation(
         composable(Routes.SETTINGS) { _ ->
             SettingsScreen(navController)
         }
+    }
+}
+
+@Composable
+private fun MainWithSubscriptions(navController: NavHostController, feedId: Long?) {
+    val drawerState = rememberSubscriptionsDrawerState()
+    val scope = rememberCoroutineScope()
+
+    SubscriptionsDrawer(
+        drawerState = drawerState,
+        selectedFeedId = feedId,
+        onSelectFeed = { selected ->
+            if (selected != feedId) {
+                navController.navigate(Routes.main(selected)) {
+                    popUpTo(Routes.MAIN) { inclusive = selected == null }
+                    launchSingleTop = true
+                }
+            }
+        },
+        onFeedDetails = { navController.navigate(Routes.feed(it)) },
+        onAddFeed = { navController.navigate(Routes.ADD_FEED) },
+        gesturesEnabled = feedId == null
+    ) {
+        MainScreen(
+            navController = navController,
+            onOpenSubscriptions = { scope.launch { drawerState.open() } },
+            feedId = feedId
+        )
     }
 }

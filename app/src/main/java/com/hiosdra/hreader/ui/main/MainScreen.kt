@@ -72,6 +72,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun MainScreen(
     navController: NavController,
+    onOpenSubscriptions: () -> Unit,
     feedId: Long? = null,
     viewModel: MainViewModel = koinViewModel()
 ) {
@@ -122,7 +123,7 @@ fun MainScreen(
                     navigationIcon = {
                         if (feedId == null) {
                             IconButton(
-                                onClick = { navController.navigate(Routes.FEEDS) },
+                                onClick = onOpenSubscriptions,
                                 modifier = Modifier.padding(8.dp)
                             ) {
                                 Icon(
@@ -363,7 +364,7 @@ fun MainScreen(
                             textAlign = TextAlign.Center
                         )
                         ElevatedButton(
-                            onClick = { if (feedId == null) navController.navigate(Routes.FEEDS) else navController.popBackStack() },
+                            onClick = { if (feedId == null) onOpenSubscriptions() else navController.popBackStack() },
                             modifier = Modifier.padding(top = 20.dp)
                         ) { Text(if (feedId == null) "Browse subscriptions" else "Back to all items") }
                         OutlinedButton(
