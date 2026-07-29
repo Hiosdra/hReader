@@ -41,6 +41,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -51,6 +53,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +65,7 @@ import androidx.navigation.NavController
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.article.ArticleListGrouped
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,6 +84,17 @@ fun MainScreen(
     val unreadCount = uiState.entries.count { !it.isRead }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val searchActive = remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
+
+    // The empty state spells the failure out inline with a Retry next to it; over a list of
+    // articles a snackbar is the only place a failed refresh can report itself.
+    LaunchedEffect(uiState.error) {
+        val message = uiState.error
+        if (message != null && uiState.entries.isNotEmpty()) {
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     Scaffold(
         modifier = Modifier
@@ -254,6 +269,7 @@ fun MainScreen(
                 }
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             val showDialog = remember { mutableStateOf(false) }
             val showFab = !uiState.isLoading && unreadCount > 0 && !showDialog.value
@@ -364,7 +380,15 @@ fun MainScreen(
         } else {
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
-                onRefresh = { if (!uiState.isRefreshing && uiState.isOnline) viewModel.refreshFromNetwork() },
+                onRefresh = {
+                    if (uiState.isOnline) {
+                        viewModel.refreshFromNetwork()
+                    } else {
+                        snackbarScope.launch {
+                            snackbarHostState.showSnackbar("Offline — connect to a network to refresh.")
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
