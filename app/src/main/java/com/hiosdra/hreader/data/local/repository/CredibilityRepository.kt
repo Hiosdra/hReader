@@ -11,6 +11,9 @@ import com.hiosdra.hreader.data.model.CredibilitySource
 
 private const val TAG = "CredibilityRepo"
 private const val LINE_SEPARATOR = "\n"
+
+/** Below SQLite's 999 bound-variable ceiling on Android. */
+private const val DELETE_CHUNK = 500
 private const val FIELD_SEPARATOR = "\u001f"
 
 class CredibilityRepository(
@@ -52,7 +55,8 @@ class CredibilityRepository(
         val stored = articleCredibilityDao.getAllEntryIds()
         val orphaned = stored.filterNot { currentEntryIds.contains(it) }
         if (orphaned.isEmpty()) return
-        articleCredibilityDao.deleteAll(orphaned)
+        // Chunked below SQLite's 999 bound-variable ceiling: a prune can orphan thousands at once.
+        orphaned.chunked(DELETE_CHUNK).forEach { articleCredibilityDao.deleteAll(it) }
     }
 
     private fun CredibilityReport.toEntity(entryId: Long) = ArticleCredibility(

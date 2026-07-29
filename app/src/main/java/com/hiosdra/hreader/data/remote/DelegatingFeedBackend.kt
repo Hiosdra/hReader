@@ -36,10 +36,17 @@ class DelegatingFeedBackend(
 
     override suspend fun createFeed(feedUrl: String) = active.createFeed(feedUrl)
 
+    override suspend fun deleteFeed(feedId: Long) = active.deleteFeed(feedId)
+
+    override suspend fun renameFeed(feedId: Long, title: String) = active.renameFeed(feedId, title)
+
     override suspend fun discoverFeeds(url: String): List<DiscoveredFeed> = active.discoverFeeds(url)
 
     override suspend fun updateEntriesStatus(entryIds: List<Long>, status: ArticleStatus) =
         active.updateEntriesStatus(entryIds, status)
+
+    override suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean) =
+        active.updateEntriesStarred(entryIds, starred)
 
     override suspend fun fetchFullContent(entryId: Long): String? = active.fetchFullContent(entryId)
 

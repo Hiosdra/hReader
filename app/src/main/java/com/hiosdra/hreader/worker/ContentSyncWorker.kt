@@ -5,9 +5,13 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.util.SyncPerformanceLogger
+import com.hiosdra.hreader.util.isWithinQuietHours
+import com.hiosdra.hreader.widget.UnreadWidgetUpdater
 import kotlinx.coroutines.CancellationException
+import java.time.LocalTime
 
 private const val MAX_RUN_ATTEMPTS = 5
 
@@ -16,14 +20,24 @@ class ContentSyncWorker(
     params: WorkerParameters,
     private val repository: ArticleRepository,
     private val syncPerformanceLogger: SyncPerformanceLogger,
-    private val syncScheduler: SyncScheduler
+    private val syncScheduler: SyncScheduler,
+    private val preferencesManager: PreferencesManager,
+    private val unreadWidgetUpdater: UnreadWidgetUpdater
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
         private const val TAG = "ContentSyncWorker"
     }
 
-    override suspend fun doWork(): Result = try {
+    override suspend fun doWork(): Result {
+        if (isSilenced()) {
+            Log.i(TAG, "Inside quiet hours; skipping this run")
+            return Result.success()
+        }
+        return runSync()
+    }
+
+    private suspend fun runSync(): Result = try {
         val forceFullSync = inputData.getBoolean(KEY_FORCE_FULL_SYNC, false)
         Log.i(TAG, "Starting ContentSyncWorker (forceFullSync=$forceFullSync)")
 
@@ -35,6 +49,11 @@ class ContentSyncWorker(
         // have one queued, and enqueueing a second would replace the chained request mid-run.
         if (!inputData.getBoolean(KEY_PREFETCH_CHAINED, false)) syncScheduler.enqueuePrefetch()
 
+        // Guarded: the articles are already stored, and a widget that could not be written is no
+        // reason to report the sync as failed and retry the whole thing.
+        runCatching { unreadWidgetUpdater.refresh() }
+            .onFailure { Log.w(TAG, "Could not refresh the widget: ${it.message}") }
+
         Log.i(TAG, "ContentSyncWorker completed successfully")
         Result.success()
     } catch (e: CancellationException) {
@@ -44,5 +63,20 @@ class ContentSyncWorker(
         // A 5xx or a dropped connection is worth another attempt; a 4xx (bad token, bad request)
         // will fail identically every time, so it waits for the next period instead.
         if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) Result.retry() else Result.failure()
+    }
+
+    /**
+     * Reported as success rather than retried: a retry would keep waking the radio through the
+     * night, which is precisely what the setting exists to prevent. The periodic worker fires
+     * again after the window closes.
+     */
+    private fun isSilenced(): Boolean {
+        if (inputData.getBoolean(KEY_IGNORE_QUIET_HOURS, false)) return false
+        if (!preferencesManager.getQuietHoursEnabled()) return false
+        return isWithinQuietHours(
+            hour = LocalTime.now().hour,
+            startHour = preferencesManager.getQuietHoursStartHour(),
+            endHour = preferencesManager.getQuietHoursEndHour()
+        )
     }
 }

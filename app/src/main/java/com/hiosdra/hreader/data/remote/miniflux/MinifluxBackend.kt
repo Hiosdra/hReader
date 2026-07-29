@@ -15,6 +15,7 @@ import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxEntriesResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxEntry
 import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxFeed
 import com.hiosdra.hreader.data.remote.miniflux.dto.UpdateEntriesStatusRequest
+import com.hiosdra.hreader.data.remote.miniflux.dto.UpdateFeedRequest
 import com.hiosdra.hreader.data.remote.withRetries
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -71,6 +72,14 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
         apiService.createFeed(CreateFeedRequest(feed_url = feedUrl))
     }
 
+    override suspend fun deleteFeed(feedId: Long) {
+        withRetries { apiService.deleteFeed(feedId) }
+    }
+
+    override suspend fun renameFeed(feedId: Long, title: String) {
+        withRetries { apiService.updateFeed(feedId, UpdateFeedRequest(title = title)) }
+    }
+
     override suspend fun discoverFeeds(url: String): List<DiscoveredFeed> = withRetries {
         apiService.discoverFeeds(DiscoverRequest(url)).map { it.toDomain() }
     }
@@ -78,6 +87,15 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
     override suspend fun updateEntriesStatus(entryIds: List<Long>, status: ArticleStatus) {
         if (entryIds.isEmpty()) return
         withRetries { apiService.updateEntriesStatus(UpdateEntriesStatusRequest(entryIds, status.toWire())) }
+    }
+
+    /**
+     * One request per entry, and no retries: the endpoint flips the stored value rather than
+     * setting it, so a retried call after a timeout that did land would undo the star it just set.
+     * [starred] is unused for the same reason — the caller only asks for entries that changed.
+     */
+    override suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean) {
+        entryIds.forEach { apiService.toggleBookmark(it) }
     }
 
     override suspend fun fetchFullContent(entryId: Long): String? =
@@ -128,7 +146,8 @@ internal fun MinifluxEntry.toDomain(): Entry = Entry(
     feed = feed.toDomain(),
     readingTime = readingTime,
     enclosures = enclosures.mapNotNull { it.toDomain() },
-    status = status.toArticleStatus()
+    status = status.toArticleStatus(),
+    starred = starred
 )
 
 private fun MinifluxFeed?.toDomain(): Feed = Feed(
