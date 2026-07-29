@@ -95,16 +95,24 @@ fun ArticleRow(
                                     .background(indicatorColor)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
+                            // The feed name yields space instead of taking all of it. Unweighted it
+                            // was measured first, and against a long name in a row narrowed by a
+                            // thumbnail the time was left a single character wide, one digit per line.
                             Text(
                                 text = entry.feed.title,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = TIME_FORMATTER.format(entry.publishedAt),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                         Text(
@@ -136,11 +144,13 @@ fun ArticleRow(
                                 .clip(RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
                         ) {
+                            // Fills the square it was given: at fillMaxWidth the height followed the
+                            // source aspect ratio, so a portrait photo stood taller than its slot.
                             OfflineAwareImage(
                                 entryId = entry.id,
                                 imageUrl = imageUrl,
                                 contentDescription = "Article image",
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.matchParentSize(),
                                 contentScale = ContentScale.Crop
                             )
                             Box(
