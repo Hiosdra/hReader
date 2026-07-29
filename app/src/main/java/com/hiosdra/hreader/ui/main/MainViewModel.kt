@@ -25,8 +25,13 @@ data class MainUiState(
     val searchQuery: String = "",
     val unavailableAiModelId: String? = null,
     val isOnline: Boolean = true,
-    val showBacklog: Boolean = false,
-    val backlogCount: Int = 0
+    /**
+     * Read articles stay in the cache for a month, so hiding them is a view choice rather than a
+     * fact about what is stored. Showing them also brings in the offline backlog, which is read by
+     * definition.
+     */
+    val showReadArticles: Boolean = false,
+    val readCount: Int = 0
 )
 
 class MainViewModel(
@@ -55,9 +60,9 @@ class MainViewModel(
         }
     }
 
-    fun setShowBacklog(show: Boolean) {
-        if (_uiState.value.showBacklog == show) return
-        _uiState.value = _uiState.value.copy(showBacklog = show)
+    fun setShowReadArticles(show: Boolean) {
+        if (_uiState.value.showReadArticles == show) return
+        _uiState.value = _uiState.value.copy(showReadArticles = show)
         applyFilterAndEmit()
     }
 
@@ -124,12 +129,12 @@ class MainViewModel(
 
     private fun applyFilterAndEmit(isLoadingDone: Boolean = false, feedTitle: String? = _uiState.value.feedTitle) {
         val trimmedQuery = searchQuery.trim().lowercase()
-        val showBacklog = _uiState.value.showBacklog
+        val showReadArticles = _uiState.value.showReadArticles
         val filtered = fullList.filter { entry ->
             (
-                entry.status != ArticleStatus.READ ||
-                    sessionReadIds.contains(entry.id) ||
-                    (showBacklog && entry.isBacklog)
+                showReadArticles ||
+                    entry.status != ArticleStatus.READ ||
+                    sessionReadIds.contains(entry.id)
                 ) && (
                 trimmedQuery.isBlank() ||
                     entry.title.lowercase().contains(trimmedQuery) ||
@@ -143,7 +148,7 @@ class MainViewModel(
             isLoading = if (isLoadingDone) false else _uiState.value.isLoading,
             feedTitle = feedTitle,
             searchQuery = searchQuery,
-            backlogCount = fullList.count { it.isBacklog }
+            readCount = fullList.count { it.status == ArticleStatus.READ }
         )
     }
 
