@@ -10,6 +10,12 @@ private val trackingParamsExact = setOf(
     "gclid", "fbclid", "yclid", "msclkid", "ref", "ref_src", "aff", "aff_id", "campid", "adid", "adgroupid"
 )
 
+fun displayUrl(raw: String): String = raw.trim()
+    .substringAfter("://")
+    .removePrefix("www.")
+    .trimEnd('/')
+    .ifBlank { raw.trim() }
+
 fun cleanUrl(raw: String): String = runCatching {
     val uri = URI(raw)
     val query = uri.rawQuery ?: return raw

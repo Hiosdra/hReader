@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,7 +19,6 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,9 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.util.NetworkMonitor
+import com.hiosdra.hreader.util.displayUrl
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.getKoin
 
@@ -141,10 +143,11 @@ fun SubscriptionsPanel(
                     item {
                         PanelRow(
                             title = "All items",
+                            unreadCount = uiState.unreadCounts.values.sum(),
                             selected = selectedFeedId == null,
-                            onClick = { onSelectFeed(null) }
+                            onClick = { onSelectFeed(null) },
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        HorizontalDivider()
                     }
                     if (uiState.filteredFeeds.isEmpty()) {
                         item {
@@ -186,12 +189,13 @@ private fun PanelRow(
     title: String,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     subtitle: String? = null,
     unreadCount: Int = 0,
     onDetailsClick: (() -> Unit)? = null
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 2.dp)
             .clip(RoundedCornerShape(28.dp))
@@ -224,9 +228,11 @@ private fun PanelRow(
             }
             subtitle?.let {
                 Text(
-                    text = it,
+                    text = displayUrl(it),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -235,7 +241,8 @@ private fun PanelRow(
                 Icon(
                     painter = painterResource(id = R.drawable.baseline_details_24),
                     contentDescription = "Feed details",
-                    tint = MaterialTheme.colorScheme.secondary
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
