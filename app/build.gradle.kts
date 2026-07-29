@@ -2,10 +2,8 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("kotlin-kapt")
-    id("com.google.devtools.ksp") version "2.2.10-2.0.2"
+    id("com.google.devtools.ksp") version "2.3.10"
     id("androidx.room")
 }
 
@@ -44,7 +42,11 @@ val debugStoreFile = rootProject.file(
 
 android {
     namespace = "com.hiosdra.hreader"
-    compileSdk = 36
+    // core-ktx 1.19 and the other AndroidX bumps refuse to be consumed by an
+    // app compiled against anything older than API 37. targetSdk stays at 36
+    // until the Android 17 behaviour changes get a look on a real device.
+    compileSdk = 37
+    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "com.hiosdra.hreader"
@@ -90,9 +92,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -113,17 +112,21 @@ ksp {
 //noinspection UseTomlInstead
 dependencies {
     // AndroidX Core & Lifecycle
-    implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.browser:browser:1.9.0")
-    implementation("androidx.core:core-ktx:1.17.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
-    implementation("androidx.navigation:navigation-compose:2.9.3")
-    implementation("androidx.work:work-runtime-ktx:2.10.3")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.browser:browser:1.10.0")
+    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.navigation:navigation-compose:2.9.8")
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
 
     // Compose BOM and related libraries
     implementation(platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}"))
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
+    // material3 no longer brings the icons along and the BOM stopped managing
+    // them, so the version is pinned by hand. 1.7.8 is the last release there
+    // will ever be; the way out is redrawing them as Material Symbols vectors.
+    implementation("androidx.compose.material:material-icons-core:1.7.8")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -134,7 +137,7 @@ dependencies {
     ksp("androidx.room:room-compiler:${rootProject.extra["roomVersion"]}")
 
     // Networking
-    implementation("com.squareup.okhttp3:logging-interceptor:5.1.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:5.4.0")
     implementation("com.squareup.retrofit2:converter-moshi:3.0.0")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
 
@@ -143,20 +146,20 @@ dependencies {
     ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
 
     // Dependency Injection (Koin)
-    implementation(platform("io.insert-koin:koin-bom:4.1.0"))
+    implementation(platform("io.insert-koin:koin-bom:4.2.2"))
     implementation("io.insert-koin:koin-android")
     implementation("io.insert-koin:koin-androidx-compose-navigation")
     implementation("io.insert-koin:koin-androidx-workmanager")
 
     // Image Loading (Coil 3)
-    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.5.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     // HTML Parsing
-    implementation("org.jsoup:jsoup:1.21.2")
+    implementation("org.jsoup:jsoup:1.22.2")
 
     // Testing - JUnit
     testImplementation("junit:junit:4.13.2")
@@ -170,11 +173,11 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
     // Testing - Architecture
-    testImplementation("com.tngtech.archunit:archunit:1.4.1")
-    testImplementation("com.tngtech.archunit:archunit-junit4:1.4.1")
+    testImplementation("com.tngtech.archunit:archunit:1.4.2")
+    testImplementation("com.tngtech.archunit:archunit-junit4:1.4.2")
 
     // MockK for mocking in unit tests
-    testImplementation("io.mockk:mockk:1.14.5")
+    testImplementation("io.mockk:mockk:1.14.11")
 
     // Debug Tools
     debugImplementation("androidx.compose.ui:ui-test-manifest")
