@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -64,7 +64,7 @@ fun ArticleListGrouped(
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
-            itemsIndexed(items, key = { _, e -> e.id }) { index, entry ->
+            items(items, key = { e -> e.id }) { entry ->
                 val globalIndex = allArticleIds.indexOf(entry.id)
                 ArticleRow(
                     entry = entry,
@@ -73,13 +73,6 @@ fun ArticleListGrouped(
                     articleIndex = globalIndex,
                     onCheckedChange = onCheckedChange
                 )
-                if (index < items.size - 1) {
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-                }
             }
         }
     }
