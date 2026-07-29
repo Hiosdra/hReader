@@ -471,7 +471,7 @@ private fun ArticleContent(
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    MetaChips(
+                    ArticleMeta(
                         author = entry.author,
                         dateText = dateText,
                         readingTimeMinutes = entry.readingTime,
@@ -568,7 +568,7 @@ private fun ArticleContent(
 }
 
 @Composable
-private fun MetaChips(
+private fun ArticleMeta(
     author: String?,
     dateText: String,
     readingTimeMinutes: Int?,
@@ -585,30 +585,36 @@ private fun MetaChips(
     val isAiExpanded = rememberSaveable { mutableStateOf(false) }
     val isCredibilityExpanded = rememberSaveable { mutableStateOf(false) }
 
+    val aiOverviewClick = if (entryId != null) onAiOverviewClick else null
+    val analyzeCredibility = if (entryId != null && credibilityEnabled) onAnalyzeCredibility else null
+
+    val metadata = buildList {
+        if (!author.isNullOrBlank()) add(author)
+        add(dateText)
+        if (readingTimeMinutes != null && readingTimeMinutes > 0) add("$readingTimeMinutes min read")
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = metadata.joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (aiOverviewClick != null || analyzeCredibility != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         @OptIn(ExperimentalLayoutApi::class)
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val items = buildList {
-                if (!author.isNullOrBlank()) add(author)
-                add(dateText)
-                if (readingTimeMinutes != null && readingTimeMinutes > 0) add("${readingTimeMinutes} min read")
-            }
-            items.forEach { text ->
-                androidx.compose.material3.AssistChip(
-                    onClick = {},
-                    label = { Text(text) }
-                )
-            }
-            if (entryId != null && onAiOverviewClick != null) {
+            if (aiOverviewClick != null) {
                 androidx.compose.material3.AssistChip(
                     onClick = {
                         if (aiOverview == null) {
                             isAiExpanded.value = true
-                            onAiOverviewClick()
+                            aiOverviewClick()
                         } else {
                             isAiExpanded.value = !isAiExpanded.value
                         }
@@ -641,7 +647,7 @@ private fun MetaChips(
                     )
                 )
             }
-            if (entryId != null && credibilityEnabled && onAnalyzeCredibility != null) {
+            if (analyzeCredibility != null) {
                 CredibilityChip(
                     report = credibilityReport,
                     isAnalyzing = isAnalyzingCredibility,
@@ -649,7 +655,7 @@ private fun MetaChips(
                     onClick = {
                         if (credibilityReport == null) {
                             isCredibilityExpanded.value = true
-                            onAnalyzeCredibility(false)
+                            analyzeCredibility(false)
                         } else {
                             isCredibilityExpanded.value = !isCredibilityExpanded.value
                         }
