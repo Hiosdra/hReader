@@ -106,8 +106,8 @@ fun OfflineReadinessSection(
             fontWeight = FontWeight.Medium
         )
         Text(
-            text = "How many articles to keep readable. Above what is still unread, recent articles " +
-                "are downloaded regardless of read state.",
+            text = "How many articles to keep downloaded in total. When the unread ones run out, " +
+                "recent articles you have already read fill the rest.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
