@@ -66,7 +66,9 @@ fun ArticleRow(
         onClick = openArticle,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            // Two adjacent cards each contribute their vertical margin, so the gap between
+            // them is twice this. The list draws no divider between rows, only the spacing.
+            .padding(horizontal = 12.dp, vertical = 3.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = sectionCardColors()
