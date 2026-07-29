@@ -22,6 +22,7 @@ import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.worker.ContentSyncWorker
+import com.hiosdra.hreader.worker.SyncScheduler
 import org.koin.android.ext.koin.androidApplication
 import org.koin.androidx.workmanager.dsl.worker
 import org.koin.core.module.dsl.viewModel
@@ -53,7 +54,8 @@ val appModule = module {
     single { SyncPerformanceLogger(get()) }
     single { ImageLoader(get()) }
     single { NetworkMonitor(androidApplication()) }
-    worker { ContentSyncWorker(get(), get(), get(), get()) }
+    single { SyncScheduler(androidApplication(), get()) }
+    worker { ContentSyncWorker(get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }
     viewModel { FeedsViewModel(get()) }

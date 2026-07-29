@@ -15,7 +15,8 @@ class ContentSyncWorker(
     appContext: Context,
     params: WorkerParameters,
     private val repository: ArticleRepository,
-    private val syncPerformanceLogger: SyncPerformanceLogger
+    private val syncPerformanceLogger: SyncPerformanceLogger,
+    private val syncScheduler: SyncScheduler
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -29,7 +30,9 @@ class ContentSyncWorker(
             repository.refreshArticles()
         }
 
-        enqueueArticleContentSync(applicationContext)
+        // Only when this worker runs on its own. Callers that chain a prefetch behind it already
+        // have one queued, and enqueueing a second would replace the chained request mid-run.
+        if (!inputData.getBoolean(KEY_PREFETCH_CHAINED, false)) syncScheduler.enqueuePrefetch()
 
         Log.i(TAG, "ContentSyncWorker completed successfully")
         Result.success()
