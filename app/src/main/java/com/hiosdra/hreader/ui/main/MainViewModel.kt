@@ -22,7 +22,9 @@ data class MainUiState(
     val error: String? = null,
     val feedTitle: String? = null,
     val searchQuery: String = "",
-    val unavailableAiModelId: String? = null
+    val unavailableAiModelId: String? = null,
+    val showBacklog: Boolean = false,
+    val backlogCount: Int = 0
 )
 
 class MainViewModel(
@@ -43,6 +45,12 @@ class MainViewModel(
     init {
         loadEntries() // default: all items
         checkSelectedAiModel()
+    }
+
+    fun setShowBacklog(show: Boolean) {
+        if (_uiState.value.showBacklog == show) return
+        _uiState.value = _uiState.value.copy(showBacklog = show)
+        applyFilterAndEmit()
     }
 
     fun dismissAiModelWarning() {
@@ -108,8 +116,13 @@ class MainViewModel(
 
     private fun applyFilterAndEmit(isLoadingDone: Boolean = false, feedTitle: String? = _uiState.value.feedTitle) {
         val trimmedQuery = searchQuery.trim().lowercase()
+        val showBacklog = _uiState.value.showBacklog
         val filtered = fullList.filter { entry ->
-            (entry.status != ArticleStatus.READ || sessionReadIds.contains(entry.id)) && (
+            (
+                entry.status != ArticleStatus.READ ||
+                    sessionReadIds.contains(entry.id) ||
+                    (showBacklog && entry.isBacklog)
+                ) && (
                 trimmedQuery.isBlank() ||
                     entry.title.lowercase().contains(trimmedQuery) ||
                     (entry.author?.lowercase()?.contains(trimmedQuery) == true) ||
@@ -121,7 +134,8 @@ class MainViewModel(
             entries = filtered,
             isLoading = if (isLoadingDone) false else _uiState.value.isLoading,
             feedTitle = feedTitle,
-            searchQuery = searchQuery
+            searchQuery = searchQuery,
+            backlogCount = fullList.count { it.isBacklog }
         )
     }
 

@@ -23,6 +23,7 @@ private const val UNREAD_STATUS = "unread"
 private const val READ_STATUS = "read"
 private const val ORDER_ID = "id"
 private const val DIRECTION_ASCENDING = "asc"
+private const val DIRECTION_DESCENDING = "desc"
 
 private val UNREAD_ONLY = listOf(UNREAD_STATUS)
 private val READ_AND_UNREAD = listOf(UNREAD_STATUS, READ_STATUS)
@@ -38,6 +39,23 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
         cursor: String?
     ): EntriesPage =
         fetchEntries(READ_AND_UNREAD, changedAfter = changedAfter.epochSecond, limit = limit, cursor = cursor)
+
+    /**
+     * Descending by id, so a page walks backwards from the newest entry and [cursor] is the oldest
+     * id already seen. Ordering by id rather than date keeps the keyset stable even when a feed
+     * backdates what it publishes.
+     */
+    override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage = withRetries {
+        apiService.getEntries(
+            statuses = READ_AND_UNREAD,
+            order = ORDER_ID,
+            direction = DIRECTION_DESCENDING,
+            limit = limit,
+            afterEntryId = null,
+            changedAfter = null,
+            beforeEntryId = cursor.toEntryIdCursor()
+        ).toEntriesPage(limit)
+    }
 
     override suspend fun getFeeds(): List<Feed> = withRetries { fetchFeeds() }
 

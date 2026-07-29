@@ -91,11 +91,28 @@ class ArticleReconciliationTest {
         assertEquals(readEarlier, remote.reconciledWith(local, now).readAt)
     }
 
+    @Test
+    fun `an article downloaded as backlog stays marked as backlog`() {
+        val downloadedAt = Instant.parse("2026-07-20T08:00:00Z")
+        val local = article(status = ArticleStatus.READ, backlogFetchedAt = downloadedAt)
+        val remote = article(status = ArticleStatus.READ)
+
+        assertEquals(downloadedAt, remote.reconciledWith(local, now).backlogFetchedAt)
+    }
+
+    @Test
+    fun `an article the sync brought down is not turned into backlog`() {
+        val remote = article(status = ArticleStatus.UNREAD)
+
+        assertNull(remote.reconciledWith(null, now).backlogFetchedAt)
+    }
+
     private fun article(
         title: String = "Title",
         status: ArticleStatus = ArticleStatus.UNREAD,
         pendingSync: Boolean = false,
-        readAt: Instant? = null
+        readAt: Instant? = null,
+        backlogFetchedAt: Instant? = null
     ) = ArticleEntity(
         id = "1",
         title = title,
@@ -108,6 +125,7 @@ class ArticleReconciliationTest {
         enclosures = emptyList(),
         status = status,
         pendingSync = pendingSync,
-        readAt = readAt
+        readAt = readAt,
+        backlogFetchedAt = backlogFetchedAt
     )
 }

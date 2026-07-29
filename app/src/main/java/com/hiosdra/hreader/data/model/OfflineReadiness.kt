@@ -9,6 +9,7 @@ import java.time.Instant
 data class OfflineReadiness(
     val articleCount: Int = 0,
     val unreadCount: Int = 0,
+    val backlogCount: Int = 0,
     val storedContentCount: Int = 0,
     val storedImageCount: Int = 0,
     val storedImageBytes: Long = 0,

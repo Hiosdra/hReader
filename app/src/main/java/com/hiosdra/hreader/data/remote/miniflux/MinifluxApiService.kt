@@ -29,7 +29,8 @@ interface MinifluxApiService {
         @Query("direction") direction: String,
         @Query("limit") limit: Int,
         @Query("after_entry_id") afterEntryId: Long?,
-        @Query("changed_after") changedAfter: Long?
+        @Query("changed_after") changedAfter: Long?,
+        @Query("before_entry_id") beforeEntryId: Long? = null
     ): MinifluxEntriesResponse
 
     @GET("v1/feeds")

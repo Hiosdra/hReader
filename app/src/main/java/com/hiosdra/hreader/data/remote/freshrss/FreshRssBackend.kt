@@ -21,6 +21,7 @@ import kotlin.math.absoluteValue
 
 private const val JSON_OUTPUT = "json"
 private const val OLDEST_FIRST = "o"
+private const val NEWEST_FIRST = "n"
 private const val READ_STATE = "user/-/state/com.google/read"
 private const val FEED_STREAM_PREFIX = "feed/"
 private const val ITEM_ID_TAG_PREFIX = "tag:google.com,2005:reader/item/"
@@ -46,6 +47,21 @@ class FreshRssBackend(
         limit: Int,
         cursor: String?
     ): EntriesPage = withRetries { streamContents(limit, cursor, changedAfter.epochSecond) }
+
+    /**
+     * The reading-list stream without the read-state exclusion, newest first, so the backlog fills
+     * with what was published most recently rather than with whatever is still unread.
+     */
+    override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage = withRetries {
+        apiService.getStreamContents(
+            output = JSON_OUTPUT,
+            count = limit.coerceAtMost(ENTRIES_PAGE_LIMIT),
+            order = NEWEST_FIRST,
+            excludeTarget = null,
+            startTimeSeconds = null,
+            continuation = cursor
+        ).toEntriesPage()
+    }
 
     override suspend fun getFeeds(): List<Feed> = withRetries { fetchFeeds() }
 
