@@ -176,21 +176,21 @@ fun MainScreen(
                                 .background(MaterialTheme.colorScheme.surfaceContainer)
                                 .clip(RoundedCornerShape(8.dp))
                         ) {
-                            if (uiState.backlogCount > 0) {
+                            if (uiState.readCount > 0 || uiState.showReadArticles) {
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            if (uiState.showBacklog) {
-                                                "Hide offline backlog"
+                                            if (uiState.showReadArticles) {
+                                                "Unread only"
                                             } else {
-                                                "Show offline backlog (${uiState.backlogCount})"
+                                                "Show read articles (${uiState.readCount})"
                                             },
                                             style = MaterialTheme.typography.labelLarge
                                         )
                                     },
                                     onClick = {
                                         expanded.value = false
-                                        viewModel.setShowBacklog(!uiState.showBacklog)
+                                        viewModel.setShowReadArticles(!uiState.showReadArticles)
                                     },
                                     leadingIcon = {
                                         Icon(
