@@ -57,7 +57,7 @@ val appModule = module {
     single { SyncScheduler(androidApplication(), get()) }
     worker { ContentSyncWorker(get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get()) }
-    viewModel { MainViewModel(get(), get()) }
+    viewModel { MainViewModel(get(), get(), get()) }
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get(), get(), get(), get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }

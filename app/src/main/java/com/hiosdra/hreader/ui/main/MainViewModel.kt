@@ -8,6 +8,7 @@ import com.hiosdra.hreader.data.ai.SelectedModelStatus
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.worker.SyncScheduler
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +27,8 @@ data class MainUiState(
 
 class MainViewModel(
     private val articleRepository: ArticleRepository,
-    private val aiModelRepository: AiModelRepository
+    private val aiModelRepository: AiModelRepository,
+    private val syncScheduler: SyncScheduler
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
@@ -134,6 +136,10 @@ class MainViewModel(
             try {
                 sessionReadIds.clear()
                 articleRepository.refreshArticles()
+                // The refresh brings down the article list; the bodies and images that make those
+                // articles readable offline are what this queues. Without it a pull-to-refresh
+                // right before losing signal left a list of titles and nothing behind them.
+                syncScheduler.enqueuePrefetch()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Network refresh failed: ${e.message}")
             } finally {
