@@ -13,10 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import coil3.compose.AsyncImage
+import com.hiosdra.hreader.ui.components.OfflineAwareImage
 
 @Composable
-fun ZoomableImage(url: String, onDismiss: () -> Unit) {
+fun ZoomableImage(entryId: Long, url: String, onDismiss: () -> Unit) {
     var scale by remember { mutableStateOf(1f) }
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
@@ -34,8 +34,11 @@ fun ZoomableImage(url: String, onDismiss: () -> Unit) {
                 },
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = url,
+            // The downloaded copy when there is one: zooming an image offline used to fetch the
+            // original address and show nothing, even with the file sitting in the cache.
+            OfflineAwareImage(
+                entryId = entryId,
+                imageUrl = url,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()

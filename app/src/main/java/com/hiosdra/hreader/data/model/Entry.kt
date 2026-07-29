@@ -12,5 +12,10 @@ data class Entry(
     val feed: Feed,
     val readingTime: Int?,
     val enclosures: List<Enclosure> = emptyList(),
-    val status: ArticleStatus = ArticleStatus.UNREAD
+    val status: ArticleStatus = ArticleStatus.UNREAD,
+    /**
+     * Downloaded to stock up for a stretch without a connection rather than because it was unread.
+     * A backlog entry may already be read, and the article list only shows those on request.
+     */
+    val isBacklog: Boolean = false
 )

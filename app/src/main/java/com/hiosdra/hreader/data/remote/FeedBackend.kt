@@ -29,6 +29,13 @@ interface FeedBackend {
         cursor: String? = null
     ): EntriesPage
 
+    /**
+     * The most recent entries regardless of read state, newest first, for stocking up before a
+     * stretch offline. [getUnreadEntries] cannot serve that: everything already read is exactly
+     * what it leaves out, and unread alone is whatever happens to be left over.
+     */
+    suspend fun getRecentEntries(limit: Int = ENTRIES_PAGE_LIMIT, cursor: String? = null): EntriesPage
+
     suspend fun getFeeds(): List<Feed>
 
     suspend fun getUnreadCounts(): Map<Long, Int>

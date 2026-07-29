@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.ai.AiModelRepository
+import com.hiosdra.hreader.data.local.repository.OfflineReadinessRepository
 import com.hiosdra.hreader.data.model.BackendType
+import com.hiosdra.hreader.data.model.OfflineReadiness
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.repository.FeedRepository
 import com.hiosdra.hreader.data.repository.LocalCacheRepository
+import com.hiosdra.hreader.worker.SyncScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,13 +46,27 @@ data class AiModelsUiState(
 
     val selectedModelIsMissing: Boolean
         get() = models.isNotEmpty() && models.none { it.id == selectedModelId }
+
+    /** Falls back to the id: the list may not have loaded yet, or may never load offline. */
+    val selectedModelName: String
+        get() = models.find { it.id == selectedModelId }?.displayName ?: selectedModelId
 }
+
+data class OfflineUiState(
+    val readiness: OfflineReadiness = OfflineReadiness(),
+    val backlogTarget: Int = 0,
+    val imageDownloadEnabled: Boolean = true,
+    val imageCacheBudgetMegabytes: Int = 0,
+    val isPreparing: Boolean = false
+)
 
 class SettingsViewModel(
     private val preferencesManager: PreferencesManager,
     private val feedRepository: FeedRepository,
     private val aiModelRepository: AiModelRepository,
-    private val localCacheRepository: LocalCacheRepository
+    private val localCacheRepository: LocalCacheRepository,
+    private val offlineReadinessRepository: OfflineReadinessRepository,
+    private val syncScheduler: SyncScheduler
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(currentSettings())
     val uiState: StateFlow<ServerSettingsUiState> = _uiState.asStateFlow()
@@ -60,9 +77,48 @@ class SettingsViewModel(
     private val _aiModels = MutableStateFlow(AiModelsUiState(selectedModelId = preferencesManager.getAiModelId()))
     val aiModels: StateFlow<AiModelsUiState> = _aiModels.asStateFlow()
 
+    private val _offline = MutableStateFlow(currentOfflineSettings())
+    val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
+
     init {
         loadAiModels()
+        viewModelScope.launch {
+            offlineReadinessRepository.observe().collect { readiness ->
+                _offline.value = _offline.value.copy(readiness = readiness)
+            }
+        }
+        viewModelScope.launch {
+            syncScheduler.isPreparingForOffline().collect { preparing ->
+                _offline.value = _offline.value.copy(isPreparing = preparing)
+            }
+        }
     }
+
+    fun prepareForOffline() {
+        _offline.value = _offline.value.copy(isPreparing = true)
+        syncScheduler.prepareForOffline()
+    }
+
+    fun onBacklogTargetChange(target: Int) {
+        preferencesManager.setOfflineBacklogTarget(target)
+        _offline.value = _offline.value.copy(backlogTarget = target)
+    }
+
+    fun onImageDownloadEnabledChange(enabled: Boolean) {
+        preferencesManager.setImageDownloadEnabled(enabled)
+        _offline.value = _offline.value.copy(imageDownloadEnabled = enabled)
+    }
+
+    fun onImageCacheBudgetChange(megabytes: Int) {
+        preferencesManager.setImageCacheBudgetMegabytes(megabytes)
+        _offline.value = _offline.value.copy(imageCacheBudgetMegabytes = megabytes)
+    }
+
+    private fun currentOfflineSettings() = OfflineUiState(
+        backlogTarget = preferencesManager.getOfflineBacklogTarget(),
+        imageDownloadEnabled = preferencesManager.getImageDownloadEnabled(),
+        imageCacheBudgetMegabytes = preferencesManager.getImageCacheBudgetMegabytes()
+    )
 
     fun onOpenRouterApiKeyChange(apiKey: String) {
         preferencesManager.setOpenRouterApiKey(apiKey)

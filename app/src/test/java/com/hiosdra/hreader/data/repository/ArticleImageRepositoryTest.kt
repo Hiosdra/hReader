@@ -5,6 +5,7 @@ import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleImageDao
 import com.hiosdra.hreader.data.local.entity.ArticleImage
 import com.hiosdra.hreader.data.local.repository.ArticleImageRepository
+import com.hiosdra.hreader.data.preferences.PreferencesManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -27,7 +28,14 @@ class ArticleImageRepositoryTest {
     private val articleImageDao = mockk<ArticleImageDao>()
     private val articleDao = mockk<ArticleDao>()
     private val okHttpClient = mockk<OkHttpClient>()
-    private val repo: ArticleImageRepository = ArticleImageRepository(context, articleImageDao, articleDao, okHttpClient) { path ->
+    private val preferencesManager = mockk<PreferencesManager>(relaxed = true)
+    private val repo: ArticleImageRepository = ArticleImageRepository(
+        context,
+        articleImageDao,
+        articleDao,
+        okHttpClient,
+        preferencesManager
+    ) { path ->
         println("fileExists called with: $path")
         path == "/tmp/image.jpg" || path == "/tmp/orphan.jpg"
     }

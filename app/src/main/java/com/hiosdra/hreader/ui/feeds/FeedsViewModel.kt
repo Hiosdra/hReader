@@ -50,27 +50,48 @@ class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
         _uiState.value = _uiState.value.copy(filteredFeeds = filteredFeeds)
     }
 
+    /**
+     * The cache first, the server second. Subscriptions change rarely and the local copy is
+     * complete, so a failed refresh is only an error when there is nothing cached to show.
+     */
     private fun loadFeeds() {
         if (_uiState.value.isLoading) return
 
-        _uiState.value = _uiState.value.copy(isLoading = true)
+        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
-            try {
-                val fetchedFeeds = feedRepository.getFeeds()
-                val unreadCounts = feedRepository.getUnreadCounts()
-                _uiState.value = _uiState.value.copy(
-                    feeds = fetchedFeeds,
-                    filteredFeeds = fetchedFeeds,
-                    unreadCounts = unreadCounts,
-                    isLoading = false
-                )
-                if (_uiState.value.searchQuery.isNotEmpty()) {
-                    filterFeeds()
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "Error loading feeds: ${e.message}", isLoading = false)
-                Log.e("FeedsViewModel", "Error loading feeds", e)
+            val cachedFeeds = runCatching { feedRepository.getCachedFeeds() }.getOrDefault(emptyList())
+            val cachedCounts = runCatching { feedRepository.getCachedUnreadCounts() }.getOrDefault(emptyMap())
+            if (cachedFeeds.isNotEmpty()) {
+                publish(cachedFeeds, cachedCounts)
             }
+
+            val refreshed = runCatching { feedRepository.refreshFeeds() }
+            refreshed.fold(
+                onSuccess = { feeds ->
+                    val counts = runCatching { feedRepository.getUnreadCounts() }.getOrDefault(cachedCounts)
+                    publish(feeds, counts)
+                },
+                onFailure = { failure ->
+                    Log.w("FeedsViewModel", "Falling back to the cached subscriptions", failure)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Error loading feeds: ${failure.message}".takeIf { cachedFeeds.isEmpty() }
+                    )
+                }
+            )
+        }
+    }
+
+    private fun publish(feeds: List<Feed>, unreadCounts: Map<Long, Int>) {
+        _uiState.value = _uiState.value.copy(
+            feeds = feeds,
+            filteredFeeds = feeds,
+            unreadCounts = unreadCounts,
+            isLoading = false,
+            error = null
+        )
+        if (_uiState.value.searchQuery.isNotEmpty()) {
+            filterFeeds()
         }
     }
 }

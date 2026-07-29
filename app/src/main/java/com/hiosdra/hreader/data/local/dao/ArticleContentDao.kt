@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.data.local.entity.ArticleContent
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ArticleContentDao {
@@ -22,4 +23,7 @@ interface ArticleContentDao {
 
     @Query("SELECT * FROM article_contents ORDER BY fetchedAt DESC")
     suspend fun getAllArticleContents(): List<ArticleContent>
+
+    @Query("SELECT COUNT(*) FROM article_contents")
+    fun observeContentCount(): Flow<Int>
 }

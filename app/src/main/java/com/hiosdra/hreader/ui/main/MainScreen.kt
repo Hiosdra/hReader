@@ -86,6 +86,9 @@ fun MainScreen(
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                if (!uiState.isOnline) {
+                    OfflineBanner()
+                }
                 uiState.unavailableAiModelId?.let { modelId ->
                     AiModelUnavailableBanner(
                         modelId = modelId,
@@ -137,7 +140,8 @@ fun MainScreen(
                             )
                         }
                         IconButton(
-                            onClick = { if (!uiState.isRefreshing) viewModel.refreshFromNetwork() },
+                            onClick = { if (!uiState.isRefreshing && uiState.isOnline) viewModel.refreshFromNetwork() },
+                            enabled = uiState.isOnline || uiState.isRefreshing,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
                             if (uiState.isRefreshing) {
@@ -155,37 +159,68 @@ fun MainScreen(
                             }
                         }
                         val expanded = remember { mutableStateOf(false) }
-                        IconButton(
-                            onClick = { expanded.value = true },
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.MoreVert,
-                                contentDescription = "More",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = expanded.value,
-                            onDismissRequest = { expanded.value = false },
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.surfaceContainer)
-                                .clip(RoundedCornerShape(8.dp))
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
-                                onClick = {
-                                    expanded.value = false
-                                    navController.navigate(Routes.SETTINGS)
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Filled.Settings,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
+                        // The menu has to sit inside a box around its button. As a sibling in the
+                        // action row it anchored to a zero-width slot after the button and opened
+                        // adrift of the edge it belongs to.
+                        Box {
+                            IconButton(
+                                onClick = { expanded.value = true },
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.MoreVert,
+                                    contentDescription = "More",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = expanded.value,
+                                onDismissRequest = { expanded.value = false },
+                                // Clip first: a background painted before it keeps square corners.
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                            ) {
+                                if (uiState.readCount > 0 || uiState.showReadArticles) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                if (uiState.showReadArticles) {
+                                                    "Unread only"
+                                                } else {
+                                                    "Show read articles (${uiState.readCount})"
+                                                },
+                                                style = MaterialTheme.typography.labelLarge
+                                            )
+                                        },
+                                        onClick = {
+                                            expanded.value = false
+                                            viewModel.setShowReadArticles(!uiState.showReadArticles)
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Filled.Done,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     )
                                 }
-                            )
+                                DropdownMenuItem(
+                                    text = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
+                                    onClick = {
+                                        expanded.value = false
+                                        navController.navigate(Routes.SETTINGS)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Filled.Settings,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -336,6 +371,24 @@ fun MainScreen(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun OfflineBanner() {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "Offline — showing what was downloaded. Anything you read syncs when you are back.",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
     }
 }
 

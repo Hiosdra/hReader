@@ -14,4 +14,9 @@ class ImageLoader(
         localPath?.takeIf { fileExists(it) }?.let { return@withContext "file://$it" }
         return@withContext imageUrl
     }
+
+    /** Where each of this article's images was downloaded, keyed by its published address. */
+    suspend fun getLocalImagePaths(entryId: Long): Map<String, String> = withContext(Dispatchers.IO) {
+        articleImageRepository.getLocalImagePaths(entryId)
+    }
 }
