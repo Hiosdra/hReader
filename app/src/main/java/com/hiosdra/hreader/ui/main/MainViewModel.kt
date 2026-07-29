@@ -8,6 +8,7 @@ import com.hiosdra.hreader.data.ai.SelectedModelStatus
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.worker.SyncScheduler
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ data class MainUiState(
     val feedTitle: String? = null,
     val searchQuery: String = "",
     val unavailableAiModelId: String? = null,
+    val isOnline: Boolean = true,
     val showBacklog: Boolean = false,
     val backlogCount: Int = 0
 )
@@ -30,9 +32,10 @@ data class MainUiState(
 class MainViewModel(
     private val articleRepository: ArticleRepository,
     private val aiModelRepository: AiModelRepository,
-    private val syncScheduler: SyncScheduler
+    private val syncScheduler: SyncScheduler,
+    networkMonitor: NetworkMonitor
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(MainUiState(isOnline = networkMonitor.isOnline.value))
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private var fullList: List<Entry> = emptyList()
@@ -45,6 +48,11 @@ class MainViewModel(
     init {
         loadEntries() // default: all items
         checkSelectedAiModel()
+        viewModelScope.launch {
+            networkMonitor.isOnline.collect { online ->
+                _uiState.value = _uiState.value.copy(isOnline = online)
+            }
+        }
     }
 
     fun setShowBacklog(show: Boolean) {

@@ -12,6 +12,7 @@ import com.hiosdra.hreader.data.model.CredibilitySource
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.ImageLoader
+import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.absolutizeArticleImages
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,9 @@ import kotlinx.coroutines.launch
 
 private const val MISSING_CONTENT_MESSAGE =
     "The article text is still downloading. Try again in a moment."
+
+private const val PARTIAL_CONTENT_MESSAGE =
+    "The full text of this article was never downloaded, so this is only what the feed itself carried."
 
 data class ArticleUiState(
     val entries: List<Entry> = emptyList(),
@@ -32,6 +36,8 @@ data class ArticleUiState(
     val displayContent: Map<Long, String> = emptyMap(),
     /** Per article, where each of its images was downloaded, keyed by published address. */
     val localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
+    val contentError: String? = null,
+    val isOnline: Boolean = true,
     val aiOverviews: Map<Long, String> = emptyMap(),
     val generatingOverviewIds: Set<Long> = emptySet(),
     val overviewError: String? = null,
@@ -47,14 +53,24 @@ class ArticleViewModel(
     private val articleAiService: ArticleAiService,
     private val credibilityRepository: CredibilityRepository,
     private val preferencesManager: PreferencesManager,
-    private val imageLoader: ImageLoader
+    private val imageLoader: ImageLoader,
+    networkMonitor: NetworkMonitor
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
-        ArticleUiState(credibilityEnabled = preferencesManager.getCredibilityScoreEnabled())
+        ArticleUiState(
+            credibilityEnabled = preferencesManager.getCredibilityScoreEnabled(),
+            isOnline = networkMonitor.isOnline.value
+        )
     )
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
     private var initialIndexApplied = false
+
+    init {
+        viewModelScope.launch {
+            networkMonitor.isOnline.collect { online -> _uiState.update { it.copy(isOnline = online) } }
+        }
+    }
 
     fun setCurrentIndex(index: Int) {
         _uiState.update { it.copy(currentIndex = index) }
@@ -64,25 +80,38 @@ class ArticleViewModel(
         }
     }
 
+    /**
+     * A failure here is the normal offline case, not an oddity: the fetch needs the backend, and
+     * what the feed itself carried is all that is left. Silence used to leave the reader staring
+     * at an empty screen wondering whether it was still loading.
+     */
     private fun loadOriginalContent(entryId: Long, url: String) {
         viewModelScope.launch {
-            try {
-                val content = articleContentRepository.getArticleContent(entryId, url)
-                store(entryId, url, content)
-            } catch (e: Exception) {
-                e.printStackTrace()
+            val content = runCatching { articleContentRepository.getArticleContent(entryId, url) }
+                .getOrNull()
+            if (content != null) {
+                store(entryId, url, content, isFullText = true)
+                return@launch
+            }
+
+            val syncedWithFeed = _uiState.value.entries.find { it.id == entryId }?.content
+            if (syncedWithFeed.isNullOrBlank()) {
+                _uiState.update { it.copy(contentError = PARTIAL_CONTENT_MESSAGE) }
+            } else {
+                store(entryId, url, syncedWithFeed, isFullText = false)
             }
         }
     }
 
-    private suspend fun store(entryId: Long, url: String, content: String) {
+    private suspend fun store(entryId: Long, url: String, content: String, isFullText: Boolean) {
         val prepared = absolutizeArticleImages(content, url)
         val localPaths = imageLoader.getLocalImagePaths(entryId)
         _uiState.update {
             it.copy(
                 originalContent = it.originalContent + (entryId to content),
                 displayContent = it.displayContent + (entryId to prepared),
-                localImagePaths = it.localImagePaths + (entryId to localPaths)
+                localImagePaths = it.localImagePaths + (entryId to localPaths),
+                contentError = if (isFullText) it.contentError else PARTIAL_CONTENT_MESSAGE
             )
         }
     }
@@ -134,6 +163,10 @@ class ArticleViewModel(
     /** What the reader sees: the same text with its images resolved to the downloaded copies. */
     fun getDisplayContentForEntry(entryId: Long): String? =
         _uiState.value.displayContent[entryId] ?: getContentForEntry(entryId)
+
+    fun clearContentError() {
+        _uiState.update { it.copy(contentError = null) }
+    }
 
     fun generateAiOverview(entryId: Long) {
         val entry = _uiState.value.entries.find { it.id == entryId } ?: return

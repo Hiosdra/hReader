@@ -22,3 +22,9 @@ data class PrefetchTarget(
     val url: String,
     val enclosures: List<Enclosure>
 )
+
+/** Unread articles per feed, counted locally so the subscription list works without a connection. */
+data class FeedUnreadCount(
+    val feedId: Long,
+    val unreadCount: Int
+)
