@@ -86,6 +86,9 @@ fun MainScreen(
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                if (!uiState.isOnline) {
+                    OfflineBanner()
+                }
                 uiState.unavailableAiModelId?.let { modelId ->
                     AiModelUnavailableBanner(
                         modelId = modelId,
@@ -137,7 +140,8 @@ fun MainScreen(
                             )
                         }
                         IconButton(
-                            onClick = { if (!uiState.isRefreshing) viewModel.refreshFromNetwork() },
+                            onClick = { if (!uiState.isRefreshing && uiState.isOnline) viewModel.refreshFromNetwork() },
+                            enabled = uiState.isOnline || uiState.isRefreshing,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
                             if (uiState.isRefreshing) {
@@ -361,6 +365,24 @@ fun MainScreen(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun OfflineBanner() {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "Offline — showing what was downloaded. Anything you read syncs when you are back.",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
     }
 }
 

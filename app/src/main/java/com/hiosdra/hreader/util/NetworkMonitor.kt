@@ -8,15 +8,25 @@ import android.net.NetworkRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * Online means a network that actually reaches the internet. A marina hotspot behind a captive
+ * portal and a SIM out of data both offer a network that claims `NET_CAPABILITY_INTERNET` with
+ * nothing behind it, and calling those online sends every request into a timeout.
+ */
 class NetworkMonitor(context: Context) {
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val _isOnline = MutableStateFlow(checkInitial())
     val isOnline: StateFlow<Boolean> = _isOnline
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) { _isOnline.value = true }
+        override fun onAvailable(network: Network) { _isOnline.value = checkAnyOnline() }
         override fun onLost(network: Network) { _isOnline.value = checkAnyOnline() }
         override fun onUnavailable() { _isOnline.value = checkAnyOnline() }
+        // Validation lands after the network becomes available, so without this a portal that
+        // never lets a request through would stay marked online.
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            _isOnline.value = checkAnyOnline()
+        }
     }
 
     init {
@@ -33,9 +43,13 @@ class NetworkMonitor(context: Context) {
         if (networks.isEmpty()) return false
         networks.forEach { n ->
             val caps = connectivityManager.getNetworkCapabilities(n)
-            if (caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return true
+            if (caps != null && caps.reachesInternet()) return true
         }
         return false
     }
+
+    private fun NetworkCapabilities.reachesInternet(): Boolean =
+        hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
 }
 

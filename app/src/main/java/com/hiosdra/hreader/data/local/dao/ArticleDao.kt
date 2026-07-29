@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
+import com.hiosdra.hreader.data.local.entity.FeedUnreadCount
 import com.hiosdra.hreader.data.local.entity.PendingStatus
 import com.hiosdra.hreader.data.local.entity.PrefetchTarget
 import com.hiosdra.hreader.data.model.ArticleStatus
@@ -98,4 +99,10 @@ interface ArticleDao {
 
     @Query("SELECT COUNT(*) FROM articles WHERE backlogFetchedAt IS NOT NULL")
     fun observeBacklogCount(): Flow<Int>
+
+    @Query(
+        "SELECT feedId, COUNT(*) AS unreadCount FROM articles " +
+            "WHERE status != :readStatus GROUP BY feedId"
+    )
+    fun observeUnreadCountsPerFeed(readStatus: ArticleStatus = ArticleStatus.READ): Flow<List<FeedUnreadCount>>
 }
