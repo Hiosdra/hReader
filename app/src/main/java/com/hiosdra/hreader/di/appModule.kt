@@ -7,6 +7,7 @@ import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleImageRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.local.repository.CredibilityRepository
+import com.hiosdra.hreader.data.local.repository.OfflineReadinessRepository
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.repository.FeedRepository
@@ -47,6 +48,7 @@ val appModule = module {
     single { ArticleImageRepository(androidApplication(), get(), get(), get()) }
     single { CredibilityRepository(get(), get()) }
     single { ArticleContentRepository(get(), get(), get(), get(), get()) }
+    single { OfflineReadinessRepository(get(), get(), get(), get()) }
     single<FeedRepository> { FeedRepository(get()) }
     single { LocalCacheRepository(get(), get(), get(), get(), get(), get(), get(), File(androidApplication().filesDir, "article_images")) }
     single { PaywallBypassService() }
@@ -61,5 +63,5 @@ val appModule = module {
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }
-    viewModel { SettingsViewModel(get(), get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get(), get(), get()) }
 }

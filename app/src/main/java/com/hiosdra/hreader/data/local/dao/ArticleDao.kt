@@ -71,4 +71,10 @@ interface ArticleDao {
 
     @Query("SELECT * FROM articles WHERE id IN (:ids)")
     suspend fun getArticlesImmediate(ids: List<String>): List<ArticleEntity>
+
+    @Query("SELECT COUNT(*) FROM articles")
+    fun observeArticleCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM articles WHERE status != :readStatus")
+    fun observeUnreadCount(readStatus: ArticleStatus = ArticleStatus.READ): Flow<Int>
 }

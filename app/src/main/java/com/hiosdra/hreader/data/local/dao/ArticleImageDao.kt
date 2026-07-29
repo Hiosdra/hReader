@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.data.local.entity.ArticleImage
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ArticleImageDao {
@@ -35,4 +36,11 @@ interface ArticleImageDao {
 
     @Query("DELETE FROM article_images WHERE entryId = :entryId")
     suspend fun deleteImagesForArticle(entryId: Long)
+
+    @Query("SELECT COUNT(*) FROM article_images")
+    fun observeImageCount(): Flow<Int>
+
+    @Query("SELECT COALESCE(SUM(fileSize), 0) FROM article_images")
+    fun observeImageBytes(): Flow<Long>
+
 }

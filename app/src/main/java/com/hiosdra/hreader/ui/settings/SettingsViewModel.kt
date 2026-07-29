@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.ai.AiModelRepository
+import com.hiosdra.hreader.data.local.repository.OfflineReadinessRepository
 import com.hiosdra.hreader.data.model.BackendType
+import com.hiosdra.hreader.data.model.OfflineReadiness
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.repository.FeedRepository
 import com.hiosdra.hreader.data.repository.LocalCacheRepository
+import com.hiosdra.hreader.worker.SyncScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,11 +48,18 @@ data class AiModelsUiState(
         get() = models.isNotEmpty() && models.none { it.id == selectedModelId }
 }
 
+data class OfflineUiState(
+    val readiness: OfflineReadiness = OfflineReadiness(),
+    val isPreparing: Boolean = false
+)
+
 class SettingsViewModel(
     private val preferencesManager: PreferencesManager,
     private val feedRepository: FeedRepository,
     private val aiModelRepository: AiModelRepository,
-    private val localCacheRepository: LocalCacheRepository
+    private val localCacheRepository: LocalCacheRepository,
+    private val offlineReadinessRepository: OfflineReadinessRepository,
+    private val syncScheduler: SyncScheduler
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(currentSettings())
     val uiState: StateFlow<ServerSettingsUiState> = _uiState.asStateFlow()
@@ -60,9 +70,28 @@ class SettingsViewModel(
     private val _aiModels = MutableStateFlow(AiModelsUiState(selectedModelId = preferencesManager.getAiModelId()))
     val aiModels: StateFlow<AiModelsUiState> = _aiModels.asStateFlow()
 
+    private val _offline = MutableStateFlow(OfflineUiState())
+    val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
+
     init {
         loadAiModels()
+        viewModelScope.launch {
+            offlineReadinessRepository.observe().collect { readiness ->
+                _offline.value = _offline.value.copy(readiness = readiness)
+            }
+        }
+        viewModelScope.launch {
+            syncScheduler.isPreparingForOffline().collect { preparing ->
+                _offline.value = _offline.value.copy(isPreparing = preparing)
+            }
+        }
     }
+
+    fun prepareForOffline() {
+        _offline.value = _offline.value.copy(isPreparing = true)
+        syncScheduler.prepareForOffline()
+    }
+
 
     fun onOpenRouterApiKeyChange(apiKey: String) {
         preferencesManager.setOpenRouterApiKey(apiKey)
