@@ -563,7 +563,7 @@ private fun ArticleContent(
     val zoomUrl = zoomImageUrl
     if (zoomUrl != null) {
         Dialog(onDismissRequest = { zoomImageUrl = null }) {
-            ZoomableImage(url = zoomUrl) { zoomImageUrl = null }
+            ZoomableImage(entryId = entry.id, url = zoomUrl) { zoomImageUrl = null }
         }
     }
 }

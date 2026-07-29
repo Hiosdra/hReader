@@ -45,7 +45,7 @@ val appModule = module {
     single { get<AppDatabase>().articleImageDao() }
     single { get<AppDatabase>().articleCredibilityDao() }
     single { ArticleRepository(get(), get(), get(), get(), get(), get()) }
-    single { ArticleImageRepository(androidApplication(), get(), get(), get()) }
+    single { ArticleImageRepository(androidApplication(), get(), get(), get(), get()) }
     single { CredibilityRepository(get(), get()) }
     single { ArticleContentRepository(get(), get(), get(), get(), get()) }
     single { OfflineReadinessRepository(get(), get(), get(), get()) }

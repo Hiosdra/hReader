@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,8 +15,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +27,7 @@ import java.time.Duration
 import java.time.Instant
 
 private val BACKLOG_TARGETS = listOf(0, 200, 500, 1000)
+private val CACHE_BUDGETS_MB = listOf(200, 500, 1000)
 private const val BYTES_PER_MEGABYTE = 1024.0 * 1024
 
 /**
@@ -35,6 +39,8 @@ fun OfflineReadinessSection(
     state: OfflineUiState,
     onPrepare: () -> Unit,
     onBacklogTargetChange: (Int) -> Unit,
+    onImageDownloadEnabledChange: (Boolean) -> Unit,
+    onImageCacheBudgetChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val readiness = state.readiness
@@ -113,6 +119,52 @@ fun OfflineReadinessSection(
                     onClick = { onBacklogTargetChange(target) },
                     label = { Text(if (target == 0) "Unread only" else "$target") }
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onImageDownloadEnabledChange(!state.imageDownloadEnabled) }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Download images",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Off keeps the cache small when storage matters more than pictures",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = state.imageDownloadEnabled,
+                onCheckedChange = onImageDownloadEnabledChange
+            )
+        }
+
+        if (state.imageDownloadEnabled) {
+            Text(
+                text = "Image cache limit",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CACHE_BUDGETS_MB.forEach { budget ->
+                    FilterChip(
+                        selected = state.imageCacheBudgetMegabytes == budget,
+                        onClick = { onImageCacheBudgetChange(budget) },
+                        label = { Text("$budget MB") }
+                    )
+                }
             }
         }
     }

@@ -43,4 +43,10 @@ interface ArticleImageDao {
     @Query("SELECT COALESCE(SUM(fileSize), 0) FROM article_images")
     fun observeImageBytes(): Flow<Long>
 
+    @Query("SELECT COALESCE(SUM(fileSize), 0) FROM article_images")
+    suspend fun getTotalImageBytes(): Long
+
+    /** Oldest first: what the cache budget evicts when it has to make room. */
+    @Query("SELECT * FROM article_images ORDER BY downloadedAt ASC")
+    suspend fun getImagesOldestFirst(): List<ArticleImage>
 }

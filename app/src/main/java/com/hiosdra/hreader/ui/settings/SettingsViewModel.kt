@@ -51,6 +51,8 @@ data class AiModelsUiState(
 data class OfflineUiState(
     val readiness: OfflineReadiness = OfflineReadiness(),
     val backlogTarget: Int = 0,
+    val imageDownloadEnabled: Boolean = true,
+    val imageCacheBudgetMegabytes: Int = 0,
     val isPreparing: Boolean = false
 )
 
@@ -71,9 +73,7 @@ class SettingsViewModel(
     private val _aiModels = MutableStateFlow(AiModelsUiState(selectedModelId = preferencesManager.getAiModelId()))
     val aiModels: StateFlow<AiModelsUiState> = _aiModels.asStateFlow()
 
-    private val _offline = MutableStateFlow(
-        OfflineUiState(backlogTarget = preferencesManager.getOfflineBacklogTarget())
-    )
+    private val _offline = MutableStateFlow(currentOfflineSettings())
     val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
 
     init {
@@ -100,6 +100,21 @@ class SettingsViewModel(
         _offline.value = _offline.value.copy(backlogTarget = target)
     }
 
+    fun onImageDownloadEnabledChange(enabled: Boolean) {
+        preferencesManager.setImageDownloadEnabled(enabled)
+        _offline.value = _offline.value.copy(imageDownloadEnabled = enabled)
+    }
+
+    fun onImageCacheBudgetChange(megabytes: Int) {
+        preferencesManager.setImageCacheBudgetMegabytes(megabytes)
+        _offline.value = _offline.value.copy(imageCacheBudgetMegabytes = megabytes)
+    }
+
+    private fun currentOfflineSettings() = OfflineUiState(
+        backlogTarget = preferencesManager.getOfflineBacklogTarget(),
+        imageDownloadEnabled = preferencesManager.getImageDownloadEnabled(),
+        imageCacheBudgetMegabytes = preferencesManager.getImageCacheBudgetMegabytes()
+    )
 
     fun onOpenRouterApiKeyChange(apiKey: String) {
         preferencesManager.setOpenRouterApiKey(apiKey)
