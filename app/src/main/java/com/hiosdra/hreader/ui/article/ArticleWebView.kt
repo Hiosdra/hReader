@@ -2,10 +2,13 @@ package com.hiosdra.hreader.ui.article
 
 import android.view.View
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
@@ -13,12 +16,17 @@ import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.BionicReadingProcessor
 import com.hiosdra.hreader.util.cleanUrl
 import org.koin.compose.koinInject
+import java.io.File
+import java.io.FileInputStream
+import java.net.URLConnection
 
 @Composable
 fun ArticleWebView(
     articleContent: String,
     baseUrl: String?,
     modifier: Modifier = Modifier,
+    allowNetworkLoads: Boolean = true,
+    localImagePaths: Map<String, String> = emptyMap(),
     onLinkClick: ((String) -> Unit)? = null,
     onScrollProgress: ((Float) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
@@ -28,6 +36,11 @@ fun ArticleWebView(
     val linkColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.primary.toArgb())
     val codeBg = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.surfaceVariant.toArgb())
     val ruleColor = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.outlineVariant.toArgb())
+
+    // Read by the request interceptor below, which outlives any single recomposition: the client is
+    // built once with the WebView, while the downloaded images arrive with the article body.
+    val cachedImages = remember { mutableStateOf(localImagePaths) }
+    cachedImages.value = localImagePaths
 
     AndroidView(
         factory = { context ->
@@ -44,6 +57,29 @@ fun ArticleWebView(
                 settings.defaultFontSize = 16
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 webViewClient = object : WebViewClient() {
+                    /**
+                     * Serves an image from the copy prefetching downloaded instead of fetching it
+                     * again. Interception rather than rewriting the `src` to a `file://` address:
+                     * the document is loaded under the article's own https origin, which is not
+                     * allowed to pull in local files.
+                     */
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? {
+                        val url = request?.url?.toString() ?: return null
+                        val localPath = cachedImages.value[url] ?: return null
+                        val file = File(localPath)
+                        if (!file.exists()) return null
+                        return runCatching {
+                            WebResourceResponse(
+                                URLConnection.guessContentTypeFromName(file.name) ?: "image/*",
+                                null,
+                                FileInputStream(file)
+                            )
+                        }.getOrNull()
+                    }
+
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                         val url = request?.url?.toString() ?: return false
                         onLinkClick?.invoke(cleanUrl(url))
@@ -74,6 +110,11 @@ fun ArticleWebView(
             }
         },
         update = { webView ->
+            // Images the article references have already been rewritten to local files where they
+            // were downloaded. Whatever is left points at the network, and offline every one of
+            // those costs a connect timeout before the page settles.
+            webView.settings.blockNetworkLoads = !allowNetworkLoads
+
             val bionicReadingEnabled = preferencesManager.getBionicReadingEnabled()
             val processedContent = if (bionicReadingEnabled) {
                 BionicReadingProcessor.processTextToBionic(articleContent)

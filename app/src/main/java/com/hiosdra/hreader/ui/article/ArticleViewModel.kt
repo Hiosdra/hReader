@@ -11,6 +11,8 @@ import com.hiosdra.hreader.data.model.CredibilityReport
 import com.hiosdra.hreader.data.model.CredibilitySource
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.util.ImageLoader
+import com.hiosdra.hreader.util.absolutizeArticleImages
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +28,10 @@ data class ArticleUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val originalContent: Map<Long, String> = emptyMap(),
+    /** [originalContent] with every image address resolved, ready to render. */
+    val displayContent: Map<Long, String> = emptyMap(),
+    /** Per article, where each of its images was downloaded, keyed by published address. */
+    val localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     val aiOverviews: Map<Long, String> = emptyMap(),
     val generatingOverviewIds: Set<Long> = emptySet(),
     val overviewError: String? = null,
@@ -40,7 +46,8 @@ class ArticleViewModel(
     private val articleContentRepository: ArticleContentRepository,
     private val articleAiService: ArticleAiService,
     private val credibilityRepository: CredibilityRepository,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val imageLoader: ImageLoader
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         ArticleUiState(credibilityEnabled = preferencesManager.getCredibilityScoreEnabled())
@@ -61,10 +68,22 @@ class ArticleViewModel(
         viewModelScope.launch {
             try {
                 val content = articleContentRepository.getArticleContent(entryId, url)
-                _uiState.update { it.copy(originalContent = it.originalContent + (entryId to content)) }
+                store(entryId, url, content)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    private suspend fun store(entryId: Long, url: String, content: String) {
+        val prepared = absolutizeArticleImages(content, url)
+        val localPaths = imageLoader.getLocalImagePaths(entryId)
+        _uiState.update {
+            it.copy(
+                originalContent = it.originalContent + (entryId to content),
+                displayContent = it.displayContent + (entryId to prepared),
+                localImagePaths = it.localImagePaths + (entryId to localPaths)
+            )
         }
     }
 
@@ -111,6 +130,10 @@ class ArticleViewModel(
     fun getContentForEntry(entryId: Long): String? =
         _uiState.value.originalContent[entryId]
             ?: _uiState.value.entries.find { it.id == entryId }?.content
+
+    /** What the reader sees: the same text with its images resolved to the downloaded copies. */
+    fun getDisplayContentForEntry(entryId: Long): String? =
+        _uiState.value.displayContent[entryId] ?: getContentForEntry(entryId)
 
     fun generateAiOverview(entryId: Long) {
         val entry = _uiState.value.entries.find { it.id == entryId } ?: return

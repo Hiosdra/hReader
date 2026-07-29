@@ -26,7 +26,7 @@ class ArticleImageRepository(
     companion object {
         private const val TAG = "ArticleImageRepo"
     }
-    
+
     private val imagesDir = File(context.filesDir, "article_images")
         .apply { mkdirs() }
 
@@ -86,6 +86,12 @@ class ArticleImageRepository(
         articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
             ?.takeIf { fileExists(it.localFilePath) }
             ?.localFilePath
+
+    /** Every downloaded image of one article, keyed by the address it was published under. */
+    suspend fun getLocalImagePaths(entryId: Long): Map<String, String> =
+        articleImageDao.getImagesForArticle(entryId)
+            .filter { fileExists(it.localFilePath) }
+            .associate { it.originalUrl to it.localFilePath }
 
     suspend fun cleanupOrphanedImages() {
         val allImages = articleImageDao.getAllArticleImages()
