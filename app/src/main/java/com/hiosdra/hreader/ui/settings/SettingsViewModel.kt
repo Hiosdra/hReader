@@ -50,6 +50,7 @@ data class AiModelsUiState(
 
 data class OfflineUiState(
     val readiness: OfflineReadiness = OfflineReadiness(),
+    val backlogTarget: Int = 0,
     val isPreparing: Boolean = false
 )
 
@@ -70,7 +71,9 @@ class SettingsViewModel(
     private val _aiModels = MutableStateFlow(AiModelsUiState(selectedModelId = preferencesManager.getAiModelId()))
     val aiModels: StateFlow<AiModelsUiState> = _aiModels.asStateFlow()
 
-    private val _offline = MutableStateFlow(OfflineUiState())
+    private val _offline = MutableStateFlow(
+        OfflineUiState(backlogTarget = preferencesManager.getOfflineBacklogTarget())
+    )
     val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
 
     init {
@@ -90,6 +93,11 @@ class SettingsViewModel(
     fun prepareForOffline() {
         _offline.value = _offline.value.copy(isPreparing = true)
         syncScheduler.prepareForOffline()
+    }
+
+    fun onBacklogTargetChange(target: Int) {
+        preferencesManager.setOfflineBacklogTarget(target)
+        _offline.value = _offline.value.copy(backlogTarget = target)
     }
 
 

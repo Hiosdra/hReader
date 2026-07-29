@@ -18,12 +18,14 @@ class OfflineReadinessRepository(
     fun observe(): Flow<OfflineReadiness> = combine(
         articleDao.observeArticleCount(),
         articleDao.observeUnreadCount(),
+        articleDao.observeBacklogCount(),
         articleContentDao.observeContentCount(),
         combine(articleImageDao.observeImageCount(), articleImageDao.observeImageBytes(), ::Pair)
-    ) { articles, unread, contents, images ->
+    ) { articles, unread, backlog, contents, images ->
         OfflineReadiness(
             articleCount = articles,
             unreadCount = unread,
+            backlogCount = backlog,
             storedContentCount = contents,
             storedImageCount = images.first,
             storedImageBytes = images.second,

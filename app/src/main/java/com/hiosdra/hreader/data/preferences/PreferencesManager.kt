@@ -169,6 +169,20 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
+    /**
+     * How many articles to keep readable offline. Above what the backend still reports as unread,
+     * the sync tops the cache up with recent entries regardless of their read state. Zero keeps the
+     * old behaviour of caching unread articles only.
+     */
+    fun getOfflineBacklogTarget(): Int =
+        sharedPreferences.getInt(KEY_OFFLINE_BACKLOG_TARGET, DEFAULT_OFFLINE_BACKLOG_TARGET)
+
+    fun setOfflineBacklogTarget(target: Int) {
+        sharedPreferences.edit()
+            .putInt(KEY_OFFLINE_BACKLOG_TARGET, target.coerceAtLeast(0))
+            .apply()
+    }
+
     /** When the app last enqueued a background sync chain, so the throttle survives process death. */
     fun getLastChainedSyncTimestamp(): Long =
         sharedPreferences.getLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, 0L)
@@ -205,7 +219,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
+        private const val KEY_OFFLINE_BACKLOG_TARGET = "offline_backlog_target"
         private const val KEY_LAST_CHAINED_SYNC_TIMESTAMP = "last_chained_sync_timestamp"
         private const val MAX_PERFORMANCE_RECORDS = 50
+        private const val DEFAULT_OFFLINE_BACKLOG_TARGET = 0
     }
 }

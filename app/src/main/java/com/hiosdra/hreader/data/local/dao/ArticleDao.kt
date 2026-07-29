@@ -45,7 +45,15 @@ interface ArticleDao {
     @Query("SELECT id, status FROM articles WHERE pendingSync = 1")
     suspend fun getPendingStatuses(): List<PendingStatus>
 
-    @Query("SELECT id FROM articles WHERE status != :readStatus AND pendingSync = 0")
+    /**
+     * Backlog articles are excluded: they were downloaded to stock up for a trip, not because the
+     * backend returned them as unread, so the reconciliation that drops "no longer returned" rows
+     * would delete every one of them on the next full sync.
+     */
+    @Query(
+        "SELECT id FROM articles WHERE status != :readStatus AND pendingSync = 0 " +
+            "AND backlogFetchedAt IS NULL"
+    )
     suspend fun getSyncedUnreadIds(readStatus: ArticleStatus = ArticleStatus.READ): List<String>
 
     @Query("DELETE FROM articles WHERE id IN (:ids)")
@@ -66,15 +74,28 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE feedId = :feedId ORDER BY publishedAt ASC")
     fun getAllArticlesForFeed(feedId: Long): Flow<List<ArticleEntity>>
 
-    @Query("SELECT id, url, enclosures FROM articles WHERE status != :readStatus")
+    /**
+     * Read backlog articles are prefetched too. They exist precisely to be read without a
+     * connection, and their status says nothing about whether they have been read on this device.
+     */
+    @Query(
+        "SELECT id, url, enclosures FROM articles " +
+            "WHERE status != :readStatus OR backlogFetchedAt IS NOT NULL"
+    )
     suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
 
     @Query("SELECT * FROM articles WHERE id IN (:ids)")
     suspend fun getArticlesImmediate(ids: List<String>): List<ArticleEntity>
+
+    @Query("SELECT id FROM articles")
+    suspend fun getAllIds(): List<String>
 
     @Query("SELECT COUNT(*) FROM articles")
     fun observeArticleCount(): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM articles WHERE status != :readStatus")
     fun observeUnreadCount(readStatus: ArticleStatus = ArticleStatus.READ): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM articles WHERE backlogFetchedAt IS NOT NULL")
+    fun observeBacklogCount(): Flow<Int>
 }

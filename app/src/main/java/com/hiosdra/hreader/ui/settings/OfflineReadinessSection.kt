@@ -1,6 +1,8 @@
 package com.hiosdra.hreader.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -8,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,6 +23,7 @@ import com.hiosdra.hreader.data.model.OfflineReadiness
 import java.time.Duration
 import java.time.Instant
 
+private val BACKLOG_TARGETS = listOf(0, 200, 500, 1000)
 private const val BYTES_PER_MEGABYTE = 1024.0 * 1024
 
 /**
@@ -29,6 +34,7 @@ private const val BYTES_PER_MEGABYTE = 1024.0 * 1024
 fun OfflineReadinessSection(
     state: OfflineUiState,
     onPrepare: () -> Unit,
+    onBacklogTargetChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val readiness = state.readiness
@@ -83,6 +89,32 @@ fun OfflineReadinessSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Offline backlog",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = "How many articles to keep readable. Above what is still unread, recent articles " +
+                "are downloaded regardless of read state.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BACKLOG_TARGETS.forEach { target ->
+                FilterChip(
+                    selected = state.backlogTarget == target,
+                    onClick = { onBacklogTargetChange(target) },
+                    label = { Text(if (target == 0) "Unread only" else "$target") }
+                )
+            }
+        }
     }
 }
 
@@ -97,7 +129,8 @@ private fun OfflineReadiness.contentProgress(): Float =
 
 private fun OfflineReadiness.detailLine(): String {
     val megabytes = storedImageBytes / BYTES_PER_MEGABYTE
-    return "$unreadCount unread · $storedImageCount images (%.0f MB)".format(megabytes)
+    val backlog = if (backlogCount > 0) " · backlog $backlogCount" else ""
+    return "$unreadCount unread$backlog · $storedImageCount images (%.0f MB)".format(megabytes)
 }
 
 private fun OfflineReadiness.lastSyncLabel(): String {

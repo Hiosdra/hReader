@@ -172,6 +172,31 @@ fun MainScreen(
                                 .background(MaterialTheme.colorScheme.surfaceContainer)
                                 .clip(RoundedCornerShape(8.dp))
                         ) {
+                            if (uiState.backlogCount > 0) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (uiState.showBacklog) {
+                                                "Hide offline backlog"
+                                            } else {
+                                                "Show offline backlog (${uiState.backlogCount})"
+                                            },
+                                            style = MaterialTheme.typography.labelLarge
+                                        )
+                                    },
+                                    onClick = {
+                                        expanded.value = false
+                                        viewModel.setShowBacklog(!uiState.showBacklog)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Filled.Done,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
                                 onClick = {

@@ -27,6 +27,9 @@ class DelegatingFeedBackend(
         cursor: String?
     ): EntriesPage = active.getEntriesChangedAfter(changedAfter, limit, cursor)
 
+    override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage =
+        active.getRecentEntries(limit, cursor)
+
     override suspend fun getFeeds(): List<Feed> = active.getFeeds()
 
     override suspend fun getUnreadCounts(): Map<Long, Int> = active.getUnreadCounts()

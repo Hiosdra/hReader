@@ -146,6 +146,7 @@ fun SettingsScreen(
                     OfflineReadinessSection(
                         state = offline,
                         onPrepare = settingsViewModel::prepareForOffline,
+                        onBacklogTargetChange = settingsViewModel::onBacklogTargetChange,
                         modifier = Modifier.padding(16.dp)
                     )
                 }

@@ -28,5 +28,11 @@ data class ArticleEntity(
      * keyed on it rather than on [publishedAt] so catching up on an old article does not delete it
      * the moment it is read.
      */
-    val readAt: Instant? = null
+    val readAt: Instant? = null,
+    /**
+     * When this article was pulled in to stock up the offline backlog. Null for everything the
+     * normal sync brought down, which is what keeps backlog entries out of the unread list and
+     * out of the reconciliation that drops articles the backend stopped returning.
+     */
+    val backlogFetchedAt: Instant? = null
 )
