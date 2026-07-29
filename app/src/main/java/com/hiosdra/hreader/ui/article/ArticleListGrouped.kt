@@ -33,12 +33,13 @@ fun ArticleListGrouped(
     val sortedKeys = grouped.keys.sorted() // oldest date first
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")
     val allArticleIds = sortedEntries.map { it.id }
+    val articleIndexById = allArticleIds.withIndex().associate { (index, id) -> id to index }
 
     LazyColumn(
         modifier = modifier.background(MaterialTheme.colorScheme.background)
     ) {
         sortedKeys.forEach { date ->
-            val items = grouped[date].orEmpty()
+            val dayEntries = grouped[date].orEmpty()
             stickyHeader {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
@@ -64,13 +65,12 @@ fun ArticleListGrouped(
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
-            items(items, key = { e -> e.id }) { entry ->
-                val globalIndex = allArticleIds.indexOf(entry.id)
+            items(dayEntries, key = { it.id }) { entry ->
                 ArticleRow(
                     entry = entry,
                     navController = navController,
                     articleIds = allArticleIds,
-                    articleIndex = globalIndex,
+                    articleIndex = articleIndexById.getValue(entry.id),
                     onCheckedChange = onCheckedChange
                 )
             }
