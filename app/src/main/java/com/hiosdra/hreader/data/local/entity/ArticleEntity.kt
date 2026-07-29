@@ -1,12 +1,22 @@
 package com.hiosdra.hreader.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Enclosure
 import java.time.Instant
 
-@Entity(tableName = "articles")
+@Entity(
+    tableName = "articles",
+    indices = [
+        Index("feedId"),
+        Index("status"),
+        Index("publishedAt"),
+        Index("pendingSync"),
+        Index("starredPendingSync")
+    ]
+)
 data class ArticleEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -14,10 +24,18 @@ data class ArticleEntity(
     val url: String,
     val publishedAt: Instant,
     val content: String?,
+    /**
+     * The opening text of [content] with the markup taken out, so the article list can render a
+     * row without parsing HTML on the frame that scrolls it.
+     */
+    val preview: String? = null,
     val feedId: Long,
     val readingTime: Int?,
     val enclosures: List<Enclosure>,
     val status: ArticleStatus? = ArticleStatus.UNREAD,
+    val starred: Boolean = false,
+    /** A star toggled locally that the backend has not accepted yet. Mirrors [pendingSync]. */
+    val starredPendingSync: Boolean = false,
     /**
      * A [status] change made locally that the backend has not accepted yet. It survives sync
      * reconciliation and is pushed again on the next run, so reading offline is not lost.

@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.navigation
 
-import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -26,10 +25,16 @@ import org.koin.compose.koinInject
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
+    entryPoint: EntryPoint = EntryPoint.ArticleList,
     preferencesManager: PreferencesManager = koinInject()
 ) {
-    val startDestination = remember {
-        if (preferencesManager.hasBackendCredentials()) Routes.MAIN else Routes.SERVER_SETUP
+    val configured = remember { preferencesManager.hasBackendCredentials() }
+    val startDestination = remember(entryPoint) {
+        when {
+            !configured -> Routes.SERVER_SETUP
+            entryPoint is EntryPoint.AddFeed -> Routes.addFeed(entryPoint.url)
+            else -> Routes.MAIN
+        }
     }
     NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.SERVER_SETUP) {
@@ -54,25 +59,46 @@ fun AppNavigation(
             val feedId = if (raw == Routes.FEED_ID_NONE) null else raw
             MainWithSubscriptions(navController = navController, feedId = feedId)
         }
-        composable(Routes.ADD_FEED) {
+        composable(
+            route = Routes.ADD_FEED,
+            arguments = listOf(
+                navArgument("url") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) { backStackEntry ->
             AddFeedScreen(
                 navController = navController,
-                onFeedAdded = { navController.popBackStack() }
+                initialUrl = backStackEntry.arguments?.getString("url"),
+                // Opened from a share there is nothing behind this screen to go back to, so the
+                // app lands on the article list rather than on an empty back stack.
+                onFeedAdded = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate(Routes.MAIN) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                        }
+                    }
+                }
             )
         }
         composable(
             route = Routes.ARTICLE,
             arguments = listOf(
-                navArgument("articleIds") { type = NavType.StringType },
-                navArgument("initialIndex") { type = NavType.IntType }
+                navArgument("feedId") { type = NavType.LongType; defaultValue = Routes.FEED_ID_NONE },
+                navArgument("startId") { type = NavType.LongType },
+                navArgument("starred") { type = NavType.BoolType; defaultValue = false },
+                navArgument("includeRead") { type = NavType.BoolType; defaultValue = false },
+                navArgument("session") { type = NavType.LongType; defaultValue = 0L }
             )
         ) { backStackEntry ->
-            val articleIdsString = backStackEntry.arguments?.getString("articleIds")
-                ?: throw IllegalArgumentException("Article IDs are required when navigating to article screen")
-            val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
-            val articleIds = articleIdsString.split(",").mapNotNull { it.toLongOrNull() }
-            Log.i("AppNavigation", "Article IDs: $articleIds, initialIndex: $initialIndex")
-            ArticleScreen(navController, articleIds, initialIndex)
+            val arguments = backStackEntry.arguments
+            val rawFeedId = arguments?.getLong("feedId") ?: Routes.FEED_ID_NONE
+            ArticleScreen(
+                navController = navController,
+                feedId = rawFeedId.takeIf { it != Routes.FEED_ID_NONE },
+                startArticleId = arguments?.getLong("startId") ?: 0L,
+                starredOnly = arguments?.getBoolean("starred") ?: false,
+                includeRead = arguments?.getBoolean("includeRead") ?: false,
+                sessionStartMillis = arguments?.getLong("session") ?: 0L
+            )
         }
         composable(
             route = Routes.FEED,
@@ -110,7 +136,7 @@ private fun MainWithSubscriptions(navController: NavHostController, feedId: Long
             }
         },
         onFeedDetails = { navController.navigate(Routes.feed(it)) },
-        onAddFeed = { navController.navigate(Routes.ADD_FEED) },
+        onAddFeed = { navController.navigate(Routes.addFeed()) },
         gesturesEnabled = feedId == null
     ) {
         MainScreen(

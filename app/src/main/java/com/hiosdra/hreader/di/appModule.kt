@@ -21,6 +21,7 @@ import com.hiosdra.hreader.ui.settings.SettingsViewModel
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.SyncPerformanceLogger
+import com.hiosdra.hreader.widget.UnreadWidgetUpdater
 import com.hiosdra.hreader.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.worker.ContentSyncWorker
 import com.hiosdra.hreader.worker.SyncScheduler
@@ -49,7 +50,7 @@ val appModule = module {
     single { CredibilityRepository(get(), get()) }
     single { ArticleContentRepository(get(), get(), get(), get(), get()) }
     single { OfflineReadinessRepository(get(), get(), get(), get()) }
-    single<FeedRepository> { FeedRepository(get(), get(), get()) }
+    single<FeedRepository> { FeedRepository(get(), get(), get(), get()) }
     single { LocalCacheRepository(get(), get(), get(), get(), get(), get(), get(), File(androidApplication().filesDir, "article_images")) }
     single { PaywallBypassService() }
     single { PreferencesManager(androidApplication()) }
@@ -57,11 +58,12 @@ val appModule = module {
     single { ImageLoader(get()) }
     single { NetworkMonitor(androidApplication()) }
     single { SyncScheduler(androidApplication(), get()) }
-    worker { ContentSyncWorker(get(), get(), get(), get(), get()) }
-    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get()) }
-    viewModel { MainViewModel(get(), get(), get(), get()) }
+    single { UnreadWidgetUpdater(androidApplication(), get()) }
+    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
+    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get()) }
+    viewModel { MainViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { FeedsViewModel(get()) }
-    viewModel { ArticleViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ArticleViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { AddFeedViewModel(get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get(), get(), get(), get()) }
 }

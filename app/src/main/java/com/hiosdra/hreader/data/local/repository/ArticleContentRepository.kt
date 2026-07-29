@@ -9,11 +9,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import org.jsoup.Jsoup
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 
 class ArticleContentRepository(
     private val backend: FeedBackend,
@@ -31,6 +31,9 @@ class ArticleContentRepository(
          * flight at the same time.
          */
         private const val MAX_CONCURRENT_PREFETCH = 100
+
+        /** Below SQLite's 999 bound-variable ceiling on Android. */
+        private const val DELETE_CHUNK = 500
     }
 
     private val prefetchLimiter = Semaphore(MAX_CONCURRENT_PREFETCH)
@@ -83,8 +86,19 @@ class ArticleContentRepository(
         }
     }
 
-    suspend fun prefetchArticleContent(entries: List<Pair<Long, String>>, limit: Int? = 50) = coroutineScope {
+    /**
+     * [onProgress] is called with the number of articles finished so far — successes and failures
+     * alike, since what the reader waiting on "prepare for offline" wants to know is how much of
+     * the queue is left, not how much of it worked.
+     */
+    suspend fun prefetchArticleContent(
+        entries: List<Pair<Long, String>>,
+        limit: Int? = 50,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
+    ) = coroutineScope {
         val limitedEntries = if (limit != null) entries.take(limit) else entries
+        val total = limitedEntries.size
+        val done = AtomicInteger()
         val deferredResults = limitedEntries.map { (entryId, url) ->
             async(Dispatchers.IO) {
                 prefetchLimiter.withPermit {
@@ -96,6 +110,7 @@ class ArticleContentRepository(
                         Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                     }
                 }
+                onProgress(done.incrementAndGet(), total)
             }
         }
         deferredResults.awaitAll()
@@ -116,8 +131,7 @@ class ArticleContentRepository(
         // No early return on an empty article set: retention and full-sync reconciliation both
         // delete articles now, so "no articles left" is precisely when everything stored here has
         // become an orphan.
-        val allArticles = articleDao.getAllArticlesOldestFirst().first()
-        val currentEntryIds = allArticles.map { it.id.toLong() }.toHashSet()
+        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
         credibilityRepository.cleanupOrphanedReports(currentEntryIds)
 
         // Cleanup orphaned article content
@@ -125,8 +139,10 @@ class ArticleContentRepository(
         val contentToDelete = allContent.filter { content ->
             !currentEntryIds.contains(content.entryId)
         }
-        if (contentToDelete.isNotEmpty()) {
-            articleContentDao.deleteArticlesContent(contentToDelete.map { it.entryId })
+        // Chunked: retention and full-sync reconciliation can orphan thousands of rows at once,
+        // and one statement for all of them would exceed SQLite's bound-variable ceiling.
+        contentToDelete.map { it.entryId }.chunked(DELETE_CHUNK).forEach { chunk ->
+            articleContentDao.deleteArticlesContent(chunk)
         }
 
         // Runs unconditionally: images outlive their content rows, and bailing out when no

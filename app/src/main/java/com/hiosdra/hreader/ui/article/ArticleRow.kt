@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.ui.article
 
-import android.text.Html
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -14,9 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,28 +31,28 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.hiosdra.hreader.data.model.Entry
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.hiosdra.hreader.data.model.ArticleListEntry
 import com.hiosdra.hreader.data.model.isRead
-import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
 import com.hiosdra.hreader.ui.theme.sectionCardColors
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun ArticleRow(
-    entry: Entry,
-    navController: NavController,
-    articleIds: List<Long>,
-    articleIndex: Int,
-    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
+    entry: ArticleListEntry,
+    onOpen: (Long) -> Unit,
+    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    onStarredChange: (entryId: Long, starred: Boolean) -> Unit
 ) {
     val checked = entry.isRead
-    val openArticle = { navController.navigate(Routes.article(articleIds, articleIndex)) }
 
     val contentAlpha by animateFloatAsState(targetValue = if (checked) 0.55f else 1f, label = "alpha")
     val titleWeight = if (checked) FontWeight.Normal else FontWeight.SemiBold
@@ -63,12 +66,15 @@ fun ArticleRow(
     )
 
     Card(
-        onClick = openArticle,
+        onClick = { onOpen(entry.id) },
         modifier = Modifier
             .fillMaxWidth()
             // Two adjacent cards each contribute their vertical margin, so the gap between
             // them is twice this. The list draws no divider between rows, only the spacing.
-            .padding(horizontal = 12.dp, vertical = 3.dp),
+            .padding(horizontal = 12.dp, vertical = 3.dp)
+            // Read state reaches a screen reader as state rather than as a colour and an opacity,
+            // which is all a sighted reader was ever given.
+            .semantics { stateDescription = if (checked) "Read" else "Unread" },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = sectionCardColors()
@@ -90,11 +96,13 @@ fun ArticleRow(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(bottom = 4.dp)
                         ) {
+                            // Decoration: the same fact is already announced as state on the card.
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(RoundedCornerShape(50))
                                     .background(indicatorColor)
+                                    .clearAndSetSemantics { }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             // The feed name yields space instead of taking all of it. Unweighted it
@@ -125,8 +133,9 @@ fun ArticleRow(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
-                        val preview = entry.content?.let { raw -> extractTextPreview(raw) }.orEmpty()
-                        if (preview.isNotBlank()) {
+                        // Plain text by the time it is stored. Deriving it here ran an HTML parse
+                        // and four regexes per row, on the frame that scrolls the list.
+                        entry.preview?.takeIf { it.isNotBlank() }?.let { preview ->
                             Text(
                                 text = preview,
                                 style = MaterialTheme.typography.bodyMedium,
@@ -138,8 +147,7 @@ fun ArticleRow(
                         }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    val imageUrl = entry.enclosures.firstOrNull { it.isImage }?.url
-                    if (imageUrl != null) {
+                    if (entry.imageUrl != null) {
                         Box(
                             modifier = Modifier
                                 .size(96.dp)
@@ -148,10 +156,11 @@ fun ArticleRow(
                         ) {
                             // Fills the square it was given: at fillMaxWidth the height followed the
                             // source aspect ratio, so a portrait photo stood taller than its slot.
+                            // No description — it illustrates the headline that is read out anyway.
                             OfflineAwareImage(
                                 entryId = entry.id,
-                                imageUrl = imageUrl,
-                                contentDescription = "Article image",
+                                imageUrl = entry.imageUrl,
+                                contentDescription = null,
                                 modifier = Modifier.matchParentSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -160,7 +169,10 @@ fun ArticleRow(
                                     .matchParentSize()
                                     .background(
                                         Brush.verticalGradient(
-                                            colors = listOf(Color.Black.copy(alpha = 0f), Color.Black.copy(alpha = 0.25f))
+                                            colors = listOf(
+                                                Color.Black.copy(alpha = 0f),
+                                                Color.Black.copy(alpha = 0.25f)
+                                            )
                                         )
                                     )
                             )
@@ -168,29 +180,32 @@ fun ArticleRow(
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Checkbox(
-                    checked = checked,
-                    onCheckedChange = { onCheckedChange(entry.id, it) }
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Checkbox(
+                        checked = checked,
+                        onCheckedChange = { onCheckedChange(entry.id, it) },
+                        modifier = Modifier.semantics {
+                            contentDescription = if (checked) "Mark as unread" else "Mark as read"
+                        }
+                    )
+                    IconButton(onClick = { onStarredChange(entry.id, !entry.starred) }) {
+                        // One icon, two tints: the outlined star lives in the extended icon set,
+                        // and pulling in several thousand vectors for a single glyph is not a
+                        // trade worth making. The description carries the state either way.
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = if (entry.starred) "Remove star" else "Star article",
+                            tint = if (entry.starred) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
-}
-
-private fun extractTextPreview(html: String): String {
-    val cleanedHtml = html
-        .replace(Regex("(?is)<(script|style)[^>]*?>.*?</\\1>"), " ")
-        .replace(Regex("(?is)<img[^>]*?>"), " ")
-        .replace(Regex("(?is)<svg[^>]*?>.*?</svg>"), " ")
-        .replace(Regex("(?is)<(video|source|picture)[^>]*?>.*?</\\1>"), " ")
-
-    return Html.fromHtml(cleanedHtml, Html.FROM_HTML_MODE_LEGACY).toString()
-        .replace('\uFFFC', ' ')
-        .lines()
-        .asSequence()
-        .map { it.trim() }
-        .firstOrNull { it.isNotBlank() }
-        .orEmpty()
 }
 
 private val TIME_FORMATTER: DateTimeFormatter =

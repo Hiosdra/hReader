@@ -23,6 +23,9 @@ private const val JSON_OUTPUT = "json"
 private const val OLDEST_FIRST = "o"
 private const val NEWEST_FIRST = "n"
 private const val READ_STATE = "user/-/state/com.google/read"
+private const val STARRED_STATE = "user/-/state/com.google/starred"
+private const val EDIT_ACTION = "edit"
+private const val UNSUBSCRIBE_ACTION = "unsubscribe"
 private const val FEED_STREAM_PREFIX = "feed/"
 private const val ITEM_ID_TAG_PREFIX = "tag:google.com,2005:reader/item/"
 private const val WORDS_PER_MINUTE = 250
@@ -82,17 +85,47 @@ class FreshRssBackend(
         }
     }
 
+    override suspend fun deleteFeed(feedId: Long) {
+        withRetries {
+            apiService.editSubscription(
+                action = UNSUBSCRIBE_ACTION,
+                streamId = FEED_STREAM_PREFIX + feedId,
+                title = null,
+                writeToken = writeToken()
+            ).close()
+        }
+    }
+
+    override suspend fun renameFeed(feedId: Long, title: String) {
+        withRetries {
+            apiService.editSubscription(
+                action = EDIT_ACTION,
+                streamId = FEED_STREAM_PREFIX + feedId,
+                title = title,
+                writeToken = writeToken()
+            ).close()
+        }
+    }
+
     override suspend fun discoverFeeds(url: String): List<DiscoveredFeed> =
         feedDiscoveryService.discoverFeeds(url)
 
     override suspend fun updateEntriesStatus(entryIds: List<Long>, status: ArticleStatus) {
         if (entryIds.isEmpty()) return
-        val markAsRead = status == ArticleStatus.READ
+        editTag(entryIds, READ_STATE, add = status == ArticleStatus.READ)
+    }
+
+    override suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean) {
+        if (entryIds.isEmpty()) return
+        editTag(entryIds, STARRED_STATE, add = starred)
+    }
+
+    private suspend fun editTag(entryIds: List<Long>, state: String, add: Boolean) {
         withRetries {
             apiService.editTag(
                 itemIds = entryIds,
-                addTag = READ_STATE.takeIf { markAsRead },
-                removeTag = READ_STATE.takeUnless { markAsRead },
+                addTag = state.takeIf { add },
+                removeTag = state.takeUnless { add },
                 writeToken = writeToken()
             ).close()
         }
@@ -135,7 +168,8 @@ private fun StreamItem.toEntry(): Entry {
         feed = origin.toFeed(),
         readingTime = body?.let { estimateReadingTimeMinutes(it) },
         enclosures = enclosure.toEnclosures(),
-        status = if (categories.any { it == READ_STATE }) ArticleStatus.READ else ArticleStatus.UNREAD
+        status = if (categories.any { it == READ_STATE }) ArticleStatus.READ else ArticleStatus.UNREAD,
+        starred = categories.any { it == STARRED_STATE }
     )
 }
 

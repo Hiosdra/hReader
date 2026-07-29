@@ -67,7 +67,7 @@ class ArticleImageRepositoryTest {
         println("Running cleanupOrphanedImages_deletesImagesNotInArticles")
         val orphanImage = ArticleImage("id", 99L, "url", "/tmp/orphan.jpg", "image/jpeg", Instant.now(), 123)
         coEvery { articleImageDao.getAllArticleImages() } returns listOf(orphanImage)
-        coEvery { articleDao.getAllArticlesOldestFirst() } returns kotlinx.coroutines.flow.flowOf(emptyList())
+        coEvery { articleDao.getAllIds() } returns emptyList()
         coEvery { articleImageDao.deleteArticleImage(orphanImage) } returns Unit
         repo.cleanupOrphanedImages()
         coVerify { articleImageDao.deleteArticleImage(orphanImage) }

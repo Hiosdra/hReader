@@ -54,6 +54,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -112,8 +116,11 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ArticleScreen(
     navController: NavHostController,
-    articleIds: List<Long>,
-    initialIndex: Int = 0,
+    feedId: Long?,
+    startArticleId: Long,
+    starredOnly: Boolean = false,
+    includeRead: Boolean = false,
+    sessionStartMillis: Long = 0L,
     viewModel: ArticleViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -122,12 +129,13 @@ fun ArticleScreen(
     // The pager opens on page 0 and only then jumps to the article being read, so
     // neither read state nor the reader's position may be touched before it lands.
     var pagerPositioned by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val preferencesManager: PreferencesManager = koinInject()
     val paywallBypassService: PaywallBypassService = koinInject()
 
-    LaunchedEffect(articleIds, initialIndex) {
-        viewModel.loadArticlesByIds(articleIds, initialIndex)
+    LaunchedEffect(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis) {
+        viewModel.openList(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis)
     }
 
     // The view model owns where the reader is, so it also survives a configuration
@@ -161,12 +169,15 @@ fun ArticleScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             val entry = uiState.entries.getOrNull(uiState.currentIndex)
             ArticleTopBar(
                 entryUrl = entry?.url,
                 feedTitle = entry?.feed?.title,
                 isWebViewMode = isWebViewMode,
+                isStarred = entry?.starred == true,
+                onToggleStar = { if (entry != null) viewModel.setStarred(entry.id, !entry.starred) },
                 onBack = { navController.popBackStack() },
                 onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, cleanUrl(entry.url)) },
                 onToggleWebView = { isWebViewMode = !isWebViewMode },
@@ -239,47 +250,63 @@ fun ArticleScreen(
             }
         }
 
-        // AI Overview Error Dialog
+        // Errors interrupt reading as little as possible: a modal with a single OK button stopped
+        // the article dead to report something the reader can act on later, or not at all.
+        val currentEntryId = uiState.entries.getOrNull(uiState.currentIndex)?.id
+
         uiState.overviewError?.let { error ->
-            AlertDialog(
-                onDismissRequest = { viewModel.clearOverviewError() },
-                title = { Text("AI Overview Error") },
-                text = { Text(error) },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.clearOverviewError() }) {
-                        Text("OK")
-                    }
-                }
+            RetryableSnackbar(
+                hostState = snackbarHostState,
+                message = error,
+                actionLabel = "Retry".takeIf { currentEntryId != null },
+                onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
+                onDismissed = viewModel::clearOverviewError
             )
         }
 
         // What is missing offline, said out loud rather than left as an empty screen.
         uiState.contentError?.let { message ->
-            AlertDialog(
-                onDismissRequest = { viewModel.clearContentError() },
-                title = { Text("Article not fully downloaded") },
-                text = { Text(message) },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.clearContentError() }) {
-                        Text("OK")
-                    }
-                }
+            RetryableSnackbar(
+                hostState = snackbarHostState,
+                message = message,
+                actionLabel = null,
+                onAction = {},
+                onDismissed = viewModel::clearContentError
             )
         }
 
-        // Credibility Score Error Dialog
         uiState.scoreError?.let { error ->
-            AlertDialog(
-                onDismissRequest = { viewModel.clearScoreError() },
-                title = { Text("Credibility Analysis Error") },
-                text = { Text(error) },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.clearScoreError() }) {
-                        Text("OK")
-                    }
-                }
+            RetryableSnackbar(
+                hostState = snackbarHostState,
+                message = error,
+                actionLabel = "Retry".takeIf { currentEntryId != null },
+                onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
+                onDismissed = viewModel::clearScoreError
             )
         }
+    }
+}
+
+/**
+ * Shows [message] once and clears it, whether the reader acted on it or let it time out. Keyed on
+ * the message so a second, different failure is announced rather than swallowed.
+ */
+@Composable
+private fun RetryableSnackbar(
+    hostState: SnackbarHostState,
+    message: String,
+    actionLabel: String?,
+    onAction: () -> Unit,
+    onDismissed: () -> Unit
+) {
+    LaunchedEffect(message) {
+        val result = hostState.showSnackbar(
+            message = message,
+            actionLabel = actionLabel,
+            duration = SnackbarDuration.Long
+        )
+        onDismissed()
+        if (result == SnackbarResult.ActionPerformed) onAction()
     }
 }
 
@@ -350,6 +377,8 @@ private fun ArticleTopBar(
     entryUrl: String?,
     feedTitle: String?,
     isWebViewMode: Boolean,
+    isStarred: Boolean,
+    onToggleStar: () -> Unit,
     onBack: () -> Unit,
     onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit,
@@ -366,6 +395,18 @@ private fun ArticleTopBar(
             }
         },
         actions = {
+            IconButton(onClick = onToggleStar) {
+                // Tint rather than a second glyph: the outlined star is in the extended icon set.
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = if (isStarred) "Remove star" else "Star article",
+                    tint = if (isStarred) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    }
+                )
+            }
             if (entryUrl != null) {
                 if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
                     IconButton(onClick = onBypassPaywall) {

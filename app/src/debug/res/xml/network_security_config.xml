@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+   Debug builds only. A self-hosted FreshRSS or Miniflux on the local network is often plain HTTP,
+   and developing against one has to be possible. This used to name one particular address, which
+   was of no use to anyone else and still would not have covered their own.
+   The release config permits no cleartext at all.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

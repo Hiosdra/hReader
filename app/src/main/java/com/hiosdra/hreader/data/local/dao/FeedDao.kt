@@ -18,6 +18,15 @@ interface FeedDao {
     @Query("SELECT * FROM feeds")
     fun getAllFeeds(): Flow<List<FeedEntity>>
 
+    @Query("SELECT * FROM feeds ORDER BY title COLLATE NOCASE ASC")
+    suspend fun getAllFeedsImmediate(): List<FeedEntity>
+
+    @Query("UPDATE feeds SET title = :title WHERE id = :feedId")
+    suspend fun updateTitle(feedId: Long, title: String)
+
+    @Query("DELETE FROM feeds WHERE id = :feedId")
+    suspend fun deleteById(feedId: Long)
+
     @Query("DELETE FROM feeds")
     suspend fun clearAll()
 }

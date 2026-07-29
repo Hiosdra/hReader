@@ -20,7 +20,8 @@ data class MinifluxEntry(
     val feed: MinifluxFeed? = null,
     @Json(name = "reading_time") val readingTime: Int? = null,
     val enclosures: List<MinifluxEnclosure> = emptyList(),
-    val status: String? = null
+    val status: String? = null,
+    val starred: Boolean = false
 )
 
 @JsonClass(generateAdapter = true)

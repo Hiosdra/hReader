@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -31,10 +32,16 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun AddFeedScreen(
     navController: NavController,
+    /** A URL shared into the app from elsewhere, so the field is already filled in. */
+    initialUrl: String? = null,
     onFeedAdded: () -> Unit = {}
 ) {
     val addFeedViewModel: AddFeedViewModel = koinViewModel()
     val uiState by addFeedViewModel.uiState.collectAsState()
+
+    LaunchedEffect(initialUrl) {
+        if (!initialUrl.isNullOrBlank()) addFeedViewModel.onFeedUrlChange(initialUrl)
+    }
 
     Scaffold(
         topBar = {
