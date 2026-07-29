@@ -44,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -361,15 +362,22 @@ fun MainScreen(
                 }
             }
         } else {
-            ArticleListGrouped(
-                entries = uiState.entries,
-                navController = navController,
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { if (!uiState.isRefreshing && uiState.isOnline) viewModel.refreshFromNetwork() },
                 modifier = Modifier
-                    .padding(paddingValues),
-                onCheckedChange = { entryId, checked ->
-                    viewModel.updateEntryReadStatus(entryId, checked)
-                }
-            )
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                ArticleListGrouped(
+                    entries = uiState.entries,
+                    navController = navController,
+                    modifier = Modifier.fillMaxSize(),
+                    onCheckedChange = { entryId, checked ->
+                        viewModel.updateEntryReadStatus(entryId, checked)
+                    }
+                )
+            }
         }
     }
 }
