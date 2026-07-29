@@ -24,10 +24,11 @@ class ContentSyncWorker(
     }
 
     override suspend fun doWork(): Result = try {
-        Log.i(TAG, "Starting ContentSyncWorker")
+        val forceFullSync = inputData.getBoolean(KEY_FORCE_FULL_SYNC, false)
+        Log.i(TAG, "Starting ContentSyncWorker (forceFullSync=$forceFullSync)")
 
         syncPerformanceLogger.measureSyncTime("Article refresh") {
-            repository.refreshArticles()
+            repository.refreshArticles(forceFullSync)
         }
 
         // Only when this worker runs on its own. Callers that chain a prefetch behind it already

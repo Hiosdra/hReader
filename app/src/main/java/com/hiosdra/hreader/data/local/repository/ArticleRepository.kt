@@ -65,14 +65,14 @@ class ArticleRepository(
         }
     }
 
-    suspend fun refreshArticles() {
+    suspend fun refreshArticles(forceFullSync: Boolean = false) {
         val syncStartTime = System.currentTimeMillis()
 
         // Local changes go up before the server state comes down, so reconciliation below can
         // treat the backend as authoritative without discarding anything the user just did.
         pushPendingStatuses()
 
-        val useIncrementalSync = shouldUseIncrementalSync(syncStartTime)
+        val useIncrementalSync = !forceFullSync && shouldUseIncrementalSync(syncStartTime)
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
 
         val fetchedIds = mutableSetOf<String>()
