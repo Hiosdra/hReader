@@ -44,6 +44,9 @@ private val INCREMENTAL_SYNC_OVERLAP: Duration = Duration.ofMinutes(5)
 /** How long a read article is kept after being read; without it the cache grows without bound. */
 private val READ_ARTICLE_RETENTION: Duration = Duration.ofDays(30)
 
+/** Bounds a backlog top-up against a backend that keeps handing back entries already stored. */
+private const val MAX_BACKLOG_PAGES = 25
+
 class ArticleRepository(
     private val articleDao: ArticleDao,
     private val feedDao: FeedDao,
@@ -65,14 +68,14 @@ class ArticleRepository(
         }
     }
 
-    suspend fun refreshArticles() {
+    suspend fun refreshArticles(forceFullSync: Boolean = false) {
         val syncStartTime = System.currentTimeMillis()
 
         // Local changes go up before the server state comes down, so reconciliation below can
         // treat the backend as authoritative without discarding anything the user just did.
         pushPendingStatuses()
 
-        val useIncrementalSync = shouldUseIncrementalSync(syncStartTime)
+        val useIncrementalSync = !forceFullSync && shouldUseIncrementalSync(syncStartTime)
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
 
         val fetchedIds = mutableSetOf<String>()
@@ -98,9 +101,70 @@ class ArticleRepository(
             preferencesManager.setLastFullSyncTimestamp(syncStartTime)
         }
         pruneExpiredReadArticles()
+        topUpOfflineBacklog()
 
         syncPerformanceLogger.logBatchInfo(ENTRIES_PAGE_LIMIT, fetchedIds.size)
         preferencesManager.setLastSyncTimestamp(syncStartTime)
+    }
+
+    /**
+     * Unread articles are whatever is left over, which on a quiet week is nothing. This tops the
+     * cache up to the configured target with recent entries regardless of read state, so a reader
+     * heading offline leaves with a known amount of material rather than a hopeful one.
+     *
+     * A failure here does not fail the sync: the articles the user actually subscribed to are
+     * already stored by this point, and the backlog is a best-effort extra.
+     */
+    private suspend fun topUpOfflineBacklog() {
+        val target = preferencesManager.getOfflineBacklogTarget()
+        if (target <= 0) return
+
+        val storedIds = articleDao.getAllIds().toHashSet()
+        if (storedIds.size >= target) return
+
+        try {
+            syncPerformanceLogger.measureSyncTime("Offline backlog top-up") {
+                var cursor: String? = null
+                var pages = 0
+                while (storedIds.size < target && pages < MAX_BACKLOG_PAGES) {
+                    val page = api.getRecentEntries(limit = ENTRIES_PAGE_LIMIT, cursor = cursor)
+                    if (page.entries.isEmpty()) break
+
+                    val missing = page.entries
+                        .filterNot { it.id.toString() in storedIds }
+                        .take(target - storedIds.size)
+                    if (missing.isNotEmpty()) {
+                        persistBacklogPage(missing)
+                        storedIds += missing.map { it.id.toString() }
+                    }
+
+                    pages++
+                    cursor = page.cursor ?: break
+                }
+                Log.i(TAG, "Offline backlog holds ${storedIds.size} of $target articles")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Offline backlog top-up failed: ${e.message}")
+        }
+    }
+
+    private suspend fun persistBacklogPage(entries: List<Entry>) {
+        val now = Instant.now()
+        val feeds = entries.associate { it.feed.id to it.feed.toFeedEntity() }.values.toList()
+        // Read entries get their read time stamped now, so retention starts counting from the
+        // download rather than leaving them un-prunable forever.
+        val articles = entries.map { entry ->
+            entry.toEntity().copy(
+                backlogFetchedAt = now,
+                readAt = now.takeIf { entry.status == ArticleStatus.READ }
+            )
+        }
+        db.withTransaction {
+            feedDao.insertFeeds(feeds)
+            articleDao.insertArticles(articles)
+        }
     }
 
     private suspend fun persistPage(entries: List<Entry>) {
@@ -232,7 +296,9 @@ internal fun ArticleEntity.reconciledWith(local: ArticleEntity?, now: Instant): 
         copy(status = local.status, pendingSync = true)
     } else this
     val readAt = if (merged.status == ArticleStatus.READ) local?.readAt ?: now else null
-    return merged.copy(readAt = readAt)
+    // A freshly fetched entity never knows it was downloaded as backlog, so the local marker is
+    // carried over; losing it would expose the article to full-sync reconciliation.
+    return merged.copy(readAt = readAt, backlogFetchedAt = local?.backlogFetchedAt)
 }
 
 private fun ArticleEntity.toEntry(feedEntity: FeedEntity): Entry = Entry(
@@ -245,7 +311,8 @@ private fun ArticleEntity.toEntry(feedEntity: FeedEntity): Entry = Entry(
     feed = feedEntity.toFeed(),
     readingTime = readingTime,
     enclosures = enclosures,
-    status = status ?: ArticleStatus.UNREAD
+    status = status ?: ArticleStatus.UNREAD,
+    isBacklog = backlogFetchedAt != null
 )
 
 private fun FeedEntity.toFeed(): Feed = Feed(

@@ -225,7 +225,9 @@ fun ArticleScreen(
                     isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
-                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
+                    getContentForEntry = { entryId -> viewModel.getDisplayContentForEntry(entryId) },
+                    localImagePaths = uiState.localImagePaths,
+                    isOnline = uiState.isOnline,
                     aiOverviews = uiState.aiOverviews,
                     generatingOverviewIds = uiState.generatingOverviewIds,
                     onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
@@ -245,6 +247,20 @@ fun ArticleScreen(
                 text = { Text(error) },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearOverviewError() }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
+
+        // What is missing offline, said out loud rather than left as an empty screen.
+        uiState.contentError?.let { message ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearContentError() },
+                title = { Text("Article not fully downloaded") },
+                text = { Text(message) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearContentError() }) {
                         Text("OK")
                     }
                 }
@@ -276,6 +292,8 @@ private fun ArticlePager(
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
     getContentForEntry: (Long) -> String?,
+    localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
+    isOnline: Boolean = true,
     aiOverviews: Map<Long, String> = emptyMap(),
     generatingOverviewIds: Set<Long> = emptySet(),
     onAiOverview: ((Long) -> Unit)? = null,
@@ -311,6 +329,8 @@ private fun ArticlePager(
                     modifier = Modifier.padding(paddingValues),
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
                     articleContent = getContentForEntry(entry.id) ?: "No content available",
+                    localImagePaths = localImagePaths[entry.id].orEmpty(),
+                    isOnline = isOnline,
                     aiOverview = aiOverviews[entry.id],
                     isGeneratingOverview = generatingOverviewIds.contains(entry.id),
                     onAiOverview = onAiOverview,
@@ -393,6 +413,8 @@ private fun ArticleContent(
     modifier: Modifier = Modifier,
     onReadStatusChange: ((Boolean) -> Unit)? = null,
     articleContent: String,
+    localImagePaths: Map<String, String> = emptyMap(),
+    isOnline: Boolean = true,
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
     onAiOverview: ((Long) -> Unit)? = null,
@@ -455,6 +477,7 @@ private fun ArticleContent(
                         dateText = dateText,
                         readingTimeMinutes = entry.readingTime,
                         entryId = entry.id,
+                        isOnline = isOnline,
                         aiOverview = aiOverview,
                         isGeneratingOverview = isGeneratingOverview,
                         onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null,
@@ -486,7 +509,18 @@ private fun ArticleContent(
                         articleContent = articleContent,
                         baseUrl = entry.url,
                         modifier = Modifier.fillMaxWidth(),
-                        onLinkClick = { url -> openChromeCustomTab(context, url) },
+                        allowNetworkLoads = isOnline,
+                        localImagePaths = localImagePaths,
+                        onLinkClick = { url ->
+                            // A custom tab offline is a browser error page, and the link is gone
+                            // by the time the reader is back in range.
+                            if (isOnline) {
+                                openChromeCustomTab(context, url)
+                            } else {
+                                copyTextToClipboard(context, "Link", url)
+                                Toast.makeText(context, "Offline — link copied", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         onScrollProgress = { p -> progressState.floatValue = p },
                         onImageLongClick = { url -> imageActionsUrl = url }
                     )
@@ -529,7 +563,7 @@ private fun ArticleContent(
     val zoomUrl = zoomImageUrl
     if (zoomUrl != null) {
         Dialog(onDismissRequest = { zoomImageUrl = null }) {
-            ZoomableImage(url = zoomUrl) { zoomImageUrl = null }
+            ZoomableImage(entryId = entry.id, url = zoomUrl) { zoomImageUrl = null }
         }
     }
 }
@@ -540,6 +574,7 @@ private fun MetaChips(
     dateText: String,
     readingTimeMinutes: Int?,
     entryId: Long? = null,
+    isOnline: Boolean = true,
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
     onAiOverviewClick: (() -> Unit)? = null,
@@ -597,7 +632,8 @@ private fun MetaChips(
                             Text(chipText)
                         }
                     },
-                    enabled = !(aiOverview == null && isGeneratingOverview),
+                    // A cached overview still expands offline; generating a new one cannot.
+                    enabled = !(aiOverview == null && isGeneratingOverview) && (aiOverview != null || isOnline),
                     colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
                         containerColor = if (aiOverview != null || isGeneratingOverview)
                             MaterialTheme.colorScheme.primaryContainer
@@ -610,6 +646,7 @@ private fun MetaChips(
                 CredibilityChip(
                     report = credibilityReport,
                     isAnalyzing = isAnalyzingCredibility,
+                    enabled = credibilityReport != null || isOnline,
                     onClick = {
                         if (credibilityReport == null) {
                             isCredibilityExpanded.value = true
@@ -709,6 +746,7 @@ private fun MetaChips(
 private fun CredibilityChip(
     report: CredibilityReport?,
     isAnalyzing: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     val accent = credibilityAccent(report)
@@ -732,7 +770,7 @@ private fun CredibilityChip(
                 Text(chipText)
             }
         },
-        enabled = !isAnalyzing,
+        enabled = !isAnalyzing && enabled,
         colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
             containerColor = when {
                 container != null -> container

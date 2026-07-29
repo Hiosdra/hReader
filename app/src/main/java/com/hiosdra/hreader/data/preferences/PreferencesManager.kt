@@ -169,6 +169,49 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
+    /**
+     * How many articles to keep readable offline. Above what the backend still reports as unread,
+     * the sync tops the cache up with recent entries regardless of their read state. Zero keeps the
+     * old behaviour of caching unread articles only.
+     */
+    fun getOfflineBacklogTarget(): Int =
+        sharedPreferences.getInt(KEY_OFFLINE_BACKLOG_TARGET, DEFAULT_OFFLINE_BACKLOG_TARGET)
+
+    fun setOfflineBacklogTarget(target: Int) {
+        sharedPreferences.edit()
+            .putInt(KEY_OFFLINE_BACKLOG_TARGET, target.coerceAtLeast(0))
+            .apply()
+    }
+
+    fun getImageDownloadEnabled(): Boolean =
+        sharedPreferences.getBoolean(KEY_IMAGE_DOWNLOAD_ENABLED, true)
+
+    fun setImageDownloadEnabled(enabled: Boolean) {
+        sharedPreferences.edit()
+            .putBoolean(KEY_IMAGE_DOWNLOAD_ENABLED, enabled)
+            .apply()
+    }
+
+    /** Ceiling on the downloaded-image directory. Oldest images are evicted to stay under it. */
+    fun getImageCacheBudgetMegabytes(): Int =
+        sharedPreferences.getInt(KEY_IMAGE_CACHE_BUDGET_MB, DEFAULT_IMAGE_CACHE_BUDGET_MB)
+
+    fun setImageCacheBudgetMegabytes(megabytes: Int) {
+        sharedPreferences.edit()
+            .putInt(KEY_IMAGE_CACHE_BUDGET_MB, megabytes.coerceAtLeast(0))
+            .apply()
+    }
+
+    /** When the app last enqueued a background sync chain, so the throttle survives process death. */
+    fun getLastChainedSyncTimestamp(): Long =
+        sharedPreferences.getLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, 0L)
+
+    fun setLastChainedSyncTimestamp(timestamp: Long) {
+        sharedPreferences.edit()
+            .putLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, timestamp)
+            .apply()
+    }
+
     fun getCredibilityScoreEnabled(): Boolean {
         return sharedPreferences.getBoolean(KEY_CREDIBILITY_SCORE_ENABLED, false)
     }
@@ -195,6 +238,12 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
+        private const val KEY_OFFLINE_BACKLOG_TARGET = "offline_backlog_target"
+        private const val KEY_IMAGE_DOWNLOAD_ENABLED = "image_download_enabled"
+        private const val KEY_IMAGE_CACHE_BUDGET_MB = "image_cache_budget_mb"
+        private const val KEY_LAST_CHAINED_SYNC_TIMESTAMP = "last_chained_sync_timestamp"
         private const val MAX_PERFORMANCE_RECORDS = 50
+        private const val DEFAULT_OFFLINE_BACKLOG_TARGET = 0
+        private const val DEFAULT_IMAGE_CACHE_BUDGET_MB = 500
     }
 }

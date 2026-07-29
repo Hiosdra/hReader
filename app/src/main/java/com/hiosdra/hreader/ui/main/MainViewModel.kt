@@ -8,6 +8,8 @@ import com.hiosdra.hreader.data.ai.SelectedModelStatus
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.util.NetworkMonitor
+import com.hiosdra.hreader.worker.SyncScheduler
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,14 +23,24 @@ data class MainUiState(
     val error: String? = null,
     val feedTitle: String? = null,
     val searchQuery: String = "",
-    val unavailableAiModelId: String? = null
+    val unavailableAiModelId: String? = null,
+    val isOnline: Boolean = true,
+    /**
+     * Read articles stay in the cache for a month, so hiding them is a view choice rather than a
+     * fact about what is stored. Showing them also brings in the offline backlog, which is read by
+     * definition.
+     */
+    val showReadArticles: Boolean = false,
+    val readCount: Int = 0
 )
 
 class MainViewModel(
     private val articleRepository: ArticleRepository,
-    private val aiModelRepository: AiModelRepository
+    private val aiModelRepository: AiModelRepository,
+    private val syncScheduler: SyncScheduler,
+    networkMonitor: NetworkMonitor
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(MainUiState(isOnline = networkMonitor.isOnline.value))
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private var fullList: List<Entry> = emptyList()
@@ -41,6 +53,17 @@ class MainViewModel(
     init {
         loadEntries() // default: all items
         checkSelectedAiModel()
+        viewModelScope.launch {
+            networkMonitor.isOnline.collect { online ->
+                _uiState.value = _uiState.value.copy(isOnline = online)
+            }
+        }
+    }
+
+    fun setShowReadArticles(show: Boolean) {
+        if (_uiState.value.showReadArticles == show) return
+        _uiState.value = _uiState.value.copy(showReadArticles = show)
+        applyFilterAndEmit()
     }
 
     fun dismissAiModelWarning() {
@@ -106,8 +129,13 @@ class MainViewModel(
 
     private fun applyFilterAndEmit(isLoadingDone: Boolean = false, feedTitle: String? = _uiState.value.feedTitle) {
         val trimmedQuery = searchQuery.trim().lowercase()
+        val showReadArticles = _uiState.value.showReadArticles
         val filtered = fullList.filter { entry ->
-            (entry.status != ArticleStatus.READ || sessionReadIds.contains(entry.id)) && (
+            (
+                showReadArticles ||
+                    entry.status != ArticleStatus.READ ||
+                    sessionReadIds.contains(entry.id)
+                ) && (
                 trimmedQuery.isBlank() ||
                     entry.title.lowercase().contains(trimmedQuery) ||
                     (entry.author?.lowercase()?.contains(trimmedQuery) == true) ||
@@ -119,7 +147,8 @@ class MainViewModel(
             entries = filtered,
             isLoading = if (isLoadingDone) false else _uiState.value.isLoading,
             feedTitle = feedTitle,
-            searchQuery = searchQuery
+            searchQuery = searchQuery,
+            readCount = fullList.count { it.status == ArticleStatus.READ }
         )
     }
 
@@ -134,6 +163,10 @@ class MainViewModel(
             try {
                 sessionReadIds.clear()
                 articleRepository.refreshArticles()
+                // The refresh brings down the article list; the bodies and images that make those
+                // articles readable offline are what this queues. Without it a pull-to-refresh
+                // right before losing signal left a list of titles and nothing behind them.
+                syncScheduler.enqueuePrefetch()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "Network refresh failed: ${e.message}")
             } finally {
