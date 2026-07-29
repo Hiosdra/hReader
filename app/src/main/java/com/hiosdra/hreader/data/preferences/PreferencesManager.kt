@@ -169,6 +169,16 @@ class PreferencesManager(context: Context) {
             .apply()
     }
 
+    /** When the app last enqueued a background sync chain, so the throttle survives process death. */
+    fun getLastChainedSyncTimestamp(): Long =
+        sharedPreferences.getLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, 0L)
+
+    fun setLastChainedSyncTimestamp(timestamp: Long) {
+        sharedPreferences.edit()
+            .putLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, timestamp)
+            .apply()
+    }
+
     fun getCredibilityScoreEnabled(): Boolean {
         return sharedPreferences.getBoolean(KEY_CREDIBILITY_SCORE_ENABLED, false)
     }
@@ -195,6 +205,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
+        private const val KEY_LAST_CHAINED_SYNC_TIMESTAMP = "last_chained_sync_timestamp"
         private const val MAX_PERFORMANCE_RECORDS = 50
     }
 }
