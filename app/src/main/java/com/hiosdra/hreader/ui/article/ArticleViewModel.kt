@@ -6,6 +6,7 @@ import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.local.repository.CredibilityRepository
+import com.hiosdra.hreader.data.model.ArticleListQuery
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.CredibilityReport
 import com.hiosdra.hreader.data.model.CredibilitySource
@@ -14,14 +15,25 @@ import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.absolutizeArticleImages
+import com.hiosdra.hreader.widget.UnreadWidgetUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 private const val MISSING_CONTENT_MESSAGE =
     "The article text is still downloading. Try again in a moment."
+
+/**
+ * How many articles either side of the opened one the reader can swipe through.
+ *
+ * The pager observes its articles with one `id IN (…)` statement, and SQLite on Android binds at
+ * most 999 variables — a cached backlog of several thousand would take the query down. Nobody
+ * swipes two hundred articles in one sitting, and going back to the list starts a fresh window.
+ */
+private const val PAGER_WINDOW_RADIUS = 200
 
 private const val PARTIAL_CONTENT_MESSAGE =
     "The full text of this article was never downloaded, so this is only what the feed itself carried."
@@ -54,6 +66,7 @@ class ArticleViewModel(
     private val credibilityRepository: CredibilityRepository,
     private val preferencesManager: PreferencesManager,
     private val imageLoader: ImageLoader,
+    private val unreadWidgetUpdater: UnreadWidgetUpdater,
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
@@ -64,7 +77,8 @@ class ArticleViewModel(
     )
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
-    private var initialIndexApplied = false
+    /** The list is resolved once; a configuration change must not rebuild it under the pager. */
+    private var listResolved = false
 
     init {
         viewModelScope.launch {
@@ -126,33 +140,84 @@ class ArticleViewModel(
         }
         viewModelScope.launch {
             articleRepository.updateReadStatus(entry.id.toString(), newStatus)
+            // Reading here is how most articles stop being unread, so the widget hears about it
+            // from the same place rather than waiting for the next sync. Requested rather than run:
+            // paging through a feed marks one article read per swipe.
+            unreadWidgetUpdater.requestRefresh()
         }
     }
 
-    fun loadArticlesByIds(ids: List<Long>, initialIndex: Int) {
+    /**
+     * Resolves the list the reader was looking at from the same query that built it, rather than
+     * having every article id handed over through the navigation route.
+     *
+     * The set of ids is taken once and then held: the pager observes those articles for changes,
+     * but the list itself must not shrink as they are marked read under the reader's finger.
+     */
+    fun openList(
+        feedId: Long?,
+        startArticleId: Long,
+        starredOnly: Boolean,
+        includeRead: Boolean,
+        sessionStartMillis: Long
+    ) {
+        if (listResolved) return
+        listResolved = true
         _uiState.update {
-            it.copy(
-                isLoading = true,
-                // A configuration change re-runs this load, and the reader may have
-                // paged well past the article the list was opened at by then.
-                currentIndex = if (initialIndexApplied) it.currentIndex else initialIndex,
-                credibilityEnabled = preferencesManager.getCredibilityScoreEnabled()
-            )
+            it.copy(isLoading = true, credibilityEnabled = preferencesManager.getCredibilityScoreEnabled())
         }
-        initialIndexApplied = true
         viewModelScope.launch {
             try {
-                articleRepository.getArticlesByIds(ids).collect { articles ->
-                    _uiState.update { it.copy(entries = articles, isLoading = false, error = null) }
-                    val currentArticle = articles.getOrNull(_uiState.value.currentIndex)
-                    if (currentArticle != null) {
-                        loadOriginalContent(currentArticle.id, currentArticle.url)
-                    }
-                    loadCachedCredibility(articles.map { it.id })
-                }
+                // The same visibility rule the list used, resolved to ids in one statement rather
+                // than by loading the articles and filtering them here.
+                val listed = articleRepository.listIds(
+                    ArticleListQuery(
+                        feedId = feedId,
+                        starredOnly = starredOnly,
+                        includeRead = includeRead,
+                        sessionStart = Instant.ofEpochMilli(sessionStartMillis)
+                    )
+                )
+                val ids = listed.windowAround(startArticleId).ifEmpty { listOf(startArticleId) }
+                val startIndex = ids.indexOf(startArticleId).coerceAtLeast(0)
+                _uiState.update { it.copy(currentIndex = startIndex) }
+                observeArticles(ids)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Unknown error") }
             }
+        }
+    }
+
+    private suspend fun observeArticles(ids: List<Long>) {
+        articleRepository.getArticlesByIds(ids).collect { articles ->
+            // Room returns them ordered by date; the pager has to walk them in the order the list
+            // handed over, which is the same order but resolved once rather than re-derived.
+            val byId = articles.associateBy { it.id }
+            val ordered = ids.mapNotNull { byId[it] }
+            _uiState.update { it.copy(entries = ordered, isLoading = false, error = null) }
+            val currentArticle = ordered.getOrNull(_uiState.value.currentIndex)
+            if (currentArticle != null) {
+                loadOriginalContent(currentArticle.id, currentArticle.url)
+            }
+            loadCachedCredibility(ordered.map { it.id })
+        }
+    }
+
+    /** [PAGER_WINDOW_RADIUS] articles either side of [articleId], clamped to what is there. */
+    private fun List<Long>.windowAround(articleId: Long): List<Long> {
+        if (size <= PAGER_WINDOW_RADIUS * 2) return this
+        val focus = indexOf(articleId).coerceAtLeast(0)
+        val from = (focus - PAGER_WINDOW_RADIUS).coerceIn(0, size - PAGER_WINDOW_RADIUS * 2)
+        // Copied rather than a view: a sub-list would keep the whole id list alive behind it.
+        return subList(from, from + PAGER_WINDOW_RADIUS * 2).toList()
+    }
+
+    fun setStarred(entryId: Long, starred: Boolean) {
+        _uiState.update { state ->
+            state.copy(entries = state.entries.map { if (it.id == entryId) it.copy(starred = starred) else it })
+        }
+        viewModelScope.launch {
+            runCatching { articleRepository.updateStarred(entryId, starred) }
         }
     }
 

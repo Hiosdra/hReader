@@ -11,18 +11,20 @@ import com.hiosdra.hreader.data.local.dao.FeedDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
 import com.hiosdra.hreader.data.local.entity.ArticleCredibility
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
+import com.hiosdra.hreader.data.local.entity.ArticleFts
 import com.hiosdra.hreader.data.local.entity.ArticleImage
 import com.hiosdra.hreader.data.local.entity.FeedEntity
 
 @Database(
     entities = [
         ArticleEntity::class,
+        ArticleFts::class,
         FeedEntity::class,
         ArticleContent::class,
         ArticleImage::class,
         ArticleCredibility::class
     ],
-    version = 7
+    version = 8
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

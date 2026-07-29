@@ -49,7 +49,45 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Share a page from a browser to subscribe to its feed, instead of copying the
+                 address across by hand. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- The launcher shortcut. Private scheme: hReader has no claim on http links, and
+                 registering for them would put it in every browser's disambiguation dialog. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:scheme="hreader" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- updatePeriodMillis is 0: the widget is refreshed after a sync, which is the only
+             moment its contents can have changed. -->
+        <receiver
+            android:name=".widget.UnreadWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/unread_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

@@ -7,6 +7,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -41,6 +43,29 @@ fun ArticleWebView(
     // built once with the WebView, while the downloaded images arrive with the article body.
     val cachedImages = remember { mutableStateOf(localImagePaths) }
     cachedImages.value = localImagePaths
+
+    // Watched rather than read once, so turning the setting on redraws the article already open.
+    val bionicReadingEnabled by preferencesManager.observeBionicReadingEnabled()
+        .collectAsState(initial = preferencesManager.getBionicReadingEnabled())
+
+    val processedContent = remember(articleContent, bionicReadingEnabled) {
+        if (bionicReadingEnabled) {
+            BionicReadingProcessor.processTextToBionic(articleContent)
+        } else {
+            articleContent
+        }
+    }
+
+    val htmlData = remember(processedContent, textColorHex, linkColorHex, codeBg, ruleColor) {
+        articleHtml(processedContent, textColorHex, linkColorHex, codeBg, ruleColor)
+    }
+
+    /**
+     * What was last handed to the WebView. The update block runs on every recomposition — a read
+     * state changing, images arriving, a scroll progress callback — and reloading there threw away
+     * the reader's position in the article each time.
+     */
+    val loadedHtml = remember { mutableStateOf<String?>(null) }
 
     AndroidView(
         factory = { context ->
@@ -115,42 +140,45 @@ fun ArticleWebView(
             // those costs a connect timeout before the page settles.
             webView.settings.blockNetworkLoads = !allowNetworkLoads
 
-            val bionicReadingEnabled = preferencesManager.getBionicReadingEnabled()
-            val processedContent = if (bionicReadingEnabled) {
-                BionicReadingProcessor.processTextToBionic(articleContent)
-            } else {
-                articleContent
+            if (loadedHtml.value != htmlData) {
+                loadedHtml.value = htmlData
+                webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
             }
-            
-            val htmlData = """
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        :root { --text:$textColorHex; --link:$linkColorHex; --code:$codeBg; --rule:$ruleColor; }
-                        body { font-family: system-ui,-apple-system,Roboto,sans-serif; line-height:1.6; margin:0; padding:0 0 32px 0; color:var(--text); background:transparent; }
-                        h1,h2,h3 { line-height:1.25; margin:1.4em 0 .6em; }
-                        h1 { font-size:1.5em; }
-                        h2 { font-size:1.3em; }
-                        h3 { font-size:1.15em; }
-                        p, li { margin:0 0 1em; }
-                        img, video, figure { max-width:100%; height:auto; border-radius:12px; display:block; margin:16px auto; }
-                        pre { overflow:auto; padding:12px; background:var(--code); border-radius:10px; font-size:.85em; }
-                        code { background:var(--code); padding:2px 5px; border-radius:6px; }
-                        blockquote { margin:16px 0; padding:4px 16px; border-left:4px solid var(--link); opacity:.9; }
-                        a { color:var(--link); text-decoration:underline; }
-                        table { border-collapse:collapse; width:100%; margin:16px 0; }
-                        th,td { border:1px solid var(--rule); padding:6px 8px; text-align:left; }
-                        ul,ol { padding-left:1.25em; }
-                        hr { border:none; height:1px; background:var(--rule); margin:32px 0; }
-                    </style>
-                </head>
-                <body>$processedContent</body>
-                </html>
-            """.trimIndent()
-            webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
         },
         modifier = modifier
     )
 }
+
+private fun articleHtml(
+    body: String,
+    textColorHex: String,
+    linkColorHex: String,
+    codeBg: String,
+    ruleColor: String
+): String = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            :root { --text:$textColorHex; --link:$linkColorHex; --code:$codeBg; --rule:$ruleColor; }
+            body { font-family: system-ui,-apple-system,Roboto,sans-serif; line-height:1.6; margin:0; padding:0 0 32px 0; color:var(--text); background:transparent; }
+            h1,h2,h3 { line-height:1.25; margin:1.4em 0 .6em; }
+            h1 { font-size:1.5em; }
+            h2 { font-size:1.3em; }
+            h3 { font-size:1.15em; }
+            p, li { margin:0 0 1em; }
+            img, video, figure { max-width:100%; height:auto; border-radius:12px; display:block; margin:16px auto; }
+            pre { overflow:auto; padding:12px; background:var(--code); border-radius:10px; font-size:.85em; }
+            code { background:var(--code); padding:2px 5px; border-radius:6px; }
+            blockquote { margin:16px 0; padding:4px 16px; border-left:4px solid var(--link); opacity:.9; }
+            a { color:var(--link); text-decoration:underline; }
+            table { border-collapse:collapse; width:100%; margin:16px 0; }
+            th,td { border:1px solid var(--rule); padding:6px 8px; text-align:left; }
+            ul,ol { padding-left:1.25em; }
+            hr { border:none; height:1px; background:var(--rule); margin:32px 0; }
+        </style>
+    </head>
+    <body>$body</body>
+    </html>
+""".trimIndent()

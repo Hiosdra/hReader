@@ -53,4 +53,54 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+/**
+ * Stars, the stored article preview and the full-text index.
+ *
+ * [preview] is left null for articles already in the cache: it is derived from the body by an HTML
+ * parser, which SQL cannot run. `ArticleContentSyncWorker` fills the gap in the background, and a
+ * row without one simply shows no preview until it does.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE articles ADD COLUMN preview TEXT")
+        db.execSQL("ALTER TABLE articles ADD COLUMN starred INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE articles ADD COLUMN starredPendingSync INTEGER NOT NULL DEFAULT 0")
+
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_articles_feedId` ON `articles` (`feedId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_articles_status` ON `articles` (`status`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_articles_publishedAt` ON `articles` (`publishedAt`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_articles_pendingSync` ON `articles` (`pendingSync`)")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_articles_starredPendingSync` " +
+                "ON `articles` (`starredPendingSync`)"
+        )
+
+        db.execSQL(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS `articles_fts` USING FTS4(" +
+                "`title` TEXT NOT NULL, `author` TEXT, `content` TEXT, content=`articles`)"
+        )
+        FTS_CONTENT_SYNC_TRIGGERS.forEach(db::execSQL)
+        // External-content FTS keeps only the index, so it starts empty and has to be told to read
+        // the rows that were already there.
+        db.execSQL("INSERT INTO `articles_fts`(`articles_fts`) VALUES('rebuild')")
+    }
+}
+
+/**
+ * What Room emits for an `@Fts4(contentEntity = …)` table: the index has no rows of its own, so
+ * every write to `articles` has to be mirrored into it.
+ */
+private val FTS_CONTENT_SYNC_TRIGGERS = listOf(
+    "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE " +
+        "BEFORE UPDATE ON `articles` BEGIN DELETE FROM `articles_fts` WHERE `docid`=OLD.`rowid`; END",
+    "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_DELETE " +
+        "BEFORE DELETE ON `articles` BEGIN DELETE FROM `articles_fts` WHERE `docid`=OLD.`rowid`; END",
+    "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_AFTER_UPDATE " +
+        "AFTER UPDATE ON `articles` BEGIN INSERT INTO `articles_fts`(`docid`, `title`, `author`, " +
+        "`content`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`author`, NEW.`content`); END",
+    "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_AFTER_INSERT " +
+        "AFTER INSERT ON `articles` BEGIN INSERT INTO `articles_fts`(`docid`, `title`, `author`, " +
+        "`content`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`author`, NEW.`content`); END"
+)
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)

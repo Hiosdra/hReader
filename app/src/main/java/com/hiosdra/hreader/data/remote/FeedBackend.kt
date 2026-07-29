@@ -42,9 +42,19 @@ interface FeedBackend {
 
     suspend fun createFeed(feedUrl: String)
 
+    suspend fun deleteFeed(feedId: Long)
+
+    suspend fun renameFeed(feedId: Long, title: String)
+
     suspend fun discoverFeeds(url: String): List<DiscoveredFeed>
 
     suspend fun updateEntriesStatus(entryIds: List<Long>, status: ArticleStatus)
+
+    /**
+     * Both backends model a star as a toggle rather than a value, so this is only ever called for
+     * entries whose star actually changed; the caller holds the state it is moving away from.
+     */
+    suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean)
 
     suspend fun fetchFullContent(entryId: Long): String?
 

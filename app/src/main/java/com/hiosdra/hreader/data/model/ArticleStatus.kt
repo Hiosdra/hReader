@@ -6,3 +6,5 @@ enum class ArticleStatus {
 }
 
 val Entry.isRead: Boolean get() = status == ArticleStatus.READ
+
+val ArticleListEntry.isRead: Boolean get() = status == ArticleStatus.READ
