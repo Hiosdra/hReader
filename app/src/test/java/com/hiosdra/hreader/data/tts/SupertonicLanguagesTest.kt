@@ -6,26 +6,43 @@ import org.junit.Test
 class SupertonicLanguagesTest {
     @Test
     fun `uses first supported detected language`() {
-        assertEquals("pl", SupertonicLanguages.resolve(listOf("pl", "en"), "de"))
+        assertEquals("pl", TtsLanguages.resolve(listOf("pl", "en"), "de"))
     }
 
     @Test
     fun `skips unsupported detected languages`() {
-        assertEquals("de", SupertonicLanguages.resolve(listOf("he", "de"), "pl"))
+        assertEquals("de", TtsLanguages.resolve(listOf("he", "de"), "pl"))
     }
 
     @Test
     fun `uses supported device language when detection is empty`() {
-        assertEquals("pl", SupertonicLanguages.resolve(emptyList(), "PL"))
+        assertEquals("pl", TtsLanguages.resolve(emptyList(), "PL"))
     }
 
     @Test
     fun `falls back to english when no language is supported`() {
-        assertEquals("en", SupertonicLanguages.resolve(listOf("he"), "he"))
+        assertEquals("en", TtsLanguages.resolve(listOf("he"), "he"))
     }
 
     @Test
     fun `normalizes legacy indonesian language code`() {
-        assertEquals("id", SupertonicLanguages.resolve(listOf("in"), "en"))
+        assertEquals("id", TtsLanguages.resolve(listOf("in"), "en"))
+    }
+
+    @Test
+    fun `routes Chinese to Kokoro without offering Supertonic`() {
+        assertEquals("zh", TtsLanguages.resolve(listOf("zh"), "en"))
+        assertEquals(
+            listOf(TtsModel.KOKORO, TtsModel.ANDROID),
+            TtsLanguages.compatibleModels("zh")
+        )
+    }
+
+    @Test
+    fun `routes Polish only to compatible neural voices`() {
+        assertEquals(
+            listOf(TtsModel.SUPERTONIC, TtsModel.GOSIA, TtsModel.ANDROID),
+            TtsLanguages.compatibleModels("pl")
+        )
     }
 }

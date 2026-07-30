@@ -90,8 +90,7 @@ internal class SherpaTtsEngine(
                     voices = "$root/voices.bin",
                     tokens = "$root/tokens.txt",
                     dataDir = "$root/espeak-ng-data",
-                    lexicon = "$root/lexicon-us-en.txt",
-                    lang = "en-us"
+                    lexicon = "$root/lexicon-us-en.txt,$root/lexicon-zh.txt"
                 )
             }
             TtsModel.GOSIA -> {

@@ -16,7 +16,7 @@ internal class TtsLanguageDetector(context: Context) {
             val result = textClassifier.detectLanguage(request)
             List(result.localeHypothesisCount) { index -> result.getLocale(index).language }
         }.getOrDefault(emptyList())
-        return SupertonicLanguages.resolve(detected, Locale.getDefault().language)
+        return TtsLanguages.resolve(detected, Locale.getDefault().language)
     }
 
     private companion object {
@@ -30,6 +30,10 @@ internal object SupertonicLanguages {
         "hi", "hu", "id", "it", "ja", "ko", "lv", "lt", "pl", "pt", "ro", "ru",
         "sk", "sl", "es", "sv", "tr", "uk", "vi"
     )
+}
+
+internal object TtsLanguages {
+    val supported = (SupertonicLanguages.supported + "zh").sorted()
 
     fun resolve(detected: List<String>, fallback: String): String {
         return detected.asSequence()
@@ -38,6 +42,17 @@ internal object SupertonicLanguages {
             ?: normalize(fallback).takeIf(supported::contains)
             ?: "en"
     }
+
+    fun compatibleModels(language: String): List<TtsModel> = when (normalize(language)) {
+        "en" -> listOf(TtsModel.SUPERTONIC, TtsModel.KOKORO, TtsModel.ANDROID)
+        "pl" -> listOf(TtsModel.SUPERTONIC, TtsModel.GOSIA, TtsModel.ANDROID)
+        "zh" -> listOf(TtsModel.KOKORO, TtsModel.ANDROID)
+        in SupertonicLanguages.supported -> listOf(TtsModel.SUPERTONIC, TtsModel.ANDROID)
+        else -> listOf(TtsModel.ANDROID)
+    }
+
+    fun isCompatible(model: TtsModel, language: String): Boolean =
+        model in compatibleModels(language)
 
     private fun normalize(language: String): String = when (language.lowercase(Locale.ROOT)) {
         "in" -> "id"
