@@ -6,6 +6,7 @@ import com.hiosdra.hreader.data.remote.miniflux.dto.DiscoverRequest
 import com.hiosdra.hreader.data.remote.miniflux.dto.DiscoverResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.FeedCountersResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxEntriesResponse
+import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxEntry
 import com.hiosdra.hreader.data.remote.miniflux.dto.MinifluxFeed
 import com.hiosdra.hreader.data.remote.miniflux.dto.OriginalContentResponse
 import com.hiosdra.hreader.data.remote.miniflux.dto.UpdateEntriesStatusRequest
@@ -57,6 +58,12 @@ interface MinifluxApiService {
         @Path("feedId") feedId: Long,
         @Body request: UpdateFeedRequest
     ): MinifluxFeed
+
+    /** One entry as the server currently holds it, for deciding whether a bookmark needs flipping. */
+    @GET("v1/entries/{entryId}")
+    suspend fun getEntry(
+        @Path("entryId") entryId: Long
+    ): MinifluxEntry
 
     /** Miniflux has no "set" for bookmarks, only a per-entry flip of whatever is stored. */
     @PUT("v1/entries/{entryId}/bookmark")

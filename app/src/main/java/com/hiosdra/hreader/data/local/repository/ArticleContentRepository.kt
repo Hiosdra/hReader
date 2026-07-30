@@ -87,6 +87,15 @@ class ArticleContentRepository(
     }
 
     /**
+     * The entries whose text is not stored yet, in the order given. Prefetching a bounded slice of
+     * a large backlog only makes progress if the slice is taken from what is actually outstanding.
+     */
+    suspend fun entriesMissingContent(entries: List<Pair<Long, String>>): List<Pair<Long, String>> {
+        val stored = articleContentDao.getAllContentEntryIds().toHashSet()
+        return entries.filterNot { (entryId, _) -> entryId in stored }
+    }
+
+    /**
      * [onProgress] is called with the number of articles finished so far — successes and failures
      * alike, since what the reader waiting on "prepare for offline" wants to know is how much of
      * the queue is left, not how much of it worked.
@@ -134,14 +143,13 @@ class ArticleContentRepository(
         val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
         credibilityRepository.cleanupOrphanedReports(currentEntryIds)
 
-        // Cleanup orphaned article content
-        val allContent = articleContentDao.getAllArticleContents()
-        val contentToDelete = allContent.filter { content ->
-            !currentEntryIds.contains(content.entryId)
-        }
+        // Only the ids: every row here holds a full article body, and reading all of them to
+        // compare a number put the entire offline cache in memory inside a background worker.
+        val orphanedContent = articleContentDao.getAllContentEntryIds()
+            .filterNot { currentEntryIds.contains(it) }
         // Chunked: retention and full-sync reconciliation can orphan thousands of rows at once,
         // and one statement for all of them would exceed SQLite's bound-variable ceiling.
-        contentToDelete.map { it.entryId }.chunked(DELETE_CHUNK).forEach { chunk ->
+        orphanedContent.chunked(DELETE_CHUNK).forEach { chunk ->
             articleContentDao.deleteArticlesContent(chunk)
         }
 

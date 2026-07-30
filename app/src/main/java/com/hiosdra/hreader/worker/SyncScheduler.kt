@@ -24,6 +24,7 @@ private const val ARTICLE_CONTENT_SYNC_WORK = "ArticleContentSync"
 private const val LEGACY_ARTICLE_CONTENT_SYNC_WORK = "ArticleContentSyncWorker"
 private const val CHAINED_SYNC_WORK = "OnExitChainedSync"
 private const val OFFLINE_PREPARATION_WORK = "PrepareForOffline"
+private const val REQUESTED_SYNC_WORK = "RequestedSync"
 
 private const val BACKOFF_DELAY_SECONDS = 30L
 private const val CHAINED_SYNC_THROTTLE_MILLIS = 2 * 60 * 1000L
@@ -31,6 +32,7 @@ private const val CHAINED_SYNC_THROTTLE_MILLIS = 2 * 60 * 1000L
 internal const val KEY_FORCE_FULL_SYNC = "force_full_sync"
 internal const val KEY_PREFETCH_CHAINED = "prefetch_chained"
 internal const val KEY_IGNORE_QUIET_HOURS = "ignore_quiet_hours"
+internal const val KEY_DRAIN_REMAINING = "drain_remaining"
 internal const val KEY_PROGRESS_DONE = "progress_done"
 internal const val KEY_PROGRESS_TOTAL = "progress_total"
 
@@ -82,8 +84,19 @@ class SyncScheduler(
         return builder.build()
     }
 
+    /**
+     * Registers the periodic sync, or cancels it when there is nothing to sync against. Every
+     * caller — app start, a changed setting, signing out — goes through here, so signing out stops
+     * the worker instead of leaving it waking the radio hourly to fail on a missing token, and
+     * configuring an account again brings it back without waiting for the next launch.
+     */
     fun schedulePeriodicSync() {
         workManager.cancelUniqueWork(LEGACY_ARTICLE_CONTENT_SYNC_WORK)
+
+        if (!preferencesManager.hasBackendCredentials()) {
+            workManager.cancelUniqueWork(CONTENT_SYNC_WORK)
+            return
+        }
 
         val workRequest = PeriodicWorkRequestBuilder<ContentSyncWorker>(
             preferencesManager.getSyncIntervalMinutes().toLong(),
@@ -115,6 +128,29 @@ class SyncScheduler(
         )
     }
 
+    /**
+     * A sync the reader has just asked for by doing something — switching backend, finishing setup
+     * — rather than one the clock asked for. Unthrottled, because it answers an action.
+     */
+    fun syncNow(forceFullSync: Boolean = false) {
+        if (!preferencesManager.hasBackendCredentials()) return
+        workManager
+            .beginUniqueWork(REQUESTED_SYNC_WORK, ExistingWorkPolicy.REPLACE, syncRequest(forceFullSync))
+            .then(prefetchRequest())
+            .enqueue()
+    }
+
+    /** Stops everything in flight. What is queued has no account left to run against. */
+    fun cancelAllSync() {
+        listOf(
+            CONTENT_SYNC_WORK,
+            ARTICLE_CONTENT_SYNC_WORK,
+            CHAINED_SYNC_WORK,
+            OFFLINE_PREPARATION_WORK,
+            REQUESTED_SYNC_WORK
+        ).forEach(workManager::cancelUniqueWork)
+    }
+
     /** Sync then prefetch when the app goes to the background, at most once every two minutes. */
     fun enqueueBackgroundSyncChain() {
         val now = System.currentTimeMillis()
@@ -136,6 +172,11 @@ class SyncScheduler(
      *
      * Expedited and exempt from quiet hours, because someone is standing in front of the screen
      * waiting for it. As ordinary background work it could sit queued past the train leaving.
+     *
+     * This is also the one caller that asks the prefetch to keep going until the queue is empty.
+     * A run downloads a bounded number of articles so that it finishes inside the time WorkManager
+     * allows; here the reader has asked for the whole cache, so what a run leaves over is worth
+     * another run rather than the next hour's.
      */
     fun prepareForOffline() {
         workManager
@@ -144,7 +185,7 @@ class SyncScheduler(
                 ExistingWorkPolicy.REPLACE,
                 syncRequest(forceFullSync = true, expedited = true, ignoreQuietHours = true)
             )
-            .then(prefetchRequest(expedited = true, ignoreQuietHours = true))
+            .then(prefetchRequest(expedited = true, ignoreQuietHours = true, drainRemaining = true))
             .enqueue()
     }
 
@@ -179,11 +220,20 @@ class SyncScheduler(
         .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
         .build()
 
-    private fun prefetchRequest(expedited: Boolean = false, ignoreQuietHours: Boolean = false) =
+    private fun prefetchRequest(
+        expedited: Boolean = false,
+        ignoreQuietHours: Boolean = false,
+        drainRemaining: Boolean = false
+    ) =
         OneTimeWorkRequestBuilder<ArticleContentSyncWorker>()
             .setConstraints(networkConstraints())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
-            .setInputData(Data.Builder().putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours).build())
+            .setInputData(
+                Data.Builder()
+                    .putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours)
+                    .putBoolean(KEY_DRAIN_REMAINING, drainRemaining)
+                    .build()
+            )
             .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
             .build()
 }

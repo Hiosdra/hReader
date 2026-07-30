@@ -241,10 +241,17 @@ class SettingsViewModel(
     private fun switchBackendTo(backendType: BackendType) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, pendingBackendType = null)
+            // In flight work belongs to the backend being left, and would write its articles back
+            // into the cache that was just emptied.
+            syncScheduler.cancelAllSync()
             val cleared = runCatching { localCacheRepository.clearBackendData() }
             if (cleared.isSuccess) {
                 preferencesManager.setBackendType(backendType)
             }
+            // The switch wipes everything downloaded, so the new backend is fetched from scratch
+            // rather than leaving the reader with an empty list until the next scheduled run.
+            syncScheduler.schedulePeriodicSync()
+            syncScheduler.syncNow(forceFullSync = true)
             _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
         }
     }
@@ -253,11 +260,15 @@ class SettingsViewModel(
         val backendType = _uiState.value.backendType
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true)
+            syncScheduler.cancelAllSync()
             val cleared = runCatching { localCacheRepository.clearBackendData() }
             preferencesManager.setBackendSecret(backendType, "")
             if (backendType.requiresUsername) {
                 preferencesManager.setFreshRssUsername("")
             }
+            // Deregisters the periodic worker: without credentials every run wakes the radio only
+            // to fail on a missing token, hourly, for as long as the app stays installed.
+            syncScheduler.schedulePeriodicSync()
             _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
         }
     }
@@ -277,10 +288,21 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(secret = secret).cleared()
     }
 
+    /**
+     * Credentials are stored as they are typed, but the periodic worker is only registered where
+     * there is an account to sync — so finishing setup, or signing back in, has to say so. The
+     * first sync is started here too rather than leaving a new install empty for an hour.
+     */
+    fun onSetupFinished() {
+        syncScheduler.schedulePeriodicSync()
+        syncScheduler.syncNow(forceFullSync = true)
+    }
+
     fun testConnection() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isTesting = true, statusMessage = null)
             val result = runCatching { feedRepository.verifyConnection() }
+            if (result.isSuccess) syncScheduler.schedulePeriodicSync()
             _uiState.value = _uiState.value.copy(
                 isTesting = false,
                 isConnected = result.isSuccess,
