@@ -12,7 +12,7 @@ internal object TtsTextProcessor {
         return chunks(listOf(title, body).filter { it.isNotBlank() }.joinToString(". "))
     }
 
-    fun chunks(text: String, maxCharacters: Int = 700): List<String> {
+    fun chunks(text: String, maxCharacters: Int = 350): List<String> {
         val normalized = text.replace(Regex("\\s+"), " ").trim()
         if (normalized.isEmpty()) return emptyList()
         val iterator = BreakIterator.getSentenceInstance(Locale.ROOT).apply { setText(normalized) }

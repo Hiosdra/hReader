@@ -574,7 +574,7 @@ private fun ArticleTtsBar(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = state.model?.displayName.orEmpty(),
+                    text = state.error ?: state.model?.displayName.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
