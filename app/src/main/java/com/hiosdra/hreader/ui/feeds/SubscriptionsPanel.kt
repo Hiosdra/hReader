@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
@@ -162,7 +161,7 @@ fun SubscriptionsPanel(
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .background(MaterialTheme.colorScheme.secondaryContainer)
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -175,7 +174,7 @@ fun SubscriptionsPanel(
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .background(MaterialTheme.colorScheme.errorContainer)
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -234,7 +233,7 @@ fun SubscriptionsPanel(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(24.dp)
+                    shape = MaterialTheme.shapes.extraLarge
                 )
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     item {
@@ -362,7 +361,7 @@ private fun PanelRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(MaterialTheme.shapes.extraLarge)
             .background(
                 if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
             )

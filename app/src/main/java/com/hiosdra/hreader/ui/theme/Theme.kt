@@ -73,6 +73,7 @@ fun HReaderTheme(content: @Composable () -> Unit) {
         MaterialTheme(
             colorScheme = DarkColorScheme,
             typography = Typography,
+            shapes = Shapes,
             content = content
         )
     }

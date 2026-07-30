@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -70,7 +70,7 @@ fun ArticleRow(
             // Read state reaches a screen reader as state rather than as a colour and an opacity,
             // which is all a sighted reader was ever given.
             .semantics { stateDescription = if (checked) "Read" else "Unread" },
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = sectionCardColors()
     ) {
@@ -95,7 +95,7 @@ fun ArticleRow(
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
-                                    .clip(RoundedCornerShape(50))
+                                    .clip(CircleShape)
                                     .background(indicatorColor)
                                     .clearAndSetSemantics { }
                             )
@@ -146,7 +146,7 @@ fun ArticleRow(
                         Box(
                             modifier = Modifier
                                 .size(96.dp)
-                                .clip(RoundedCornerShape(8.dp)),
+                                .clip(MaterialTheme.shapes.small),
                             contentAlignment = Alignment.Center
                         ) {
                             // Fills the square it was given: at fillMaxWidth the height followed the

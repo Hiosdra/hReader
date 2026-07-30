@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -57,7 +56,7 @@ fun ArticleListSkeleton(modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 6.dp)
                     .clearAndSetSemantics { },
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Row(modifier = Modifier.padding(12.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -73,7 +72,7 @@ fun ArticleListSkeleton(modifier: Modifier = Modifier) {
                     Box(
                         modifier = Modifier
                             .size(96.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .alpha(alpha)
                             .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
@@ -89,7 +88,7 @@ private fun ShimmerBar(width: Dp, height: Dp, alpha: Float) {
         modifier = Modifier
             .width(width)
             .height(height)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .alpha(alpha)
             .background(MaterialTheme.colorScheme.onSurfaceVariant)
     )
