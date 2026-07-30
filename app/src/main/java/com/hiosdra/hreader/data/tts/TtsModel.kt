@@ -27,7 +27,7 @@ data class TtsAdvancedSettings(
     val silenceScale: Float = 0.2f,
     val supertonicSpeaker: Int = 0,
     val supertonicSteps: Int = 8,
-    val kokoroSpeaker: Int = 3,
+    val kokoroSpeaker: Int = 0,
     val gosiaNoiseScale: Float = 0.667f,
     val gosiaDurationNoiseScale: Float = 0.8f
 )

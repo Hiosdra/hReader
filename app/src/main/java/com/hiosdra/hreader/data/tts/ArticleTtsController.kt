@@ -10,6 +10,7 @@ import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -34,6 +35,7 @@ data class ArticleTtsState(
     val model: TtsModel? = null,
     val isPreparing: Boolean = false,
     val isPlaying: Boolean = false,
+    val isPaused: Boolean = false,
     val currentChunk: Int = 0,
     val totalChunks: Int = 0,
     val error: String? = null
@@ -58,6 +60,7 @@ class ArticleTtsController(
     private var warmReleaseJob: Job? = null
     private var audioTrack: AudioTrack? = null
     private var androidTts: TextToSpeech? = null
+    private var resumeSignal = CompletableDeferred(Unit)
 
     fun play(articleId: Long, title: String, html: String) {
         stopPlayback()
@@ -71,7 +74,10 @@ class ArticleTtsController(
         warmReleaseJob = null
         val version = playbackVersion
         playbackJob = scope.launch {
-            val requestedModel = preferences.getTtsModel()
+            val language = withContext(Dispatchers.Default) {
+                languageDetector.detect(chunks.take(2).joinToString(" "))
+            }
+            val requestedModel = preferences.getTtsModelForLanguage(language)
             val available = modelManager.statuses.value[requestedModel] == TtsModelStatus.Available
             val model = if (available && Build.SUPPORTED_64_BIT_ABIS.contains("arm64-v8a")) {
                 requestedModel
@@ -87,9 +93,9 @@ class ArticleTtsController(
             )
             runCatching {
                 if (model == TtsModel.ANDROID) {
-                    speakWithAndroid(chunks)
+                    speakWithAndroid(chunks, language)
                 } else {
-                    speakWithSherpa(model, chunks)
+                    speakWithSherpa(model, chunks, language)
                 }
             }.onFailure {
                 if (it !is CancellationException && model != TtsModel.ANDROID) {
@@ -99,7 +105,7 @@ class ArticleTtsController(
                         isPreparing = true,
                         error = neuralFallbackMessage(model, it)
                     )
-                    runCatching { speakWithAndroid(chunks) }
+                    runCatching { speakWithAndroid(chunks, language) }
                 } else if (it !is CancellationException) {
                     _state.value = _state.value.copy(
                         isPreparing = false,
@@ -117,6 +123,21 @@ class ArticleTtsController(
         scheduleWarmRelease()
     }
 
+    fun pause() {
+        if (_state.value.articleId == null || _state.value.isPaused) return
+        resumeSignal = CompletableDeferred()
+        audioTrack?.pause()
+        androidTts?.stop()
+        _state.value = _state.value.copy(isPaused = true, isPlaying = false)
+    }
+
+    fun resume() {
+        if (!_state.value.isPaused) return
+        resumeSignal.complete(Unit)
+        audioTrack?.play()
+        _state.value = _state.value.copy(isPaused = false, isPlaying = true)
+    }
+
     private fun stopPlayback() {
         playbackVersion++
         playbackJob?.cancel()
@@ -125,6 +146,7 @@ class ArticleTtsController(
         audioTrack?.release()
         audioTrack = null
         androidTts?.stop()
+        resumeSignal.complete(Unit)
         _state.value = ArticleTtsState()
     }
 
@@ -137,16 +159,12 @@ class ArticleTtsController(
         }
     }
 
-    private suspend fun speakWithSherpa(model: TtsModel, chunks: List<String>) {
+    private suspend fun speakWithSherpa(model: TtsModel, chunks: List<String>, language: String) {
         coroutineScope {
             val settings = preferences.getTtsAdvancedSettings()
-            val languageResult = async(Dispatchers.Default) {
-                languageDetector.detect(chunks.take(2).joinToString(" "))
-            }
             val modelPreparation = async(Dispatchers.Default) {
                 sherpa.prepare(model, settings)
             }
-            val language = languageResult.await()
             modelPreparation.await()
             val speed = preferences.getTtsSpeed()
             var audio = withContext(Dispatchers.Default) {
@@ -158,9 +176,10 @@ class ArticleTtsController(
                         sherpa.generate(model, nextChunk, speed, language, settings)
                     }
                 }
+                resumeSignal.await()
                 _state.value = _state.value.copy(
                     isPreparing = false,
-                    isPlaying = true,
+                    isPlaying = !_state.value.isPaused,
                     currentChunk = index
                 )
                 playSamples(audio.samples, audio.sampleRate)
@@ -208,32 +227,34 @@ class ArticleTtsController(
         audioTrack = null
     }
 
-    private suspend fun speakWithAndroid(chunks: List<String>) {
+    private suspend fun speakWithAndroid(chunks: List<String>, language: String) {
         val tts = initializeAndroidTts()
         tts.setSpeechRate(preferences.getTtsSpeed())
-        tts.language = if (preferences.getTtsModel() == TtsModel.GOSIA) {
-            Locale.forLanguageTag("pl-PL")
-        } else {
-            Locale.getDefault()
-        }
+        tts.language = Locale.forLanguageTag(language)
         chunks.forEachIndexed { index, chunk ->
+            resumeSignal.await()
             _state.value = _state.value.copy(
                 isPreparing = false,
-                isPlaying = true,
+                isPlaying = !_state.value.isPaused,
                 currentChunk = index
             )
-            speakChunk(tts, chunk)
+            while (!speakChunk(tts, chunk)) resumeSignal.await()
         }
         _state.value = ArticleTtsState()
     }
 
-    private suspend fun speakChunk(tts: TextToSpeech, text: String) = suspendCancellableCoroutine { continuation ->
+    private suspend fun speakChunk(tts: TextToSpeech, text: String): Boolean =
+        suspendCancellableCoroutine { continuation ->
         val utteranceId = UUID.randomUUID().toString()
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) = Unit
 
             override fun onDone(id: String?) {
-                if (id == utteranceId && continuation.isActive) continuation.resume(Unit)
+                if (id == utteranceId && continuation.isActive) continuation.resume(true)
+            }
+
+            override fun onStop(id: String?, interrupted: Boolean) {
+                if (id == utteranceId && continuation.isActive) continuation.resume(false)
             }
 
             @Deprecated("Deprecated by Android")
@@ -256,7 +277,7 @@ class ArticleTtsController(
         if (result != TextToSpeech.SUCCESS && continuation.isActive) {
             continuation.resumeWithException(IllegalStateException("Android TTS could not start."))
         }
-    }
+        }
 
     private suspend fun initializeAndroidTts(): TextToSpeech = withContext(Dispatchers.Main) {
         androidTts?.let { return@withContext it }

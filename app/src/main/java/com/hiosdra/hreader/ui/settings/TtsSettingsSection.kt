@@ -2,6 +2,7 @@ package com.hiosdra.hreader.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -30,8 +33,10 @@ import com.hiosdra.hreader.data.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.data.tts.TtsModel
 import com.hiosdra.hreader.data.tts.TtsModelManager
 import com.hiosdra.hreader.data.tts.TtsModelStatus
+import com.hiosdra.hreader.data.tts.SupertonicLanguages
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
@@ -45,6 +50,8 @@ internal fun TtsSettingsSection(
     var selectedModel by remember { mutableStateOf(preferences.getTtsModel()) }
     var advancedExpanded by remember { mutableStateOf(false) }
     var advanced by remember { mutableStateOf(preferences.getTtsAdvancedSettings()) }
+    var languageOverrides by remember { mutableStateOf(preferences.getTtsLanguageOverrides()) }
+    var languageMenuExpanded by remember { mutableStateOf(false) }
 
     Text(
         text = "Read aloud",
@@ -149,6 +156,53 @@ internal fun TtsSettingsSection(
                     }
                 )
             }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Text("Voice by language", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = "Overrides use the selected default voice when no language rule matches.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            languageOverrides.toSortedMap().forEach { (language, model) ->
+                LanguageOverrideRow(
+                    language = language,
+                    model = model,
+                    onModelChange = {
+                        preferences.setTtsLanguageOverride(language, it)
+                        languageOverrides = preferences.getTtsLanguageOverrides()
+                    },
+                    onRemove = {
+                        preferences.setTtsLanguageOverride(language, null)
+                        languageOverrides = preferences.getTtsLanguageOverrides()
+                    }
+                )
+            }
+            Box {
+                TextButton(onClick = { languageMenuExpanded = true }) {
+                    Text("Add language override")
+                }
+                DropdownMenu(
+                    expanded = languageMenuExpanded,
+                    onDismissRequest = { languageMenuExpanded = false }
+                ) {
+                    SupertonicLanguages.supported
+                        .filterNot(languageOverrides::containsKey)
+                        .sortedBy(::languageDisplayName)
+                        .forEach { language ->
+                            DropdownMenuItem(
+                                text = { Text(languageDisplayName(language)) },
+                                onClick = {
+                                    val model = selectedModel.takeIf {
+                                        it in compatibleModels(language)
+                                    } ?: TtsModel.SUPERTONIC
+                                    preferences.setTtsLanguageOverride(language, model)
+                                    languageOverrides = preferences.getTtsLanguageOverrides()
+                                    languageMenuExpanded = false
+                                }
+                            )
+                        }
+                }
+            }
             Text(
                 text = "If a neural model is missing or cannot start, hReader uses Android TTS automatically.",
                 style = MaterialTheme.typography.bodySmall,
@@ -156,6 +210,59 @@ internal fun TtsSettingsSection(
             )
         }
     }
+}
+
+private fun languageDisplayName(language: String): String =
+    Locale.forLanguageTag(language).getDisplayLanguage(Locale.getDefault())
+        .replaceFirstChar { it.titlecase(Locale.getDefault()) }
+
+@Composable
+private fun LanguageOverrideRow(
+    language: String,
+    model: TtsModel,
+    onModelChange: (TtsModel) -> Unit,
+    onRemove: () -> Unit
+) {
+    var modelMenuExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = languageDisplayName(language),
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Box {
+            TextButton(onClick = { modelMenuExpanded = true }) {
+                Text(model.displayName)
+            }
+            DropdownMenu(
+                expanded = modelMenuExpanded,
+                onDismissRequest = { modelMenuExpanded = false }
+            ) {
+                compatibleModels(language).forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.displayName) },
+                        onClick = {
+                            onModelChange(option)
+                            modelMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+        TextButton(onClick = onRemove) {
+            Text("Remove")
+        }
+    }
+}
+
+private fun compatibleModels(language: String): List<TtsModel> = buildList {
+    add(TtsModel.SUPERTONIC)
+    if (language == "en") add(TtsModel.KOKORO)
+    if (language == "pl") add(TtsModel.GOSIA)
+    add(TtsModel.ANDROID)
 }
 
 @Composable
