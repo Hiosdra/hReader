@@ -15,13 +15,13 @@ internal class SherpaTtsEngine(
     private var loadedModel: TtsModel? = null
     private var tts: OfflineTts? = null
 
-    fun generate(model: TtsModel, text: String, speed: Float): GeneratedAudio {
+    fun generate(model: TtsModel, text: String, speed: Float, language: String): GeneratedAudio {
         val engine = engineFor(model)
         val config = GenerationConfig().apply {
             this.speed = speed
             sid = if (model == TtsModel.KOKORO) 3 else 0
             numSteps = 8
-            if (model == TtsModel.SUPERTONIC) extra = mapOf("lang" to "na")
+            if (model == TtsModel.SUPERTONIC) extra = mapOf("lang" to language)
         }
         return engine.generateWithConfig(text, config)
     }
