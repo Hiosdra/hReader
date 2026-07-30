@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Must match Neutral06, the Compose background, so cold start shows no flash -->
-    <color name="window_background">#FF14181C</color>
+    <color name="window_background">#FF181611</color>
 </resources>
