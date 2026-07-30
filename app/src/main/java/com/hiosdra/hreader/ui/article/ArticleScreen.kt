@@ -243,7 +243,8 @@ fun ArticleScreen(
                     isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
-                    getContentForEntry = { entryId -> viewModel.getDisplayContentForEntry(entryId) },
+                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
+                    getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                     localImagePaths = uiState.localImagePaths,
                     isOnline = uiState.isOnline,
                     aiOverviews = uiState.aiOverviews,
@@ -326,6 +327,7 @@ private fun ArticlePager(
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
     getContentForEntry: (Long) -> String?,
+    getLeadImageForEntry: (Long) -> String?,
     localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     isOnline: Boolean = true,
     aiOverviews: Map<Long, String> = emptyMap(),
@@ -342,8 +344,6 @@ private fun ArticlePager(
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val entry = entries[page]
-            val mainImageUrl = entry.enclosures.firstOrNull { it.isImage }?.url
-                ?: Regex("<img[^>]+src=\"([^\"]+)\"").find(entry.content ?: "")?.groupValues?.getOrNull(1)
             if (isWebViewMode) {
                 // What the WebView was last sent. The update block runs on every recomposition —
                 // read state changing, a neighbouring page settling — and loading there threw the
@@ -366,7 +366,7 @@ private fun ArticlePager(
             } else {
                 ArticleContent(
                     entry = entry,
-                    mainImageUrl = mainImageUrl,
+                    mainImageUrl = getLeadImageForEntry(entry.id),
                     modifier = Modifier.padding(paddingValues),
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
                     articleContent = getContentForEntry(entry.id) ?: "No content available",

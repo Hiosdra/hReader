@@ -14,12 +14,15 @@ import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
-import com.hiosdra.hreader.util.absolutizeArticleImages
+import com.hiosdra.hreader.util.leadImageUrl
+import com.hiosdra.hreader.util.prepareArticleImages
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 private const val MISSING_CONTENT_MESSAGE =
@@ -42,9 +45,17 @@ data class ArticleUiState(
     val currentIndex: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val originalContent: Map<Long, String> = emptyMap(),
-    /** [originalContent] with every image address resolved, ready to render. */
-    val displayContent: Map<Long, String> = emptyMap(),
+    /** Each article's text as it is read, with every image address already resolved. */
+    val content: Map<Long, String> = emptyMap(),
+    /**
+     * The picture to show above each article. Absent until that article's text has arrived, and
+     * null for a body that already carries the picture itself, which read the same way to the
+     * screen: nothing above the text. Settling it with the text is what keeps the picture from
+     * appearing and disappearing again a moment after the reader arrives.
+     */
+    val leadImages: Map<Long, String?> = emptyMap(),
+    /** Articles the full text of which was never downloaded, so only the feed's own text is shown. */
+    val partialContentIds: Set<Long> = emptySet(),
     /** Per article, where each of its images was downloaded, keyed by published address. */
     val localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     val contentError: String? = null,
@@ -94,9 +105,30 @@ class ArticleViewModel(
     }
 
     fun setCurrentIndex(index: Int) {
-        _uiState.update { it.copy(currentIndex = index) }
-        val entry = _uiState.value.entries.getOrNull(index) ?: return
-        loadOriginalContent(entry.id, entry.url)
+        _uiState.update { state ->
+            val arrivedAt = state.entries.getOrNull(index)?.id
+            state.copy(
+                currentIndex = index,
+                contentError = if (arrivedAt in state.partialContentIds) {
+                    PARTIAL_CONTENT_MESSAGE
+                } else {
+                    state.contentError
+                }
+            )
+        }
+        loadAround(index)
+    }
+
+    /**
+     * The article on screen and the one either side of it. Arriving at an article whose text has to
+     * be fetched first shows what the feed carried and then replaces it, which the reader sees as
+     * the article rebuilding itself; asking for the neighbours while they are still off screen is
+     * what gives the swipe something ready to show.
+     */
+    private fun loadAround(index: Int) {
+        val entries = _uiState.value.entries
+        listOfNotNull(entries.getOrNull(index), entries.getOrNull(index - 1), entries.getOrNull(index + 1))
+            .forEach { entry -> loadArticleText(entry.id, entry.url) }
     }
 
     /**
@@ -107,35 +139,65 @@ class ArticleViewModel(
      * Asked for once per article: a failed fetch has already fallen back to what the feed carried,
      * so there is nothing a second attempt against the same cache would turn up.
      */
-    private fun loadOriginalContent(entryId: Long, url: String) {
+    private fun loadArticleText(entryId: Long, url: String) {
         if (!requestedContentIds.add(entryId)) return
         viewModelScope.launch {
-            val content = runCatching { articleContentRepository.getArticleContent(entryId, url) }
+            val text = runCatching { articleContentRepository.getArticleContent(entryId, url) }
                 .getOrNull()
-            if (content != null) {
-                store(entryId, url, content, isFullText = true)
+            if (text != null) {
+                store(entryId, text.html, text.leadImageUrl, isFullText = true)
                 return@launch
             }
 
-            val syncedWithFeed = _uiState.value.entries.find { it.id == entryId }?.content
+            val entry = _uiState.value.entries.find { it.id == entryId }
+            val syncedWithFeed = entry?.content
             if (syncedWithFeed.isNullOrBlank()) {
-                _uiState.update { it.copy(contentError = PARTIAL_CONTENT_MESSAGE) }
-            } else {
-                store(entryId, url, syncedWithFeed, isFullText = false)
+                markPartial(entryId)
+                return@launch
             }
+
+            // The one body that never reaches the store where the rest are prepared, so it is
+            // prepared here instead.
+            val (images, leadImage) = withContext(Dispatchers.Default) {
+                val images = prepareArticleImages(syncedWithFeed, url)
+                images to leadImageUrl(
+                    enclosureUrl = entry.enclosures.firstOrNull { it.isImage }?.url,
+                    feedContent = syncedWithFeed,
+                    bodyImageUrls = images.imageUrls,
+                    baseUri = url
+                )
+            }
+            store(entryId, images.html, leadImage, isFullText = false)
         }
     }
 
-    private suspend fun store(entryId: Long, url: String, content: String, isFullText: Boolean) {
-        val prepared = absolutizeArticleImages(content, url)
+    private fun markPartial(entryId: Long) {
+        _uiState.update { it.withPartialContent(entryId) }
+    }
+
+    /**
+     * Raised for the article being read and only remembered for the rest: the neighbours are loaded
+     * before the reader gets to them, and a message about an article they are not looking at yet
+     * reads as a fault with the one they are. Arriving at that article raises it.
+     */
+    private fun ArticleUiState.withPartialContent(entryId: Long) = copy(
+        partialContentIds = partialContentIds + entryId,
+        contentError = if (entries.getOrNull(currentIndex)?.id == entryId) {
+            PARTIAL_CONTENT_MESSAGE
+        } else {
+            contentError
+        }
+    )
+
+    private suspend fun store(entryId: Long, html: String, leadImage: String?, isFullText: Boolean) {
         val localPaths = imageLoader.getLocalImagePaths(entryId)
         _uiState.update {
-            it.copy(
-                originalContent = it.originalContent + (entryId to content),
-                displayContent = it.displayContent + (entryId to prepared),
-                localImagePaths = it.localImagePaths + (entryId to localPaths),
-                contentError = if (isFullText) it.contentError else PARTIAL_CONTENT_MESSAGE
+            val stored = it.copy(
+                content = it.content + (entryId to html),
+                leadImages = it.leadImages + (entryId to leadImage),
+                localImagePaths = it.localImagePaths + (entryId to localPaths)
             )
+            if (isFullText) stored else stored.withPartialContent(entryId)
         }
     }
 
@@ -200,10 +262,7 @@ class ArticleViewModel(
             val byId = articles.associateBy { it.id }
             val ordered = ids.mapNotNull { byId[it] }
             _uiState.update { it.copy(entries = ordered, isLoading = false, error = null) }
-            val currentArticle = ordered.getOrNull(_uiState.value.currentIndex)
-            if (currentArticle != null) {
-                loadOriginalContent(currentArticle.id, currentArticle.url)
-            }
+            loadAround(_uiState.value.currentIndex)
             loadCachedCredibility(ordered.map { it.id })
         }
     }
@@ -227,12 +286,10 @@ class ArticleViewModel(
     }
 
     fun getContentForEntry(entryId: Long): String? =
-        _uiState.value.originalContent[entryId]
+        _uiState.value.content[entryId]
             ?: _uiState.value.entries.find { it.id == entryId }?.content
 
-    /** What the reader sees: the same text with its images resolved to the downloaded copies. */
-    fun getDisplayContentForEntry(entryId: Long): String? =
-        _uiState.value.displayContent[entryId] ?: getContentForEntry(entryId)
+    fun getLeadImageForEntry(entryId: Long): String? = _uiState.value.leadImages[entryId]
 
     fun clearContentError() {
         _uiState.update { it.copy(contentError = null) }
