@@ -343,14 +343,6 @@ private fun ArticlePager(
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val entry = entries[page]
-            val articleHtml = getContentForEntry(entry.id)
-            val mainImageUrl = remember(entry.id, entry.enclosures, entry.content, articleHtml) {
-                leadImageUrl(
-                    enclosureUrl = entry.enclosures.firstOrNull { it.isImage }?.url,
-                    feedContent = entry.content,
-                    articleHtml = articleHtml
-                )
-            }
             if (isWebViewMode) {
                 // What the WebView was last sent. The update block runs on every recomposition —
                 // read state changing, a neighbouring page settling — and loading there threw the
@@ -371,6 +363,15 @@ private fun ArticlePager(
                     modifier = Modifier.padding(paddingValues)
                 )
             } else {
+                val articleHtml = getContentForEntry(entry.id)
+                val mainImageUrl = remember(entry.id, entry.enclosures, entry.content, articleHtml) {
+                    leadImageUrl(
+                        enclosureUrl = entry.enclosures.firstOrNull { it.isImage }?.url,
+                        feedContent = entry.content,
+                        articleHtml = articleHtml,
+                        baseUri = entry.url
+                    )
+                }
                 ArticleContent(
                     entry = entry,
                     mainImageUrl = mainImageUrl,

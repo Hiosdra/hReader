@@ -6,12 +6,15 @@ import org.junit.Test
 
 class ArticleLeadImageTest {
 
+    private val baseUri = "https://example.com/posts/one"
+
     @Test
     fun `the enclosure is shown when the body has no images`() {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = "<p>Summary</p>",
-            articleHtml = "<p>The article</p>"
+            articleHtml = "<p>The article</p>",
+            baseUri = baseUri
         )
 
         assertEquals("https://example.com/photo.jpg", lead)
@@ -22,7 +25,8 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/photo.jpg"><p>The article</p>"""
+            articleHtml = """<img src="https://example.com/photo.jpg"><p>The article</p>""",
+            baseUri = baseUri
         )
 
         assertNull(lead)
@@ -33,7 +37,8 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/photo.jpg?w=1200&quality=80">"""
+            articleHtml = """<img src="https://example.com/photo.jpg?w=1200&quality=80">""",
+            baseUri = baseUri
         )
 
         assertNull(lead)
@@ -44,7 +49,20 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/uploads/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/uploads/photo-1200x675.jpg">"""
+            articleHtml = """<img src="https://example.com/uploads/photo-1200x675.jpg">""",
+            baseUri = baseUri
+        )
+
+        assertNull(lead)
+    }
+
+    @Test
+    fun `the full-size upload and the scaled copy are the same picture`() {
+        val lead = leadImageUrl(
+            enclosureUrl = "https://example.com/uploads/photo-scaled.jpg",
+            feedContent = null,
+            articleHtml = """<img src="https://example.com/uploads/photo-1024x576.jpg">""",
+            baseUri = baseUri
         )
 
         assertNull(lead)
@@ -55,7 +73,20 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/uploads/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="//i0.wp.com/example.com/uploads/photo.jpg">"""
+            articleHtml = """<img src="//i0.wp.com/example.com/uploads/photo.jpg">""",
+            baseUri = baseUri
+        )
+
+        assertNull(lead)
+    }
+
+    @Test
+    fun `a relative body picture is the same one the enclosure points at`() {
+        val lead = leadImageUrl(
+            enclosureUrl = "https://example.com/uploads/photo.jpg",
+            feedContent = null,
+            articleHtml = """<img src="/uploads/photo.jpg">""",
+            baseUri = baseUri
         )
 
         assertNull(lead)
@@ -66,7 +97,8 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = """<p>Opening</p><img src="https://example.com/other.jpg"><img src="https://example.com/photo.jpg">"""
+            articleHtml = """<p>Opening</p><img src="https://example.com/other.jpg"><img src="https://example.com/photo.jpg">""",
+            baseUri = baseUri
         )
 
         assertNull(lead)
@@ -77,7 +109,8 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/chart.png">"""
+            articleHtml = """<img src="https://example.com/chart.png">""",
+            baseUri = baseUri
         )
 
         assertEquals("https://example.com/photo.jpg", lead)
@@ -88,10 +121,23 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = null,
             feedContent = """<p>Summary</p><img src="https://example.com/photo.jpg">""",
-            articleHtml = "<p>The full text, with no pictures</p>"
+            articleHtml = "<p>The full text, with no pictures</p>",
+            baseUri = baseUri
         )
 
         assertEquals("https://example.com/photo.jpg", lead)
+    }
+
+    @Test
+    fun `a picture taken from the feed text is resolved against the article address`() {
+        val lead = leadImageUrl(
+            enclosureUrl = null,
+            feedContent = """<img src="/media/photo.jpg">""",
+            articleHtml = "<p>The full text, with no pictures</p>",
+            baseUri = baseUri
+        )
+
+        assertEquals("https://example.com/media/photo.jpg", lead)
     }
 
     @Test
@@ -99,7 +145,8 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = null,
             feedContent = """<img src="https://example.com/photo.jpg"><p>Summary</p>""",
-            articleHtml = """<img src="https://example.com/photo.jpg"><p>The full text</p>"""
+            articleHtml = """<img src="https://example.com/photo.jpg"><p>The full text</p>""",
+            baseUri = baseUri
         )
 
         assertNull(lead)
@@ -107,7 +154,14 @@ class ArticleLeadImageTest {
 
     @Test
     fun `an article with no picture at all has no lead image`() {
-        assertNull(leadImageUrl(enclosureUrl = null, feedContent = "<p>Text</p>", articleHtml = "<p>Text</p>"))
+        val lead = leadImageUrl(
+            enclosureUrl = null,
+            feedContent = "<p>Text</p>",
+            articleHtml = "<p>Text</p>",
+            baseUri = baseUri
+        )
+
+        assertNull(lead)
     }
 
     @Test
@@ -115,7 +169,8 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "  ",
             feedContent = """<img src="https://example.com/photo.jpg">""",
-            articleHtml = "<p>No pictures here</p>"
+            articleHtml = "<p>No pictures here</p>",
+            baseUri = baseUri
         )
 
         assertEquals("https://example.com/photo.jpg", lead)
@@ -126,7 +181,8 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = null
+            articleHtml = null,
+            baseUri = baseUri
         )
 
         assertEquals("https://example.com/photo.jpg", lead)
