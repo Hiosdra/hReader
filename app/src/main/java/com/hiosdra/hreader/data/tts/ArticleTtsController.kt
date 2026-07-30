@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,16 +52,22 @@ class ArticleTtsController(
     private val _state = MutableStateFlow(ArticleTtsState())
     val state: StateFlow<ArticleTtsState> = _state.asStateFlow()
     private var playbackJob: Job? = null
+    private var playbackVersion = 0
+    private var warmReleaseJob: Job? = null
     private var audioTrack: AudioTrack? = null
     private var androidTts: TextToSpeech? = null
 
     fun play(articleId: Long, title: String, html: String) {
-        stop()
+        stopPlayback()
         val chunks = TtsTextProcessor.fromHtml(title, html)
         if (chunks.isEmpty()) {
             _state.value = ArticleTtsState(error = "There is no article text to read.")
+            scheduleWarmRelease()
             return
         }
+        warmReleaseJob?.cancel()
+        warmReleaseJob = null
+        val version = playbackVersion
         playbackJob = scope.launch {
             val requestedModel = preferences.getTtsModel()
             val available = modelManager.statuses.value[requestedModel] == TtsModelStatus.Available
@@ -88,7 +95,7 @@ class ArticleTtsController(
                     _state.value = _state.value.copy(
                         model = TtsModel.ANDROID,
                         isPreparing = true,
-                        error = "Neural voice unavailable; using Android TTS."
+                        error = neuralFallbackMessage(model, it)
                     )
                     runCatching { speakWithAndroid(chunks) }
                 } else if (it !is CancellationException) {
@@ -99,18 +106,33 @@ class ArticleTtsController(
                     )
                 }
             }
+            if (version == playbackVersion) scheduleWarmRelease()
         }
     }
 
     fun stop() {
+        stopPlayback()
+        scheduleWarmRelease()
+    }
+
+    private fun stopPlayback() {
+        playbackVersion++
         playbackJob?.cancel()
         playbackJob = null
         audioTrack?.runCatching { stop() }
         audioTrack?.release()
         audioTrack = null
         androidTts?.stop()
-        sherpa.release()
         _state.value = ArticleTtsState()
+    }
+
+    private fun scheduleWarmRelease() {
+        warmReleaseJob?.cancel()
+        warmReleaseJob = scope.launch {
+            delay(MODEL_WARM_TIMEOUT_MS)
+            withContext(Dispatchers.Default) { sherpa.release() }
+            warmReleaseJob = null
+        }
     }
 
     private suspend fun speakWithSherpa(model: TtsModel, chunks: List<String>) {
@@ -234,7 +256,17 @@ class ArticleTtsController(
         }
     }
 
+    private fun neuralFallbackMessage(model: TtsModel, error: Throwable): String {
+        val reason = error.message?.trim()?.take(120)?.takeIf { it.isNotEmpty() }
+        return if (reason == null) {
+            "${model.displayName} failed; using Android TTS."
+        } else {
+            "${model.displayName} failed: $reason. Using Android TTS."
+        }
+    }
+
     private companion object {
         const val TAG = "ArticleTtsController"
+        const val MODEL_WARM_TIMEOUT_MS = 5 * 60 * 1_000L
     }
 }

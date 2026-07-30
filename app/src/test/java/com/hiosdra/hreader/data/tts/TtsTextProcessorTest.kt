@@ -28,4 +28,11 @@ class TtsTextProcessorTest {
             chunks.joinToString(" ")
         )
     }
+
+    @Test
+    fun `keeps default synthesis chunks short`() {
+        val chunks = TtsTextProcessor.chunks("word ".repeat(200))
+
+        assertTrue(chunks.all { it.length <= 350 })
+    }
 }
