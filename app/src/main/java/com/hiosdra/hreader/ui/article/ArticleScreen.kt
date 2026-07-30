@@ -104,7 +104,6 @@ import com.hiosdra.hreader.navigation.openChromeCustomTab
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
 import com.hiosdra.hreader.ui.theme.LocalCredibilityColors
 import com.hiosdra.hreader.util.cleanUrl
-import com.hiosdra.hreader.util.leadImageUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -245,6 +244,7 @@ fun ArticleScreen(
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
                     getContentForEntry = { entryId -> viewModel.getDisplayContentForEntry(entryId) },
+                    getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                     localImagePaths = uiState.localImagePaths,
                     isOnline = uiState.isOnline,
                     aiOverviews = uiState.aiOverviews,
@@ -327,6 +327,7 @@ private fun ArticlePager(
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
     getContentForEntry: (Long) -> String?,
+    getLeadImageForEntry: (Long) -> String?,
     localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     isOnline: Boolean = true,
     aiOverviews: Map<Long, String> = emptyMap(),
@@ -363,21 +364,12 @@ private fun ArticlePager(
                     modifier = Modifier.padding(paddingValues)
                 )
             } else {
-                val articleHtml = getContentForEntry(entry.id)
-                val mainImageUrl = remember(entry.id, entry.enclosures, entry.content, articleHtml) {
-                    leadImageUrl(
-                        enclosureUrl = entry.enclosures.firstOrNull { it.isImage }?.url,
-                        feedContent = entry.content,
-                        articleHtml = articleHtml,
-                        baseUri = entry.url
-                    )
-                }
                 ArticleContent(
                     entry = entry,
-                    mainImageUrl = mainImageUrl,
+                    mainImageUrl = getLeadImageForEntry(entry.id),
                     modifier = Modifier.padding(paddingValues),
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
-                    articleContent = articleHtml ?: "No content available",
+                    articleContent = getContentForEntry(entry.id) ?: "No content available",
                     localImagePaths = localImagePaths[entry.id].orEmpty(),
                     isOnline = isOnline,
                     aiOverview = aiOverviews[entry.id],
