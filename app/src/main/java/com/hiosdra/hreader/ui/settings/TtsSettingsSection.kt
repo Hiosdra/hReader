@@ -33,7 +33,7 @@ import com.hiosdra.hreader.data.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.data.tts.TtsModel
 import com.hiosdra.hreader.data.tts.TtsModelManager
 import com.hiosdra.hreader.data.tts.TtsModelStatus
-import com.hiosdra.hreader.data.tts.SupertonicLanguages
+import com.hiosdra.hreader.data.tts.TtsLanguages
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -167,6 +167,7 @@ internal fun TtsSettingsSection(
                 LanguageOverrideRow(
                     language = language,
                     model = model,
+                    statuses = statuses,
                     onModelChange = {
                         preferences.setTtsLanguageOverride(language, it)
                         languageOverrides = preferences.getTtsLanguageOverrides()
@@ -185,7 +186,7 @@ internal fun TtsSettingsSection(
                     expanded = languageMenuExpanded,
                     onDismissRequest = { languageMenuExpanded = false }
                 ) {
-                    SupertonicLanguages.supported
+                    TtsLanguages.supported
                         .filterNot(languageOverrides::containsKey)
                         .sortedBy(::languageDisplayName)
                         .forEach { language ->
@@ -193,8 +194,11 @@ internal fun TtsSettingsSection(
                                 text = { Text(languageDisplayName(language)) },
                                 onClick = {
                                     val model = selectedModel.takeIf {
-                                        it in compatibleModels(language)
-                                    } ?: TtsModel.SUPERTONIC
+                                        it in TtsLanguages.compatibleModels(language) &&
+                                            statuses[it] == TtsModelStatus.Available
+                                    } ?: TtsLanguages.compatibleModels(language).firstOrNull {
+                                        statuses[it] == TtsModelStatus.Available
+                                    } ?: TtsModel.ANDROID
                                     preferences.setTtsLanguageOverride(language, model)
                                     languageOverrides = preferences.getTtsLanguageOverrides()
                                     languageMenuExpanded = false
@@ -220,6 +224,7 @@ private fun languageDisplayName(language: String): String =
 private fun LanguageOverrideRow(
     language: String,
     model: TtsModel,
+    statuses: Map<TtsModel, TtsModelStatus>,
     onModelChange: (TtsModel) -> Unit,
     onRemove: () -> Unit
 ) {
@@ -241,9 +246,16 @@ private fun LanguageOverrideRow(
                 expanded = modelMenuExpanded,
                 onDismissRequest = { modelMenuExpanded = false }
             ) {
-                compatibleModels(language).forEach { option ->
+                TtsLanguages.compatibleModels(language).forEach { option ->
+                    val available = statuses[option] == TtsModelStatus.Available
                     DropdownMenuItem(
-                        text = { Text(option.displayName) },
+                        text = {
+                            Text(
+                                if (available) option.displayName
+                                else "${option.displayName} · not installed"
+                            )
+                        },
+                        enabled = available,
                         onClick = {
                             onModelChange(option)
                             modelMenuExpanded = false
@@ -256,13 +268,6 @@ private fun LanguageOverrideRow(
             Text("Remove")
         }
     }
-}
-
-private fun compatibleModels(language: String): List<TtsModel> = buildList {
-    add(TtsModel.SUPERTONIC)
-    if (language == "en") add(TtsModel.KOKORO)
-    if (language == "pl") add(TtsModel.GOSIA)
-    add(TtsModel.ANDROID)
 }
 
 @Composable

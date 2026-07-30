@@ -6,7 +6,7 @@ enum class TtsModel(
     val bundled: Boolean
 ) {
     SUPERTONIC("Supertonic 3", "Multilingual neural voice · 129 MB download", false),
-    KOKORO("Kokoro", "English neural voices · 140 MB download", false),
+    KOKORO("Kokoro", "English and Chinese neural voices · 140 MB download", false),
     GOSIA("Gosia", "Polish neural voice · 21 MB download", false),
     ANDROID("Android TTS", "System voice · always available", true);
 
@@ -14,6 +14,16 @@ enum class TtsModel(
         fun fromName(value: String?) = entries.firstOrNull { it.name == value } ?: SUPERTONIC
     }
 }
+
+internal fun parseTtsLanguageOverrides(entries: Set<String>): Map<String, TtsModel> =
+    entries.mapNotNull { entry ->
+        val parts = entry.split('=', limit = 2)
+        val language = parts.firstOrNull()?.takeIf(String::isNotBlank)
+        val model = parts.getOrNull(1)?.let { name ->
+            TtsModel.entries.firstOrNull { it.name == name }
+        }
+        if (language != null && model != null) language to model else null
+    }.toMap()
 
 sealed interface TtsModelStatus {
     data object Available : TtsModelStatus

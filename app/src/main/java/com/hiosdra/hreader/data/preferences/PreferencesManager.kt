@@ -7,6 +7,7 @@ import com.hiosdra.hreader.data.model.BackendType
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.tts.TtsModel
 import com.hiosdra.hreader.data.tts.TtsAdvancedSettings
+import com.hiosdra.hreader.data.tts.parseTtsLanguageOverrides
 import com.hiosdra.hreader.util.SyncPerformanceRecord
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -279,12 +280,9 @@ class PreferencesManager(context: Context) {
         getTtsLanguageOverrides()[language] ?: getTtsModel()
 
     fun getTtsLanguageOverrides(): Map<String, TtsModel> =
-        sharedPreferences.getStringSet(KEY_TTS_LANGUAGE_OVERRIDES, emptySet()).orEmpty()
-            .mapNotNull { entry ->
-                val parts = entry.split('=', limit = 2)
-                if (parts.size == 2) parts[0] to TtsModel.fromName(parts[1]) else null
-            }
-            .toMap()
+        parseTtsLanguageOverrides(
+            sharedPreferences.getStringSet(KEY_TTS_LANGUAGE_OVERRIDES, emptySet()).orEmpty()
+        )
 
     fun setTtsLanguageOverride(language: String, model: TtsModel?) {
         val updated = getTtsLanguageOverrides().toMutableMap()

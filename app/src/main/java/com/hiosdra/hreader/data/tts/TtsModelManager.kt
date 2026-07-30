@@ -5,6 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -22,6 +24,7 @@ class TtsModelManager(
 ) {
     private val client = client.newBuilder().apply { interceptors().clear() }.build()
     private val modelRoot = File(context.filesDir, "tts_models")
+    private val modelLocks = TtsModel.entries.associateWith { Mutex() }
     private val _statuses = MutableStateFlow(currentStatuses())
     val statuses: StateFlow<Map<TtsModel, TtsModelStatus>> = _statuses.asStateFlow()
 
@@ -29,37 +32,39 @@ class TtsModelManager(
 
     suspend fun download(model: TtsModel) = withContext(Dispatchers.IO) {
         val artifact = model.artifact ?: return@withContext
-        if (_statuses.value[model] is TtsModelStatus.Downloading) return@withContext
-        modelRoot.mkdirs()
-        val archive = File(modelRoot, "${model.directoryName}.download")
-        val staging = File(modelRoot, "${model.directoryName}.staging")
-        runCatching {
-            _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
+        modelLocks.getValue(model).withLock {
+            if (_statuses.value[model] == TtsModelStatus.Available) return@withLock
+            modelRoot.mkdirs()
+            val archive = File(modelRoot, "${model.directoryName}.download")
+            val staging = File(modelRoot, "${model.directoryName}.staging")
+            runCatching {
+                _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
+                staging.deleteRecursively()
+                staging.mkdirs()
+                if (artifact.files.isEmpty()) {
+                    downloadArchive(model, artifact, archive, staging)
+                } else {
+                    runCatching { downloadFiles(model, artifact, staging) }
+                        .getOrElse {
+                            staging.deleteRecursively()
+                            staging.mkdirs()
+                            downloadArchive(model, artifact, archive, staging)
+                        }
+                }
+                val content = staging.singleFileOrSelf()
+                check(artifact.isComplete(content)) {
+                    "Model download is incomplete"
+                }
+                replaceInstallation(model, content)
+                _statuses.value = _statuses.value + (model to TtsModelStatus.Available)
+            }.onFailure {
+                _statuses.value = _statuses.value + (
+                    model to TtsModelStatus.Failed(it.message ?: "Could not install model")
+                )
+            }
+            archive.delete()
             staging.deleteRecursively()
-            staging.mkdirs()
-            if (artifact.files.isEmpty()) {
-                downloadArchive(model, artifact, archive, staging)
-            } else {
-                runCatching { downloadFiles(model, artifact, staging) }
-                    .getOrElse {
-                        staging.deleteRecursively()
-                        staging.mkdirs()
-                        downloadArchive(model, artifact, archive, staging)
-                    }
-            }
-            val content = staging.singleFileOrSelf()
-            check(artifact.requiredFiles.all { File(content, it).exists() }) {
-                "Model download is incomplete"
-            }
-            replaceInstallation(model, content)
-            _statuses.value = _statuses.value + (model to TtsModelStatus.Available)
-        }.onFailure {
-            _statuses.value = _statuses.value + (
-                model to TtsModelStatus.Failed(it.message ?: "Could not install model")
-            )
         }
-        archive.delete()
-        staging.deleteRecursively()
     }
 
     private fun downloadFiles(model: TtsModel, artifact: ModelArtifact, staging: File) {
@@ -121,19 +126,23 @@ class TtsModelManager(
 
     suspend fun remove(model: TtsModel) = withContext(Dispatchers.IO) {
         if (model.bundled) return@withContext
-        runCatching {
-            val target = directory(model)
-            check(!target.exists() || target.deleteRecursively()) { "Could not remove model files" }
-        }.fold(
-            onSuccess = {
-                _statuses.value = _statuses.value + (model to TtsModelStatus.NotInstalled)
-            },
-            onFailure = {
-                _statuses.value = _statuses.value + (
-                    model to TtsModelStatus.Failed(it.message ?: "Could not remove model")
-                )
-            }
-        )
+        modelLocks.getValue(model).withLock {
+            runCatching {
+                val target = directory(model)
+                check(!target.exists() || target.deleteRecursively()) {
+                    "Could not remove model files"
+                }
+            }.fold(
+                onSuccess = {
+                    _statuses.value = _statuses.value + (model to TtsModelStatus.NotInstalled)
+                },
+                onFailure = {
+                    _statuses.value = _statuses.value + (
+                        model to TtsModelStatus.Failed(it.message ?: "Could not remove model")
+                    )
+                }
+            )
+        }
     }
 
     private fun extract(archive: File, destination: File) {
@@ -147,6 +156,7 @@ class TtsModelManager(
                 if (entry.isDirectory) {
                     output.mkdirs()
                 } else {
+                    check(entry.isFile) { "Unsupported entry in model archive" }
                     output.parentFile?.mkdirs()
                     FileOutputStream(output).use { tar.copyTo(it) }
                 }
@@ -170,7 +180,7 @@ class TtsModelManager(
     }
 
     private fun currentStatuses() = TtsModel.entries.associateWith {
-        if (it.bundled || it.artifact?.requiredFiles?.all { file -> File(directory(it), file).exists() } == true) {
+        if (it.bundled || it.artifact?.isComplete(directory(it)) == true) {
             TtsModelStatus.Available
         } else {
             TtsModelStatus.NotInstalled
@@ -195,9 +205,17 @@ class TtsModelManager(
 
 private data class ModelArtifact(
     val requiredFiles: List<String>,
+    val requiredDirectories: List<String> = emptyList(),
     val files: List<RemoteFile> = emptyList(),
     val archive: RemoteFile? = null
 )
+
+private fun ModelArtifact.isComplete(directory: File): Boolean =
+    requiredFiles.all { File(directory, it).isFile } &&
+        requiredDirectories.all {
+            val required = File(directory, it)
+            required.isDirectory && required.walkTopDown().any(File::isFile)
+        }
 
 private data class RemoteFile(
     val name: String,
@@ -222,7 +240,14 @@ private val TtsModel.artifact: ModelArtifact?
             )
         )
         TtsModel.KOKORO -> ModelArtifact(
-            requiredFiles = listOf("model.int8.onnx", "voices.bin", "tokens.txt", "espeak-ng-data"),
+            requiredFiles = listOf(
+                "model.int8.onnx",
+                "voices.bin",
+                "tokens.txt",
+                "lexicon-us-en.txt",
+                "lexicon-zh.txt"
+            ),
+            requiredDirectories = listOf("espeak-ng-data"),
             archive = RemoteFile(
                 name = "kokoro-int8-multi-lang-v1_1.tar.bz2",
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_1.tar.bz2",
@@ -231,7 +256,8 @@ private val TtsModel.artifact: ModelArtifact?
             )
         )
         TtsModel.GOSIA -> ModelArtifact(
-            requiredFiles = listOf("pl_PL-gosia-medium.onnx", "tokens.txt", "espeak-ng-data"),
+            requiredFiles = listOf("pl_PL-gosia-medium.onnx", "tokens.txt"),
+            requiredDirectories = listOf("espeak-ng-data"),
             archive = RemoteFile(
                 name = "vits-piper-pl_PL-gosia-medium-int8.tar.bz2",
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pl_PL-gosia-medium-int8.tar.bz2",
