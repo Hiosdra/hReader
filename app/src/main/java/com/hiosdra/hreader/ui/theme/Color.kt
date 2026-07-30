@@ -15,17 +15,20 @@ val Taupe80 = Color(0xFFD4C2AE)
 val Taupe30 = Color(0xFF55483C)
 val Taupe20 = Color(0xFF3D3227)
 
-// Neutral ladder: background through the surface container tiers, warmed towards brown
-val Neutral04 = Color(0xFF141009)
-val Neutral06 = Color(0xFF1A150E)
-val Neutral11 = Color(0xFF241E16)
-val Neutral15 = Color(0xFF2E271D)
-val Neutral19 = Color(0xFF383025)
-val Neutral24 = Color(0xFF453C2F)
-val NeutralOn90 = Color(0xFFEDE3D6)
-val NeutralOnVariant80 = Color(0xFFD0C4B4)
-val NeutralOutline60 = Color(0xFF9A8F7F)
-val NeutralOutline30 = Color(0xFF4E463A)
+// Neutral ladder: background through the surface container tiers, warmed towards brown.
+// The warmth is deliberately faint. Carrying it at full strength holds the lightness contrast
+// but costs legibility anyway: saturated surfaces advance instead of receding, so text and
+// background read as one warm mass. Chroma stays roughly where the cool palette had it.
+val Neutral04 = Color(0xFF13110D)
+val Neutral06 = Color(0xFF181611)
+val Neutral11 = Color(0xFF221F19)
+val Neutral15 = Color(0xFF2C2722)
+val Neutral19 = Color(0xFF35312A)
+val Neutral24 = Color(0xFF413D36)
+val NeutralOn90 = Color(0xFFE7E4DE)
+val NeutralOnVariant80 = Color(0xFFCBC5BB)
+val NeutralOutline60 = Color(0xFF969087)
+val NeutralOutline30 = Color(0xFF4B4640)
 
 // Green accent, also the high end of the credibility scale, pulled towards olive
 val Green90 = Color(0xFFD1E9C4)
