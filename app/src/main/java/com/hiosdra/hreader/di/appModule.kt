@@ -12,6 +12,8 @@ import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.repository.FeedRepository
 import com.hiosdra.hreader.data.repository.LocalCacheRepository
+import com.hiosdra.hreader.data.tts.ArticleTtsController
+import com.hiosdra.hreader.data.tts.TtsModelManager
 import java.io.File
 import com.hiosdra.hreader.ui.article.ArticleViewModel
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
@@ -53,6 +55,8 @@ val appModule = module {
     single { LocalCacheRepository(get(), get(), get(), get(), get(), get(), get(), File(androidApplication().filesDir, "article_images")) }
     single { PaywallBypassService() }
     single { PreferencesManager(androidApplication()) }
+    single { TtsModelManager(androidApplication(), get()) }
+    single { ArticleTtsController(androidApplication(), get(), get()) }
     single { SyncPerformanceLogger(get()) }
     single { ImageLoader(get()) }
     single { NetworkMonitor(androidApplication()) }

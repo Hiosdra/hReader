@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.model.BackendType
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
+import com.hiosdra.hreader.data.tts.TtsModel
 import com.hiosdra.hreader.util.SyncPerformanceRecord
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -267,6 +268,18 @@ class PreferencesManager(context: Context) {
         sharedPreferences.edit().putBoolean(KEY_CREDIBILITY_SCORE_ENABLED, enabled).apply()
     }
 
+    fun getTtsModel(): TtsModel = TtsModel.fromName(sharedPreferences.getString(KEY_TTS_MODEL, null))
+
+    fun setTtsModel(model: TtsModel) {
+        sharedPreferences.edit().putString(KEY_TTS_MODEL, model.name).apply()
+    }
+
+    fun getTtsSpeed(): Float = sharedPreferences.getFloat(KEY_TTS_SPEED, 1f)
+
+    fun setTtsSpeed(speed: Float) {
+        sharedPreferences.edit().putFloat(KEY_TTS_SPEED, speed.coerceIn(0.7f, 1.4f)).apply()
+    }
+
     private fun observeBoolean(key: String, default: Boolean): Flow<Boolean> = callbackFlow {
         trySend(sharedPreferences.getBoolean(key, default))
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, changed ->
@@ -294,6 +307,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
+        private const val KEY_TTS_MODEL = "tts_model"
+        private const val KEY_TTS_SPEED = "tts_speed"
         private const val KEY_OFFLINE_BACKLOG_TARGET = "offline_backlog_target"
         private const val KEY_IMAGE_DOWNLOAD_ENABLED = "image_download_enabled"
         private const val KEY_IMAGE_CACHE_BUDGET_MB = "image_cache_budget_mb"

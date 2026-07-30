@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.data.tts.TtsModelManager
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import com.hiosdra.hreader.util.SyncPerformanceRecord
 import org.koin.androidx.compose.koinViewModel
@@ -51,6 +52,7 @@ import org.koin.compose.koinInject
 fun SettingsScreen(
     navController: NavController? = null,
     preferencesManager: PreferencesManager = koinInject(),
+    ttsModelManager: TtsModelManager = koinInject(),
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsState()
@@ -218,6 +220,13 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
+
+            item {
+                TtsSettingsSection(
+                    preferences = preferencesManager,
+                    modelManager = ttsModelManager
+                )
             }
 
             item {
