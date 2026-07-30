@@ -45,7 +45,7 @@ class ArticleTtsController(
 ) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val sherpa = SherpaTtsEngine(appContext, modelManager)
+    private val sherpa = SherpaTtsEngine(modelManager)
     private val _state = MutableStateFlow(ArticleTtsState())
     val state: StateFlow<ArticleTtsState> = _state.asStateFlow()
     private var playbackJob: Job? = null

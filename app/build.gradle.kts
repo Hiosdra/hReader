@@ -100,9 +100,6 @@ android {
         compose = true
         buildConfig = true
     }
-    androidResources {
-        noCompress += listOf("onnx", "bin")
-    }
     room {
         schemaDirectory("$projectDir/schemas")
         generateKotlin = true
