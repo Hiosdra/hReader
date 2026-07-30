@@ -2,5 +2,4 @@
     <string name="app_name">hReader</string>
     <string name="shortcut_add_feed_short">Subscribe</string>
     <string name="shortcut_add_feed_long">Add a subscription</string>
-    <string name="widget_description">Unread count and the next few headlines</string>
 </resources>
