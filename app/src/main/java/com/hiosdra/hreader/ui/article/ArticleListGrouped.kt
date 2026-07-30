@@ -34,8 +34,7 @@ fun ArticleListGrouped(
     items: LazyPagingItems<ArticleListEntry>,
     modifier: Modifier,
     onOpen: (Long) -> Unit,
-    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
-    onStarredChange: (entryId: Long, starred: Boolean) -> Unit
+    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
     // Only over what is loaded. Grouping the whole list was what forced it into memory in the first
     // place; the days are recomputed as pages arrive, and the keys keep positions steady.
@@ -60,8 +59,7 @@ fun ArticleListGrouped(
                 ArticleRow(
                     entry = entry,
                     onOpen = onOpen,
-                    onCheckedChange = onCheckedChange,
-                    onStarredChange = onStarredChange
+                    onCheckedChange = onCheckedChange
                 )
             }
         }

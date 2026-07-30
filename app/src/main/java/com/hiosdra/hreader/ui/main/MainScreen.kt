@@ -408,8 +408,7 @@ fun MainScreen(
                             )
                         )
                     },
-                    onCheckedChange = viewModel::updateEntryReadStatus,
-                    onStarredChange = viewModel::setStarred
+                    onCheckedChange = viewModel::updateEntryReadStatus
                 )
             }
         }
