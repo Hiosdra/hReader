@@ -15,12 +15,15 @@ import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.absolutizeArticleImages
+import com.hiosdra.hreader.util.leadImageUrl
 import com.hiosdra.hreader.widget.UnreadWidgetUpdater
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 private const val MISSING_CONTENT_MESSAGE =
@@ -46,6 +49,13 @@ data class ArticleUiState(
     val originalContent: Map<Long, String> = emptyMap(),
     /** [originalContent] with every image address resolved, ready to render. */
     val displayContent: Map<Long, String> = emptyMap(),
+    /**
+     * The picture to show above each article. Absent until that article's body has been resolved,
+     * and null for a body that already carries the picture itself, which read the same way to the
+     * screen: nothing above the text. Deciding it here rather than while rendering is what keeps
+     * the picture from appearing and disappearing again as the full text lands.
+     */
+    val leadImages: Map<Long, String?> = emptyMap(),
     /** Per article, where each of its images was downloaded, keyed by published address. */
     val localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     val contentError: String? = null,
@@ -129,12 +139,24 @@ class ArticleViewModel(
     }
 
     private suspend fun store(entryId: Long, url: String, content: String, isFullText: Boolean) {
-        val prepared = absolutizeArticleImages(content, url)
+        val entry = _uiState.value.entries.find { it.id == entryId }
+        // Both of these read the whole article body, which is too much work for the frame the
+        // reader is swiping through.
+        val prepared = withContext(Dispatchers.Default) { absolutizeArticleImages(content, url) }
+        val leadImage = withContext(Dispatchers.Default) {
+            leadImageUrl(
+                enclosureUrl = entry?.enclosures?.firstOrNull { it.isImage }?.url,
+                feedContent = entry?.content,
+                articleHtml = prepared,
+                baseUri = url
+            )
+        }
         val localPaths = imageLoader.getLocalImagePaths(entryId)
         _uiState.update {
             it.copy(
                 originalContent = it.originalContent + (entryId to content),
                 displayContent = it.displayContent + (entryId to prepared),
+                leadImages = it.leadImages + (entryId to leadImage),
                 localImagePaths = it.localImagePaths + (entryId to localPaths),
                 contentError = if (isFullText) it.contentError else PARTIAL_CONTENT_MESSAGE
             )
@@ -239,6 +261,8 @@ class ArticleViewModel(
     /** What the reader sees: the same text with its images resolved to the downloaded copies. */
     fun getDisplayContentForEntry(entryId: Long): String? =
         _uiState.value.displayContent[entryId] ?: getContentForEntry(entryId)
+
+    fun getLeadImageForEntry(entryId: Long): String? = _uiState.value.leadImages[entryId]
 
     fun clearContentError() {
         _uiState.update { it.copy(contentError = null) }
