@@ -243,7 +243,7 @@ fun ArticleScreen(
                     isWebViewMode = isWebViewMode,
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
-                    getContentForEntry = { entryId -> viewModel.getDisplayContentForEntry(entryId) },
+                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                     getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                     localImagePaths = uiState.localImagePaths,
                     isOnline = uiState.isOnline,

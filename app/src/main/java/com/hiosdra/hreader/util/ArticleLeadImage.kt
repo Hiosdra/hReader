@@ -10,30 +10,31 @@ private val sizeSuffix = Regex("(-\\d{2,5}x\\d{2,5}|-scaled)+$")
  * Feeds routinely publish the lead picture twice: once as an enclosure or `media:content`, and
  * once as the first image of the article body. Rendering both showed the reader the same photo
  * twice in a row, the second time with the caption that belongs to it.
+ *
+ * [bodyImageUrls] is what [prepareArticleImages] collected while resolving the body, so deciding
+ * this costs no second reading of the article.
  */
 fun leadImageUrl(
     enclosureUrl: String?,
     feedContent: String?,
-    articleHtml: String?,
+    bodyImageUrls: List<String>,
     baseUri: String
 ): String? {
     val candidate = enclosureUrl?.takeIf { it.isNotBlank() }
-        ?: imageSources(feedContent, baseUri).firstOrNull()
+        ?: firstImageSource(feedContent, baseUri)
         ?: return null
     val candidateKeys = imageKeys(candidate)
     if (candidateKeys.isEmpty()) return candidate
-    val alreadyInBody = imageSources(articleHtml, baseUri).any { source ->
-        imageKeys(source).any { it in candidateKeys }
-    }
+    val alreadyInBody = bodyImageUrls.any { source -> imageKeys(source).any { it in candidateKeys } }
     return if (alreadyInBody) null else candidate
 }
 
 /** Resolved against the article's own address, so a feed carrying relative sources still loads. */
-private fun imageSources(html: String?, baseUri: String): List<String> {
-    if (html.isNullOrBlank()) return emptyList()
+private fun firstImageSource(html: String?, baseUri: String): String? {
+    if (html.isNullOrBlank()) return null
     return Jsoup.parse(html, baseUri).select("img[src]")
         .map { image -> image.attr("abs:src").ifBlank { image.attr("src") }.trim() }
-        .filter { it.isNotBlank() }
+        .firstOrNull { it.isNotBlank() }
 }
 
 /**

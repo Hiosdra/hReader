@@ -4,14 +4,17 @@ import android.util.Log
 import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
+import com.hiosdra.hreader.data.model.ArticleText
 import com.hiosdra.hreader.data.remote.FeedBackend
+import com.hiosdra.hreader.util.leadImageUrl
+import com.hiosdra.hreader.util.prepareArticleImages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import org.jsoup.Jsoup
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -37,25 +40,40 @@ class ArticleContentRepository(
     }
 
     private val prefetchLimiter = Semaphore(MAX_CONCURRENT_PREFETCH)
-    suspend fun getArticleContent(entryId: Long, url: String): String {
+    suspend fun getArticleContent(entryId: Long, url: String): ArticleText {
         val localContent = articleContentDao.getArticleContent(entryId)
         if (localContent != null) {
-            return localContent.content
+            if (localContent.isPrepared) {
+                return ArticleText(localContent.content, localContent.leadImageUrl)
+            }
+            // Stored before the text was prepared here. Prepared and written back rather than only
+            // handed over, so the article is read from then on without doing this again. The images
+            // it references were downloaded when it was first stored.
+            val prepared = prepare(entryId, localContent.content, localContent.url)
+            articleContentDao.insertArticleContent(
+                localContent.copy(
+                    content = prepared.html,
+                    isPrepared = true,
+                    leadImageUrl = prepared.leadImageUrl
+                )
+            )
+            return ArticleText(prepared.html, prepared.leadImageUrl)
         }
 
         val content = fetchFullContent(entryId)
-
-        // Download images from content
-        processAndSaveImages(entryId, content, url)
+        val prepared = prepare(entryId, content, url)
+        downloadImagesForEntry(entryId, prepared.imageUrls)
 
         val articleContent = ArticleContent(
             entryId = entryId,
-            content = content,
+            content = prepared.html,
             fetchedAt = Instant.now(),
-            url = url
+            url = url,
+            isPrepared = true,
+            leadImageUrl = prepared.leadImageUrl
         )
         articleContentDao.insertArticleContent(articleContent)
-        return content
+        return ArticleText(prepared.html, prepared.leadImageUrl)
     }
 
     private suspend fun fetchFullContent(entryId: Long): String {
@@ -68,23 +86,33 @@ class ArticleContentRepository(
             ?: throw IllegalStateException("No content available for entry $entryId")
     }
 
-    private suspend fun processAndSaveImages(entryId: Long, htmlContent: String, baseUri: String) {
-        // Extract image URLs from HTML content using Jsoup for robustness
-        val imageUrls = Jsoup.parse(htmlContent, baseUri).select("img[src]")
-            .map { it.attr("abs:src") }
-            .filterNot { it.isBlank() }
-            .distinct()
-            .toList()
-
-        // Download each image
-        imageUrls.forEach { imageUrl ->
-            try {
-                articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to download image $imageUrl for entry $entryId", e)
-            }
+    /**
+     * Everything the reader's side would otherwise work out each time the article is opened: the
+     * body with its image addresses resolved, which of them to download, and the picture that leads
+     * the article. One reading of the document answers all three.
+     */
+    private suspend fun prepare(entryId: Long, content: String, baseUri: String): PreparedArticle {
+        val article = articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull()
+        return withContext(Dispatchers.Default) {
+            val images = prepareArticleImages(content, baseUri)
+            PreparedArticle(
+                html = images.html,
+                imageUrls = images.imageUrls,
+                leadImageUrl = leadImageUrl(
+                    enclosureUrl = article?.enclosures?.firstOrNull { it.isImage }?.url,
+                    feedContent = article?.content,
+                    bodyImageUrls = images.imageUrls,
+                    baseUri = baseUri
+                )
+            )
         }
     }
+
+    private data class PreparedArticle(
+        val html: String,
+        val imageUrls: List<String>,
+        val leadImageUrl: String?
+    )
 
     /**
      * The entries whose text is not stored yet, in the order given. Prefetching a bounded slice of
@@ -166,7 +194,7 @@ class ArticleContentRepository(
             try {
                 articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to download enclosure image $imageUrl for entry $entryId", e)
+                Log.e(TAG, "Failed to download image $imageUrl for entry $entryId", e)
             }
         }
     }
