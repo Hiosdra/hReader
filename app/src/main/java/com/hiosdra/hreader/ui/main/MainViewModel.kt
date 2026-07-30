@@ -223,6 +223,10 @@ class MainViewModel(
     fun refreshFromNetwork() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
+            // Before the network rather than after it: the read articles clear out the moment the
+            // reader pulls, and a sync that fails leaves the list looking the same as one that
+            // worked. Nothing is lost either way — the read filter brings them all back.
+            query.update { it.withSessionRestarted(Instant.now()) }
             try {
                 articleRepository.refreshArticles()
                 // The refresh brings down the article list; the bodies and images that make those
