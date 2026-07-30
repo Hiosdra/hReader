@@ -501,7 +501,6 @@ private fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
     ),
     imageUrl = enclosures.firstOrNull { it.isImage }?.url,
     status = status ?: ArticleStatus.UNREAD,
-    starred = starred,
     isBacklog = backlogFetchedAt != null
 )
 

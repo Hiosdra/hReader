@@ -37,7 +37,7 @@ fun ServerSetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Connect your feed server", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("Connect your feed server", style = MaterialTheme.typography.titleMedium) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface

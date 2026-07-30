@@ -13,13 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,8 +45,7 @@ import java.time.format.DateTimeFormatter
 fun ArticleRow(
     entry: ArticleListEntry,
     onOpen: (Long) -> Unit,
-    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
-    onStarredChange: (entryId: Long, starred: Boolean) -> Unit
+    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
     val checked = entry.isRead
 
@@ -180,29 +175,15 @@ fun ArticleRow(
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Checkbox(
-                        checked = checked,
-                        onCheckedChange = { onCheckedChange(entry.id, it) },
-                        modifier = Modifier.semantics {
-                            contentDescription = if (checked) "Mark as unread" else "Mark as read"
-                        }
-                    )
-                    IconButton(onClick = { onStarredChange(entry.id, !entry.starred) }) {
-                        // One icon, two tints: the outlined star lives in the extended icon set,
-                        // and pulling in several thousand vectors for a single glyph is not a
-                        // trade worth making. The description carries the state either way.
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = if (entry.starred) "Remove star" else "Star article",
-                            tint = if (entry.starred) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                            }
-                        )
+                // Read state is the only thing a row acts on. Starring belongs to the article the
+                // reader has actually opened, where there is room to say what it means.
+                Checkbox(
+                    checked = checked,
+                    onCheckedChange = { onCheckedChange(entry.id, it) },
+                    modifier = Modifier.semantics {
+                        contentDescription = if (checked) "Mark as unread" else "Mark as read"
                     }
-                }
+                )
             }
         }
     }

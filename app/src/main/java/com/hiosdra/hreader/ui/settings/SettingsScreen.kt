@@ -78,7 +78,7 @@ fun SettingsScreen(
                 title = { 
                     Text(
                         "Settings",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleMedium
                     ) 
                 },
                 navigationIcon = {
