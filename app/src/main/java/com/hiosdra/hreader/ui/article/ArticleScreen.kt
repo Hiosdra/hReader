@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
@@ -47,6 +48,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -396,14 +399,27 @@ private fun ArticleTopBar(
     onShare: () -> Unit
 ) {
     val paywallBypassService: PaywallBypassService = koinInject()
+    val overflowExpanded = remember { mutableStateOf(false) }
 
     TopAppBar(
-        title = { Text(feedTitle ?: "hReader", style = MaterialTheme.typography.titleLarge) },
+        title = {
+            // One line, cut short if it has to be. A feed named "Subiektywnie o finansach — Maciej
+            // Samcik" wrapped to four of them, which grew the bar over the status bar above it and
+            // the article below.
+            Text(
+                text = feedTitle ?: "hReader",
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
         },
+        // Two actions and a menu. Five of them left the title barely wider than a word, and the
+        // three that moved are the ones a reader reaches for occasionally rather than per article.
         actions = {
             IconButton(onClick = onToggleStar) {
                 // Tint rather than a second glyph: the outlined star is in the extended icon set.
@@ -418,35 +434,78 @@ private fun ArticleTopBar(
                 )
             }
             if (entryUrl != null) {
-                if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
-                    IconButton(onClick = onBypassPaywall) {
-                        Icon(
-                            Icons.Filled.Lock,
-                            contentDescription = "Bypass Paywall",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-                IconButton(onClick = onOpenInChrome) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_chrome_logo),
-                        contentDescription = "Open in Chrome",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
                 IconButton(onClick = onToggleWebView) {
                     Icon(
-                        painter = painterResource(id = if (isWebViewMode) R.drawable.baseline_web_asset_off_24 else R.drawable.baseline_web_asset_24),
+                        painter = painterResource(
+                            id = if (isWebViewMode) {
+                                R.drawable.baseline_web_asset_off_24
+                            } else {
+                                R.drawable.baseline_web_asset_24
+                            }
+                        ),
                         contentDescription = if (isWebViewMode) "Show Content" else "Show WebView",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                IconButton(onClick = onShare) {
-                    Icon(
-                        Icons.Filled.Share,
-                        contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                // The menu sits inside a box around its own button, or it anchors to a zero-width
+                // slot after it and opens adrift of the edge it belongs to.
+                Box {
+                    IconButton(onClick = { overflowExpanded.value = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = "More",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = overflowExpanded.value,
+                        onDismissRequest = { overflowExpanded.value = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Open in Chrome") },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onOpenInChrome()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_chrome_logo),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        )
+                        if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
+                            DropdownMenuItem(
+                                text = { Text("Bypass paywall") },
+                                onClick = {
+                                    overflowExpanded.value = false
+                                    onBypassPaywall()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Lock,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onShare()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Share,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        )
+                    }
                 }
             }
         },
