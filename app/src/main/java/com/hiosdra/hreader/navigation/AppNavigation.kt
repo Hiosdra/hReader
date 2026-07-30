@@ -1,9 +1,14 @@
 package com.hiosdra.hreader.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -47,17 +52,7 @@ fun AppNavigation(
             )
         }
         composable(Routes.MAIN) {
-            MainWithSubscriptions(navController = navController, feedId = null)
-        }
-        composable(
-            route = Routes.MAIN_WITH_OPTIONAL_FEED,
-            arguments = listOf(
-                navArgument("feedId") { type = NavType.LongType; defaultValue = Routes.FEED_ID_NONE }
-            )
-        ) { backStackEntry ->
-            val raw = backStackEntry.arguments?.getLong("feedId") ?: Routes.FEED_ID_NONE
-            val feedId = if (raw == Routes.FEED_ID_NONE) null else raw
-            MainWithSubscriptions(navController = navController, feedId = feedId)
+            MainWithSubscriptions(navController = navController)
         }
         composable(
             route = Routes.ADD_FEED,
@@ -119,30 +114,33 @@ fun AppNavigation(
     }
 }
 
+/**
+ * Which subscription the list is showing is state of this screen, not a destination of its own. As
+ * a second route under the same `main` path it overlapped the one the app starts on, so opening a
+ * feed left nothing distinct on the back stack and neither back gesture nor arrow could return to
+ * all items. Leaving a feed is a state change instead, and both of them make it.
+ */
 @Composable
-private fun MainWithSubscriptions(navController: NavHostController, feedId: Long?) {
+private fun MainWithSubscriptions(navController: NavHostController) {
     val drawerState = rememberSubscriptionsDrawerState()
     val scope = rememberCoroutineScope()
+    var selectedFeedId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    BackHandler(enabled = selectedFeedId != null) { selectedFeedId = null }
 
     SubscriptionsDrawer(
         drawerState = drawerState,
-        selectedFeedId = feedId,
-        onSelectFeed = { selected ->
-            if (selected != feedId) {
-                navController.navigate(Routes.main(selected)) {
-                    popUpTo(Routes.MAIN) { inclusive = selected == null }
-                    launchSingleTop = true
-                }
-            }
-        },
+        selectedFeedId = selectedFeedId,
+        onSelectFeed = { selected -> selectedFeedId = selected },
         onFeedDetails = { navController.navigate(Routes.feed(it)) },
         onAddFeed = { navController.navigate(Routes.addFeed()) },
-        gesturesEnabled = feedId == null
+        gesturesEnabled = selectedFeedId == null
     ) {
         MainScreen(
             navController = navController,
             onOpenSubscriptions = { scope.launch { drawerState.open() } },
-            feedId = feedId
+            feedId = selectedFeedId,
+            onLeaveFeed = { selectedFeedId = null }
         )
     }
 }
