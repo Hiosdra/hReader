@@ -35,7 +35,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -473,7 +473,7 @@ private fun ArticleTopBar(
                     // different components. Clip first: a background painted before it keeps
                     // square corners.
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(MaterialTheme.shapes.small)
                         .background(MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     DropdownMenuItem(
@@ -583,7 +583,7 @@ private fun ArticleContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(3.dp)
-                                .clip(RoundedCornerShape(50))
+                                .clip(CircleShape)
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -614,7 +614,7 @@ private fun ArticleContent(
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(MaterialTheme.shapes.large)
                                 .clickable { zoomImageUrl = mainImageUrl },
                             contentScale = ContentScale.Crop
                         )
@@ -996,7 +996,7 @@ private fun CredibilityCard(
                             modifier = Modifier
                                 .weight(0.6f)
                                 .height(6.dp)
-                                .clip(RoundedCornerShape(50))
+                                .clip(CircleShape)
                         )
                     }
                 }
