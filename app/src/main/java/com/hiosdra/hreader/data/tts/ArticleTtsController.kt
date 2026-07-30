@@ -139,22 +139,23 @@ class ArticleTtsController(
 
     private suspend fun speakWithSherpa(model: TtsModel, chunks: List<String>) {
         coroutineScope {
+            val settings = preferences.getTtsAdvancedSettings()
             val languageResult = async(Dispatchers.Default) {
                 languageDetector.detect(chunks.take(2).joinToString(" "))
             }
             val modelPreparation = async(Dispatchers.Default) {
-                sherpa.prepare(model)
+                sherpa.prepare(model, settings)
             }
             val language = languageResult.await()
             modelPreparation.await()
             val speed = preferences.getTtsSpeed()
             var audio = withContext(Dispatchers.Default) {
-                sherpa.generate(model, chunks.first(), speed, language)
+                sherpa.generate(model, chunks.first(), speed, language, settings)
             }
             chunks.forEachIndexed { index, _ ->
                 val nextAudio = chunks.getOrNull(index + 1)?.let { nextChunk ->
                     async(Dispatchers.Default) {
-                        sherpa.generate(model, nextChunk, speed, language)
+                        sherpa.generate(model, nextChunk, speed, language, settings)
                     }
                 }
                 _state.value = _state.value.copy(

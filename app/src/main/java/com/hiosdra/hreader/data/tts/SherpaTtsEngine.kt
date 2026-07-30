@@ -12,21 +12,32 @@ import com.k2fsa.sherpa.onnx.GeneratedAudio
 internal class SherpaTtsEngine(
     private val modelManager: TtsModelManager
 ) {
-    private var loadedModel: TtsModel? = null
+    private var loadedConfiguration: LoadedConfiguration? = null
     private var tts: OfflineTts? = null
 
     @Synchronized
-    fun prepare(model: TtsModel) {
-        engineFor(model)
+    fun prepare(model: TtsModel, settings: TtsAdvancedSettings) {
+        engineFor(model, settings)
     }
 
     @Synchronized
-    fun generate(model: TtsModel, text: String, speed: Float, language: String): GeneratedAudio {
-        val engine = engineFor(model)
+    fun generate(
+        model: TtsModel,
+        text: String,
+        speed: Float,
+        language: String,
+        settings: TtsAdvancedSettings
+    ): GeneratedAudio {
+        val engine = engineFor(model, settings)
         val config = GenerationConfig().apply {
             this.speed = speed
-            sid = if (model == TtsModel.KOKORO) 3 else 0
-            numSteps = 8
+            silenceScale = settings.silenceScale
+            sid = when (model) {
+                TtsModel.SUPERTONIC -> settings.supertonicSpeaker
+                TtsModel.KOKORO -> settings.kokoroSpeaker
+                else -> 0
+            }
+            numSteps = settings.supertonicSteps
             if (model == TtsModel.SUPERTONIC) extra = mapOf("lang" to language)
         }
         return engine.generateWithConfig(text, config)
@@ -36,21 +47,27 @@ internal class SherpaTtsEngine(
     fun release() {
         tts?.release()
         tts = null
-        loadedModel = null
+        loadedConfiguration = null
     }
 
-    private fun engineFor(model: TtsModel): OfflineTts {
-        if (loadedModel == model) return checkNotNull(tts)
+    private fun engineFor(model: TtsModel, settings: TtsAdvancedSettings): OfflineTts {
+        val configuration = LoadedConfiguration(
+            model = model,
+            numThreads = settings.numThreads,
+            gosiaNoiseScale = settings.gosiaNoiseScale.takeIf { model == TtsModel.GOSIA },
+            gosiaDurationNoiseScale = settings.gosiaDurationNoiseScale.takeIf { model == TtsModel.GOSIA }
+        )
+        if (loadedConfiguration == configuration) return checkNotNull(tts)
         release()
-        return OfflineTts(null, OfflineTtsConfig(model = configFor(model))).also {
+        return OfflineTts(null, OfflineTtsConfig(model = configFor(model, settings))).also {
             tts = it
-            loadedModel = model
+            loadedConfiguration = configuration
         }
     }
 
-    private fun configFor(model: TtsModel): OfflineTtsModelConfig {
+    private fun configFor(model: TtsModel, settings: TtsAdvancedSettings): OfflineTtsModelConfig {
         val config = OfflineTtsModelConfig().apply {
-            numThreads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
+            numThreads = settings.numThreads
             provider = "cpu"
         }
         when (model) {
@@ -82,11 +99,20 @@ internal class SherpaTtsEngine(
                 config.vits = OfflineTtsVitsModelConfig(
                     model = "$root/pl_PL-gosia-medium.onnx",
                     tokens = "$root/tokens.txt",
-                    dataDir = "$root/espeak-ng-data"
+                    dataDir = "$root/espeak-ng-data",
+                    noiseScale = settings.gosiaNoiseScale,
+                    noiseScaleW = settings.gosiaDurationNoiseScale
                 )
             }
             TtsModel.ANDROID -> error("Android TTS is not a sherpa model")
         }
         return config
     }
+
+    private data class LoadedConfiguration(
+        val model: TtsModel,
+        val numThreads: Int,
+        val gosiaNoiseScale: Float?,
+        val gosiaDurationNoiseScale: Float?
+    )
 }

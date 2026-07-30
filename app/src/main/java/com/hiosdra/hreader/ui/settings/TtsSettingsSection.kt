@@ -26,11 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.data.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.data.tts.TtsModel
 import com.hiosdra.hreader.data.tts.TtsModelManager
 import com.hiosdra.hreader.data.tts.TtsModelStatus
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 internal fun TtsSettingsSection(
@@ -41,6 +43,8 @@ internal fun TtsSettingsSection(
     val scope = rememberCoroutineScope()
     var speed by remember { mutableFloatStateOf(preferences.getTtsSpeed()) }
     var selectedModel by remember { mutableStateOf(preferences.getTtsModel()) }
+    var advancedExpanded by remember { mutableStateOf(false) }
+    var advanced by remember { mutableStateOf(preferences.getTtsAdvancedSettings()) }
 
     Text(
         text = "Read aloud",
@@ -127,11 +131,168 @@ internal fun TtsSettingsSection(
                 valueRange = 0.7f..1.4f,
                 steps = 6
             )
+            TextButton(onClick = { advancedExpanded = !advancedExpanded }) {
+                Text(if (advancedExpanded) "Hide advanced settings" else "Advanced settings")
+            }
+            if (advancedExpanded) {
+                AdvancedTtsSettings(
+                    model = selectedModel,
+                    settings = advanced,
+                    onSettingsChange = {
+                        advanced = it
+                        preferences.setTtsAdvancedSettings(it)
+                    },
+                    onReset = {
+                        val defaults = TtsAdvancedSettings()
+                        advanced = defaults
+                        preferences.setTtsAdvancedSettings(defaults)
+                    }
+                )
+            }
             Text(
                 text = "If a neural model is missing or cannot start, hReader uses Android TTS automatically.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun AdvancedTtsSettings(
+    model: TtsModel,
+    settings: TtsAdvancedSettings,
+    onSettingsChange: (TtsAdvancedSettings) -> Unit,
+    onReset: () -> Unit
+) {
+    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+    AdvancedSlider(
+        label = "CPU threads",
+        value = settings.numThreads.toFloat(),
+        displayValue = settings.numThreads.toString(),
+        valueRange = 1f..4f,
+        steps = 2,
+        onValueChange = { onSettingsChange(settings.copy(numThreads = it.roundToInt())) }
+    )
+    AdvancedSlider(
+        label = "Pause between sentences",
+        value = settings.silenceScale,
+        displayValue = "%.2f".format(settings.silenceScale),
+        valueRange = 0f..1f,
+        steps = 9,
+        onValueChange = { onSettingsChange(settings.copy(silenceScale = it)) }
+    )
+    when (model) {
+        TtsModel.SUPERTONIC -> {
+            IntegerSetting(
+                label = "Speaker ID",
+                value = settings.supertonicSpeaker,
+                range = 0..9,
+                onValueChange = { onSettingsChange(settings.copy(supertonicSpeaker = it)) }
+            )
+            AdvancedSlider(
+                label = "Quality steps",
+                value = settings.supertonicSteps.toFloat(),
+                displayValue = settings.supertonicSteps.toString(),
+                valueRange = 4f..12f,
+                steps = 7,
+                onValueChange = {
+                    onSettingsChange(settings.copy(supertonicSteps = it.roundToInt()))
+                }
+            )
+        }
+        TtsModel.KOKORO -> IntegerSetting(
+            label = "Voice ID",
+            value = settings.kokoroSpeaker,
+            range = 0..102,
+            onValueChange = { onSettingsChange(settings.copy(kokoroSpeaker = it)) }
+        )
+        TtsModel.GOSIA -> {
+            AdvancedSlider(
+                label = "Voice variation",
+                value = settings.gosiaNoiseScale,
+                displayValue = "%.2f".format(settings.gosiaNoiseScale),
+                valueRange = 0f..1f,
+                steps = 19,
+                onValueChange = { onSettingsChange(settings.copy(gosiaNoiseScale = it)) }
+            )
+            AdvancedSlider(
+                label = "Duration variation",
+                value = settings.gosiaDurationNoiseScale,
+                displayValue = "%.2f".format(settings.gosiaDurationNoiseScale),
+                valueRange = 0f..1f,
+                steps = 19,
+                onValueChange = {
+                    onSettingsChange(settings.copy(gosiaDurationNoiseScale = it))
+                }
+            )
+        }
+        TtsModel.ANDROID -> Text(
+            text = "Advanced neural settings do not affect Android TTS.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    Text(
+        text = "Changes apply the next time reading starts.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    TextButton(onClick = onReset) {
+        Text("Reset advanced settings")
+    }
+}
+
+@Composable
+private fun AdvancedSlider(
+    label: String,
+    value: Float,
+    displayValue: String,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    onValueChange: (Float) -> Unit
+) {
+    Text(
+        text = "$label · $displayValue",
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(top = 8.dp)
+    )
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        valueRange = valueRange,
+        steps = steps
+    )
+}
+
+@Composable
+private fun IntegerSetting(
+    label: String,
+    value: Int,
+    range: IntRange,
+    onValueChange: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("$label · $value", style = MaterialTheme.typography.bodyMedium)
+        Row {
+            TextButton(
+                onClick = { onValueChange(value - 1) },
+                enabled = value > range.first
+            ) {
+                Text("−")
+            }
+            TextButton(
+                onClick = { onValueChange(value + 1) },
+                enabled = value < range.last
+            ) {
+                Text("+")
+            }
         }
     }
 }
