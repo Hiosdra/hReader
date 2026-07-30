@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -53,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +75,7 @@ import org.koin.androidx.compose.koinViewModel
 fun MainScreen(
     navController: NavController,
     onOpenSubscriptions: () -> Unit,
+    onLeaveFeed: () -> Unit,
     feedId: Long? = null,
     viewModel: MainViewModel = koinViewModel()
 ) {
@@ -86,6 +89,10 @@ fun MainScreen(
     val isSearching = uiState.searchQuery.isNotBlank()
     val unreadCount = if (isSearching) 0 else uiState.unreadCount
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    // Switching subscription puts a different list on screen, so it opens at the top. The screen
+    // itself stays composed across the switch, and its scroll offset would otherwise carry over —
+    // into the middle of the new list, or past its end when that one is shorter.
+    val listState = rememberSaveable(feedId, saver = LazyListState.Saver) { LazyListState() }
     val searchActive = remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
@@ -164,7 +171,7 @@ fun MainScreen(
                             }
                         } else {
                             IconButton(
-                                onClick = { navController.popBackStack() },
+                                onClick = onLeaveFeed,
                                 modifier = Modifier.padding(8.dp)
                             ) {
                                 Icon(
@@ -356,7 +363,7 @@ fun MainScreen(
                 onClearSearch = { viewModel.updateSearchQuery("") },
                 onBrowseFeeds = onOpenSubscriptions,
                 onAddFeed = { navController.navigate(Routes.addFeed()) },
-                onBack = { navController.popBackStack() }
+                onBack = onLeaveFeed
             )
 
             articles.itemCount == 0 -> EmptyState(
@@ -369,7 +376,7 @@ fun MainScreen(
                 onClearSearch = { viewModel.updateSearchQuery("") },
                 onBrowseFeeds = onOpenSubscriptions,
                 onAddFeed = { navController.navigate(Routes.addFeed()) },
-                onBack = { navController.popBackStack() }
+                onBack = onLeaveFeed
             )
 
             else -> PullToRefreshBox(
@@ -390,6 +397,7 @@ fun MainScreen(
                 ArticleListGrouped(
                     items = articles,
                     modifier = Modifier.fillMaxSize(),
+                    listState = listState,
                     onOpen = { articleId ->
                         val query = viewModel.currentQuery()
                         navController.navigate(
