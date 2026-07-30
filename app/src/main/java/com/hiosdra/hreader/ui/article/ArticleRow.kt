@@ -49,11 +49,15 @@ fun ArticleRow(
 ) {
     val checked = entry.isRead
 
-    val contentAlpha by animateFloatAsState(targetValue = if (checked) 0.55f else 1f, label = "alpha")
+    // Read rows are dimmed, not hidden. Below this the summary drops under the 4.5:1 needed to
+    // stay readable, and a read article still has to be re-findable by eye.
+    val contentAlpha by animateFloatAsState(targetValue = if (checked) 0.70f else 1f, label = "alpha")
     val titleWeight = if (checked) FontWeight.Normal else FontWeight.SemiBold
     val indicatorColor by animateColorAsState(
         targetValue = if (checked) {
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            // Solid, because the row already dims it. Fading it as well left it invisible, and
+            // outline against the accent is contrast enough to tell the two states apart.
+            MaterialTheme.colorScheme.outline
         } else {
             MaterialTheme.colorScheme.primary
         },

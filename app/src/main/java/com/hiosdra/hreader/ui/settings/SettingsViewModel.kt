@@ -72,7 +72,8 @@ data class SyncUiState(
     val syncWhileRoaming: Boolean = true,
     val quietHoursEnabled: Boolean = false,
     val quietHoursStart: Int = PreferencesManager.DEFAULT_QUIET_HOURS_START,
-    val quietHoursEnd: Int = PreferencesManager.DEFAULT_QUIET_HOURS_END
+    val quietHoursEnd: Int = PreferencesManager.DEFAULT_QUIET_HOURS_END,
+    val isResyncing: Boolean = false
 )
 
 class SettingsViewModel(
@@ -165,6 +166,28 @@ class SettingsViewModel(
         quietHoursStart = preferencesManager.getQuietHoursStartHour(),
         quietHoursEnd = preferencesManager.getQuietHoursEndHour()
     )
+
+    /**
+     * Throws the local copy away and fetches the account again from nothing.
+     *
+     * The escape hatch for a cache that disagrees with the server and cannot be argued out of it.
+     * It is deliberately the same sequence a backend switch runs, minus the switch: in-flight work
+     * is cancelled first, because a sync that started against the old rows would write them back
+     * into the cache this just emptied.
+     */
+    fun resyncFromScratch() {
+        viewModelScope.launch {
+            _sync.value = _sync.value.copy(isResyncing = true)
+            syncScheduler.cancelAllSync()
+            val cleared = runCatching { localCacheRepository.clearBackendData() }
+            // Rescheduled even when clearing failed: leaving the periodic worker deregistered
+            // would turn a failed wipe into an app that never syncs again.
+            syncScheduler.schedulePeriodicSync()
+            if (cleared.isSuccess) syncScheduler.syncNow(forceFullSync = true)
+            _sync.value = _sync.value.copy(isResyncing = false)
+            _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
+        }
+    }
 
     fun onBacklogTargetChange(target: Int) {
         preferencesManager.setOfflineBacklogTarget(target)

@@ -148,6 +148,7 @@ fun SettingsScreen(
                         onSyncWhileRoamingChange = settingsViewModel::onSyncWhileRoamingChange,
                         onQuietHoursEnabledChange = settingsViewModel::onQuietHoursEnabledChange,
                         onQuietHoursChange = settingsViewModel::onQuietHoursChange,
+                        onResyncFromScratch = settingsViewModel::resyncFromScratch,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
