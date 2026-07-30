@@ -31,7 +31,7 @@ fun FeedDetailScreen(feedId: Long, viewModel: FeedsViewModel = koinViewModel(), 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(feed?.title ?: "Feed Detail", style = MaterialTheme.typography.titleLarge) },
+                title = { Text(feed?.title ?: "Feed Detail", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
