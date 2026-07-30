@@ -52,6 +52,22 @@ class ArticleListQueryTest {
     }
 
     @Test
+    fun `refreshing starts a new visit without changing what is shown`() {
+        val refreshed = query.copy(feedId = 7L, searchQuery = "kotlin").withSessionRestarted(later)
+
+        assertEquals(later, refreshed.sessionStart)
+        assertEquals(7L, refreshed.feedId)
+        assertEquals("kotlin", refreshed.searchQuery)
+    }
+
+    @Test
+    fun `refreshing with read articles shown leaves the query alone`() {
+        val showingRead = query.copy(includeRead = true)
+
+        assertSame(showingRead, showingRead.withSessionRestarted(later))
+    }
+
+    @Test
     fun `repeating a value never restarts the visit`() {
         assertSame(query, query.withIncludeRead(false))
         assertSame(query, query.withSearch(""))
