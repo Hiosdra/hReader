@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +34,7 @@ private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE
 fun ArticleListGrouped(
     items: LazyPagingItems<ArticleListEntry>,
     modifier: Modifier,
+    listState: LazyListState,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
@@ -42,7 +44,8 @@ fun ArticleListGrouped(
     val days = remember(loaded) { loaded.groupIntoDays() }
 
     LazyColumn(
-        modifier = modifier.background(MaterialTheme.colorScheme.background)
+        modifier = modifier.background(MaterialTheme.colorScheme.background),
+        state = listState
     ) {
         days.forEach { day ->
             stickyHeader(key = "day-${day.date}") {

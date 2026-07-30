@@ -7,7 +7,6 @@ object Routes {
 
     const val SERVER_SETUP = "server_setup"
     const val MAIN = "main"
-    const val MAIN_WITH_OPTIONAL_FEED = "main?feedId={feedId}"
     const val FEED = "feed/{feedId}"
     const val ADD_FEED = "add_feed?url={url}"
 
@@ -19,8 +18,6 @@ object Routes {
     const val ARTICLE = "article?feedId={feedId}&startId={startId}&starred={starred}" +
         "&includeRead={includeRead}&session={session}"
     const val SETTINGS = "settings"
-
-    fun main(feedId: Long?): String = if (feedId == null) MAIN else "$MAIN?feedId=$feedId"
 
     /** [url] is a site or feed address shared into the app; the argument is optional without it. */
     fun addFeed(url: String? = null): String =
