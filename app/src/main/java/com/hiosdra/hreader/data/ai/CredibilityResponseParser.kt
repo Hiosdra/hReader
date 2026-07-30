@@ -93,14 +93,31 @@ class CredibilityResponseParser(moshi: Moshi) {
         return -1
     }
 
+    /**
+     * The prompt asks for 0.0 to 1.0, and models answer on whatever scale they feel like. A written
+     * percentage says which scale it is; otherwise the magnitude decides.
+     *
+     * Anything above 1 used to be read as a percentage, so a model answering out of ten — a common
+     * reflex — turned a well-sourced 8 into 0.08 and the article was labelled a likely fabrication.
+     */
     private fun coerceScore(value: Any?): Float? {
-        val number = when (value) {
-            is Number -> value.toDouble()
-            is String -> value.trim().removeSuffix("%").trim().toDoubleOrNull()
+        val text = (value as? String)?.trim()
+        val isPercentage = text?.endsWith("%") == true
+        val number = when {
+            value is Number -> value.toDouble()
+            text != null -> text.removeSuffix("%").trim().toDoubleOrNull()
             else -> null
         } ?: return null
         if (number.isNaN()) return null
-        val onUnitScale = if (number > 1.0) number / 100.0 else number
+
+        val onUnitScale = when {
+            isPercentage -> number / 100.0
+            number <= 1.0 -> number
+            number <= 10.0 -> number / 10.0
+            number <= 100.0 -> number / 100.0
+            // Past a hundred there is no scale left to guess at; the answer is simply out of range.
+            else -> 1.0
+        }
         return onUnitScale.coerceIn(0.0, 1.0).toFloat()
     }
 

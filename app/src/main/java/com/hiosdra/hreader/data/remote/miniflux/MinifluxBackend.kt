@@ -90,12 +90,19 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
     }
 
     /**
-     * One request per entry, and no retries: the endpoint flips the stored value rather than
-     * setting it, so a retried call after a timeout that did land would undo the star it just set.
-     * [starred] is unused for the same reason — the caller only asks for entries that changed.
+     * The endpoint flips the stored value rather than setting it, so what the server currently
+     * holds is read first and the flip is only sent when it disagrees with [starred].
+     *
+     * Sending it unconditionally inverted the star whenever the server already agreed: two local
+     * toggles that cancel each other out still leave one queued change, and a star set from another
+     * client arrives the same way. The read is idempotent and retried; the flip is neither, so a
+     * timeout on it leaves the change queued for the next sync, which now sees the true state.
      */
     override suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean) {
-        entryIds.forEach { apiService.toggleBookmark(it) }
+        entryIds.forEach { entryId ->
+            val current = withRetries { apiService.getEntry(entryId).starred }
+            if (current != starred) apiService.toggleBookmark(entryId)
+        }
     }
 
     override suspend fun fetchFullContent(entryId: Long): String? =

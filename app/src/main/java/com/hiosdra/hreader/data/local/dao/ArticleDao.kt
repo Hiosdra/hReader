@@ -2,9 +2,8 @@ package com.hiosdra.hreader.data.local.dao
 
 import androidx.paging.PagingSource
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import com.hiosdra.hreader.data.local.entity.ArticleBody
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
 import com.hiosdra.hreader.data.local.entity.ArticleListItem
@@ -165,7 +164,15 @@ interface ArticleDao {
     @Query("UPDATE articles SET preview = :preview WHERE id = :id")
     suspend fun setPreview(id: String, preview: String)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /**
+     * Upsert rather than insert-or-replace. REPLACE resolves a conflict by deleting the old row and
+     * inserting a new one, which hands the article a new rowid — and `articles_fts` is an external
+     * content index keyed on that rowid. SQLite only fires delete triggers for a REPLACE when
+     * recursive triggers are on, which Room does not enable, so every re-synced article used to
+     * leave its old index entry behind pointing at a rowid that no longer exists. Search then
+     * matched articles that no longer contained the term and missed ones that did.
+     */
+    @Upsert
     suspend fun insertArticles(articles: List<ArticleEntity>)
 
     @Query("DELETE FROM articles")
@@ -193,6 +200,21 @@ interface ArticleDao {
 
     @Query("SELECT id, status FROM articles WHERE pendingSync = 1")
     suspend fun getPendingStatuses(): List<PendingStatus>
+
+    /**
+     * Of [ids], the ones still read and read no later than [readBefore]. Undoing a bulk "mark as
+     * read" uses it to leave alone anything the reader has read since — every article the action
+     * touched carries its timestamp, and one read afterwards carries a later one.
+     */
+    @Query(
+        "SELECT id FROM articles WHERE id IN (:ids) AND status = :readStatus " +
+            "AND readAt IS NOT NULL AND readAt <= :readBefore"
+    )
+    suspend fun getIdsReadNoLaterThan(
+        ids: List<String>,
+        readBefore: Instant,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): List<String>
 
     @Query("UPDATE articles SET starred = :starred, starredPendingSync = 1 WHERE id IN (:ids)")
     suspend fun updateStarredForIds(ids: List<String>, starred: Boolean)

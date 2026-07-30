@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.Instant
 
 private const val TAG = "MainViewModel"
@@ -42,11 +43,24 @@ private const val KEY_SHOW_READ = "show_read_articles"
 private const val KEY_STARRED_ONLY = "starred_only"
 private const val KEY_SEARCH_QUERY = "search_query"
 
-/** A completed action the reader can still take back, surfaced as a snackbar. */
+/**
+ * How far past the action's own timestamp an article still counts as part of it. Marking a backlog
+ * read is one statement per few hundred articles, so the stamps span a moment rather than an
+ * instant; nothing the reader could open lands inside it.
+ */
+private val UNDO_GRACE: Duration = Duration.ofSeconds(2)
+
+/**
+ * A completed action the reader can still take back, surfaced as a snackbar.
+ *
+ * [markedAt] is when the action ran. Taking it back reverts what it changed and nothing else, so an
+ * article opened while the snackbar was still up keeps the read state the reader just gave it.
+ */
 data class UndoableAction(
     val id: Long,
     val message: String,
-    val articleIds: List<Long>
+    val articleIds: List<Long>,
+    val markedAt: Instant
 )
 
 data class MainUiState(
@@ -122,13 +136,17 @@ class MainViewModel(
      * Only what the reader types afterwards is debounced. The first value is the query the screen
      * opened with, which [query] already holds — running it again would rebuild the list a quarter
      * of a second after it appeared.
+     *
+     * The drop comes before the debounce. After it, the first value to arrive is whatever the
+     * debounce settles on, so someone who started typing within the debounce window had their
+     * first search discarded and the list went on showing everything until they typed again.
      */
     @OptIn(FlowPreview::class)
     private fun observeSearchInput() {
         searchInput
+            .drop(1)
             .debounce(SEARCH_DEBOUNCE_MILLIS)
             .distinctUntilChanged()
-            .drop(1)
             .onEach { text -> query.update { it.withSearch(text) } }
             .launchIn(viewModelScope)
     }
@@ -259,7 +277,8 @@ class MainViewModel(
                     undo = UndoableAction(
                         id = System.currentTimeMillis(),
                         message = "Marked ${ids.size} as read",
-                        articleIds = ids
+                        articleIds = ids,
+                        markedAt = Instant.now()
                     )
                 )
             }
@@ -269,7 +288,17 @@ class MainViewModel(
     fun undoLastAction() {
         val action = _uiState.value.undo ?: return
         _uiState.update { it.copy(undo = null) }
-        applyReadStatus(action.articleIds, read = false)
+        viewModelScope.launch {
+            // Only what the action itself marked. Reading an article while the snackbar is up
+            // stamps it later than the action did, and used to be swept back to unread with it.
+            val revertible = runCatching {
+                articleRepository.idsStillReadSince(action.articleIds, action.markedAt.plus(UNDO_GRACE))
+            }.getOrElse {
+                Log.w(TAG, "Could not work out what the undo covers", it)
+                return@launch
+            }
+            if (revertible.isNotEmpty()) applyReadStatus(revertible, read = false)
+        }
     }
 
     fun dismissUndo() {

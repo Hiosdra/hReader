@@ -80,6 +80,15 @@ class ArticleViewModel(
     /** The list is resolved once; a configuration change must not rebuild it under the pager. */
     private var listResolved = false
 
+    /**
+     * Articles whose text has already been asked for. The pager observes its articles, so every
+     * read tick re-emits them; without this the article on screen was fetched again on each one.
+     */
+    private val requestedContentIds = mutableSetOf<Long>()
+
+    /** Articles whose stored credibility report has already been looked up, for the same reason. */
+    private val checkedCredibilityIds = mutableSetOf<Long>()
+
     init {
         viewModelScope.launch {
             networkMonitor.isOnline.collect { online -> _uiState.update { it.copy(isOnline = online) } }
@@ -89,17 +98,19 @@ class ArticleViewModel(
     fun setCurrentIndex(index: Int) {
         _uiState.update { it.copy(currentIndex = index) }
         val entry = _uiState.value.entries.getOrNull(index) ?: return
-        if (!_uiState.value.originalContent.containsKey(entry.id)) {
-            loadOriginalContent(entry.id, entry.url)
-        }
+        loadOriginalContent(entry.id, entry.url)
     }
 
     /**
      * A failure here is the normal offline case, not an oddity: the fetch needs the backend, and
      * what the feed itself carried is all that is left. Silence used to leave the reader staring
      * at an empty screen wondering whether it was still loading.
+     *
+     * Asked for once per article: a failed fetch has already fallen back to what the feed carried,
+     * so there is nothing a second attempt against the same cache would turn up.
      */
     private fun loadOriginalContent(entryId: Long, url: String) {
+        if (!requestedContentIds.add(entryId)) return
         viewModelScope.launch {
             val content = runCatching { articleContentRepository.getArticleContent(entryId, url) }
                 .getOrNull()
@@ -317,7 +328,11 @@ class ArticleViewModel(
 
     private fun loadCachedCredibility(entryIds: List<Long>) {
         if (!_uiState.value.credibilityEnabled) return
-        val missing = entryIds.filterNot { _uiState.value.credibilityReports.containsKey(it) }
+        // Looked up once per article. The pager re-emits its whole window every time a read state
+        // changes, and articles with no stored report would be queried again on each of them.
+        val missing = entryIds
+            .filterNot { _uiState.value.credibilityReports.containsKey(it) }
+            .filter { checkedCredibilityIds.add(it) }
         if (missing.isEmpty()) return
         viewModelScope.launch {
             val cached = runCatching { credibilityRepository.getCached(missing) }.getOrElse { emptyMap() }
