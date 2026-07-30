@@ -150,6 +150,7 @@ dependencies {
     ksp("androidx.room:room-compiler:${rootProject.extra["roomVersion"]}")
 
     // Networking
+    implementation("com.squareup.okhttp3:okhttp:5.4.0")
     implementation("com.squareup.okhttp3:logging-interceptor:5.4.0")
     implementation("com.squareup.retrofit2:converter-moshi:3.0.0")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
@@ -173,6 +174,10 @@ dependencies {
 
     // HTML Parsing
     implementation("org.jsoup:jsoup:1.22.2")
+    implementation("org.apache.commons:commons-compress:1.28.0")
+
+    // On-device speech synthesis
+    implementation(files("libs/sherpa-onnx-1.13.4-arm64.aar"))
 
     // Testing - JUnit
     testImplementation("junit:junit:4.13.2")

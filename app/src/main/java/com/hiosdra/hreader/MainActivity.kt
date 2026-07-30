@@ -1,15 +1,16 @@
 package com.hiosdra.hreader
 
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.core.net.toUri
 import com.hiosdra.hreader.navigation.AppNavigation
 import com.hiosdra.hreader.navigation.EntryPoint
@@ -26,15 +27,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
-        )
         val entryPoint = intent?.entryPoint() ?: EntryPoint.ArticleList
         setContent {
             HReaderTheme {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    AppNavigation(entryPoint = entryPoint)
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    Box(modifier = Modifier.safeDrawingPadding()) {
+                        AppNavigation(entryPoint = entryPoint)
+                    }
                 }
             }
         }
