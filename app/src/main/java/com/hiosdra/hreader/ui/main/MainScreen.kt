@@ -8,13 +8,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -25,16 +25,15 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -57,7 +56,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -230,7 +228,7 @@ fun MainScreen(
                                 onDismissRequest = { expanded.value = false },
                                 // Clip first: a background painted before it keeps square corners.
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(MaterialTheme.shapes.small)
                                     .background(MaterialTheme.colorScheme.surfaceContainer)
                             ) {
                                 DropdownMenuItem(
@@ -320,7 +318,7 @@ fun MainScreen(
                                     }
                                 }
                             },
-                            shape = RoundedCornerShape(24.dp)
+                            shape = MaterialTheme.shapes.extraLarge
                         )
                     }
                 }
@@ -337,11 +335,7 @@ fun MainScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { Icon(Icons.Filled.Done, contentDescription = null) },
-                    text = { Text(text = "Mark $unreadCount read") },
-                    expanded = unreadCount < 100,
-                    modifier = Modifier
-                        .shadow(4.dp, CircleShape)
-                        .clip(CircleShape)
+                    text = { Text(text = "Mark $unreadCount read") }
                 )
             }
         }
@@ -416,6 +410,7 @@ fun MainScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EmptyState(
     modifier: Modifier,
@@ -442,7 +437,7 @@ private fun EmptyState(
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center
                     )
-                    ElevatedButton(onClick = onRetry, modifier = Modifier.padding(top = 20.dp)) {
+                    Button(onClick = onRetry, modifier = Modifier.padding(top = 20.dp)) {
                         Text("Retry")
                     }
                 }
@@ -453,7 +448,7 @@ private fun EmptyState(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
                     )
-                    OutlinedButton(onClick = onClearSearch, modifier = Modifier.padding(top = 20.dp)) {
+                    Button(onClick = onClearSearch, modifier = Modifier.padding(top = 20.dp)) {
                         Text("Clear search")
                     }
                 }
@@ -471,17 +466,23 @@ private fun EmptyState(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                         textAlign = TextAlign.Center
                     )
-                    ElevatedButton(
+                    // One filled button, like every other branch here. This one used to offer three
+                    // of near-equal weight, so it read as a menu rather than a prompt; the two
+                    // secondary routes stay reachable as text buttons.
+                    Button(
                         onClick = { if (feedId == null) onBrowseFeeds() else onBack() },
                         modifier = Modifier.padding(top = 20.dp)
                     ) {
                         Text(if (feedId == null) "Browse subscriptions" else "Back to all items")
                     }
-                    OutlinedButton(onClick = onAddFeed, modifier = Modifier.padding(top = 12.dp)) {
-                        Text("Add subscription")
-                    }
-                    OutlinedButton(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) {
-                        Text("Refresh now")
+                    // Flow rather than Row: at a large font scale the two labels no longer fit
+                    // side by side on a narrow screen, and a Row would clip them.
+                    FlowRow(
+                        modifier = Modifier.padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        TextButton(onClick = onAddFeed) { Text("Add subscription") }
+                        TextButton(onClick = onRetry) { Text("Refresh now") }
                     }
                 }
             }
