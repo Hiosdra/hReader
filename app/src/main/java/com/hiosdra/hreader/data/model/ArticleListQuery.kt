@@ -37,4 +37,14 @@ data class ArticleListQuery(
 
     fun withSearch(searchQuery: String): ArticleListQuery =
         if (searchQuery == this.searchQuery) this else copy(searchQuery = searchQuery)
+
+    /**
+     * A refresh is the reader asking for the list as it stands now, so what they read during the
+     * previous visit stops being held on screen and the list comes back to the unread.
+     *
+     * With [includeRead] on, [sessionStart] decides nothing — a new one would rebuild the list, and
+     * so lose the reader's place in it, to arrive at the same rows.
+     */
+    fun withSessionRestarted(now: Instant): ArticleListQuery =
+        if (includeRead) this else copy(sessionStart = now)
 }
