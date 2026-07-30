@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
@@ -47,6 +49,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -398,26 +402,48 @@ private fun ArticleTopBar(
     val paywallBypassService: PaywallBypassService = koinInject()
 
     TopAppBar(
-        title = { Text(feedTitle ?: "hReader", style = MaterialTheme.typography.titleLarge) },
+        title = {
+            // One line, cut short if it has to be. A feed named "Subiektywnie o finansach — Maciej
+            // Samcik" wrapped to four of them, which grew the bar over the status bar above it and
+            // the article below.
+            Text(
+                text = feedTitle ?: "hReader",
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
         },
+        // Three ways of getting at the page itself, and a menu for the rest. Everything visible
+        // here is about reading the article a different way, which is what a reader reaches for
+        // while an article is disappointing them; starring and sharing come after.
         actions = {
-            IconButton(onClick = onToggleStar) {
-                // Tint rather than a second glyph: the outlined star is in the extended icon set.
-                Icon(
-                    Icons.Filled.Star,
-                    contentDescription = if (isStarred) "Remove star" else "Star article",
-                    tint = if (isStarred) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    }
-                )
-            }
+            val overflowExpanded = remember { mutableStateOf(false) }
             if (entryUrl != null) {
+                IconButton(onClick = onToggleWebView) {
+                    Icon(
+                        painter = painterResource(
+                            id = if (isWebViewMode) {
+                                R.drawable.baseline_web_asset_off_24
+                            } else {
+                                R.drawable.baseline_web_asset_24
+                            }
+                        ),
+                        contentDescription = if (isWebViewMode) "Show Content" else "Show WebView",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                IconButton(onClick = onOpenInChrome) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_chrome_logo),
+                        contentDescription = "Open in Chrome",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
                 if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
                     IconButton(onClick = onBypassPaywall) {
                         Icon(
@@ -427,26 +453,65 @@ private fun ArticleTopBar(
                         )
                     }
                 }
-                IconButton(onClick = onOpenInChrome) {
+            }
+            // Outside the branch above: an entry that carries no address can still be starred, and
+            // that is the one action here which is about the article rather than about its page.
+            // The menu sits inside a box around its own button, or it anchors to a zero-width slot
+            // after it and opens adrift of the edge it belongs to.
+            Box {
+                IconButton(onClick = { overflowExpanded.value = true }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_chrome_logo),
-                        contentDescription = "Open in Chrome",
+                        Icons.Filled.MoreVert,
+                        contentDescription = "More",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                IconButton(onClick = onToggleWebView) {
-                    Icon(
-                        painter = painterResource(id = if (isWebViewMode) R.drawable.baseline_web_asset_off_24 else R.drawable.baseline_web_asset_24),
-                        contentDescription = if (isWebViewMode) "Show Content" else "Show WebView",
-                        tint = MaterialTheme.colorScheme.onSurface
+                DropdownMenu(
+                    expanded = overflowExpanded.value,
+                    onDismissRequest = { overflowExpanded.value = false },
+                    // The same treatment the list's menu gets, so the two do not read as two
+                    // different components. Clip first: a background painted before it keeps
+                    // square corners.
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isStarred) "Remove star" else "Star article") },
+                        onClick = {
+                            overflowExpanded.value = false
+                            onToggleStar()
+                        },
+                        leadingIcon = {
+                            // Tint rather than a second glyph: the outlined star is in the
+                            // extended icon set. The label carries the state either way.
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = null,
+                                tint = if (isStarred) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
                     )
-                }
-                IconButton(onClick = onShare) {
-                    Icon(
-                        Icons.Filled.Share,
-                        contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                    if (entryUrl != null) {
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onShare()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Share,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        )
+                    }
                 }
             }
         },
