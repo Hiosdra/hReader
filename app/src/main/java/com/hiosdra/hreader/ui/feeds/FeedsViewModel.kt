@@ -27,11 +27,20 @@ class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(FeedsUiState())
     val uiState: StateFlow<FeedsUiState> = _uiState.asStateFlow()
 
+    /**
+     * Where each feed sits, settled when the panel opens and held until it opens again. Counts keep
+     * arriving after the list is on screen — from the cache first, then the server — and reordering
+     * on each of them would move the rows under the reader's finger.
+     */
+    private var rowOrder: Map<Long, Int> = emptyMap()
+    private var resettleRows = true
+
     init {
         loadFeeds()
     }
 
     fun reload() {
+        resettleRows = true
         loadFeeds()
     }
 
@@ -151,10 +160,22 @@ class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
         }
     }
 
+    private fun placeRows(feeds: List<Feed>, unreadCounts: Map<Long, Int>): List<Feed> {
+        val placed = if (resettleRows) {
+            sortSubscriptions(feeds, unreadCounts)
+        } else {
+            holdRowOrder(feeds, unreadCounts, rowOrder)
+        }
+        rowOrder = placed.withIndex().associate { (position, feed) -> feed.id to position }
+        resettleRows = false
+        return placed
+    }
+
     private fun publish(feeds: List<Feed>, unreadCounts: Map<Long, Int>) {
+        val ordered = placeRows(feeds, unreadCounts)
         _uiState.value = _uiState.value.copy(
-            feeds = feeds,
-            filteredFeeds = feeds,
+            feeds = ordered,
+            filteredFeeds = ordered,
             unreadCounts = unreadCounts,
             isLoading = false,
             error = null
@@ -164,3 +185,20 @@ class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
         }
     }
 }
+
+/** The feeds with something to read come first, the rest alphabetically. */
+internal fun sortSubscriptions(feeds: List<Feed>, unreadCounts: Map<Long, Int>): List<Feed> =
+    feeds.sortedWith(
+        compareByDescending<Feed> { unreadCounts[it.id] ?: 0 }
+            .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title }
+    )
+
+/**
+ * The positions [rowOrder] already holds. Feeds it has never placed — a fresh subscription, an OPML
+ * import — go after them, among themselves in the order [sortSubscriptions] would give.
+ */
+internal fun holdRowOrder(
+    feeds: List<Feed>,
+    unreadCounts: Map<Long, Int>,
+    rowOrder: Map<Long, Int>
+): List<Feed> = sortSubscriptions(feeds, unreadCounts).sortedBy { rowOrder[it.id] ?: Int.MAX_VALUE }
