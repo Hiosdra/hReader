@@ -97,7 +97,8 @@ class ArticleTtsController(
                 } else {
                     speakWithSherpa(model, chunks, language)
                 }
-            }.onFailure {
+            }.onFailure failure@{
+                if (version != playbackVersion) return@failure
                 if (it !is CancellationException && model != TtsModel.ANDROID) {
                     Log.e(TAG, "Neural TTS failed for ${model.name}", it)
                     _state.value = _state.value.copy(
@@ -143,8 +144,6 @@ class ArticleTtsController(
         playbackJob?.cancel()
         playbackJob = null
         audioTrack?.runCatching { stop() }
-        audioTrack?.release()
-        audioTrack = null
         androidTts?.stop()
         resumeSignal.complete(Unit)
         _state.value = ArticleTtsState()
@@ -195,7 +194,10 @@ class ArticleTtsController(
             AudioFormat.CHANNEL_OUT_MONO,
             AudioFormat.ENCODING_PCM_FLOAT
         )
-        val bufferSize = pcmFloatMonoBufferSize(sampleRate, minBuffer)
+        val bufferSize = maxOf(
+            samples.size * Float.SIZE_BYTES,
+            pcmFloatMonoBufferSize(sampleRate, minBuffer)
+        )
         val track = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -211,20 +213,23 @@ class ArticleTtsController(
                     .build()
             )
             .setBufferSizeInBytes(bufferSize)
-            .setTransferMode(AudioTrack.MODE_STREAM)
+            .setTransferMode(AudioTrack.MODE_STATIC)
             .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
             .build()
-        audioTrack = track
-        track.play()
-        var offset = 0
-        while (offset < samples.size) {
-            val written = track.write(samples, offset, samples.size - offset, AudioTrack.WRITE_BLOCKING)
-            check(written >= 0) { "Audio playback failed ($written)" }
-            offset += written
+        try {
+            audioTrack = track
+            val written = track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+            check(written == samples.size) { "Audio playback failed ($written/${samples.size})" }
+            track.play()
+            while (track.playbackHeadPosition < samples.size) {
+                resumeSignal.await()
+                delay(20)
+            }
+        } finally {
+            track.runCatching { stop() }
+            track.release()
+            if (audioTrack === track) audioTrack = null
         }
-        track.stop()
-        track.release()
-        audioTrack = null
     }
 
     private suspend fun speakWithAndroid(chunks: List<String>, language: String) {
