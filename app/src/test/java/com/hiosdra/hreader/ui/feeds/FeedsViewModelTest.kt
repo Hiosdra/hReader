@@ -4,6 +4,56 @@ import com.hiosdra.hreader.data.model.Feed
 import org.junit.Test
 import org.junit.Assert.*
 
+class SubscriptionOrderTest {
+
+    private val feeds = listOf(
+        Feed(id = 1, title = "Zed Weekly", siteUrl = null, feedUrl = "https://zed.example.com/feed"),
+        Feed(id = 2, title = "alpha times", siteUrl = null, feedUrl = "https://alpha.example.com/feed"),
+        Feed(id = 3, title = "Beta Report", siteUrl = null, feedUrl = "https://beta.example.com/feed")
+    )
+
+    @Test
+    fun `unread count comes before the title`() {
+        val ordered = sortSubscriptions(feeds, mapOf(1L to 5, 2L to 1, 3L to 9))
+        assertEquals(listOf("Beta Report", "Zed Weekly", "alpha times"), ordered.map { it.title })
+    }
+
+    @Test
+    fun `feeds with the same count fall back to a case insensitive title`() {
+        val ordered = sortSubscriptions(feeds, mapOf(1L to 3, 2L to 3, 3L to 3))
+        assertEquals(listOf("alpha times", "Beta Report", "Zed Weekly"), ordered.map { it.title })
+    }
+
+    @Test
+    fun `feeds missing from the counts sort as read`() {
+        val ordered = sortSubscriptions(feeds, mapOf(1L to 1))
+        assertEquals(listOf("Zed Weekly", "alpha times", "Beta Report"), ordered.map { it.title })
+    }
+
+    @Test
+    fun `held positions survive counts that would reorder the rows`() {
+        val settled = sortSubscriptions(feeds, mapOf(1L to 5, 2L to 1, 3L to 9))
+        val rowOrder = settled.withIndex().associate { (position, feed) -> feed.id to position }
+
+        val held = holdRowOrder(feeds, mapOf(1L to 0, 2L to 40, 3L to 0), rowOrder)
+
+        assertEquals(settled.map { it.title }, held.map { it.title })
+    }
+
+    @Test
+    fun `feeds nobody has placed yet go last`() {
+        val added = Feed(id = 4, title = "Added Later", siteUrl = null, feedUrl = "https://added.example.com/feed")
+        val rowOrder = mapOf(1L to 0, 2L to 1, 3L to 2)
+
+        val held = holdRowOrder(feeds + added, mapOf(4L to 99), rowOrder)
+
+        assertEquals(
+            listOf("Zed Weekly", "alpha times", "Beta Report", "Added Later"),
+            held.map { it.title }
+        )
+    }
+}
+
 class FeedsSearchTest {
 
     @Test
