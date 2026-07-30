@@ -175,6 +175,7 @@ class ArticleTtsController(
             AudioFormat.CHANNEL_OUT_MONO,
             AudioFormat.ENCODING_PCM_FLOAT
         )
+        val bufferSize = pcmFloatMonoBufferSize(sampleRate, minBuffer)
         val track = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -189,7 +190,7 @@ class ArticleTtsController(
                     .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
                     .build()
             )
-            .setBufferSizeInBytes(minBuffer.coerceAtLeast(sampleRate))
+            .setBufferSizeInBytes(bufferSize)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
             .build()
@@ -285,4 +286,12 @@ class ArticleTtsController(
         const val TAG = "ArticleTtsController"
         const val MODEL_WARM_TIMEOUT_MS = 5 * 60 * 1_000L
     }
+}
+
+internal fun pcmFloatMonoBufferSize(sampleRate: Int, minimumSize: Int): Int {
+    require(sampleRate > 0)
+    val frameSize = Float.SIZE_BYTES
+    val fallbackSize = sampleRate * frameSize / 10
+    val requestedSize = maxOf(minimumSize, fallbackSize)
+    return ((requestedSize + frameSize - 1) / frameSize) * frameSize
 }
