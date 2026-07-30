@@ -247,13 +247,6 @@ class MainViewModel(
         applyReadStatus(listOf(entryId), read = checked)
     }
 
-    fun setStarred(entryId: Long, starred: Boolean) {
-        viewModelScope.launch {
-            runCatching { articleRepository.updateStarred(entryId, starred) }
-                .onFailure { Log.w(TAG, "Could not star article $entryId", it) }
-        }
-    }
-
     /**
      * Marking everything read happens at once and is offered back afterwards, rather than being
      * guarded by a confirmation dialog: the dialog cost a tap every single time and still could not
