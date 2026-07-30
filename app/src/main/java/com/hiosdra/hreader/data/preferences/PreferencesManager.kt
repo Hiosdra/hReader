@@ -275,6 +275,25 @@ class PreferencesManager(context: Context) {
         sharedPreferences.edit().putString(KEY_TTS_MODEL, model.name).apply()
     }
 
+    fun getTtsModelForLanguage(language: String): TtsModel =
+        getTtsLanguageOverrides()[language] ?: getTtsModel()
+
+    fun getTtsLanguageOverrides(): Map<String, TtsModel> =
+        sharedPreferences.getStringSet(KEY_TTS_LANGUAGE_OVERRIDES, emptySet()).orEmpty()
+            .mapNotNull { entry ->
+                val parts = entry.split('=', limit = 2)
+                if (parts.size == 2) parts[0] to TtsModel.fromName(parts[1]) else null
+            }
+            .toMap()
+
+    fun setTtsLanguageOverride(language: String, model: TtsModel?) {
+        val updated = getTtsLanguageOverrides().toMutableMap()
+        if (model == null) updated.remove(language) else updated[language] = model
+        sharedPreferences.edit()
+            .putStringSet(KEY_TTS_LANGUAGE_OVERRIDES, updated.map { "${it.key}=${it.value.name}" }.toSet())
+            .apply()
+    }
+
     fun getTtsSpeed(): Float = sharedPreferences.getFloat(KEY_TTS_SPEED, 1f)
 
     fun setTtsSpeed(speed: Float) {
@@ -286,7 +305,7 @@ class PreferencesManager(context: Context) {
         silenceScale = sharedPreferences.getFloat(KEY_TTS_SILENCE_SCALE, 0.2f).coerceIn(0f, 1f),
         supertonicSpeaker = sharedPreferences.getInt(KEY_TTS_SUPERTONIC_SPEAKER, 0).coerceIn(0, 9),
         supertonicSteps = sharedPreferences.getInt(KEY_TTS_SUPERTONIC_STEPS, 8).coerceIn(4, 12),
-        kokoroSpeaker = sharedPreferences.getInt(KEY_TTS_KOKORO_SPEAKER, 3).coerceIn(0, 102),
+        kokoroSpeaker = sharedPreferences.getInt(KEY_TTS_KOKORO_SPEAKER, 0).coerceIn(0, 102),
         gosiaNoiseScale = sharedPreferences.getFloat(KEY_TTS_GOSIA_NOISE_SCALE, 0.667f).coerceIn(0f, 1f),
         gosiaDurationNoiseScale = sharedPreferences
             .getFloat(KEY_TTS_GOSIA_DURATION_NOISE_SCALE, 0.8f)
@@ -337,6 +356,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
         private const val KEY_TTS_MODEL = "tts_model"
         private const val KEY_TTS_SPEED = "tts_speed"
+        private const val KEY_TTS_LANGUAGE_OVERRIDES = "tts_language_overrides"
         private const val KEY_TTS_THREADS = "tts_threads"
         private const val KEY_TTS_SILENCE_SCALE = "tts_silence_scale"
         private const val KEY_TTS_SUPERTONIC_SPEAKER = "tts_supertonic_speaker"

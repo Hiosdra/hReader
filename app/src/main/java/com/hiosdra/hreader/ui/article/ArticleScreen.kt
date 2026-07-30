@@ -166,6 +166,9 @@ fun ArticleScreen(
         if (!pagerPositioned) return@LaunchedEffect
         snapshotFlow { pagerState.settledPage }.collect { page ->
             val entry = viewModel.uiState.value.entries.getOrNull(page) ?: return@collect
+            if (ttsController.state.value.articleId?.let { it != entry.id } == true) {
+                ttsController.pause()
+            }
             if (!entry.isRead) {
                 viewModel.updateReadStatus(page, true)
             }
@@ -185,7 +188,7 @@ fun ArticleScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (ttsState.articleId != null) {
-                ArticleTtsBar(ttsState, ttsController::stop)
+                ArticleTtsBar(ttsState, ttsController::pause, ttsController::resume, ttsController::stop)
             }
         },
         topBar = {
@@ -556,6 +559,8 @@ private fun ArticleTopBar(
 @Composable
 private fun ArticleTtsBar(
     state: ArticleTtsState,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
     onStop: () -> Unit
 ) {
     Surface(tonalElevation = 4.dp, shadowElevation = 4.dp) {
@@ -584,6 +589,9 @@ private fun ArticleTtsBar(
                         .fillMaxWidth()
                         .padding(top = 4.dp)
                 )
+            }
+            TextButton(onClick = if (state.isPaused) onResume else onPause) {
+                Text(if (state.isPaused) "Resume" else "Pause")
             }
             IconButton(onClick = onStop) {
                 Icon(Icons.Filled.Close, contentDescription = "Stop reading")

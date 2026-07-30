@@ -25,7 +25,7 @@ internal class TtsLanguageDetector(context: Context) {
 }
 
 internal object SupertonicLanguages {
-    private val supported = setOf(
+    val supported = listOf(
         "ar", "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el",
         "hi", "hu", "id", "it", "ja", "ko", "lv", "lt", "pl", "pt", "ro", "ru",
         "sk", "sl", "es", "sv", "tr", "uk", "vi"
