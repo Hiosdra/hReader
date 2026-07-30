@@ -16,6 +16,11 @@ internal class SherpaTtsEngine(
     private var tts: OfflineTts? = null
 
     @Synchronized
+    fun prepare(model: TtsModel) {
+        engineFor(model)
+    }
+
+    @Synchronized
     fun generate(model: TtsModel, text: String, speed: Float, language: String): GeneratedAudio {
         val engine = engineFor(model)
         val config = GenerationConfig().apply {

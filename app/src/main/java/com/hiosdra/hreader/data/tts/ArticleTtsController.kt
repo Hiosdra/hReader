@@ -14,6 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -136,19 +138,33 @@ class ArticleTtsController(
     }
 
     private suspend fun speakWithSherpa(model: TtsModel, chunks: List<String>) {
-        val language = withContext(Dispatchers.Default) {
-            languageDetector.detect(chunks.take(2).joinToString(" "))
-        }
-        chunks.forEachIndexed { index, chunk ->
-            val audio = withContext(Dispatchers.Default) {
-                sherpa.generate(model, chunk, preferences.getTtsSpeed(), language)
+        coroutineScope {
+            val languageResult = async(Dispatchers.Default) {
+                languageDetector.detect(chunks.take(2).joinToString(" "))
             }
-            _state.value = _state.value.copy(
-                isPreparing = false,
-                isPlaying = true,
-                currentChunk = index
-            )
-            playSamples(audio.samples, audio.sampleRate)
+            val modelPreparation = async(Dispatchers.Default) {
+                sherpa.prepare(model)
+            }
+            val language = languageResult.await()
+            modelPreparation.await()
+            val speed = preferences.getTtsSpeed()
+            var audio = withContext(Dispatchers.Default) {
+                sherpa.generate(model, chunks.first(), speed, language)
+            }
+            chunks.forEachIndexed { index, _ ->
+                val nextAudio = chunks.getOrNull(index + 1)?.let { nextChunk ->
+                    async(Dispatchers.Default) {
+                        sherpa.generate(model, nextChunk, speed, language)
+                    }
+                }
+                _state.value = _state.value.copy(
+                    isPreparing = false,
+                    isPlaying = true,
+                    currentChunk = index
+                )
+                playSamples(audio.samples, audio.sampleRate)
+                audio = nextAudio?.await() ?: return@coroutineScope
+            }
         }
         _state.value = ArticleTtsState()
     }
