@@ -2,7 +2,7 @@ package com.hiosdra.hreader.util
 
 import org.jsoup.Jsoup
 
-private val resizeSuffix = Regex("-\\d{2,5}x\\d{2,5}$")
+private val sizeSuffix = Regex("(-\\d{2,5}x\\d{2,5}|-scaled)+$")
 
 /**
  * The picture to show above the article, or null when the body already carries it.
@@ -11,22 +11,28 @@ private val resizeSuffix = Regex("-\\d{2,5}x\\d{2,5}$")
  * once as the first image of the article body. Rendering both showed the reader the same photo
  * twice in a row, the second time with the caption that belongs to it.
  */
-fun leadImageUrl(enclosureUrl: String?, feedContent: String?, articleHtml: String?): String? {
+fun leadImageUrl(
+    enclosureUrl: String?,
+    feedContent: String?,
+    articleHtml: String?,
+    baseUri: String
+): String? {
     val candidate = enclosureUrl?.takeIf { it.isNotBlank() }
-        ?: imageSources(feedContent).firstOrNull()
+        ?: imageSources(feedContent, baseUri).firstOrNull()
         ?: return null
     val candidateKeys = imageKeys(candidate)
     if (candidateKeys.isEmpty()) return candidate
-    val alreadyInBody = imageSources(articleHtml).any { source ->
+    val alreadyInBody = imageSources(articleHtml, baseUri).any { source ->
         imageKeys(source).any { it in candidateKeys }
     }
     return if (alreadyInBody) null else candidate
 }
 
-private fun imageSources(html: String?): List<String> {
+/** Resolved against the article's own address, so a feed carrying relative sources still loads. */
+private fun imageSources(html: String?, baseUri: String): List<String> {
     if (html.isNullOrBlank()) return emptyList()
-    return Jsoup.parse(html).select("img[src]")
-        .map { it.attr("src").trim() }
+    return Jsoup.parse(html, baseUri).select("img[src]")
+        .map { image -> image.attr("abs:src").ifBlank { image.attr("src") }.trim() }
         .filter { it.isNotBlank() }
 }
 
@@ -49,7 +55,7 @@ private fun imageKeys(url: String): Set<String> {
 
     val fileName = address.substringAfterLast('/')
     val extension = fileName.substringAfterLast('.', "")
-    val stem = fileName.substringBeforeLast('.', "").replace(resizeSuffix, "")
+    val stem = fileName.substringBeforeLast('.', "").replace(sizeSuffix, "")
     return buildSet {
         add(address)
         if (extension.isNotEmpty() && stem.isNotEmpty()) add("$stem.$extension")
