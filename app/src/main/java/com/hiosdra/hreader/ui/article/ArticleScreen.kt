@@ -39,9 +39,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
@@ -100,6 +102,8 @@ import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.data.tts.ArticleTtsController
+import com.hiosdra.hreader.data.tts.ArticleTtsState
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
 import com.hiosdra.hreader.ui.theme.LocalCredibilityColors
@@ -140,6 +144,8 @@ fun ArticleScreen(
 
     val preferencesManager: PreferencesManager = koinInject()
     val paywallBypassService: PaywallBypassService = koinInject()
+    val ttsController: ArticleTtsController = koinInject()
+    val ttsState by ttsController.state.collectAsState()
 
     LaunchedEffect(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis) {
         viewModel.openList(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis)
@@ -177,6 +183,11 @@ fun ArticleScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            if (ttsState.articleId != null) {
+                ArticleTtsBar(ttsState, ttsController::stop)
+            }
+        },
         topBar = {
             val entry = uiState.entries.getOrNull(uiState.currentIndex)
             ArticleTopBar(
@@ -184,7 +195,20 @@ fun ArticleScreen(
                 feedTitle = entry?.feed?.title,
                 isWebViewMode = isWebViewMode,
                 isStarred = entry?.starred == true,
+                isSpeaking = entry?.id == ttsState.articleId,
                 onToggleStar = { if (entry != null) viewModel.setStarred(entry.id, !entry.starred) },
+                onToggleSpeech = {
+                    if (entry == null) return@ArticleTopBar
+                    if (ttsState.articleId == entry.id) {
+                        ttsController.stop()
+                    } else {
+                        ttsController.play(
+                            articleId = entry.id,
+                            title = entry.title,
+                            html = viewModel.getContentForEntry(entry.id).orEmpty()
+                        )
+                    }
+                },
                 onBack = { navController.popBackStack() },
                 onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, cleanUrl(entry.url)) },
                 onToggleWebView = { isWebViewMode = !isWebViewMode },
@@ -392,7 +416,9 @@ private fun ArticleTopBar(
     feedTitle: String?,
     isWebViewMode: Boolean,
     isStarred: Boolean,
+    isSpeaking: Boolean,
     onToggleStar: () -> Unit,
+    onToggleSpeech: () -> Unit,
     onBack: () -> Unit,
     onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit,
@@ -423,6 +449,12 @@ private fun ArticleTopBar(
         // while an article is disappointing them; starring and sharing come after.
         actions = {
             val overflowExpanded = remember { mutableStateOf(false) }
+            IconButton(onClick = onToggleSpeech) {
+                Icon(
+                    imageVector = if (isSpeaking) Icons.Filled.Close else Icons.Filled.PlayArrow,
+                    contentDescription = if (isSpeaking) "Stop reading" else "Read aloud"
+                )
+            }
             if (entryUrl != null) {
                 IconButton(onClick = onToggleWebView) {
                     Icon(
@@ -519,6 +551,45 @@ private fun ArticleTopBar(
             containerColor = MaterialTheme.colorScheme.surface
         )
     )
+}
+
+@Composable
+private fun ArticleTtsBar(
+    state: ArticleTtsState,
+    onStop: () -> Unit
+) {
+    Surface(tonalElevation = 4.dp, shadowElevation = 4.dp) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (state.isPreparing) "Preparing voice…" else state.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = state.model?.displayName.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                LinearProgressIndicator(
+                    progress = { state.progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                )
+            }
+            IconButton(onClick = onStop) {
+                Icon(Icons.Filled.Close, contentDescription = "Stop reading")
+            }
+        }
+    }
 }
 
 @Composable
