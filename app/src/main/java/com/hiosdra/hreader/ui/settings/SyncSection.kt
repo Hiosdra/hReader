@@ -40,10 +40,12 @@ fun SyncSection(
     onSyncWhileRoamingChange: (Boolean) -> Unit,
     onQuietHoursEnabledChange: (Boolean) -> Unit,
     onQuietHoursChange: (Int, Int) -> Unit,
+    onResyncFromScratch: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showIntervalDialog by remember { mutableStateOf(false) }
     var showQuietHoursDialog by remember { mutableStateOf(false) }
+    var showResyncDialog by remember { mutableStateOf(false) }
 
     Column(modifier = modifier) {
         SettingRow(
@@ -85,6 +87,33 @@ fun SyncSection(
                 onClick = { showQuietHoursDialog = true }
             )
         }
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        Text(
+            text = "Rebuild from the server",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = "Deletes every downloaded article, feed and image, then fetches the account " +
+                "again from nothing. For a local copy that no longer matches the server.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
+        )
+        TextButton(
+            onClick = { showResyncDialog = true },
+            enabled = !state.isResyncing,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = if (state.isResyncing) "Rebuilding…" else "Delete local data and resync",
+                color = if (state.isResyncing) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.error
+                }
+            )
+        }
     }
 
     if (showIntervalDialog) {
@@ -98,6 +127,32 @@ fun SyncSection(
                 showIntervalDialog = false
             },
             onDismiss = { showIntervalDialog = false }
+        )
+    }
+
+    if (showResyncDialog) {
+        AlertDialog(
+            onDismissRequest = { showResyncDialog = false },
+            title = { Text("Delete local data and resync?") },
+            text = {
+                Text(
+                    "Every downloaded article, feed and image goes, including anything kept for " +
+                        "reading offline. The account is then fetched again from the server, " +
+                        "which needs a connection and can take a while on a large backlog. " +
+                        "Nothing on the server is touched."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResyncDialog = false
+                    onResyncFromScratch()
+                }) {
+                    Text("Delete and resync", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResyncDialog = false }) { Text("Cancel") }
+            }
         )
     }
 
