@@ -88,19 +88,27 @@ class PreferencesManager(context: Context) {
     /**
      * Credentials written before they had a file of their own. Moving them clears them from the
      * backed-up file, which is the whole point of the move.
+     *
+     * The copy is committed before the original is removed, and the removal only happens if the
+     * copy landed. Two `apply()` calls against two files complete in no particular order, so a
+     * process death between them used to leave the secrets deleted from one file, never written to
+     * the other, and the migration marked done — the server password gone for good.
      */
     private fun migrateSecretsOutOfBackedUpFile() {
         if (sharedPreferences.getBoolean(KEY_SECRETS_MIGRATED, false)) return
-        val editor = sharedPreferences.edit()
+
         val secretEditor = secretPreferences.edit()
-        SECRET_KEYS.forEach { key ->
+        val legacyKeys = SECRET_KEYS.filter { sharedPreferences.contains(it) }
+        legacyKeys.forEach { key ->
             val value = sharedPreferences.getString(key, null)
             if (!value.isNullOrBlank() && secretPreferences.getString(key, null).isNullOrBlank()) {
                 secretEditor.putString(key, value)
             }
-            editor.remove(key)
         }
-        secretEditor.apply()
+        if (!secretEditor.commit()) return
+
+        val editor = sharedPreferences.edit()
+        legacyKeys.forEach(editor::remove)
         editor.putBoolean(KEY_SECRETS_MIGRATED, true).apply()
     }
 

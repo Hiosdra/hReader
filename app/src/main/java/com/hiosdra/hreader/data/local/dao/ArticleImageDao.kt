@@ -22,8 +22,12 @@ interface ArticleImageDao {
     @Query("SELECT * FROM article_images WHERE entryId = :entryId AND originalUrl = :originalUrl LIMIT 1")
     suspend fun getImageForArticleByUrl(entryId: Long, originalUrl: String): ArticleImage?
 
-    @Query("SELECT * FROM article_images")
-    suspend fun getAllArticleImages(): List<ArticleImage>
+    /** Which articles have images stored, for orphan detection without reading every row. */
+    @Query("SELECT DISTINCT entryId FROM article_images")
+    suspend fun getAllImageEntryIds(): List<Long>
+
+    @Query("SELECT localFilePath FROM article_images WHERE entryId IN (:entryIds)")
+    suspend fun getImagePathsForArticles(entryIds: List<Long>): List<String>
 
     @Query("DELETE FROM article_images")
     suspend fun clearAll()

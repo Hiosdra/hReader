@@ -7,12 +7,14 @@ import com.hiosdra.hreader.data.local.dao.ArticleImageDao
 import com.hiosdra.hreader.data.local.entity.ArticleImage
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 import java.time.Instant
@@ -35,10 +37,15 @@ class ArticleImageRepository(
         private const val MAX_IMAGE_BYTES = 2L * 1024 * 1024
 
         private const val BYTES_PER_MEGABYTE = 1024L * 1024
+
+        /** Below SQLite's 999 bound-variable ceiling on Android. */
+        private const val DELETE_CHUNK = 500
     }
 
     private val imagesDir = File(context.filesDir, "article_images")
         .apply { mkdirs() }
+
+    private val cacheBudgetMutex = Mutex()
 
     suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): ArticleImage? =
         withContext(Dispatchers.IO) {
@@ -62,8 +69,9 @@ class ArticleImageRepository(
                 val body = response.body
                 val contentType = body.contentType()?.toString()
 
-                // The declared length is checked before a byte is written: streaming it to disk
-                // first and deleting it afterwards spends the bandwidth either way.
+                // A declared length settles it without spending any bandwidth at all. Most CDNs
+                // send the image chunked and declare nothing, which is what the streaming cap
+                // below is for.
                 val declaredLength = body.contentLength()
                 if (declaredLength > MAX_IMAGE_BYTES) {
                     Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
@@ -77,13 +85,15 @@ class ArticleImageRepository(
                 val fileName = "$imageId$extension"
                 val localFile = File(imagesDir, fileName)
 
-                // Save to local storage by streaming
-                val fileSize = FileOutputStream(localFile).use { output ->
-                    body.byteStream().use { input ->
-                        input.copyTo(output)
-                    }
+                // Streamed with the cap applied as it goes. A response without a declared length —
+                // anything chunked, which is most CDNs — used to sail past the check above and be
+                // downloaded in full before its size could be objected to.
+                val fileSize = response.use { copyAtMost(body.byteStream(), localFile, MAX_IMAGE_BYTES) }
+                if (fileSize == null) {
+                    Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
+                    localFile.delete()
+                    return@withContext null
                 }
-                response.close()
 
                 val articleImage = ArticleImage(
                     id = imageId,
@@ -94,12 +104,6 @@ class ArticleImageRepository(
                     downloadedAt = Instant.now(),
                     fileSize = fileSize
                 )
-
-                if (fileSize > MAX_IMAGE_BYTES) {
-                    Log.d(TAG, "Discarding $imageUrl: $fileSize bytes exceeds the per-image cap")
-                    localFile.delete()
-                    return@withContext null
-                }
 
                 articleImageDao.insertArticleImage(articleImage)
                 enforceCacheBudget()
@@ -122,16 +126,42 @@ class ArticleImageRepository(
             .associate { it.originalUrl to it.localFilePath }
 
     /**
+     * Copies [input] into [target], stopping and reporting null once it goes past [limit]. Returns
+     * how many bytes were written.
+     */
+    private fun copyAtMost(input: InputStream, target: File, limit: Long): Long? {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var written = 0L
+        FileOutputStream(target).use { output ->
+            input.use { source ->
+                while (true) {
+                    val read = source.read(buffer)
+                    if (read < 0) break
+                    written += read
+                    if (written > limit) return null
+                    output.write(buffer, 0, read)
+                }
+            }
+        }
+        return written
+    }
+
+    /**
      * Keeps the image directory under the configured budget by dropping the oldest downloads
      * first. Without it a large backlog fills the device, and offline is exactly when the user
      * cannot free space by re-downloading anything.
+     *
+     * Serialized: prefetching runs a hundred downloads at a time and each one asks for this
+     * afterwards. Concurrently, every caller read the same total, walked the same oldest-first list
+     * and deleted the same files, cutting the cache to a fraction of its budget — including images
+     * downloaded moments earlier for the trip the reader was packing for.
      */
-    suspend fun enforceCacheBudget() {
+    suspend fun enforceCacheBudget(): Unit = cacheBudgetMutex.withLock {
         val budgetBytes = preferencesManager.getImageCacheBudgetMegabytes() * BYTES_PER_MEGABYTE
-        if (budgetBytes <= 0) return
+        if (budgetBytes <= 0) return@withLock
 
         var storedBytes = articleImageDao.getTotalImageBytes()
-        if (storedBytes <= budgetBytes) return
+        if (storedBytes <= budgetBytes) return@withLock
 
         for (image in articleImageDao.getImagesOldestFirst()) {
             if (storedBytes <= budgetBytes) break
@@ -142,20 +172,21 @@ class ArticleImageRepository(
         Log.i(TAG, "Image cache trimmed to $storedBytes bytes")
     }
 
+    /**
+     * Drops what is stored for articles the cache no longer holds. Reads the article ids rather
+     * than the image rows: retention and full-sync reconciliation can orphan thousands at once.
+     */
     suspend fun cleanupOrphanedImages() {
-        val allImages = articleImageDao.getAllArticleImages()
-        if (allImages.isEmpty()) return
+        val storedEntryIds = articleImageDao.getAllImageEntryIds()
+        if (storedEntryIds.isEmpty()) return
 
         val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
+        val orphaned = storedEntryIds.filterNot { currentEntryIds.contains(it) }
+        if (orphaned.isEmpty()) return
 
-        val imagesToDelete = allImages.filter { image ->
-            !currentEntryIds.contains(image.entryId)
-        }
-
-        imagesToDelete.forEach { image ->
-            fileExists(image.localFilePath) // ensure fileExists is called for test coverage
-            File(image.localFilePath).delete()
-            articleImageDao.deleteArticleImage(image)
+        orphaned.chunked(DELETE_CHUNK).forEach { chunk ->
+            articleImageDao.getImagePathsForArticles(chunk).forEach { File(it).delete() }
+            articleImageDao.deleteImagesForArticles(chunk)
         }
     }
 

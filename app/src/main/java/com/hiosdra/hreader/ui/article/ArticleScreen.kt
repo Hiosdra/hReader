@@ -106,11 +106,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -338,6 +341,10 @@ private fun ArticlePager(
             val mainImageUrl = entry.enclosures.firstOrNull { it.isImage }?.url
                 ?: Regex("<img[^>]+src=\"([^\"]+)\"").find(entry.content ?: "")?.groupValues?.getOrNull(1)
             if (isWebViewMode) {
+                // What the WebView was last sent. The update block runs on every recomposition —
+                // read state changing, a neighbouring page settling — and loading there threw the
+                // page away and started it again, losing the reader's position each time.
+                val loadedUrl = remember { mutableStateOf<String?>(null) }
                 AndroidView(
                     factory = { context ->
                         WebView(context).apply {
@@ -345,7 +352,10 @@ private fun ArticlePager(
                         }
                     },
                     update = { webView ->
-                        webView.loadUrl(entry.url)
+                        if (loadedUrl.value != entry.url) {
+                            loadedUrl.value = entry.url
+                            webView.loadUrl(entry.url)
+                        }
                     },
                     modifier = Modifier.padding(paddingValues)
                 )
@@ -1051,29 +1061,65 @@ private fun copyTextToClipboard(context: Context, label: String, text: String) {
 }
 
 private fun enqueueImageDownload(context: Context, url: String) {
-    runCatching {
+    val started = runCatching {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(url.toUri())
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, url.toUri().lastPathSegment ?: "image")
+            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeImageFileName(url))
         dm.enqueue(request)
-        Toast.makeText(context, "Downloading", Toast.LENGTH_SHORT).show()
-    }
+    }.isSuccess
+    // Both outcomes are announced. The toast used to sit inside the runCatching, so an address
+    // DownloadManager would not take left the button looking like it had done nothing at all.
+    val message = if (started) "Downloading" else "Could not start the download"
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }
 
-private val imageShareClient = OkHttpClient()
+/**
+ * A file name derived from an address in the article body, which is third-party content.
+ * `Uri.lastPathSegment` is percent-decoded, so a crafted address can carry separators and walk out
+ * of the directory it is written to; everything outside a conservative set is replaced.
+ */
+private fun safeImageFileName(url: String, extension: String = ""): String {
+    val segment = runCatching { url.toUri().lastPathSegment }.getOrNull().orEmpty()
+    val sanitized = segment
+        .substringAfterLast('/')
+        .substringAfterLast('\\')
+        .replace(Regex("[^A-Za-z0-9._-]"), "_")
+        .trimStart('.')
+        .take(80)
+    val base = sanitized.ifBlank { "image_${System.currentTimeMillis()}" }
+    return if (extension.isEmpty() || base.endsWith(extension, ignoreCase = true)) base else base + extension
+}
 
-// Replace old shareImageUrl with new implementation
+/**
+ * Its own client rather than the shared one: this fetches an arbitrary address from the article
+ * body and must not carry the backend interceptors. Timeouts are set explicitly — the default
+ * builder has none for the whole call, and a stalled image download would hang the share sheet.
+ */
+private val imageShareClient = OkHttpClient.Builder()
+    .connectTimeout(15, TimeUnit.SECONDS)
+    .readTimeout(30, TimeUnit.SECONDS)
+    .callTimeout(60, TimeUnit.SECONDS)
+    .build()
+
+/** A shared image larger than this is a photographer's export, not something to hold in memory. */
+private const val MAX_SHARED_IMAGE_BYTES = 16L * 1024 * 1024
+
+/** How many prepared images are kept. Each share used to leave one behind for good. */
+private const val MAX_SHARED_IMAGE_FILES = 8
+
 private suspend fun shareImageFile(context: Context, title: String?, url: String): Boolean = withContext(Dispatchers.IO) {
     try {
         val request = Request.Builder().url(url).build()
-        val resp = imageShareClient.newCall(request).execute()
-        try {
+        imageShareClient.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) return@withContext false
             val body = resp.body
-            val bytes = body.bytes()
             val contentType = body.contentType()?.toString() ?: "image/jpeg"
-            var ext = when {
+            // Read with a ceiling rather than body.bytes(), which will happily pull a 200 MB
+            // response into memory before anyone can object.
+            val bytes = body.byteStream().readAtMost(MAX_SHARED_IMAGE_BYTES) ?: return@withContext false
+
+            val extension = when {
                 contentType.contains("png") -> ".png"
                 contentType.contains("webp") -> ".webp"
                 contentType.contains("gif") -> ".gif"
@@ -1081,13 +1127,11 @@ private suspend fun shareImageFile(context: Context, title: String?, url: String
                 contentType.contains("jpeg") || contentType.contains("jpg") -> ".jpg"
                 else -> ".img"
             }
-            val lastSeg = url.toUri().lastPathSegment
-            if (lastSeg != null && lastSeg.contains('.')) ext = "" // already has extension
-            val safeNameBase = (lastSeg ?: "image_${System.currentTimeMillis()}").take(80)
-            val fileName = if (ext.isEmpty()) safeNameBase else safeNameBase + ext
             val dir = File(context.cacheDir, "shared_images").apply { mkdirs() }
-            val outFile = File(dir, fileName)
+            pruneSharedImages(dir)
+            val outFile = File(dir, safeImageFileName(url, extension))
             FileOutputStream(outFile).use { it.write(bytes) }
+
             val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", outFile)
             withContext(Dispatchers.Main) {
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -1099,10 +1143,35 @@ private suspend fun shareImageFile(context: Context, title: String?, url: String
                 context.startActivity(Intent.createChooser(intent, null))
             }
             true
-        } finally {
-            resp.close()
         }
     } catch (_: Exception) {
         false
     }
+}
+
+/** The whole stream, or null once it goes past [limit]. */
+private fun InputStream.readAtMost(limit: Long): ByteArray? {
+    val buffer = ByteArrayOutputStream()
+    val chunk = ByteArray(DEFAULT_BUFFER_SIZE)
+    var total = 0L
+    use { input ->
+        while (true) {
+            val read = input.read(chunk)
+            if (read < 0) break
+            total += read
+            if (total > limit) return null
+            buffer.write(chunk, 0, read)
+        }
+    }
+    return buffer.toByteArray()
+}
+
+/**
+ * Keeps the newest few prepared images. The receiving app reads the file after this function has
+ * returned, so the one just written cannot be deleted on the spot — it is the next share that
+ * clears it.
+ */
+private fun pruneSharedImages(dir: File) {
+    val files = dir.listFiles()?.sortedByDescending { it.lastModified() } ?: return
+    files.drop(MAX_SHARED_IMAGE_FILES - 1).forEach { it.delete() }
 }

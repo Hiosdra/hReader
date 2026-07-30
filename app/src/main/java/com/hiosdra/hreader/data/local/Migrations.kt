@@ -103,4 +103,16 @@ private val FTS_CONTENT_SYNC_TRIGGERS = listOf(
         "`content`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`author`, NEW.`content`); END"
 )
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+/**
+ * Rebuilds the search index. Articles used to be stored with an insert-or-replace, which gave a
+ * re-synced article a new rowid without removing the index entry filed under the old one, so every
+ * cache carries orphaned entries proportional to how long it has been syncing. The writes upsert
+ * now; this clears out what the old ones left behind.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("INSERT INTO `articles_fts`(`articles_fts`) VALUES('rebuild')")
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)

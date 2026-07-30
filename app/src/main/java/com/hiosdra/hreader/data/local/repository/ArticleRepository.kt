@@ -62,6 +62,13 @@ private val READ_ARTICLE_RETENTION: Duration = Duration.ofDays(30)
 /** Bounds a backlog top-up against a backend that keeps handing back entries already stored. */
 private const val MAX_BACKLOG_PAGES = 25
 
+/**
+ * Ceiling on one sync's pagination — forty thousand entries at the current page size. Without it a
+ * backend that keeps returning a continuation walks for as long as the worker is allowed to live,
+ * and a cache that large has other problems anyway.
+ */
+private const val MAX_SYNC_PAGES = 200
+
 /** Unread articles as the home-screen widget needs them: a total and the newest few titles. */
 data class UnreadSummary(
     val unreadCount: Int,
@@ -129,10 +136,10 @@ class ArticleRepository(
             starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
-        ).mapNotNull { it.toLongOrNull() }
+        ).toArticleIds("the reader's list")
 
     suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
-        articleDao.getUnreadIds(feedId, starredOnly).mapNotNull { it.toLongOrNull() }
+        articleDao.getUnreadIds(feedId, starredOnly).toArticleIds("the unread set")
 
     /** What the home-screen widget shows, in one read rather than two round trips per refresh. */
     suspend fun unreadSummary(headlineLimit: Int): UnreadSummary = UnreadSummary(
@@ -163,8 +170,13 @@ class ArticleRepository(
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
 
         val fetchedIds = mutableSetOf<String>()
+        // Whether the backend ran out of pages, as opposed to [MAX_SYNC_PAGES] cutting the walk
+        // short. Only the first case leaves [fetchedIds] holding the server's whole answer, which
+        // is the one thing the reconciliation below assumes about it.
+        var walkedToTheEnd = false
         syncPerformanceLogger.measureSyncTime("Article pages") {
             var cursor: String? = null
+            var pages = 0
             while (true) {
                 val page = fetchArticleBatch(useIncrementalSync, ENTRIES_PAGE_LIMIT, cursor)
                 if (page.entries.isNotEmpty()) {
@@ -174,13 +186,26 @@ class ArticleRepository(
                     fetchedIds += page.entries.map { it.id.toString() }
                 }
                 cursor = page.cursor
-                if (cursor == null || page.entries.isEmpty()) break
+                pages++
+                if (cursor == null || page.entries.isEmpty()) {
+                    walkedToTheEnd = true
+                    break
+                }
+                if (pages >= MAX_SYNC_PAGES) {
+                    Log.w(TAG, "Stopped paging after $pages pages; the rest waits for the next sync")
+                    break
+                }
             }
         }
 
         feedDao.insertFeeds(api.getFeeds().map { it.toFeedEntity() })
 
-        if (!useIncrementalSync) {
+        // Reconciliation deletes every locally unread article this run did not see, so it may only
+        // run over a complete answer. Cut short by the page cap it would delete precisely the part
+        // of the backlog it never got to. The full-sync stamp is withheld for the same reason: it
+        // is what makes the next run go full again rather than incremental over a cache that was
+        // never reconciled.
+        if (!useIncrementalSync && walkedToTheEnd) {
             dropUnreadArticlesMissingFrom(fetchedIds)
             preferencesManager.setLastFullSyncTimestamp(syncStartTime)
         }
@@ -373,6 +398,17 @@ class ArticleRepository(
         updateReadStatus(listOf(articleId), newStatus)
     }
 
+    /**
+     * Of [articleIds], those still read and stamped no later than [readBefore]. What a bulk "mark
+     * as read" may take back: an article the reader has opened since carries a later stamp, and
+     * reverting that one too would undo something they did on purpose.
+     */
+    suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long> =
+        articleIds.map { it.toString() }
+            .chunked(LOCAL_UPDATE_CHUNK)
+            .flatMap { articleDao.getIdsReadNoLaterThan(it, readBefore) }
+            .toArticleIds("an undo")
+
     suspend fun updateStarred(articleId: Long, starred: Boolean) {
         val ids = listOf(articleId.toString())
         articleDao.updateStarredForIds(ids, starred)
@@ -389,8 +425,10 @@ class ArticleRepository(
         if (stale.isEmpty()) return 0
         var filled = 0
         stale.forEach { article ->
-            val preview = extractArticlePreview(article.content) ?: return@forEach
-            articleDao.setPreview(article.id, preview)
+            // Written even when it comes out empty. An article whose body is a single figure or an
+            // embed yields no readable text, and leaving those rows null meant the same five
+            // hundred were selected and parsed again on every prefetch, for ever.
+            articleDao.setPreview(article.id, extractArticlePreview(article.content).orEmpty())
             filled++
         }
         if (filled > 0) Log.d(TAG, "Backfilled $filled article previews")
@@ -409,6 +447,18 @@ class ArticleRepository(
     companion object {
         internal const val PREVIEW_BACKFILL_LIMIT = 500
     }
+}
+
+/**
+ * The stored ids as the rest of the app uses them. The column is text because that is what both
+ * backends hand over, but every value written to it is the decimal form of a [Long], so a token
+ * that will not parse is a broken invariant rather than an article to be quietly left out of the
+ * list — which is what dropping it silently looked like from the outside.
+ */
+private fun List<String>.toArticleIds(what: String): List<Long> {
+    val ids = mapNotNull { it.toLongOrNull() }
+    if (ids.size != size) Log.w(TAG, "Ignored ${size - ids.size} unreadable article ids in $what")
+    return ids
 }
 
 /**
@@ -489,7 +539,9 @@ private fun Entry.toEntity(): ArticleEntity = ArticleEntity(
     url = url,
     publishedAt = publishedAt,
     content = content,
-    preview = extractArticlePreview(content),
+    // Empty rather than null when there is a body but no readable text in it: null means "not
+    // derived yet" and puts the article back in the backfill queue on every prefetch.
+    preview = content?.let { extractArticlePreview(it).orEmpty() },
     feedId = feed.id,
     readingTime = readingTime,
     enclosures = enclosures,

@@ -6,8 +6,13 @@ private val trackingParamsPrefixes = listOf(
     "utm_", "mc_", "pk_"
 )
 
+/**
+ * `ref` is deliberately absent: plenty of sites route on it — a documentation anchor, a store
+ * listing, a paginated archive — and stripping it turned a working link into a different page.
+ * `ref_src` is unambiguous and stays.
+ */
 private val trackingParamsExact = setOf(
-    "gclid", "fbclid", "yclid", "msclkid", "ref", "ref_src", "aff", "aff_id", "campid", "adid", "adgroupid"
+    "gclid", "fbclid", "yclid", "msclkid", "ref_src", "aff", "aff_id", "campid", "adid", "adgroupid"
 )
 
 fun displayUrl(raw: String): String = raw.trim()

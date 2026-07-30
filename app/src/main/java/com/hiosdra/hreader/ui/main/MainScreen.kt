@@ -47,14 +47,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,14 +95,17 @@ fun MainScreen(
     // Actions that already happened are offered back, instead of being asked about beforehand.
     uiState.undo?.let { undo ->
         LaunchedEffect(undo.id) {
-            val result = snackbarHostState.showSnackbar(
-                message = undo.message,
-                actionLabel = "Undo",
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.undoLastAction()
-            } else {
+            try {
+                val result = snackbarHostState.showSnackbar(
+                    message = undo.message,
+                    actionLabel = "Undo",
+                    duration = SnackbarDuration.Long
+                )
+                if (result == SnackbarResult.ActionPerformed) viewModel.undoLastAction()
+            } finally {
+                // Also when this is cancelled. Opening an article takes the snackbar off screen
+                // without dismissing it, and the offer used to be waiting again on the way back —
+                // by then covering articles the reader had gone on to read deliberately.
                 viewModel.dismissUndo()
             }
         }
@@ -187,9 +188,12 @@ fun MainScreen(
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
+                        // Always offered. Whether a network is usable is a guess the platform makes
+                        // for us, and a reader who taps refresh has better information than a
+                        // greyed-out button does; a genuinely unreachable server reports itself.
                         IconButton(
-                            onClick = { if (!uiState.isRefreshing && uiState.isOnline) viewModel.refreshFromNetwork() },
-                            enabled = uiState.isOnline || uiState.isRefreshing,
+                            onClick = { if (!uiState.isRefreshing) viewModel.refreshFromNetwork() },
+                            enabled = !uiState.isRefreshing,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
                             if (uiState.isRefreshing) {

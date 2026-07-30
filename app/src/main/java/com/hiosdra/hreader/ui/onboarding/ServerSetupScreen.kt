@@ -87,7 +87,10 @@ fun ServerSetupScreen(
                 )
             }
             TextButton(
-                onClick = onSetupFinished,
+                onClick = {
+                    settingsViewModel.onSetupFinished()
+                    onSetupFinished()
+                },
                 enabled = serverSettings.hasAllFields,
                 modifier = Modifier.fillMaxWidth()
             ) {
