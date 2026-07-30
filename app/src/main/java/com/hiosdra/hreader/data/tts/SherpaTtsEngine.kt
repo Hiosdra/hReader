@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.data.tts
 
-import android.content.Context
 import com.k2fsa.sherpa.onnx.GenerationConfig
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
@@ -11,7 +10,6 @@ import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import com.k2fsa.sherpa.onnx.GeneratedAudio
 
 internal class SherpaTtsEngine(
-    private val context: Context,
     private val modelManager: TtsModelManager
 ) {
     private var loadedModel: TtsModel? = null
@@ -37,8 +35,7 @@ internal class SherpaTtsEngine(
     private fun engineFor(model: TtsModel): OfflineTts {
         if (loadedModel == model) return checkNotNull(tts)
         release()
-        val assetManager = if (model == TtsModel.SUPERTONIC) context.assets else null
-        return OfflineTts(assetManager, OfflineTtsConfig(model = configFor(model))).also {
+        return OfflineTts(null, OfflineTtsConfig(model = configFor(model))).also {
             tts = it
             loadedModel = model
         }
@@ -50,15 +47,18 @@ internal class SherpaTtsEngine(
             provider = "cpu"
         }
         when (model) {
-            TtsModel.SUPERTONIC -> config.supertonic = OfflineTtsSupertonicModelConfig(
-                durationPredictor = "tts/supertonic/duration_predictor.int8.onnx",
-                textEncoder = "tts/supertonic/text_encoder.int8.onnx",
-                vectorEstimator = "tts/supertonic/vector_estimator.int8.onnx",
-                vocoder = "tts/supertonic/vocoder.int8.onnx",
-                ttsJson = "tts/supertonic/tts.json",
-                unicodeIndexer = "tts/supertonic/unicode_indexer.bin",
-                voiceStyle = "tts/supertonic/voice.bin"
-            )
+            TtsModel.SUPERTONIC -> {
+                val root = modelManager.directory(model).absolutePath
+                config.supertonic = OfflineTtsSupertonicModelConfig(
+                    durationPredictor = "$root/duration_predictor.int8.onnx",
+                    textEncoder = "$root/text_encoder.int8.onnx",
+                    vectorEstimator = "$root/vector_estimator.int8.onnx",
+                    vocoder = "$root/vocoder.int8.onnx",
+                    ttsJson = "$root/tts.json",
+                    unicodeIndexer = "$root/unicode_indexer.bin",
+                    voiceStyle = "$root/voice.bin"
+                )
+            }
             TtsModel.KOKORO -> {
                 val root = modelManager.directory(model).absolutePath
                 config.kokoro = OfflineTtsKokoroModelConfig(
