@@ -9,11 +9,11 @@ class ArticleLeadImageTest {
     private val baseUri = "https://example.com/posts/one"
 
     @Test
-    fun `the enclosure is shown when the body has no images`() {
+    fun `the enclosure is shown when the body has no pictures`() {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = "<p>Summary</p>",
-            articleHtml = "<p>The article</p>",
+            bodyImageUrls = emptyList(),
             baseUri = baseUri
         )
 
@@ -21,11 +21,11 @@ class ArticleLeadImageTest {
     }
 
     @Test
-    fun `the enclosure is dropped when the body opens with the same picture`() {
+    fun `the enclosure is dropped when the body carries the same picture`() {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/photo.jpg"><p>The article</p>""",
+            bodyImageUrls = listOf("https://example.com/photo.jpg"),
             baseUri = baseUri
         )
 
@@ -37,7 +37,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/photo.jpg?w=1200&quality=80">""",
+            bodyImageUrls = listOf("https://example.com/photo.jpg?w=1200&quality=80"),
             baseUri = baseUri
         )
 
@@ -49,7 +49,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/uploads/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/uploads/photo-1200x675.jpg">""",
+            bodyImageUrls = listOf("https://example.com/uploads/photo-1200x675.jpg"),
             baseUri = baseUri
         )
 
@@ -61,7 +61,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/uploads/photo-scaled.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/uploads/photo-1024x576.jpg">""",
+            bodyImageUrls = listOf("https://example.com/uploads/photo-1024x576.jpg"),
             baseUri = baseUri
         )
 
@@ -73,7 +73,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/uploads/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="//i0.wp.com/example.com/uploads/photo.jpg">""",
+            bodyImageUrls = listOf("//i0.wp.com/example.com/uploads/photo.jpg"),
             baseUri = baseUri
         )
 
@@ -81,23 +81,11 @@ class ArticleLeadImageTest {
     }
 
     @Test
-    fun `a relative body picture is the same one the enclosure points at`() {
-        val lead = leadImageUrl(
-            enclosureUrl = "https://example.com/uploads/photo.jpg",
-            feedContent = null,
-            articleHtml = """<img src="/uploads/photo.jpg">""",
-            baseUri = baseUri
-        )
-
-        assertNull(lead)
-    }
-
-    @Test
-    fun `a body picture further down still counts`() {
+    fun `a picture further down the body still counts`() {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = """<p>Opening</p><img src="https://example.com/other.jpg"><img src="https://example.com/photo.jpg">""",
+            bodyImageUrls = listOf("https://example.com/other.jpg", "https://example.com/photo.jpg"),
             baseUri = baseUri
         )
 
@@ -109,7 +97,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "https://example.com/photo.jpg",
             feedContent = null,
-            articleHtml = """<img src="https://example.com/chart.png">""",
+            bodyImageUrls = listOf("https://example.com/chart.png"),
             baseUri = baseUri
         )
 
@@ -121,7 +109,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = null,
             feedContent = """<p>Summary</p><img src="https://example.com/photo.jpg">""",
-            articleHtml = "<p>The full text, with no pictures</p>",
+            bodyImageUrls = emptyList(),
             baseUri = baseUri
         )
 
@@ -133,7 +121,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = null,
             feedContent = """<img src="/media/photo.jpg">""",
-            articleHtml = "<p>The full text, with no pictures</p>",
+            bodyImageUrls = emptyList(),
             baseUri = baseUri
         )
 
@@ -141,11 +129,11 @@ class ArticleLeadImageTest {
     }
 
     @Test
-    fun `without an enclosure the feed picture is dropped when the full text carries it`() {
+    fun `without an enclosure the feed picture is dropped when the body carries it`() {
         val lead = leadImageUrl(
             enclosureUrl = null,
             feedContent = """<img src="https://example.com/photo.jpg"><p>Summary</p>""",
-            articleHtml = """<img src="https://example.com/photo.jpg"><p>The full text</p>""",
+            bodyImageUrls = listOf("https://example.com/photo.jpg"),
             baseUri = baseUri
         )
 
@@ -157,7 +145,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = null,
             feedContent = "<p>Text</p>",
-            articleHtml = "<p>Text</p>",
+            bodyImageUrls = emptyList(),
             baseUri = baseUri
         )
 
@@ -169,19 +157,7 @@ class ArticleLeadImageTest {
         val lead = leadImageUrl(
             enclosureUrl = "  ",
             feedContent = """<img src="https://example.com/photo.jpg">""",
-            articleHtml = "<p>No pictures here</p>",
-            baseUri = baseUri
-        )
-
-        assertEquals("https://example.com/photo.jpg", lead)
-    }
-
-    @Test
-    fun `the enclosure survives while the article text is still loading`() {
-        val lead = leadImageUrl(
-            enclosureUrl = "https://example.com/photo.jpg",
-            feedContent = null,
-            articleHtml = null,
+            bodyImageUrls = emptyList(),
             baseUri = baseUri
         )
 
