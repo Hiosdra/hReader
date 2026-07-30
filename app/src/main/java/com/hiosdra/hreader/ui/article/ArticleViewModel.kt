@@ -16,7 +16,6 @@ import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.leadImageUrl
 import com.hiosdra.hreader.util.prepareArticleImages
-import com.hiosdra.hreader.widget.UnreadWidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,7 +76,6 @@ class ArticleViewModel(
     private val credibilityRepository: CredibilityRepository,
     private val preferencesManager: PreferencesManager,
     private val imageLoader: ImageLoader,
-    private val unreadWidgetUpdater: UnreadWidgetUpdater,
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
@@ -213,10 +211,6 @@ class ArticleViewModel(
         }
         viewModelScope.launch {
             articleRepository.updateReadStatus(entry.id.toString(), newStatus)
-            // Reading here is how most articles stop being unread, so the widget hears about it
-            // from the same place rather than waiting for the next sync. Requested rather than run:
-            // paging through a feed marks one article read per swipe.
-            unreadWidgetUpdater.requestRefresh()
         }
     }
 

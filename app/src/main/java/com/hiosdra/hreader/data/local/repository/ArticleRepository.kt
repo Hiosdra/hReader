@@ -69,12 +69,6 @@ private const val MAX_BACKLOG_PAGES = 25
  */
 private const val MAX_SYNC_PAGES = 200
 
-/** Unread articles as the home-screen widget needs them: a total and the newest few titles. */
-data class UnreadSummary(
-    val unreadCount: Int,
-    val headlines: List<String>
-)
-
 /** A feed unsubscribed elsewhere leaves its articles behind; the list still has to name them. */
 private const val UNKNOWN_FEED_TITLE = "Unknown feed"
 
@@ -140,12 +134,6 @@ class ArticleRepository(
 
     suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
         articleDao.getUnreadIds(feedId, starredOnly).toArticleIds("the unread set")
-
-    /** What the home-screen widget shows, in one read rather than two round trips per refresh. */
-    suspend fun unreadSummary(headlineLimit: Int): UnreadSummary = UnreadSummary(
-        unreadCount = articleDao.countUnread(),
-        headlines = articleDao.getNewestUnreadTitles(headlineLimit)
-    )
 
     fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
         articleDao.observeUnreadCountFor(feedId, starredOnly)
