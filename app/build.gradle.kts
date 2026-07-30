@@ -128,10 +128,6 @@ dependencies {
     implementation("androidx.paging:paging-compose:3.3.6")
     implementation("androidx.room:room-paging:${rootProject.extra["roomVersion"]}")
 
-    // Home-screen widget.
-    implementation("androidx.glance:glance-appwidget:1.1.1")
-    implementation("androidx.glance:glance-material3:1.1.1")
-
     // Installs the shipped ART profile on first run; without it the baseline profile is inert.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     baselineProfile(project(":baselineprofile"))

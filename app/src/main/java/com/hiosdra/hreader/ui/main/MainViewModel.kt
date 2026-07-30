@@ -13,7 +13,6 @@ import com.hiosdra.hreader.data.model.ArticleListEntry
 import com.hiosdra.hreader.data.model.ArticleListQuery
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.util.NetworkMonitor
-import com.hiosdra.hreader.widget.UnreadWidgetUpdater
 import com.hiosdra.hreader.worker.SyncScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -87,7 +86,6 @@ class MainViewModel(
     private val articleRepository: ArticleRepository,
     private val aiModelRepository: AiModelRepository,
     private val syncScheduler: SyncScheduler,
-    private val unreadWidgetUpdater: UnreadWidgetUpdater,
     private val savedStateHandle: SavedStateHandle,
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
@@ -308,9 +306,6 @@ class MainViewModel(
         viewModelScope.launch {
             runCatching { articleRepository.updateReadStatus(entryIds.map { it.toString() }, newStatus) }
                 .onFailure { Log.w(TAG, "Could not store read state for ${entryIds.size} articles", it) }
-            // The widget cannot read the database for itself, so whatever changes the unread set
-            // has to tell it; otherwise it reports the count from the last sync.
-            unreadWidgetUpdater.requestRefresh()
         }
     }
 }

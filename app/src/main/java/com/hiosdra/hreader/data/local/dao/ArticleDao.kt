@@ -146,16 +146,6 @@ interface ArticleDao {
     )
     fun getArticlesWithFeedByIds(ids: List<String>): Flow<List<ArticleWithFeed>>
 
-    /** The newest unread headlines, for the home-screen widget. */
-    @Query(
-        "SELECT title FROM articles WHERE status != :readStatus " +
-            "ORDER BY publishedAt DESC LIMIT :limit"
-    )
-    suspend fun getNewestUnreadTitles(
-        limit: Int,
-        readStatus: ArticleStatus = ArticleStatus.READ
-    ): List<String>
-
     @Query(
         "SELECT id, content FROM articles WHERE preview IS NULL AND content IS NOT NULL LIMIT :limit"
     )
@@ -274,9 +264,6 @@ interface ArticleDao {
 
     @Query("SELECT COUNT(*) FROM articles WHERE status != :readStatus")
     fun observeUnreadCount(readStatus: ArticleStatus = ArticleStatus.READ): Flow<Int>
-
-    @Query("SELECT COUNT(*) FROM articles WHERE status != :readStatus")
-    suspend fun countUnread(readStatus: ArticleStatus = ArticleStatus.READ): Int
 
     @Query("SELECT COUNT(*) FROM articles WHERE backlogFetchedAt IS NOT NULL")
     fun observeBacklogCount(): Flow<Int>
