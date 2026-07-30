@@ -7,6 +7,7 @@ import android.media.AudioTrack
 import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +47,7 @@ class ArticleTtsController(
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val sherpa = SherpaTtsEngine(modelManager)
+    private val languageDetector = TtsLanguageDetector(appContext)
     private val _state = MutableStateFlow(ArticleTtsState())
     val state: StateFlow<ArticleTtsState> = _state.asStateFlow()
     private var playbackJob: Job? = null
@@ -82,6 +84,7 @@ class ArticleTtsController(
                 }
             }.onFailure {
                 if (it !is CancellationException && model != TtsModel.ANDROID) {
+                    Log.e(TAG, "Neural TTS failed for ${model.name}", it)
                     _state.value = _state.value.copy(
                         model = TtsModel.ANDROID,
                         isPreparing = true,
@@ -111,9 +114,12 @@ class ArticleTtsController(
     }
 
     private suspend fun speakWithSherpa(model: TtsModel, chunks: List<String>) {
+        val language = withContext(Dispatchers.Default) {
+            languageDetector.detect(chunks.take(2).joinToString(" "))
+        }
         chunks.forEachIndexed { index, chunk ->
             val audio = withContext(Dispatchers.Default) {
-                sherpa.generate(model, chunk, preferences.getTtsSpeed())
+                sherpa.generate(model, chunk, preferences.getTtsSpeed(), language)
             }
             _state.value = _state.value.copy(
                 isPreparing = false,
@@ -226,5 +232,9 @@ class ArticleTtsController(
                 }
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "ArticleTtsController"
     }
 }
