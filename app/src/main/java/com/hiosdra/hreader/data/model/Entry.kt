@@ -35,6 +35,5 @@ data class ArticleListEntry(
     val feed: Feed,
     val imageUrl: String?,
     val status: ArticleStatus = ArticleStatus.UNREAD,
-    val starred: Boolean = false,
     val isBacklog: Boolean = false
 )

@@ -408,7 +408,7 @@ private fun ArticleTopBar(
             // the article below.
             Text(
                 text = feedTitle ?: "hReader",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

@@ -149,7 +149,7 @@ fun MainScreen(
                             ?: if (uiState.starredOnly) "Starred" else "All Items"
                         Text(
                             listTitle + if (unreadCount > 0) "  •  $unreadCount" else "",
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleMedium
                         )
                     },
                     navigationIcon = {
