@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -399,7 +400,6 @@ private fun ArticleTopBar(
     onShare: () -> Unit
 ) {
     val paywallBypassService: PaywallBypassService = koinInject()
-    val overflowExpanded = remember { mutableStateOf(false) }
 
     TopAppBar(
         title = {
@@ -434,6 +434,9 @@ private fun ArticleTopBar(
                 )
             }
             if (entryUrl != null) {
+                // Remembered inside this branch, so an article with no address takes the menu's
+                // open state away with it rather than leaving it to spring open on the next one.
+                val overflowExpanded = remember { mutableStateOf(false) }
                 IconButton(onClick = onToggleWebView) {
                     Icon(
                         painter = painterResource(
@@ -459,7 +462,13 @@ private fun ArticleTopBar(
                     }
                     DropdownMenu(
                         expanded = overflowExpanded.value,
-                        onDismissRequest = { overflowExpanded.value = false }
+                        onDismissRequest = { overflowExpanded.value = false },
+                        // The same treatment the list's menu gets, so the two do not read as two
+                        // different components. Clip first: a background painted before it keeps
+                        // square corners.
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
                     ) {
                         DropdownMenuItem(
                             text = { Text("Open in Chrome") },
