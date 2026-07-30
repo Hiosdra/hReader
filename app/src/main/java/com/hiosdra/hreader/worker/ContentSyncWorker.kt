@@ -9,7 +9,6 @@ import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.util.isWithinQuietHours
-import com.hiosdra.hreader.widget.UnreadWidgetUpdater
 import kotlinx.coroutines.CancellationException
 import java.time.LocalTime
 
@@ -21,8 +20,7 @@ class ContentSyncWorker(
     private val repository: ArticleRepository,
     private val syncPerformanceLogger: SyncPerformanceLogger,
     private val syncScheduler: SyncScheduler,
-    private val preferencesManager: PreferencesManager,
-    private val unreadWidgetUpdater: UnreadWidgetUpdater
+    private val preferencesManager: PreferencesManager
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -48,11 +46,6 @@ class ContentSyncWorker(
         // Only when this worker runs on its own. Callers that chain a prefetch behind it already
         // have one queued, and enqueueing a second would replace the chained request mid-run.
         if (!inputData.getBoolean(KEY_PREFETCH_CHAINED, false)) syncScheduler.enqueuePrefetch()
-
-        // Guarded: the articles are already stored, and a widget that could not be written is no
-        // reason to report the sync as failed and retry the whole thing.
-        runCatching { unreadWidgetUpdater.refresh() }
-            .onFailure { Log.w(TAG, "Could not refresh the widget: ${it.message}") }
 
         Log.i(TAG, "ContentSyncWorker completed successfully")
         Result.success()
