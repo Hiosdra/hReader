@@ -418,25 +418,12 @@ private fun ArticleTopBar(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
         },
-        // Two actions and a menu. Five of them left the title barely wider than a word, and the
-        // three that moved are the ones a reader reaches for occasionally rather than per article.
+        // Three ways of getting at the page itself, and a menu for the rest. Everything visible
+        // here is about reading the article a different way, which is what a reader reaches for
+        // while an article is disappointing them; starring and sharing come after.
         actions = {
-            IconButton(onClick = onToggleStar) {
-                // Tint rather than a second glyph: the outlined star is in the extended icon set.
-                Icon(
-                    Icons.Filled.Star,
-                    contentDescription = if (isStarred) "Remove star" else "Star article",
-                    tint = if (isStarred) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    }
-                )
-            }
+            val overflowExpanded = remember { mutableStateOf(false) }
             if (entryUrl != null) {
-                // Remembered inside this branch, so an article with no address takes the menu's
-                // open state away with it rather than leaving it to spring open on the next one.
-                val overflowExpanded = remember { mutableStateOf(false) }
                 IconButton(onClick = onToggleWebView) {
                     Icon(
                         painter = painterResource(
@@ -450,56 +437,66 @@ private fun ArticleTopBar(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                // The menu sits inside a box around its own button, or it anchors to a zero-width
-                // slot after it and opens adrift of the edge it belongs to.
-                Box {
-                    IconButton(onClick = { overflowExpanded.value = true }) {
+                IconButton(onClick = onOpenInChrome) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_chrome_logo),
+                        contentDescription = "Open in Chrome",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
+                    IconButton(onClick = onBypassPaywall) {
                         Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = "More",
+                            Icons.Filled.Lock,
+                            contentDescription = "Bypass Paywall",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    DropdownMenu(
-                        expanded = overflowExpanded.value,
-                        onDismissRequest = { overflowExpanded.value = false },
-                        // The same treatment the list's menu gets, so the two do not read as two
-                        // different components. Clip first: a background painted before it keeps
-                        // square corners.
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Open in Chrome") },
-                            onClick = {
-                                overflowExpanded.value = false
-                                onOpenInChrome()
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_chrome_logo),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        )
-                        if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
-                            DropdownMenuItem(
-                                text = { Text("Bypass paywall") },
-                                onClick = {
-                                    overflowExpanded.value = false
-                                    onBypassPaywall()
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Filled.Lock,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
+                }
+            }
+            // Outside the branch above: an entry that carries no address can still be starred, and
+            // that is the one action here which is about the article rather than about its page.
+            // The menu sits inside a box around its own button, or it anchors to a zero-width slot
+            // after it and opens adrift of the edge it belongs to.
+            Box {
+                IconButton(onClick = { overflowExpanded.value = true }) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = "More",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                DropdownMenu(
+                    expanded = overflowExpanded.value,
+                    onDismissRequest = { overflowExpanded.value = false },
+                    // The same treatment the list's menu gets, so the two do not read as two
+                    // different components. Clip first: a background painted before it keeps
+                    // square corners.
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isStarred) "Remove star" else "Star article") },
+                        onClick = {
+                            overflowExpanded.value = false
+                            onToggleStar()
+                        },
+                        leadingIcon = {
+                            // Tint rather than a second glyph: the outlined star is in the
+                            // extended icon set. The label carries the state either way.
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = null,
+                                tint = if (isStarred) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
                                 }
                             )
                         }
+                    )
+                    if (entryUrl != null) {
                         DropdownMenuItem(
                             text = { Text("Share") },
                             onClick = {
