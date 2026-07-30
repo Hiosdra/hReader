@@ -64,12 +64,23 @@ class ArticleImageRepositoryTest {
 
     @Test
     fun cleanupOrphanedImages_deletesImagesNotInArticles() = runBlocking {
-        println("Running cleanupOrphanedImages_deletesImagesNotInArticles")
-        val orphanImage = ArticleImage("id", 99L, "url", "/tmp/orphan.jpg", "image/jpeg", Instant.now(), 123)
-        coEvery { articleImageDao.getAllArticleImages() } returns listOf(orphanImage)
+        coEvery { articleImageDao.getAllImageEntryIds() } returns listOf(99L)
         coEvery { articleDao.getAllIds() } returns emptyList()
-        coEvery { articleImageDao.deleteArticleImage(orphanImage) } returns Unit
+        coEvery { articleImageDao.getImagePathsForArticles(listOf(99L)) } returns listOf("/tmp/orphan.jpg")
+        coEvery { articleImageDao.deleteImagesForArticles(listOf(99L)) } returns Unit
+
         repo.cleanupOrphanedImages()
-        coVerify { articleImageDao.deleteArticleImage(orphanImage) }
+
+        coVerify { articleImageDao.deleteImagesForArticles(listOf(99L)) }
+    }
+
+    @Test
+    fun cleanupOrphanedImages_keepsImagesOfArticlesStillCached() = runBlocking {
+        coEvery { articleImageDao.getAllImageEntryIds() } returns listOf(7L)
+        coEvery { articleDao.getAllIds() } returns listOf("7")
+
+        repo.cleanupOrphanedImages()
+
+        coVerify(exactly = 0) { articleImageDao.deleteImagesForArticles(any()) }
     }
 }

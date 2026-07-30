@@ -58,6 +58,22 @@ class CredibilityResponseParserTest {
     }
 
     @Test
+    fun readsATenPointScaleAsATenPointScale() {
+        assertEquals(0.8f, parser.parse("""{"score": 8}""").score, 0.0001f)
+        assertEquals(0.75f, parser.parse("""{"score": 7.5}""").score, 0.0001f)
+        // An explicit percentage still means one, however small.
+        assertEquals(0.08f, parser.parse("""{"score": "8%"}""").score, 0.0001f)
+    }
+
+    @Test
+    fun normalizesFactorScoresOnTheSameScale() {
+        val result = parser.parse(
+            """{"score": 0.5, "factors": [{"name": "sourcing", "score": 9}]}"""
+        )
+        assertEquals(0.9f, result.factors.single().score, 0.0001f)
+    }
+
+    @Test
     fun clampsOutOfRangeScores() {
         assertEquals(1f, parser.parse("""{"score": 400}""").score, 0.0001f)
         assertEquals(0f, parser.parse("""{"score": -3}""").score, 0.0001f)

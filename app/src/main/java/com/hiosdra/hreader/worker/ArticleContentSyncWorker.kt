@@ -20,12 +20,29 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalTime
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 private const val MAX_RUN_ATTEMPTS = 5
 
 /** How often stored progress is published. Per article it would be a write per download. */
 private const val PROGRESS_REPORT_INTERVAL_MILLIS = 500L
+
+/**
+ * How many article bodies one run downloads.
+ *
+ * WorkManager stops a worker after ten minutes. Submitting the whole backlog meant a large cache
+ * never reached the end of the queue, so the enclosure images that follow it never ran at all —
+ * every run was killed partway through the same first stage. A bounded run finishes, and what is
+ * left over is picked up by the next one, because articles already stored are skipped.
+ */
+private const val MAX_ARTICLES_PER_RUN = 500
+
+/** How long the image stage may run before it hands the rest of the window to article bodies. */
+private val IMAGE_STAGE_BUDGET_NANOS = TimeUnit.MINUTES.toNanos(3)
+
+/** How often the image stage looks at the clock. Per article it would be a syscall per skip. */
+private const val IMAGE_CHUNK = 50
 
 class ArticleContentSyncWorker(
     appContext: Context,
@@ -65,8 +82,20 @@ class ArticleContentSyncWorker(
                 return@withContext Result.success()
             }
 
-            prefetchArticleContent(targets)
+            // Images first. They are what the list and the opened article show, they are small, and
+            // behind an unbounded article-text stage they never ran at all.
             downloadEnclosureImages(targets)
+            val remaining = prefetchArticleContent(targets)
+
+            // Only when the reader asked for the whole cache. A background run leaves the rest to
+            // the next sync rather than spending backoff and radio time chasing a backlog nobody
+            // is waiting on — and what it stored is kept either way, so the next run starts from
+            // where this one stopped.
+            if (remaining > 0 && shouldDrainRemaining() && runAttemptCount < MAX_RUN_ATTEMPTS) {
+                Log.i(TAG, "$remaining articles still without text; asking for another run")
+                return@withContext Result.retry()
+            }
+            if (remaining > 0) Log.i(TAG, "$remaining articles still without text; left to the next sync")
 
             Log.i(TAG, "ArticleContentSyncWorker completed successfully")
             Result.success()
@@ -77,6 +106,8 @@ class ArticleContentSyncWorker(
             if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) Result.retry() else Result.failure()
         }
     }
+
+    private fun shouldDrainRemaining(): Boolean = inputData.getBoolean(KEY_DRAIN_REMAINING, false)
 
     private fun isSilenced(): Boolean {
         if (inputData.getBoolean(KEY_IGNORE_QUIET_HOURS, false)) return false
@@ -107,13 +138,18 @@ class ArticleContentSyncWorker(
     /**
      * Progress is published on a timer rather than per article: the prefetch runs a hundred
      * downloads at a time, and a WorkManager write per completion would cost more than the work.
+     *
+     * Returns how many articles are still without stored text once this run's slice is done.
      */
-    private suspend fun prefetchArticleContent(targets: List<PrefetchTarget>) = coroutineScope {
-        val entriesToFetch = targets.map { it.id.toLong() to it.url }
-        syncPerformanceLogger.logBatchInfo(entriesToFetch.size, entriesToFetch.size)
-        Log.d(TAG, "Prefetching content for ${entriesToFetch.size} articles (background sync)")
+    private suspend fun prefetchArticleContent(targets: List<PrefetchTarget>): Int = coroutineScope {
+        val outstanding = articleContentRepository.entriesMissingContent(targets.map { it.id.toLong() to it.url })
+        val batch = outstanding.take(MAX_ARTICLES_PER_RUN)
+        if (batch.isEmpty()) return@coroutineScope 0
 
-        total.set(entriesToFetch.size)
+        syncPerformanceLogger.logBatchInfo(batch.size, outstanding.size)
+        Log.d(TAG, "Prefetching content for ${batch.size} of ${outstanding.size} articles (background sync)")
+
+        total.set(batch.size)
         val reporter = launch {
             while (isActive) {
                 publishProgress()
@@ -123,7 +159,7 @@ class ArticleContentSyncWorker(
         try {
             syncPerformanceLogger.measureSyncTime("Article content prefetch") {
                 articleContentRepository.prefetchArticleContent(
-                    entries = entriesToFetch,
+                    entries = batch,
                     limit = null,
                     onProgress = { completed, _ -> done.set(completed) }
                 )
@@ -132,6 +168,7 @@ class ArticleContentSyncWorker(
             reporter.cancel()
         }
         publishProgress()
+        outstanding.size - batch.size
     }
 
     private suspend fun publishProgress() {
@@ -143,19 +180,35 @@ class ArticleContentSyncWorker(
         )
     }
 
+    /**
+     * Bounded by the clock rather than by a count. Images already on disk are skipped in a single
+     * indexed read, so each run reaches further into the queue than the last — a fixed count would
+     * spend its whole allowance re-skipping the same first articles and never move.
+     *
+     * The budget is what keeps this stage from consuming the run: it goes first so that it is not
+     * starved, and stops in time to leave the article bodies their share.
+     */
     private suspend fun downloadEnclosureImages(targets: List<PrefetchTarget>) {
         val enclosureImageEntries = targets.mapNotNull { target ->
             target.imageEnclosureUrls().takeIf { it.isNotEmpty() }?.let { urls ->
                 target.id.toLong() to urls
             }
         }
+        if (enclosureImageEntries.isEmpty()) return
 
-        if (enclosureImageEntries.isNotEmpty()) {
-            syncPerformanceLogger.measureSyncTime("Enclosure images download") {
-                articleContentRepository.downloadEnclosureImages(enclosureImageEntries)
+        val deadline = System.nanoTime() + IMAGE_STAGE_BUDGET_NANOS
+        var handled = 0
+        syncPerformanceLogger.measureSyncTime("Enclosure images download") {
+            for (chunk in enclosureImageEntries.chunked(IMAGE_CHUNK)) {
+                if (System.nanoTime() > deadline) {
+                    Log.i(TAG, "Image budget spent after $handled articles; the rest waits for the next run")
+                    break
+                }
+                articleContentRepository.downloadEnclosureImages(chunk)
+                handled += chunk.size
             }
-            Log.i(TAG, "Enclosure images downloaded for ${enclosureImageEntries.size} articles")
         }
+        Log.i(TAG, "Enclosure images downloaded for $handled of ${enclosureImageEntries.size} articles")
     }
 }
 

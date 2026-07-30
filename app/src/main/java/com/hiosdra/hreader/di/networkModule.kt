@@ -41,7 +41,15 @@ private const val WRITE_TIMEOUT_SECONDS = 30L
 
 val networkModule = module {
     single { ServerConfig(get()) }
-    single { GoogleReaderAuthenticator(get()) { get<OkHttpClient>() } }
+    // The login call carries the username and API password in its form body and gets the auth token
+    // back in the response body, so it goes out on a client with the interceptors stripped: body
+    // logging is on in debug builds, and redactHeader only covers headers. The connection pool and
+    // dispatcher are still shared, since newBuilder keeps them.
+    single {
+        GoogleReaderAuthenticator(get()) {
+            get<OkHttpClient>().newBuilder().apply { interceptors().clear() }.build()
+        }
+    }
     single { GoogleReaderAuthInterceptor(get()) }
     single { MinifluxAuthInterceptor(get()) }
     single { BackendUrlInterceptor(get()) }
