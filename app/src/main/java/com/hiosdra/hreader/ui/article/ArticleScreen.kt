@@ -395,16 +395,17 @@ private fun ArticlePager(
             key(entry.id) {
                 if (isWebViewMode && isOnline) {
                     val loadedUrl = remember { mutableStateOf<String?>(null) }
-                    val loadedWebView = remember { mutableStateOf<WebView?>(null) }
+                    val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
                     var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
                     AndroidView(
                         factory = { context ->
-                            WebView(context).apply {
+                            ReaderWebView(context).apply {
                                 settings.javaScriptEnabled = false
                                 webViewClient = object : WebViewClient() {
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         super.onPageFinished(view, url)
-                                        view?.post { view.scrollTo(0, savedScrollY) }
+                                        val readerView = view as? ReaderWebView ?: return
+                                        readerView.postIfActive { readerView.scrollTo(0, savedScrollY) }
                                     }
                                 }
                                 setOnScrollChangeListener { _, _, scrollY, _, _ -> savedScrollY = scrollY }
@@ -416,9 +417,10 @@ private fun ArticlePager(
                                 loadedWebView.value = webView
                                 loadedUrl.value = entry.url
                                 webView.loadUrl(entry.url)
-                                webView.post { webView.scrollTo(0, savedScrollY) }
+                                webView.postIfActive { webView.scrollTo(0, savedScrollY) }
                             }
                         },
+                        onRelease = { webView -> webView.releaseResources() },
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)

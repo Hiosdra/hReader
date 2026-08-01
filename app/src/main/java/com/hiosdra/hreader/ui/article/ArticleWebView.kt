@@ -85,7 +85,8 @@ fun ArticleWebView(
             ReaderWebView(context).apply {
                 var lastReportedScrollY = -1
 
-                fun updateContentHeight(wv: WebView) {
+                fun updateContentHeight(wv: ReaderWebView) {
+                    if (wv.isReleased) return
                     val contentHeightPx = (wv.contentHeight * wv.resources.displayMetrics.density).toInt()
                     if (contentHeightPx > 0) currentOnContentHeightChanged.value?.invoke(contentHeightPx)
                 }
@@ -132,22 +133,25 @@ fun ArticleWebView(
                     }
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
-                        if (view != null) {
-                            view.post {
-                                view.scrollTo(0, currentRestoreScrollY.value)
-                                updateContentHeight(view)
-                            }
+                        val readerView = view as? ReaderWebView ?: return
+                        readerView.postIfActive {
+                            readerView.scrollTo(0, currentRestoreScrollY.value)
+                            updateContentHeight(readerView)
                         }
                     }
                 }
                 webChromeClient = object : WebChromeClient() {
                     override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                        if (newProgress == 100) view?.post { updateContentHeight(view) }
+                        if (newProgress == 100) {
+                            val readerView = view as? ReaderWebView ?: return
+                            readerView.postIfActive { updateContentHeight(readerView) }
+                        }
                     }
                 }
-                addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
-                    if (view is WebView) view.post { updateContentHeight(view) }
-                }
+                setContentHeightListener(View.OnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+                    val readerView = view as? ReaderWebView ?: return@OnLayoutChangeListener
+                    readerView.postIfActive { updateContentHeight(readerView) }
+                })
                 setOnScrollChangeListener { v, _, _, _, _ ->
                     if (v is WebView &&
                         (lastReportedScrollY < 0 || abs(v.scrollY - lastReportedScrollY) >= 8 || v.scrollY == 0)
@@ -190,21 +194,57 @@ fun ArticleWebView(
                 loadedWebView.value = webView
                 loadedHtml.value = htmlData
                 webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
-                webView.post { webView.scrollTo(0, currentRestoreScrollY.value) }
+                webView.postIfActive { webView.scrollTo(0, currentRestoreScrollY.value) }
             }
         },
+        onRelease = { webView -> webView.releaseResources() },
         modifier = modifier
     )
 }
 
-private class ReaderWebView(context: Context) : WebView(context) {
+internal class ReaderWebView(context: Context) : WebView(context) {
     var allowScroll: Boolean = true
+    private var released = false
+    private var contentHeightListener: View.OnLayoutChangeListener? = null
+
+    val isReleased: Boolean
+        get() = released
+
+    fun setContentHeightListener(listener: View.OnLayoutChangeListener) {
+        contentHeightListener?.let(::removeOnLayoutChangeListener)
+        contentHeightListener = listener
+        addOnLayoutChangeListener(listener)
+    }
+
+    fun postIfActive(action: () -> Unit) {
+        if (released) return
+        post {
+            if (!released) action()
+        }
+    }
+
+    fun releaseResources() {
+        if (released) return
+        released = true
+        contentHeightListener?.let(::removeOnLayoutChangeListener)
+        contentHeightListener = null
+        setOnTouchListener(null)
+        setOnScrollChangeListener(null)
+        setOnLongClickListener(null)
+        webViewClient = WebViewClient()
+        webChromeClient = null
+        stopLoading()
+        removeAllViews()
+        destroy()
+    }
 
     override fun scrollTo(x: Int, y: Int) {
+        if (released) return
         super.scrollTo(x, if (allowScroll) y else 0)
     }
 
     override fun scrollBy(x: Int, y: Int) {
+        if (released) return
         super.scrollBy(x, if (allowScroll) y else 0)
     }
 }

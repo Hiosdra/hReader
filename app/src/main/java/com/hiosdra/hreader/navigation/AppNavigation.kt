@@ -81,9 +81,7 @@ fun AppNavigation(
             AddFeedScreen(
                 navController = navController,
                 initialUrl = backStackEntry.arguments?.getString("url"),
-                // Opened from a share there is nothing behind this screen to go back to, so the
-                // app lands on the article list rather than on an empty back stack.
-                onFeedAdded = {
+                onNavigateBack = {
                     if (!navController.popBackStack()) {
                         navController.navigate(Routes.MAIN) {
                             popUpTo(navController.graph.id) { inclusive = true }
