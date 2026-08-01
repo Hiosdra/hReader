@@ -110,6 +110,7 @@ import com.hiosdra.hreader.data.model.CredibilityConfidence
 import com.hiosdra.hreader.data.model.CredibilityLevel
 import com.hiosdra.hreader.data.model.CredibilityReport
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.data.model.OfflinePage
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.data.paywall.PaywallBypassService
 import com.hiosdra.hreader.data.preferences.PreferencesManager
@@ -173,8 +174,11 @@ fun ArticleScreen(
         viewModel.openList(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis)
     }
 
-    LaunchedEffect(uiState.isOnline) {
-        if (!uiState.isOnline) isWebViewMode = false
+    LaunchedEffect(uiState.isOnline, uiState.currentIndex, uiState.offlinePages) {
+        val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
+        if (!uiState.isOnline && currentEntry?.id !in uiState.offlinePages) {
+            isWebViewMode = false
+        }
     }
 
     // The view model owns where the reader is, so it also survives a configuration
@@ -226,6 +230,8 @@ fun ArticleScreen(
                 listSize = uiState.listSize,
                 isWebViewMode = isWebViewMode,
                 isOnline = uiState.isOnline,
+                canUseWebView = uiState.isOnline ||
+                    (entry?.id?.let { uiState.offlinePages.containsKey(it) } == true),
                 isStarred = entry?.starred == true,
                 isSpeaking = entry?.id == ttsState.articleId,
                 textScale = textScale,
@@ -317,6 +323,7 @@ fun ArticleScreen(
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
                     getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                     getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
+                    getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
                     localImagePaths = uiState.localImagePaths,
                     isOnline = uiState.isOnline,
                     aiOverviews = uiState.aiOverviews,
@@ -401,6 +408,7 @@ private fun ArticlePager(
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
     getContentForEntry: (Long) -> String?,
     getLeadImageForEntry: (Long) -> String?,
+    getOfflinePageForEntry: (Long) -> OfflinePage?,
     localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     isOnline: Boolean = true,
     aiOverviews: Map<Long, String> = emptyMap(),
@@ -411,6 +419,7 @@ private fun ArticlePager(
     analyzingCredibilityIds: Set<Long> = emptySet(),
     onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
 ) {
+    val context = LocalContext.current
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
             state = pagerState,
@@ -423,7 +432,18 @@ private fun ArticlePager(
         ) { page ->
             val entry = entries.getOrNull(page) ?: return@HorizontalPager
             key(entry.id) {
-                if (isWebViewMode && isOnline) {
+            val offlinePage = getOfflinePageForEntry(entry.id)
+            if (isWebViewMode && (isOnline || offlinePage != null)) {
+                if (!isOnline && offlinePage != null) {
+                    OfflinePageWebView(
+                        page = offlinePage,
+                        onLinkClick = { url ->
+                            copyTextToClipboard(context, "Link", url)
+                            Toast.makeText(context, "Offline — link copied", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.padding(paddingValues)
+                    )
+                } else {
                     val loadedUrl = remember { mutableStateOf<String?>(null) }
                     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
                     var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
@@ -455,25 +475,26 @@ private fun ArticlePager(
                             .fillMaxSize()
                             .padding(paddingValues)
                     )
-                } else {
-                    ArticleContent(
-                        entry = entry,
-                        mainImageUrl = getLeadImageForEntry(entry.id),
-                        textScale = textScale,
-                        modifier = Modifier.padding(paddingValues),
-                        onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
-                        articleContent = getContentForEntry(entry.id) ?: "No content available",
-                        localImagePaths = localImagePaths[entry.id].orEmpty(),
-                        isOnline = isOnline,
-                        aiOverview = aiOverviews[entry.id],
-                        isGeneratingOverview = generatingOverviewIds.contains(entry.id),
-                        onAiOverview = onAiOverview,
-                        credibilityEnabled = credibilityEnabled,
-                        credibilityReport = credibilityReports[entry.id],
-                        isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
-                        onAnalyzeCredibility = onAnalyzeCredibility
-                    )
                 }
+            } else {
+                ArticleContent(
+                    entry = entry,
+                    mainImageUrl = getLeadImageForEntry(entry.id),
+                    textScale = textScale,
+                    modifier = Modifier.padding(paddingValues),
+                    onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
+                    articleContent = getContentForEntry(entry.id) ?: "No content available",
+                    localImagePaths = localImagePaths[entry.id].orEmpty(),
+                    isOnline = isOnline,
+                    aiOverview = aiOverviews[entry.id],
+                    isGeneratingOverview = generatingOverviewIds.contains(entry.id),
+                    onAiOverview = onAiOverview,
+                    credibilityEnabled = credibilityEnabled,
+                    credibilityReport = credibilityReports[entry.id],
+                    isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
+                    onAnalyzeCredibility = onAnalyzeCredibility
+                )
+            }
             }
         }
     }
@@ -488,6 +509,7 @@ private fun ArticleTopBar(
     listSize: Int,
     isWebViewMode: Boolean,
     isOnline: Boolean,
+    canUseWebView: Boolean,
     isStarred: Boolean,
     isSpeaking: Boolean,
     textScale: Float,
@@ -541,7 +563,7 @@ private fun ArticleTopBar(
             if (entryUrl != null) {
                 FeedWebToggle(
                     isWebViewMode = isWebViewMode,
-                    isOnline = isOnline,
+                    canUseWebView = canUseWebView,
                     onToggleWebView = onToggleWebView
                 )
                 IconButton(onClick = onOpenInChrome, enabled = isOnline) {
@@ -660,7 +682,7 @@ private fun ArticleTopBar(
 @Composable
 private fun FeedWebToggle(
     isWebViewMode: Boolean,
-    isOnline: Boolean,
+    canUseWebView: Boolean,
     onToggleWebView: () -> Unit
 ) {
     Surface(
@@ -680,9 +702,9 @@ private fun FeedWebToggle(
             ReaderModeOption(
                 label = "WEB",
                 selected = isWebViewMode,
-                enabled = isOnline,
-                contentDescription = if (isOnline) "Show original web page" else "Web mode unavailable offline",
-                onClick = { if (!isWebViewMode && isOnline) onToggleWebView() }
+                enabled = canUseWebView,
+                contentDescription = if (canUseWebView) "Show original web page" else "Web mode unavailable offline",
+                onClick = { if (!isWebViewMode && canUseWebView) onToggleWebView() }
             )
         }
     }

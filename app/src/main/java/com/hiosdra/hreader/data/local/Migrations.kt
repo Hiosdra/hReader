@@ -171,6 +171,18 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
     }
 }
 
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `article_page_snapshots` (" +
+                "`entryId` INTEGER NOT NULL, `originalUrl` TEXT NOT NULL, " +
+                "`finalUrl` TEXT NOT NULL, `directoryPath` TEXT NOT NULL, " +
+                "`fetchedAt` INTEGER NOT NULL, `byteSize` INTEGER NOT NULL, " +
+                "`isComplete` INTEGER NOT NULL, PRIMARY KEY(`entryId`))"
+        )
+    }
+}
+
 private val FTS_CONTENT_SYNC_TRIGGERS_WITH_FULL_CONTENT = listOf(
     "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE " +
         "BEFORE UPDATE ON `articles` BEGIN DELETE FROM `articles_fts` WHERE `docid`=OLD.`rowid`; END",
@@ -195,5 +207,6 @@ val ALL_MIGRATIONS = arrayOf(
     MIGRATION_9_10,
     MIGRATION_10_11,
     MIGRATION_11_12,
-    MIGRATION_12_13
+    MIGRATION_12_13,
+    MIGRATION_13_14
 )

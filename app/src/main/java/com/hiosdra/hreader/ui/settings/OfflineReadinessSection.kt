@@ -39,6 +39,7 @@ private const val BYTES_PER_MEGABYTE = 1024.0 * 1024
 fun OfflineReadinessSection(
     state: OfflineUiState,
     onPrepare: () -> Unit,
+    onFullOfflineSync: () -> Unit,
     onBacklogTargetChange: (Int) -> Unit,
     onImageDownloadEnabledChange: (Boolean) -> Unit,
     onImageCacheBudgetChange: (Int) -> Unit,
@@ -86,14 +87,27 @@ fun OfflineReadinessSection(
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(
                     if (state.preparationTotal > 0) {
-                        "Downloading ${state.preparationDone} of ${state.preparationTotal}…"
+                        if (state.isFullOfflinePreparation) {
+                            "Downloading full pages ${state.preparationDone} of ${state.preparationTotal}…"
+                        } else {
+                            "Downloading ${state.preparationDone} of ${state.preparationTotal}…"
+                        }
                     } else {
-                        "Downloading…"
+                        if (state.isFullOfflinePreparation) "Downloading full pages…" else "Downloading…"
                     }
                 )
             } else {
                 Text("Prepare for offline")
             }
+        }
+        Button(
+            onClick = onFullOfflineSync,
+            enabled = !state.isPreparing,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        ) {
+            Text("Full offline sync")
         }
         // A real count rather than a spinner of unknown length: the reader is deciding whether
         // there is time to finish before leaving.
@@ -116,8 +130,8 @@ fun OfflineReadinessSection(
             }
         }
         Text(
-            text = "Full sync, then unread, starred and backlog article bodies and images. Runs in " +
-                "the background — keep the connection until the counts above stop moving.",
+            text = "Prepare for offline downloads article bodies and images. Full offline sync also " +
+                "archives the original web pages, but only when you press its button.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
@@ -237,7 +251,7 @@ private fun OfflineReadiness.detailLine(): String {
         "$storedImageCount images"
     }
     return "$unreadCount unread$backlog · $storedFullContentCount full text, " +
-        "$images (%.0f MB)".format(megabytes)
+        "$storedFullPageCount full pages, $images (%.0f MB)".format(megabytes)
 }
 
 private fun OfflineReadiness.lastSyncLabel(): String {

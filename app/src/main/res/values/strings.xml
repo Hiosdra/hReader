@@ -7,9 +7,11 @@
     <string name="notification_channel_model_download">Voice model downloads</string>
     <string name="notification_sync_title">Syncing articles</string>
     <string name="notification_offline_title">Preparing offline reading</string>
+    <string name="notification_full_offline_title">Preparing full offline pages</string>
     <string name="notification_resync_title">Rebuilding local cache</string>
     <string name="notification_sync_text">Synchronizing articles</string>
     <string name="notification_prefetch_text">Downloading article content</string>
+    <string name="notification_full_offline_text">Downloading original web pages</string>
     <string name="notification_model_download_title">Downloading voice model</string>
     <string name="notification_cancel">Cancel</string>
     <string name="notification_tts_title">Read aloud</string>

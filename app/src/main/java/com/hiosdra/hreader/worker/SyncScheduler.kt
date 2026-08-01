@@ -38,6 +38,7 @@ private const val OFFLINE_PREPARATION_WORK = "PrepareForOffline"
 private const val REQUESTED_SYNC_WORK = "RequestedSync"
 private const val SYNC_PIPELINE_WORK = "SyncPipeline"
 private const val OFFLINE_PREPARATION_TAG = "OfflinePreparation"
+private const val FULL_OFFLINE_PREPARATION_TAG = "FullOfflinePreparation"
 
 private const val BACKOFF_DELAY_SECONDS = 30L
 private const val CHAINED_SYNC_THROTTLE_MILLIS = 2 * 60 * 1000L
@@ -73,7 +74,8 @@ data class OfflinePreparationProgress(
     val isRunning: Boolean = false,
     val done: Int = 0,
     val total: Int = 0,
-    val status: SyncOperationStatus = SyncOperationStatus()
+    val status: SyncOperationStatus = SyncOperationStatus(),
+    val isFullOffline: Boolean = false
 )
 
 /**
@@ -302,6 +304,47 @@ class SyncScheduler(
         return syncWork.id
     }
 
+    fun prepareFullOffline(): UUID? {
+        if (!preferencesManager.hasBackendCredentials()) return null
+        cancelLegacyOneTimeSyncWork()
+        val syncWork = syncRequest(
+            forceFullSync = true,
+            expedited = true,
+            ignoreQuietHours = true,
+            userVisible = true,
+            operationTitle = context.getString(R.string.notification_full_offline_title),
+            offlinePreparation = true,
+            fullOfflinePreparation = true
+        )
+        workManager
+            .beginUniqueWork(
+                SYNC_PIPELINE_WORK,
+                ExistingWorkPolicy.REPLACE,
+                syncWork
+            )
+            .then(
+                prefetchRequest(
+                    expedited = true,
+                    ignoreQuietHours = true,
+                    drainRemaining = true,
+                    userVisible = true,
+                    operationTitle = context.getString(R.string.notification_full_offline_title),
+                    offlinePreparation = true,
+                    fullOfflinePreparation = true
+                )
+            )
+            .then(
+                fullPageRequest(
+                    expedited = true,
+                    ignoreQuietHours = true,
+                    userVisible = true,
+                    operationTitle = context.getString(R.string.notification_full_offline_title)
+                )
+            )
+            .enqueue()
+        return syncWork.id
+    }
+
     /**
      * The prefetch stage reports how many articles it has stored, so the settings screen can show
      * progress rather than an indeterminate spinner of unknown length.
@@ -323,7 +366,8 @@ class SyncScheduler(
                 isRunning = status.isRunning,
                 done = progress?.getInt(KEY_PROGRESS_DONE, 0) ?: 0,
                 total = progress?.getInt(KEY_PROGRESS_TOTAL, 0) ?: 0,
-                status = status
+                status = status,
+                isFullOffline = operationInfos.any { FULL_OFFLINE_PREPARATION_TAG in it.tags }
             )
         }
 
@@ -342,7 +386,8 @@ class SyncScheduler(
         ignoreQuietHours: Boolean = false,
         userVisible: Boolean = false,
         operationTitle: String = context.getString(R.string.notification_sync_title),
-        offlinePreparation: Boolean = false
+        offlinePreparation: Boolean = false,
+        fullOfflinePreparation: Boolean = false
     ) = OneTimeWorkRequestBuilder<ContentSyncWorker>()
         .setConstraints(networkConstraints())
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
@@ -358,6 +403,7 @@ class SyncScheduler(
         .apply {
             if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             if (offlinePreparation) addTag(OFFLINE_PREPARATION_TAG)
+            if (fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
         }
         .build()
 
@@ -367,7 +413,8 @@ class SyncScheduler(
         drainRemaining: Boolean = false,
         userVisible: Boolean = false,
         operationTitle: String = context.getString(R.string.notification_sync_title),
-        offlinePreparation: Boolean = false
+        offlinePreparation: Boolean = false,
+        fullOfflinePreparation: Boolean = false
     ) =
         OneTimeWorkRequestBuilder<ArticleContentSyncWorker>()
             .setConstraints(
@@ -388,8 +435,36 @@ class SyncScheduler(
             .apply {
                 if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 if (offlinePreparation) addTag(OFFLINE_PREPARATION_TAG)
+                if (fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
             }
             .build()
+
+    private fun fullPageRequest(
+        expedited: Boolean,
+        ignoreQuietHours: Boolean,
+        userVisible: Boolean,
+        operationTitle: String
+    ) = OneTimeWorkRequestBuilder<FullPageSyncWorker>()
+        .setConstraints(
+            networkConstraints(
+                avoidLowStorage = true,
+                avoidLowBattery = !expedited
+            )
+        )
+        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
+        .setInputData(
+            Data.Builder()
+                .putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours)
+                .putBoolean(KEY_USER_VISIBLE, userVisible)
+                .putString(KEY_OPERATION_TITLE, operationTitle)
+                .build()
+        )
+        .apply {
+            if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            addTag(OFFLINE_PREPARATION_TAG)
+            addTag(FULL_OFFLINE_PREPARATION_TAG)
+        }
+        .build()
 }
 
 private fun operationStatus(infos: List<WorkInfo>): SyncOperationStatus {

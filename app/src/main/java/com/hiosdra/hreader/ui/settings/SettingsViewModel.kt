@@ -67,6 +67,7 @@ data class OfflineUiState(
     val isPreparing: Boolean = false,
     val preparationDone: Int = 0,
     val preparationTotal: Int = 0,
+    val isFullOfflinePreparation: Boolean = false,
     val preparationStatus: SyncOperationStatus = SyncOperationStatus()
 ) {
     /** Null while the worker has not reported counts yet, which reads as indeterminate. */
@@ -131,6 +132,7 @@ class SettingsViewModel(
                     isPreparing = progress.isRunning,
                     preparationDone = progress.done,
                     preparationTotal = progress.total,
+                    isFullOfflinePreparation = progress.isFullOffline,
                     preparationStatus = progress.status
                 )
                 if (
@@ -167,20 +169,34 @@ class SettingsViewModel(
     }
 
     fun prepareForOffline() {
+        startOfflinePreparation(fullOffline = false)
+    }
+
+    fun prepareFullOffline() {
+        startOfflinePreparation(fullOffline = true)
+    }
+
+    private fun startOfflinePreparation(fullOffline: Boolean) {
         offlineAwaitingWork = true
         offlineWorkId = null
         _offline.value = _offline.value.copy(
             isPreparing = true,
             preparationDone = 0,
             preparationTotal = 0,
+            isFullOfflinePreparation = fullOffline,
             preparationStatus = SyncOperationStatus(SyncOperationState.RUNNING)
         )
-        val workId = syncScheduler.prepareForOffline()
+        val workId = if (fullOffline) {
+            syncScheduler.prepareFullOffline()
+        } else {
+            syncScheduler.prepareForOffline()
+        }
         if (workId == null) {
             offlineAwaitingWork = false
             offlineWorkId = null
             _offline.value = _offline.value.copy(
                 isPreparing = false,
+                isFullOfflinePreparation = false,
                 preparationStatus = SyncOperationStatus(
                     state = SyncOperationState.FAILED,
                     errorMessage = "Configure a feed server first."
@@ -207,6 +223,7 @@ class SettingsViewModel(
                 isPreparing = terminalProgress.isRunning,
                 preparationDone = terminalProgress.done,
                 preparationTotal = terminalProgress.total,
+                isFullOfflinePreparation = terminalProgress.isFullOffline,
                 preparationStatus = terminalProgress.status
             )
         }

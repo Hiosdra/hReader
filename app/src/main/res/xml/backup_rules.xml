@@ -9,5 +9,6 @@
     <exclude domain="sharedpref" path="hreader_secrets.xml" />
     <exclude domain="database" path="hreader-db" />
     <exclude domain="file" path="article_images" />
+    <exclude domain="file" path="article_pages" />
     <exclude domain="file" path="tts_models" />
 </full-backup-content>

@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.ui.article
 
 import android.content.Context
+import android.net.Uri
 import android.os.SystemClock
 import android.view.View
 import android.webkit.WebResourceRequest
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.data.model.OfflinePage
 import com.hiosdra.hreader.util.BionicReadingProcessor
 import com.hiosdra.hreader.util.cleanUrl
 import org.koin.compose.koinInject
@@ -262,6 +264,95 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         if (isReleased) return
         super.scrollBy(x, if (allowScroll) y else 0)
     }
+}
+
+@Composable
+fun OfflinePageWebView(
+    page: OfflinePage,
+    modifier: Modifier = Modifier,
+    onLinkClick: ((String) -> Unit)? = null
+) {
+    val currentPage = androidx.compose.runtime.rememberUpdatedState(page)
+    val loadedPageKey = remember { mutableStateOf<Pair<Long, Int>?>(null) }
+
+    AndroidView(
+        factory = { context ->
+            WebView(context).apply {
+                settings.javaScriptEnabled = false
+                settings.blockNetworkLoads = true
+                settings.allowFileAccess = false
+                settings.allowContentAccess = false
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? = serveOfflineAsset(currentPage.value, request?.url)
+
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): Boolean {
+                        val requestUri = request?.url ?: return false
+                        val url = requestUri.toString()
+                        val pageUri = Uri.parse(currentPage.value.baseUrl)
+                        if (requestUri.host == pageUri.host) return false
+                        onLinkClick?.invoke(cleanUrl(url))
+                        return onLinkClick != null
+                    }
+                }
+            }
+        },
+        update = { webView ->
+            val key = page.entryId to page.html.hashCode()
+            if (loadedPageKey.value != key) {
+                loadedPageKey.value = key
+                webView.loadDataWithBaseURL(page.baseUrl, page.html, "text/html", "UTF-8", null)
+            }
+        },
+        modifier = modifier
+    )
+}
+
+private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse? {
+    uri ?: return null
+    val baseUri = Uri.parse(page.baseUrl)
+    val basePath = baseUri.path?.trimEnd('/') ?: return null
+    if (!uri.scheme.equals(baseUri.scheme, ignoreCase = true) || uri.host != baseUri.host) return null
+    val assetsPrefix = "$basePath/assets/"
+    val relativePath = uri.path?.removePrefix(assetsPrefix)
+        ?.takeIf { uri.path?.startsWith(assetsPrefix) == true && it.isNotBlank() }
+        ?: return null
+    if (relativePath.split('/').any { it == ".." || it.isBlank() }) return null
+
+    val assetsDirectory = runCatching { File(page.resourceDirectory, "assets").canonicalFile }.getOrNull()
+        ?: return null
+    val file = runCatching { File(assetsDirectory, relativePath).canonicalFile }.getOrNull()
+        ?: return null
+    val assetsPath = assetsDirectory.path + File.separator
+    if (!file.path.startsWith(assetsPath) || !file.isFile) return null
+
+    return runCatching {
+        WebResourceResponse(
+            offlineMimeType(file.name),
+            null,
+            FileInputStream(file)
+        )
+    }.getOrNull()
+}
+
+private fun offlineMimeType(fileName: String): String = when (fileName.substringAfterLast('.', "").lowercase()) {
+    "css" -> "text/css"
+    "svg" -> "image/svg+xml"
+    "png" -> "image/png"
+    "jpg", "jpeg" -> "image/jpeg"
+    "gif" -> "image/gif"
+    "webp" -> "image/webp"
+    "woff" -> "font/woff"
+    "woff2" -> "font/woff2"
+    "ttf" -> "font/ttf"
+    "otf" -> "font/otf"
+    else -> URLConnection.guessContentTypeFromName(fileName) ?: "application/octet-stream"
 }
 
 private fun articleHtml(
