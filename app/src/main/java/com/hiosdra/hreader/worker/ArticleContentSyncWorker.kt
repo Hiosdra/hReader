@@ -152,8 +152,13 @@ class ArticleContentSyncWorker(
      * spreads the work across the syncs that follow it.
      */
     private suspend fun backfillPreviews() {
-        runCatching { articleRepository.backfillMissingPreviews() }
-            .onFailure { Log.w(TAG, "Preview backfill failed: ${it.message}") }
+        try {
+            articleRepository.backfillMissingPreviews()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Preview backfill failed: ${e.message}")
+        }
     }
 
     /**

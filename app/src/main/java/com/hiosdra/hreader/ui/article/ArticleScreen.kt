@@ -153,6 +153,10 @@ fun ArticleScreen(
         viewModel.openList(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis)
     }
 
+    LaunchedEffect(uiState.isOnline) {
+        if (!uiState.isOnline) isWebViewMode = false
+    }
+
     // The view model owns where the reader is, so it also survives a configuration
     // change; the pager is placed from it once and reports back from then on.
     LaunchedEffect(uiState.entries.size) {
@@ -199,6 +203,7 @@ fun ArticleScreen(
                 entryUrl = entry?.url,
                 feedTitle = entry?.feed?.title,
                 isWebViewMode = isWebViewMode,
+                isOnline = uiState.isOnline,
                 isStarred = entry?.starred == true,
                 isSpeaking = entry?.id == ttsState.articleId,
                 onToggleStar = { if (entry != null) viewModel.setStarred(entry.id, !entry.starred) },
@@ -375,7 +380,7 @@ private fun ArticlePager(
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val entry = entries[page]
-            if (isWebViewMode) {
+            if (isWebViewMode && isOnline) {
                 // What the WebView was last sent. The update block runs on every recomposition —
                 // read state changing, a neighbouring page settling — and loading there threw the
                 // page away and started it again, losing the reader's position each time.
@@ -422,6 +427,7 @@ private fun ArticleTopBar(
     entryUrl: String?,
     feedTitle: String?,
     isWebViewMode: Boolean,
+    isOnline: Boolean,
     isStarred: Boolean,
     isSpeaking: Boolean,
     onToggleStar: () -> Unit,
@@ -463,7 +469,7 @@ private fun ArticleTopBar(
                 )
             }
             if (entryUrl != null) {
-                IconButton(onClick = onToggleWebView) {
+                IconButton(onClick = onToggleWebView, enabled = isOnline) {
                     Icon(
                         painter = painterResource(
                             id = if (isWebViewMode) {
@@ -476,7 +482,7 @@ private fun ArticleTopBar(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                IconButton(onClick = onOpenInChrome) {
+                IconButton(onClick = onOpenInChrome, enabled = isOnline) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_chrome_logo),
                         contentDescription = "Open in Chrome",
@@ -484,7 +490,7 @@ private fun ArticleTopBar(
                     )
                 }
                 if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
-                    IconButton(onClick = onBypassPaywall) {
+                    IconButton(onClick = onBypassPaywall, enabled = isOnline) {
                         Icon(
                             Icons.Filled.Lock,
                             contentDescription = "Bypass Paywall",
@@ -730,6 +736,7 @@ private fun ArticleContent(
     if (actionsUrl != null) {
         ImageActionsDialog(
             imageUrl = actionsUrl,
+            isOnline = isOnline,
             onDismiss = { imageActionsUrl = null },
             onView = {
                 zoomImageUrl = actionsUrl
@@ -740,11 +747,19 @@ private fun ArticleContent(
                 imageActionsUrl = null
             },
             onDownload = {
-                enqueueImageDownload(context, actionsUrl)
+                if (isOnline) {
+                    enqueueImageDownload(context, actionsUrl)
+                } else {
+                    Toast.makeText(context, "Downloading needs a connection", Toast.LENGTH_SHORT).show()
+                }
                 imageActionsUrl = null
             },
             onShare = {
-                imageShareUrl = actionsUrl
+                if (isOnline) {
+                    imageShareUrl = actionsUrl
+                } else {
+                    Toast.makeText(context, "Sharing needs a connection", Toast.LENGTH_SHORT).show()
+                }
                 imageActionsUrl = null
             }
         )
@@ -1171,6 +1186,7 @@ private fun formatTimestamp(instant: Instant): String =
 @Composable
 private fun ImageActionsDialog(
     imageUrl: String,
+    isOnline: Boolean,
     onDismiss: () -> Unit,
     onView: () -> Unit,
     onCopy: () -> Unit,
@@ -1191,9 +1207,13 @@ private fun ImageActionsDialog(
                 Spacer(Modifier.height(4.dp))
                 Button(onClick = onCopy, modifier = Modifier.fillMaxWidth()) { Text("Copy URL") }
                 Spacer(Modifier.height(4.dp))
-                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Download") }
+                Button(onClick = onDownload, enabled = isOnline, modifier = Modifier.fillMaxWidth()) {
+                    Text("Download")
+                }
                 Spacer(Modifier.height(4.dp))
-                Button(onClick = onShare, modifier = Modifier.fillMaxWidth()) { Text("Share image") }
+                Button(onClick = onShare, enabled = isOnline, modifier = Modifier.fillMaxWidth()) {
+                    Text("Share image")
+                }
                 Spacer(Modifier.height(4.dp))
                 TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Close") }
             }

@@ -25,7 +25,7 @@ class ArticleImageRepositoryTest {
     private val context = mockk<Context>().apply {
         every { filesDir } returns File("/tmp/androidstudio")
     }
-    private val articleImageDao = mockk<ArticleImageDao>()
+    private val articleImageDao = mockk<ArticleImageDao>(relaxed = true)
     private val articleDao = mockk<ArticleDao>()
     private val okHttpClient = mockk<OkHttpClient>()
     private val preferencesManager = mockk<PreferencesManager>(relaxed = true)

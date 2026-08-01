@@ -15,6 +15,13 @@ class ImageLoader(
         return@withContext imageUrl
     }
 
+    suspend fun getImageModel(entryId: Long, imageUrl: String, allowNetwork: Boolean): String? =
+        withContext(Dispatchers.IO) {
+            val localPath = articleImageRepository.getLocalImagePath(entryId, imageUrl)
+            localPath?.takeIf { fileExists(it) }?.let { return@withContext "file://$it" }
+            imageUrl.takeIf { allowNetwork }
+        }
+
     /** Where each of this article's images was downloaded, keyed by its published address. */
     suspend fun getLocalImagePaths(entryId: Long): Map<String, String> = withContext(Dispatchers.IO) {
         articleImageRepository.getLocalImagePaths(entryId)

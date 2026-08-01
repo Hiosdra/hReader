@@ -116,8 +116,8 @@ fun OfflineReadinessSection(
             }
         }
         Text(
-            text = "Full sync, then every article body and image. Runs in the background — keep the " +
-                "connection until the counts above stop moving.",
+            text = "Full sync, then unread, starred and backlog article bodies and images. Runs in " +
+                "the background — keep the connection until the counts above stop moving.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
@@ -220,18 +220,24 @@ fun OfflineReadinessSection(
 }
 
 private fun OfflineReadiness.headline(): String = when {
-    articleCount == 0 -> "Nothing downloaded yet"
-    isComplete -> "Ready — all $articleCount articles readable offline"
-    else -> "$storedContentCount of $articleCount articles readable offline"
+    offlineTargetCount == 0 -> "Nothing in the offline scope yet"
+    isComplete -> "Ready — all $offlineTargetCount articles readable offline"
+    else -> "$storedContentCount of $offlineTargetCount articles readable offline"
 }
 
 private fun OfflineReadiness.contentProgress(): Float =
-    if (articleCount == 0) 0f else (storedContentCount.toFloat() / articleCount).coerceIn(0f, 1f)
+    if (offlineTargetCount == 0) 0f else (storedContentCount.toFloat() / offlineTargetCount).coerceIn(0f, 1f)
 
 private fun OfflineReadiness.detailLine(): String {
     val megabytes = storedImageBytes / BYTES_PER_MEGABYTE
     val backlog = if (backlogCount > 0) " · backlog $backlogCount" else ""
-    return "$unreadCount unread$backlog · $storedImageCount images (%.0f MB)".format(megabytes)
+    val images = if (expectedImageCount > 0) {
+        "$storedExpectedImageCount/$expectedImageCount images"
+    } else {
+        "$storedImageCount images"
+    }
+    return "$unreadCount unread$backlog · $storedFullContentCount full text, " +
+        "$images (%.0f MB)".format(megabytes)
 }
 
 private fun OfflineReadiness.lastSyncLabel(): String {

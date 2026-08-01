@@ -150,6 +150,21 @@ class PreferencesManager(context: Context) {
         sharedPreferences.edit().putLong(KEY_LAST_SYNC_TIMESTAMP, timestamp).apply()
     }
 
+    fun getCacheOwnerKey(): String = sharedPreferences.getString(KEY_CACHE_OWNER, "").orEmpty()
+
+    fun setCacheOwnerKey(ownerKey: String) {
+        sharedPreferences.edit().putString(KEY_CACHE_OWNER, ownerKey).apply()
+    }
+
+    fun observeLastSyncTimestamp(): Flow<Long> = callbackFlow {
+        trySend(getLastSyncTimestamp())
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, changedKey ->
+            if (changedKey == KEY_LAST_SYNC_TIMESTAMP) trySend(getLastSyncTimestamp())
+        }
+        sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
+        awaitClose { sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.distinctUntilChanged()
+
     fun getLastFullSyncTimestamp(): Long = sharedPreferences.getLong(KEY_LAST_FULL_SYNC_TIMESTAMP, 0L)
 
     fun setLastFullSyncTimestamp(timestamp: Long) {
@@ -349,6 +364,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_AI_MODEL = "ai_model"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
+        private const val KEY_CACHE_OWNER = "cache_owner"
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"

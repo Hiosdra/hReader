@@ -90,7 +90,7 @@ val networkModule = module {
 
     single { FeedDiscoveryService(get()) }
 
-    single<FeedBackend>(named(FRESHRSS_RETROFIT)) { FreshRssBackend(get(), get()) }
+    single<FeedBackend>(named(FRESHRSS_RETROFIT)) { FreshRssBackend(get(), get(), get()) }
     single<FeedBackend>(named(MINIFLUX_RETROFIT)) { MinifluxBackend(get()) }
     single<FeedBackend> {
         DelegatingFeedBackend(

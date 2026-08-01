@@ -16,8 +16,17 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.preferences.PreferencesManager
+import com.hiosdra.hreader.util.NetworkMonitor
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -72,10 +81,25 @@ data class OfflinePreparationProgress(
  */
 class SyncScheduler(
     private val context: Context,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val networkMonitor: NetworkMonitor
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var connectivityObservationStarted = false
+
     private val workManager: WorkManager
         get() = WorkManager.getInstance(context)
+
+    fun start() {
+        if (connectivityObservationStarted) return
+        connectivityObservationStarted = true
+        networkMonitor.isOnline
+            .drop(1)
+            .distinctUntilChanged()
+            .filter { it }
+            .onEach { if (preferencesManager.hasBackendCredentials()) syncNow() }
+            .launchIn(scope)
+    }
 
     /**
      * Built per enqueue rather than once: the reader can change the metered and roaming rules at
@@ -84,7 +108,7 @@ class SyncScheduler(
      * Roaming is expressed as a capability on a [NetworkRequest] because [NetworkType] has no term
      * for it. `NOT_ROAMING` needs API 28 and the app requires 29.
      */
-    private fun networkConstraints(): Constraints {
+    private fun networkConstraints(avoidLowStorage: Boolean = false): Constraints {
         val unmeteredOnly = preferencesManager.getSyncOnUnmeteredOnly()
         val networkType = if (unmeteredOnly) NetworkType.UNMETERED else NetworkType.CONNECTED
         val builder = Constraints.Builder()
@@ -102,6 +126,10 @@ class SyncScheduler(
             // The NetworkType is kept as the fallback for platforms that cannot honour the request,
             // so the constraint degrades to "any connection" rather than to none at all.
             builder.setRequiredNetworkRequest(request, networkType)
+        }
+        if (avoidLowStorage) {
+            builder.setRequiresStorageNotLow(true)
+            builder.setRequiresBatteryNotLow(true)
         }
         return builder.build()
     }
@@ -205,6 +233,7 @@ class SyncScheduler(
 
     /** Sync then prefetch when the app goes to the background, at most once every two minutes. */
     fun enqueueBackgroundSyncChain() {
+        if (!preferencesManager.hasBackendCredentials()) return
         val now = System.currentTimeMillis()
         // Held in preferences rather than in memory: the throttle used to live in a static field,
         // which reset on every process death and let the chain run far more often than intended.
@@ -304,7 +333,7 @@ class SyncScheduler(
         operationTitle: String = context.getString(R.string.notification_sync_title)
     ) =
         OneTimeWorkRequestBuilder<ArticleContentSyncWorker>()
-            .setConstraints(networkConstraints())
+            .setConstraints(networkConstraints(avoidLowStorage = true))
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
             .setInputData(
                 Data.Builder()

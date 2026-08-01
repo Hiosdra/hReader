@@ -14,5 +14,6 @@ import androidx.room.Fts4
 data class ArticleFts(
     val title: String,
     val author: String?,
-    val content: String?
+    val content: String?,
+    val fullContent: String?
 )

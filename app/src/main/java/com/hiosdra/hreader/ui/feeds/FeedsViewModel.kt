@@ -5,9 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.repository.FeedRepository
+import com.hiosdra.hreader.util.NetworkMonitor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 data class FeedsUiState(
@@ -19,12 +21,18 @@ data class FeedsUiState(
     val error: String? = null,
     /** Result of the last delete, rename or import, for a snackbar rather than a dialog. */
     val message: String? = null,
-    val isBusy: Boolean = false
+    val isBusy: Boolean = false,
+    val isOnline: Boolean = true
 )
 
-class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
+class FeedsViewModel(
+    private val feedRepository: FeedRepository,
+    private val networkMonitor: NetworkMonitor
+) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(FeedsUiState())
+    private val _uiState = MutableStateFlow(
+        FeedsUiState(isOnline = networkMonitor.isOnline.value)
+    )
     val uiState: StateFlow<FeedsUiState> = _uiState.asStateFlow()
 
     /**
@@ -37,6 +45,15 @@ class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
 
     init {
         loadFeeds()
+        viewModelScope.launch {
+            networkMonitor.isOnline.drop(1).collect { online ->
+                _uiState.value = _uiState.value.copy(isOnline = online)
+                if (online) {
+                    resettleRows = true
+                    loadFeeds()
+                }
+            }
+        }
     }
 
     fun reload() {
@@ -75,6 +92,11 @@ class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
             val cachedCounts = runCatching { feedRepository.getCachedUnreadCounts() }.getOrDefault(emptyMap())
             if (cachedFeeds.isNotEmpty()) {
                 publish(cachedFeeds, cachedCounts)
+            }
+
+            if (!networkMonitor.isOnline.value) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+                return@launch
             }
 
             val refreshed = runCatching { feedRepository.refreshFeeds() }
@@ -149,6 +171,10 @@ class FeedsViewModel(private val feedRepository: FeedRepository) : ViewModel() {
         failure: (Throwable) -> String,
         action: suspend () -> T
     ) {
+        if (!networkMonitor.isOnline.value) {
+            _uiState.value = _uiState.value.copy(message = "This action needs a connection")
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isBusy = true, message = null)
             val result = runCatching { action() }

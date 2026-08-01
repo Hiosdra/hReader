@@ -21,6 +21,9 @@ interface FeedDao {
     @Query("SELECT * FROM feeds ORDER BY title COLLATE NOCASE ASC")
     suspend fun getAllFeedsImmediate(): List<FeedEntity>
 
+    @Query("SELECT id FROM feeds")
+    suspend fun getAllIds(): List<Long>
+
     @Query("UPDATE feeds SET title = :title WHERE id = :feedId")
     suspend fun updateTitle(feedId: Long, title: String)
 

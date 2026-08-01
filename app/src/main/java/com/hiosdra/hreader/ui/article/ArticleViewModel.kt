@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
+import com.hiosdra.hreader.data.local.repository.ArticleAiOverviewRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.local.repository.CredibilityRepository
 import com.hiosdra.hreader.data.model.ArticleListQuery
+import com.hiosdra.hreader.data.model.ArticleContentSource
 import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.CredibilityReport
 import com.hiosdra.hreader.data.model.CredibilitySource
@@ -73,6 +75,7 @@ class ArticleViewModel(
     private val articleRepository: ArticleRepository,
     private val articleContentRepository: ArticleContentRepository,
     private val articleAiService: ArticleAiService,
+    private val articleAiOverviewRepository: ArticleAiOverviewRepository,
     private val credibilityRepository: CredibilityRepository,
     private val preferencesManager: PreferencesManager,
     private val imageLoader: ImageLoader,
@@ -100,7 +103,21 @@ class ArticleViewModel(
 
     init {
         viewModelScope.launch {
-            networkMonitor.isOnline.collect { online -> _uiState.update { it.copy(isOnline = online) } }
+            networkMonitor.isOnline.collect { online ->
+                val wasOnline = _uiState.value.isOnline
+                _uiState.update { it.copy(isOnline = online) }
+                if (online && !wasOnline) retryPartialContent()
+            }
+        }
+    }
+
+    private fun retryPartialContent() {
+        val state = _uiState.value
+        state.partialContentIds.forEach { entryId ->
+            requestedContentIds.remove(entryId)
+            state.entries.find { it.id == entryId }?.let { entry ->
+                loadArticleText(entry.id, entry.url)
+            }
         }
     }
 
@@ -136,16 +153,21 @@ class ArticleViewModel(
      * what the feed itself carried is all that is left. Silence used to leave the reader staring
      * at an empty screen wondering whether it was still loading.
      *
-     * Asked for once per article: a failed fetch has already fallen back to what the feed carried,
-     * so there is nothing a second attempt against the same cache would turn up.
+     * Asked for once while the connection state is unchanged. A fallback is retried after the
+     * connection returns so it can be upgraded to the full text.
      */
     private fun loadArticleText(entryId: Long, url: String) {
         if (!requestedContentIds.add(entryId)) return
         viewModelScope.launch {
-            val text = runCatching { articleContentRepository.getArticleContent(entryId, url) }
-                .getOrNull()
+            val text = try {
+                articleContentRepository.getArticleContent(entryId, url, _uiState.value.isOnline)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
             if (text != null) {
-                store(entryId, text.html, text.leadImageUrl, isFullText = true)
+                store(entryId, text.html, text.leadImageUrl, text.source == ArticleContentSource.FULL)
                 return@launch
             }
 
@@ -197,7 +219,24 @@ class ArticleViewModel(
                 leadImages = it.leadImages + (entryId to leadImage),
                 localImagePaths = it.localImagePaths + (entryId to localPaths)
             )
-            if (isFullText) stored else stored.withPartialContent(entryId)
+            if (isFullText) {
+                stored.copy(
+                    partialContentIds = stored.partialContentIds - entryId,
+                    contentError = if (stored.entries.getOrNull(stored.currentIndex)?.id == entryId &&
+                        stored.contentError == PARTIAL_CONTENT_MESSAGE
+                    ) null else stored.contentError
+                )
+            } else {
+                stored.withPartialContent(entryId)
+            }
+        }
+        val cachedOverview = articleAiOverviewRepository.get(
+            entryId = entryId,
+            content = html,
+            modelId = preferencesManager.getAiModelId()
+        )
+        if (cachedOverview != null) {
+            _uiState.update { it.copy(aiOverviews = it.aiOverviews + (entryId to cachedOverview)) }
         }
     }
 
@@ -297,7 +336,6 @@ class ArticleViewModel(
 
     fun generateAiOverview(entryId: Long) {
         val entry = _uiState.value.entries.find { it.id == entryId } ?: return
-        if (_uiState.value.aiOverviews.containsKey(entryId)) return
         if (_uiState.value.generatingOverviewIds.contains(entryId)) return
 
         _uiState.update {
@@ -306,14 +344,24 @@ class ArticleViewModel(
 
         viewModelScope.launch {
             val content = getContentForEntry(entryId).orEmpty()
+            val modelId = preferencesManager.getAiModelId()
             val result = if (content.isBlank()) {
                 Result.failure(Exception(MISSING_CONTENT_MESSAGE))
             } else {
-                articleAiService.generateArticleOverview(
-                    title = entry.title,
-                    content = content,
-                    modelId = preferencesManager.getAiModelId()
-                )
+                val cached = articleAiOverviewRepository.get(entryId, content, modelId)
+                if (cached != null) {
+                    Result.success(cached)
+                } else articleAiService.generateArticleOverview(
+                        title = entry.title,
+                        content = content,
+                        modelId = modelId
+                    )
+            }
+
+            result.getOrNull()?.let { overview ->
+                if (content.isNotBlank()) {
+                    articleAiOverviewRepository.save(entryId, content, modelId, overview)
+                }
             }
 
             _uiState.update { state ->
