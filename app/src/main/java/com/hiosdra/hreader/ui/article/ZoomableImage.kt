@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
 
 @Composable
@@ -20,16 +22,21 @@ fun ZoomableImage(entryId: Long, url: String, onDismiss: () -> Unit) {
     var scale by remember { mutableStateOf(1f) }
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
     Surface(onClick = onDismiss) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                .onSizeChanged { containerSize = it }
+                .pointerInput(containerSize, scale) {
                     detectTransformGestures { _, pan, zoom, _ ->
-                        scale = (scale * zoom).coerceIn(1f, 5f)
-                        offsetX += pan.x
-                        offsetY += pan.y
+                        val nextScale = (scale * zoom).coerceIn(1f, 5f)
+                        val maxOffsetX = (containerSize.width * (nextScale - 1f) / 2f).coerceAtLeast(0f)
+                        val maxOffsetY = (containerSize.height * (nextScale - 1f) / 2f).coerceAtLeast(0f)
+                        scale = nextScale
+                        offsetX = (offsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                        offsetY = (offsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
                     }
                 },
             contentAlignment = Alignment.Center
