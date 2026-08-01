@@ -5,9 +5,11 @@ import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
+import com.hiosdra.hreader.data.local.repository.ArticleAiOverviewRepository
 import com.hiosdra.hreader.data.local.repository.ArticleImageRepository
 import com.hiosdra.hreader.data.local.repository.CredibilityRepository
 import com.hiosdra.hreader.data.model.Enclosure
+import com.hiosdra.hreader.data.model.ArticleContentSource
 import com.hiosdra.hreader.data.remote.FeedBackend
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -30,16 +32,18 @@ class ArticleContentRepositoryTest {
 
     private val backend = mockk<FeedBackend>()
     private val articleContentDao = mockk<ArticleContentDao>(relaxed = true)
-    private val articleDao = mockk<ArticleDao>()
+    private val articleDao = mockk<ArticleDao>(relaxed = true)
     private val articleImageRepository = mockk<ArticleImageRepository>(relaxed = true)
     private val credibilityRepository = mockk<CredibilityRepository>(relaxed = true)
+    private val articleAiOverviewRepository = mockk<ArticleAiOverviewRepository>(relaxed = true)
 
     private val repository = ArticleContentRepository(
         backend,
         articleContentDao,
         articleDao,
         articleImageRepository,
-        credibilityRepository
+        credibilityRepository,
+        articleAiOverviewRepository
     )
 
     private fun article(
@@ -57,20 +61,28 @@ class ArticleContentRepositoryTest {
         enclosures = enclosures
     )
 
-    private fun storedContent(content: String, isPrepared: Boolean, leadImageUrl: String? = null) =
+    private fun storedContent(
+        content: String,
+        isPrepared: Boolean,
+        leadImageUrl: String? = null,
+        source: ArticleContentSource = ArticleContentSource.FULL,
+        imageUrls: String = "\u0000"
+    ) =
         ArticleContent(
             entryId = entryId,
             content = content,
             fetchedAt = Instant.EPOCH,
             url = articleUrl,
+            source = source,
             isPrepared = isPrepared,
-            leadImageUrl = leadImageUrl
+            leadImageUrl = leadImageUrl,
+            imageUrls = imageUrls
         )
 
     @Test
     fun `a fetched article is stored ready to read`() = runBlocking {
         coEvery { articleContentDao.getArticleContent(entryId) } returns null
-        coEvery { backend.fetchFullContent(entryId) } returns """<p>Text</p><img src="/media/photo.jpg">"""
+        coEvery { backend.fetchFullContent(entryId, articleUrl) } returns """<p>Text</p><img src="/media/photo.jpg">"""
         coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
         val stored = slot<ArticleContent>()
 
@@ -78,15 +90,17 @@ class ArticleContentRepositoryTest {
 
         coVerify { articleContentDao.insertArticleContent(capture(stored)) }
         assertTrue(stored.captured.isPrepared)
+        assertEquals(ArticleContentSource.FULL, stored.captured.source)
         assertTrue(stored.captured.content.contains("https://example.com/media/photo.jpg"))
         assertEquals(stored.captured.content, text.html)
+        assertEquals(ArticleContentSource.FULL, text.source)
     }
 
     @Test
     fun `the pictures a fetched article references are downloaded under the address it renders`() =
         runBlocking {
             coEvery { articleContentDao.getArticleContent(entryId) } returns null
-            coEvery { backend.fetchFullContent(entryId) } returns """<img src="/media/photo.jpg">"""
+            coEvery { backend.fetchFullContent(entryId, articleUrl) } returns """<img src="/media/photo.jpg">"""
             coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
 
             repository.getArticleContent(entryId, articleUrl)
@@ -102,7 +116,7 @@ class ArticleContentRepositoryTest {
     @Test
     fun `the enclosure leads an article whose body does not carry it`() = runBlocking {
         coEvery { articleContentDao.getArticleContent(entryId) } returns null
-        coEvery { backend.fetchFullContent(entryId) } returns "<p>Text with no pictures</p>"
+        coEvery { backend.fetchFullContent(entryId, articleUrl) } returns "<p>Text with no pictures</p>"
         coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(
             article(enclosures = listOf(Enclosure("https://example.com/photo.jpg", "image/jpeg")))
         )
@@ -116,7 +130,7 @@ class ArticleContentRepositoryTest {
     fun `an article whose body opens with the enclosure has nothing to show above it`() =
         runBlocking {
             coEvery { articleContentDao.getArticleContent(entryId) } returns null
-            coEvery { backend.fetchFullContent(entryId) } returns
+            coEvery { backend.fetchFullContent(entryId, articleUrl) } returns
                 """<img src="https://example.com/photo.jpg"><p>Text</p>"""
             coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(
                 article(enclosures = listOf(Enclosure("https://example.com/photo.jpg", "image/jpeg")))
@@ -137,7 +151,7 @@ class ArticleContentRepositoryTest {
         assertEquals("<p>Prepared</p>", text.html)
         assertEquals("https://example.com/photo.jpg", text.leadImageUrl)
         coVerify(exactly = 0) { articleContentDao.insertArticleContent(any()) }
-        coVerify(exactly = 0) { backend.fetchFullContent(any()) }
+        coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
     }
 
     @Test
@@ -154,19 +168,48 @@ class ArticleContentRepositoryTest {
             assertTrue(written.captured.isPrepared)
             assertTrue(written.captured.content.contains("https://example.com/media/photo.jpg"))
             assertEquals(written.captured.content, text.html)
-            // Its pictures were downloaded when it was first stored.
-            coVerify(exactly = 0) { articleImageRepository.downloadAndStoreImage(any(), any()) }
-            coVerify(exactly = 0) { backend.fetchFullContent(any()) }
+            coVerify {
+                articleImageRepository.downloadAndStoreImage(
+                    entryId,
+                    "https://example.com/media/photo.jpg"
+                )
+            }
+            coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
         }
 
     @Test
     fun `an article the backend cannot serve falls back to what the feed carried`() = runBlocking {
         coEvery { articleContentDao.getArticleContent(entryId) } returns null
-        coEvery { backend.fetchFullContent(entryId) } returns null
+        coEvery { backend.fetchFullContent(entryId, articleUrl) } returns null
         coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article(content = "<p>Summary</p>"))
 
         val text = repository.getArticleContent(entryId, articleUrl)
 
         assertTrue(text.html.contains("Summary"))
+        assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
+    }
+
+    @Test
+    fun `a cached feed fallback upgrades when the backend later serves the full text`() = runBlocking {
+        coEvery { articleContentDao.getArticleContent(entryId) } returns
+            storedContent("<p>Summary</p>", isPrepared = true, source = ArticleContentSource.FEED_FALLBACK)
+        coEvery { backend.fetchFullContent(entryId, articleUrl) } returns "<p>Full text</p>"
+        coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
+
+        val text = repository.getArticleContent(entryId, articleUrl)
+
+        assertEquals(ArticleContentSource.FULL, text.source)
+        assertTrue(text.html.contains("Full text"))
+    }
+
+    @Test
+    fun `offline content lookup does not call the backend when only the feed body is available`() = runBlocking {
+        coEvery { articleContentDao.getArticleContent(entryId) } returns null
+        coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
+
+        val text = repository.getArticleContent(entryId, articleUrl, allowNetwork = false)
+
+        assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
+        coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
     }
 }

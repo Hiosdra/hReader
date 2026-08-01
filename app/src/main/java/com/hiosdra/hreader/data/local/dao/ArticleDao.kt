@@ -36,7 +36,7 @@ private const val FROM_ARTICLES_WITH_FEED = "FROM articles a LEFT JOIN feeds f O
 private const val VISIBILITY_FILTER =
     "(:feedId IS NULL OR a.feedId = :feedId) " +
         "AND (:starredOnly = 0 OR a.starred = 1) " +
-        "AND (:includeRead = 1 OR a.status != :readStatus " +
+        "AND (:includeRead = 1 OR (a.status IS NULL OR a.status != :readStatus) " +
         "OR (a.readAt IS NOT NULL AND a.readAt >= :sessionStart))"
 
 /**
@@ -106,7 +106,8 @@ interface ArticleDao {
     @Query(
         "SELECT a.id $FROM_ARTICLES_WITH_FEED " +
             "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND (:starredOnly = 0 OR a.starred = 1) AND a.status != :readStatus"
+            "AND (:starredOnly = 0 OR a.starred = 1) " +
+            "AND (a.status IS NULL OR a.status != :readStatus)"
     )
     suspend fun getUnreadIds(
         feedId: Long?,
@@ -121,7 +122,8 @@ interface ArticleDao {
     @Query(
         "SELECT COUNT(*) FROM articles a " +
             "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND (:starredOnly = 0 OR a.starred = 1) AND a.status != :readStatus"
+            "AND (:starredOnly = 0 OR a.starred = 1) " +
+            "AND (a.status IS NULL OR a.status != :readStatus)"
     )
     fun observeUnreadCountFor(
         feedId: Long?,
@@ -153,6 +155,9 @@ interface ArticleDao {
 
     @Query("UPDATE articles SET preview = :preview WHERE id = :id")
     suspend fun setPreview(id: String, preview: String)
+
+    @Query("UPDATE articles SET fullContent = :content WHERE id = :id")
+    suspend fun setFullContent(id: String, content: String)
 
     /**
      * Upsert rather than insert-or-replace. REPLACE resolves a conflict by deleting the old row and
@@ -222,7 +227,8 @@ interface ArticleDao {
      * same reason — a star is a request to keep the article around.
      */
     @Query(
-        "SELECT id FROM articles WHERE status != :readStatus AND pendingSync = 0 " +
+        "SELECT id FROM articles WHERE (status IS NULL OR status != :readStatus) " +
+            "AND pendingSync = 0 AND starredPendingSync = 0 " +
             "AND backlogFetchedAt IS NULL AND starred = 0"
     )
     suspend fun getSyncedUnreadIds(readStatus: ArticleStatus = ArticleStatus.READ): List<String>
@@ -235,7 +241,8 @@ interface ArticleDao {
 
     /** A starred article is kept past its retention window: the star is what asks for that. */
     @Query(
-        "DELETE FROM articles WHERE status = :readStatus AND pendingSync = 0 AND starred = 0 " +
+        "DELETE FROM articles WHERE status = :readStatus AND pendingSync = 0 " +
+            "AND starredPendingSync = 0 AND starred = 0 " +
             "AND readAt IS NOT NULL AND readAt < :readBefore"
     )
     suspend fun deleteArticlesReadBefore(
@@ -249,7 +256,8 @@ interface ArticleDao {
      */
     @Query(
         "SELECT id, url, enclosures FROM articles " +
-            "WHERE status != :readStatus OR backlogFetchedAt IS NOT NULL OR starred = 1"
+            "WHERE (status IS NULL OR status != :readStatus) " +
+            "OR backlogFetchedAt IS NOT NULL OR starred = 1"
     )
     suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
 
@@ -262,15 +270,21 @@ interface ArticleDao {
     @Query("SELECT COUNT(*) FROM articles")
     fun observeArticleCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM articles WHERE status != :readStatus")
+    @Query("SELECT COUNT(*) FROM articles WHERE status IS NULL OR status != :readStatus")
     fun observeUnreadCount(readStatus: ArticleStatus = ArticleStatus.READ): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM articles WHERE backlogFetchedAt IS NOT NULL")
     fun observeBacklogCount(): Flow<Int>
 
     @Query(
+        "SELECT COUNT(*) FROM articles WHERE (status IS NULL OR status != 'READ') " +
+            "OR backlogFetchedAt IS NOT NULL OR starred = 1"
+    )
+    fun observeOfflineTargetCount(): Flow<Int>
+
+    @Query(
         "SELECT feedId, COUNT(*) AS unreadCount FROM articles " +
-            "WHERE status != :readStatus GROUP BY feedId"
+            "WHERE status IS NULL OR status != :readStatus GROUP BY feedId"
     )
     fun observeUnreadCountsPerFeed(readStatus: ArticleStatus = ArticleStatus.READ): Flow<List<FeedUnreadCount>>
 }

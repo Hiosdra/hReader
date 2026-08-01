@@ -24,5 +24,6 @@ class MyApplication : Application() {
         }.koin
         // Content prefetching is chained off each successful sync, not scheduled separately.
         koin.get<SyncScheduler>().schedulePeriodicSync()
+        koin.get<SyncScheduler>().start()
     }
 }

@@ -4,6 +4,8 @@ import com.hiosdra.hreader.data.model.BackendType
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 private const val GOOGLE_READER_ENDPOINT = "api/greader.php"
 
@@ -37,7 +39,15 @@ class ServerConfig(private val preferencesManager: PreferencesManager) {
 
     fun credentialsFingerprint(): String {
         val backendType = backendType()
-        return "$backendType|${serverUrlFor(backendType)}|${username()}|${secretFor(backendType).hashCode()}"
+        return "$backendType|${serverUrlFor(backendType)}|${username()}|${secretFor(backendType).sha256()}"
+    }
+
+    fun cacheOwnerKey(): String {
+        val backend = backendType()
+        val server = normalizedRootFor(backend)
+            ?: serverUrlFor(backend).trim().lowercase().trimEnd('/')
+        val identity = if (backend.requiresUsername) username() else ""
+        return "$backend|$server|$identity|${secretFor(backend).sha256()}"
     }
 
     private fun normalizedRootFor(backendType: BackendType): String? {
@@ -46,4 +56,8 @@ class ServerConfig(private val preferencesManager: PreferencesManager) {
         val absolute = if (server.startsWith("http://") || server.startsWith("https://")) server else "https://$server"
         return absolute.trimEnd('/')
     }
+
+    private fun String.sha256(): String = MessageDigest.getInstance("SHA-256")
+        .digest(toByteArray(StandardCharsets.UTF_8))
+        .joinToString("") { byte -> "%02x".format(byte) }
 }

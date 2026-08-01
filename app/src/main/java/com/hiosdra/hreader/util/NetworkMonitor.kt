@@ -19,17 +19,25 @@ import kotlinx.coroutines.flow.StateFlow
  */
 class NetworkMonitor(context: Context) {
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val observedNetworks = mutableSetOf<Network>()
     private val _isOnline = MutableStateFlow(checkInitial())
     val isOnline: StateFlow<Boolean> = _isOnline
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) { _isOnline.value = checkAnyOnline() }
-        override fun onLost(network: Network) { _isOnline.value = checkAnyOnline() }
-        override fun onUnavailable() { _isOnline.value = checkAnyOnline() }
+        override fun onAvailable(network: Network) {
+            synchronized(observedNetworks) { observedNetworks.add(network) }
+            updateOnline()
+        }
+        override fun onLost(network: Network) {
+            synchronized(observedNetworks) { observedNetworks.remove(network) }
+            updateOnline()
+        }
+        override fun onUnavailable() { updateOnline() }
         // Validation lands after the network becomes available, so without this a portal that
         // never lets a request through would stay marked online.
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-            _isOnline.value = checkAnyOnline()
+            synchronized(observedNetworks) { observedNetworks.add(network) }
+            updateOnline()
         }
     }
 
@@ -40,16 +48,24 @@ class NetworkMonitor(context: Context) {
         try { connectivityManager.registerNetworkCallback(request, callback) } catch (_: Exception) {}
     }
 
-    private fun checkInitial(): Boolean = try { checkAnyOnline() } catch (_: Exception) { true }
+    private fun checkInitial(): Boolean = try {
+        connectivityManager.activeNetwork?.let { network ->
+            synchronized(observedNetworks) { observedNetworks.add(network) }
+        }
+        checkAnyOnline()
+    } catch (_: Exception) {
+        false
+    }
 
     private fun checkAnyOnline(): Boolean {
-        val networks = connectivityManager.allNetworks
-        if (networks.isEmpty()) return false
-        networks.forEach { n ->
-            val caps = connectivityManager.getNetworkCapabilities(n)
-            if (caps != null && caps.reachesInternet()) return true
+        val networks = synchronized(observedNetworks) { observedNetworks.toList() }
+        return networks.any { network ->
+            connectivityManager.getNetworkCapabilities(network)?.reachesInternet() == true
         }
-        return false
+    }
+
+    private fun updateOnline() {
+        _isOnline.value = checkAnyOnline()
     }
 
     // Only the two things worth asserting. Every further capability required here is another way to
@@ -60,4 +76,3 @@ class NetworkMonitor(context: Context) {
         hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
             !hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)
 }
-

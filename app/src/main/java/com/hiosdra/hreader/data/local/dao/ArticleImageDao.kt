@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.data.local.entity.ArticleImage
+import com.hiosdra.hreader.data.local.entity.ArticleImageManifest
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,6 +27,9 @@ interface ArticleImageDao {
     @Query("SELECT DISTINCT entryId FROM article_images")
     suspend fun getAllImageEntryIds(): List<Long>
 
+    @Query("SELECT DISTINCT entryId FROM article_image_manifest")
+    suspend fun getAllExpectedImageEntryIds(): List<Long>
+
     @Query("SELECT localFilePath FROM article_images WHERE entryId IN (:entryIds)")
     suspend fun getImagePathsForArticles(entryIds: List<Long>): List<String>
 
@@ -40,6 +44,34 @@ interface ArticleImageDao {
 
     @Query("DELETE FROM article_images WHERE entryId = :entryId")
     suspend fun deleteImagesForArticle(entryId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpectedImages(images: List<ArticleImageManifest>)
+
+    @Query("DELETE FROM article_image_manifest WHERE entryId = :entryId")
+    suspend fun deleteExpectedImagesForArticle(entryId: Long)
+
+    @Query("DELETE FROM article_image_manifest WHERE entryId IN (:entryIds)")
+    suspend fun deleteExpectedImagesForArticles(entryIds: List<Long>)
+
+    @Query("DELETE FROM article_image_manifest")
+    suspend fun clearExpectedImages()
+
+    @Query(
+        "SELECT COUNT(*) FROM article_image_manifest m INNER JOIN articles a " +
+            "ON a.id = CAST(m.entryId AS TEXT) WHERE (a.status IS NULL OR a.status != 'READ') " +
+            "OR a.backlogFetchedAt IS NOT NULL OR a.starred = 1"
+    )
+    fun observeOfflineExpectedImageCount(): Flow<Int>
+
+    @Query(
+        "SELECT COUNT(*) FROM article_image_manifest m INNER JOIN article_images i " +
+            "ON i.entryId = m.entryId AND i.originalUrl = m.originalUrl " +
+            "INNER JOIN articles a ON a.id = CAST(m.entryId AS TEXT) " +
+            "WHERE (a.status IS NULL OR a.status != 'READ') " +
+            "OR a.backlogFetchedAt IS NOT NULL OR a.starred = 1"
+    )
+    fun observeOfflineStoredExpectedImageCount(): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM article_images")
     fun observeImageCount(): Flow<Int>

@@ -78,6 +78,14 @@ class ServerConfigTest {
     }
 
     @Test
+    fun `fingerprint does not rely on colliding string hash codes`() {
+        val before = configFor(serverUrl = "rss.example.com", secret = "FB").credentialsFingerprint()
+        val after = configFor(serverUrl = "rss.example.com", secret = "Ea").credentialsFingerprint()
+
+        assertTrue(before != after)
+    }
+
+    @Test
     fun `fingerprint changes when the backend changes`() {
         val freshRss = configFor(backendType = BackendType.FRESHRSS, serverUrl = "rss.example.com")
         val miniflux = configFor(backendType = BackendType.MINIFLUX, serverUrl = "rss.example.com")

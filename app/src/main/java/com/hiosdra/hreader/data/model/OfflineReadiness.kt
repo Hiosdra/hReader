@@ -13,11 +13,21 @@ data class OfflineReadiness(
     val storedContentCount: Int = 0,
     val storedImageCount: Int = 0,
     val storedImageBytes: Long = 0,
-    val lastSyncAt: Instant? = null
+    val lastSyncAt: Instant? = null,
+    val offlineTargetCount: Int = articleCount,
+    val storedFullContentCount: Int = storedContentCount,
+    val expectedImageCount: Int = 0,
+    val storedExpectedImageCount: Int = 0
 ) {
     val missingContentCount: Int
-        get() = (articleCount - storedContentCount).coerceAtLeast(0)
+        get() = (offlineTargetCount - storedContentCount).coerceAtLeast(0)
+
+    val missingFullContentCount: Int
+        get() = (offlineTargetCount - storedFullContentCount).coerceAtLeast(0)
+
+    val missingImageCount: Int
+        get() = (expectedImageCount - storedExpectedImageCount).coerceAtLeast(0)
 
     val isComplete: Boolean
-        get() = articleCount > 0 && missingContentCount == 0
+        get() = offlineTargetCount > 0 && missingContentCount == 0
 }

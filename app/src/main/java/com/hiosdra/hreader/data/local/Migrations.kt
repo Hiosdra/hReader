@@ -127,11 +127,73 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
     }
 }
 
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `articles` ADD COLUMN `fullContent` TEXT")
+        db.execSQL(
+            "ALTER TABLE `article_contents` ADD COLUMN `source` TEXT NOT NULL DEFAULT 'FEED_FALLBACK'"
+        )
+        db.execSQL("ALTER TABLE `article_contents` ADD COLUMN `imageUrls` TEXT NOT NULL DEFAULT ''")
+
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_BEFORE_DELETE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_AFTER_UPDATE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_AFTER_INSERT")
+        db.execSQL("DROP TABLE IF EXISTS `articles_fts`")
+        db.execSQL(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS `articles_fts` USING FTS4(" +
+                "`title` TEXT NOT NULL, `author` TEXT, `content` TEXT, `fullContent` TEXT, " +
+                "content=`articles`)"
+        )
+        FTS_CONTENT_SYNC_TRIGGERS_WITH_FULL_CONTENT.forEach(db::execSQL)
+        db.execSQL("INSERT INTO `articles_fts`(`articles_fts`) VALUES('rebuild')")
+    }
+}
+
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `article_ai_overviews` (" +
+                "`entryId` INTEGER NOT NULL, `overview` TEXT NOT NULL, `modelId` TEXT NOT NULL, " +
+                "`contentHash` TEXT NOT NULL, `generatedAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`entryId`))"
+        )
+    }
+}
+
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `article_image_manifest` (" +
+                "`entryId` INTEGER NOT NULL, `originalUrl` TEXT NOT NULL, " +
+                "PRIMARY KEY(`entryId`, `originalUrl`))"
+        )
+    }
+}
+
+private val FTS_CONTENT_SYNC_TRIGGERS_WITH_FULL_CONTENT = listOf(
+    "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE " +
+        "BEFORE UPDATE ON `articles` BEGIN DELETE FROM `articles_fts` WHERE `docid`=OLD.`rowid`; END",
+    "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_DELETE " +
+        "BEFORE DELETE ON `articles` BEGIN DELETE FROM `articles_fts` WHERE `docid`=OLD.`rowid`; END",
+    "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_AFTER_UPDATE " +
+        "AFTER UPDATE ON `articles` BEGIN INSERT INTO `articles_fts`(`docid`, `title`, `author`, " +
+        "`content`, `fullContent`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`author`, NEW.`content`, " +
+        "NEW.`fullContent`); END",
+    "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_AFTER_INSERT " +
+        "AFTER INSERT ON `articles` BEGIN INSERT INTO `articles_fts`(`docid`, `title`, `author`, " +
+        "`content`, `fullContent`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`author`, NEW.`content`, " +
+        "NEW.`fullContent`); END"
+)
+
 val ALL_MIGRATIONS = arrayOf(
     MIGRATION_4_5,
     MIGRATION_5_6,
     MIGRATION_6_7,
     MIGRATION_7_8,
     MIGRATION_8_9,
-    MIGRATION_9_10
+    MIGRATION_9_10,
+    MIGRATION_10_11,
+    MIGRATION_11_12,
+    MIGRATION_12_13
 )

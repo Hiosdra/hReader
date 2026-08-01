@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.data.local.entity.ArticleContent
+import com.hiosdra.hreader.data.model.ArticleContentSource
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -14,6 +15,12 @@ interface ArticleContentDao {
 
     @Query("SELECT * FROM article_contents WHERE entryId = :entryId")
     suspend fun getArticleContent(entryId: Long): ArticleContent?
+
+    @Query(
+        "SELECT entryId FROM article_contents " +
+            "WHERE source = :source"
+    )
+    suspend fun getContentEntryIds(source: ArticleContentSource): List<Long>
 
     @Query("DELETE FROM article_contents")
     suspend fun clearAll()
@@ -31,4 +38,15 @@ interface ArticleContentDao {
 
     @Query("SELECT COUNT(*) FROM article_contents")
     fun observeContentCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM article_contents WHERE source = :source")
+    fun observeContentCount(source: ArticleContentSource): Flow<Int>
+
+    @Query(
+        "SELECT COUNT(*) FROM article_contents c INNER JOIN articles a " +
+            "ON a.id = CAST(c.entryId AS TEXT) WHERE c.source = :source AND " +
+            "((a.status IS NULL OR a.status != 'READ') OR " +
+            "a.backlogFetchedAt IS NOT NULL OR a.starred = 1)"
+    )
+    fun observeOfflineContentCount(source: ArticleContentSource): Flow<Int>
 }

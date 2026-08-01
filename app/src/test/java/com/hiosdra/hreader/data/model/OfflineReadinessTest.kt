@@ -34,4 +34,29 @@ class OfflineReadinessTest {
 
         assertEquals(0, readiness.missingContentCount)
     }
+
+    @Test
+    fun `offline scope can be smaller than the complete article cache`() {
+        val readiness = OfflineReadiness(
+            articleCount = 100,
+            offlineTargetCount = 12,
+            storedContentCount = 12,
+            storedFullContentCount = 8
+        )
+
+        assertTrue(readiness.isComplete)
+        assertEquals(4, readiness.missingFullContentCount)
+    }
+
+    @Test
+    fun `missing manifest images remain visible in readiness`() {
+        val readiness = OfflineReadiness(
+            offlineTargetCount = 2,
+            storedContentCount = 2,
+            expectedImageCount = 5,
+            storedExpectedImageCount = 3
+        )
+
+        assertEquals(2, readiness.missingImageCount)
+    }
 }

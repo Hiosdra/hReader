@@ -4,6 +4,7 @@ import android.util.Log
 import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
+import com.hiosdra.hreader.data.model.ArticleContentSource
 import com.hiosdra.hreader.data.model.ArticleText
 import com.hiosdra.hreader.data.remote.FeedBackend
 import com.hiosdra.hreader.util.leadImageUrl
@@ -15,6 +16,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -23,7 +25,8 @@ class ArticleContentRepository(
     private val articleContentDao: ArticleContentDao,
     private val articleDao: ArticleDao,
     private val articleImageRepository: ArticleImageRepository,
-    private val credibilityRepository: CredibilityRepository
+    private val credibilityRepository: CredibilityRepository,
+    private val articleAiOverviewRepository: ArticleAiOverviewRepository
 ) {
     companion object {
         private const val TAG = "ArticleContentRepo"
@@ -37,53 +40,103 @@ class ArticleContentRepository(
 
         /** Below SQLite's 999 bound-variable ceiling on Android. */
         private const val DELETE_CHUNK = 500
+        private const val IMAGE_URL_SEPARATOR = "\u001e"
+        private const val EMPTY_IMAGE_MANIFEST = "\u0000"
     }
 
     private val prefetchLimiter = Semaphore(MAX_CONCURRENT_PREFETCH)
-    suspend fun getArticleContent(entryId: Long, url: String): ArticleText {
+    suspend fun getArticleContent(
+        entryId: Long,
+        url: String,
+        allowNetwork: Boolean = true
+    ): ArticleText {
         val localContent = articleContentDao.getArticleContent(entryId)
-        if (localContent != null) {
-            if (localContent.isPrepared) {
-                return ArticleText(localContent.content, localContent.leadImageUrl)
+        if (localContent != null && localContent.url == url) {
+            if (localContent.source == ArticleContentSource.FULL || !allowNetwork) {
+                return prepareStoredContent(entryId, localContent, allowNetwork)
             }
-            // Stored before the text was prepared here. Prepared and written back rather than only
-            // handed over, so the article is read from then on without doing this again. The images
-            // it references were downloaded when it was first stored.
-            val prepared = prepare(entryId, localContent.content, localContent.url)
-            articleContentDao.insertArticleContent(
-                localContent.copy(
-                    content = prepared.html,
-                    isPrepared = true,
-                    leadImageUrl = prepared.leadImageUrl
-                )
-            )
-            return ArticleText(prepared.html, prepared.leadImageUrl)
+
+            val fullContent = fetchFullContent(entryId, url)
+            if (fullContent != null) {
+                return storeContent(entryId, url, fullContent, ArticleContentSource.FULL, allowNetwork)
+            }
+            return prepareStoredContent(entryId, localContent, allowNetwork)
         }
 
-        val content = fetchFullContent(entryId)
-        val prepared = prepare(entryId, content, url)
-        downloadImagesForEntry(entryId, prepared.imageUrls)
+        if (allowNetwork) {
+            val fullContent = fetchFullContent(entryId, url)
+            if (fullContent != null) {
+                return storeContent(entryId, url, fullContent, ArticleContentSource.FULL, true)
+            }
+        }
 
-        val articleContent = ArticleContent(
-            entryId = entryId,
-            content = prepared.html,
-            fetchedAt = Instant.now(),
-            url = url,
-            isPrepared = true,
-            leadImageUrl = prepared.leadImageUrl
-        )
-        articleContentDao.insertArticleContent(articleContent)
-        return ArticleText(prepared.html, prepared.leadImageUrl)
+        val feedContent = articleDao.getArticlesImmediate(listOf(entryId.toString()))
+            .firstOrNull()
+            ?.content
+            ?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("No content available for entry $entryId")
+        return storeContent(entryId, url, feedContent, ArticleContentSource.FEED_FALLBACK, allowNetwork)
     }
 
-    private suspend fun fetchFullContent(entryId: Long): String {
-        val serverSide = runCatching { backend.fetchFullContent(entryId) }
-            .onFailure { Log.w(TAG, "Backend could not provide full content for entry $entryId: ${it.message}") }
-            .getOrNull()
-        if (!serverSide.isNullOrBlank()) return serverSide
+    private suspend fun fetchFullContent(entryId: Long, url: String): String? {
+        return try {
+            backend.fetchFullContent(entryId, url)?.takeIf { it.isNotBlank() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Backend could not provide full content for entry $entryId: ${e.message}")
+            null
+        }
+    }
 
-        return articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull()?.content
-            ?: throw IllegalStateException("No content available for entry $entryId")
+    private suspend fun prepareStoredContent(
+        entryId: Long,
+        stored: ArticleContent,
+        allowNetwork: Boolean
+    ): ArticleText {
+        val storedImageUrls = stored.imageUrls.toImageUrls()
+        val hasImageManifest = stored.imageUrls.isNotEmpty()
+        val prepared = if (stored.isPrepared && hasImageManifest) {
+            PreparedArticle(stored.content, storedImageUrls, stored.leadImageUrl)
+        } else {
+            prepare(entryId, stored.content, stored.url)
+        }
+        articleImageRepository.setExpectedImages(entryId, prepared.imageUrls)
+        if (allowNetwork) downloadImagesForEntry(entryId, prepared.imageUrls)
+        val updated = stored.copy(
+            content = prepared.html,
+            isPrepared = true,
+            leadImageUrl = prepared.leadImageUrl,
+            imageUrls = prepared.imageUrls.toImageManifest()
+        )
+        if (updated != stored) articleContentDao.insertArticleContent(updated)
+        return ArticleText(prepared.html, prepared.leadImageUrl, stored.source)
+    }
+
+    private suspend fun storeContent(
+        entryId: Long,
+        url: String,
+        sourceContent: String,
+        source: ArticleContentSource,
+        allowNetwork: Boolean
+    ): ArticleText {
+        val prepared = prepare(entryId, sourceContent, url)
+        articleImageRepository.setExpectedImages(entryId, prepared.imageUrls)
+        if (allowNetwork) downloadImagesForEntry(entryId, prepared.imageUrls)
+        articleContentDao.insertArticleContent(
+            ArticleContent(
+                entryId = entryId,
+                content = prepared.html,
+                fetchedAt = Instant.now(),
+                url = url,
+                source = source,
+                isPrepared = true,
+                leadImageUrl = prepared.leadImageUrl,
+                imageUrls = prepared.imageUrls.toImageManifest()
+            )
+        )
+        if (source == ArticleContentSource.FULL) articleDao.setFullContent(entryId.toString(), sourceContent)
+        return ArticleText(prepared.html, prepared.leadImageUrl, source)
     }
 
     /**
@@ -119,8 +172,8 @@ class ArticleContentRepository(
      * a large backlog only makes progress if the slice is taken from what is actually outstanding.
      */
     suspend fun entriesMissingContent(entries: List<Pair<Long, String>>): List<Pair<Long, String>> {
-        val stored = articleContentDao.getAllContentEntryIds().toHashSet()
-        return entries.filterNot { (entryId, _) -> entryId in stored }
+        val full = articleContentDao.getContentEntryIds(ArticleContentSource.FULL).toHashSet()
+        return entries.filterNot { (entryId, _) -> entryId in full }
     }
 
     /**
@@ -140,9 +193,12 @@ class ArticleContentRepository(
             async(Dispatchers.IO) {
                 prefetchLimiter.withPermit {
                     try {
-                        if (articleContentDao.getArticleContent(entryId) == null) {
+                        val stored = articleContentDao.getArticleContent(entryId)
+                        if (stored == null || stored.source != ArticleContentSource.FULL) {
                             getArticleContent(entryId, url)
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                     }
@@ -170,6 +226,7 @@ class ArticleContentRepository(
         // become an orphan.
         val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
         credibilityRepository.cleanupOrphanedReports(currentEntryIds)
+        articleAiOverviewRepository.cleanupOrphaned(currentEntryIds)
 
         // Only the ids: every row here holds a full article body, and reading all of them to
         // compare a number put the entire offline cache in memory inside a background worker.
@@ -193,9 +250,20 @@ class ArticleContentRepository(
         imageUrls.forEach { imageUrl ->
             try {
                 articleImageRepository.downloadAndStoreImage(entryId, imageUrl)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to download image $imageUrl for entry $entryId", e)
             }
         }
     }
+
+    private fun String.toImageUrls(): List<String> =
+        takeUnless { it == EMPTY_IMAGE_MANIFEST }
+            ?.split(IMAGE_URL_SEPARATOR)
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+
+    private fun List<String>.toImageManifest(): String =
+        joinToString(IMAGE_URL_SEPARATOR).ifEmpty { EMPTY_IMAGE_MANIFEST }
 }

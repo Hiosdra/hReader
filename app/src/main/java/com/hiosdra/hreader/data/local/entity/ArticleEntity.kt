@@ -24,6 +24,7 @@ data class ArticleEntity(
     val url: String,
     val publishedAt: Instant,
     val content: String?,
+    val fullContent: String? = null,
     /**
      * The opening text of [content] with the markup taken out, so the article list can render a
      * row without parsing HTML on the frame that scrolls it.

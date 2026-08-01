@@ -4,5 +4,6 @@ package com.hiosdra.hreader.data.model
 data class ArticleText(
     val html: String,
     /** Null when the body carries the picture itself, and nothing belongs above the text. */
-    val leadImageUrl: String?
+    val leadImageUrl: String?,
+    val source: ArticleContentSource = ArticleContentSource.FULL
 )
