@@ -42,7 +42,8 @@ fun AddFeedScreen(
     navController: NavController,
     /** A URL shared into the app from elsewhere, so the field is already filled in. */
     initialUrl: String? = null,
-    onFeedAdded: () -> Unit = {}
+    onFeedAdded: () -> Unit = {},
+    onNavigateBack: () -> Unit = { navController.popBackStack() }
 ) {
     val addFeedViewModel: AddFeedViewModel = koinViewModel()
     val uiState by addFeedViewModel.uiState.collectAsState()
@@ -89,7 +90,10 @@ fun AddFeedScreen(
                     keyboardActions = KeyboardActions(onDone = {
                         keyboardController?.hide()
                         if (uiState.canSubmit && !uiState.isLoading) {
-                            addFeedViewModel.onAddFeed(onFeedAdded)
+                            addFeedViewModel.onAddFeed(
+                                onFeedAdded = onFeedAdded,
+                                onNavigateBack = onNavigateBack
+                            )
                         }
                     }),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -107,7 +111,8 @@ fun AddFeedScreen(
                             onClick = {
                                 addFeedViewModel.onSelectDiscoveredFeed(
                                     discovered = discovered,
-                                    onFeedAdded = onFeedAdded
+                                    onFeedAdded = onFeedAdded,
+                                    onNavigateBack = onNavigateBack
                                 )
                             },
                             modifier = Modifier.padding(vertical = 4.dp)
@@ -119,7 +124,8 @@ fun AddFeedScreen(
                     Button(
                         onClick = {
                             addFeedViewModel.onAddFeed(
-                                onFeedAdded = onFeedAdded
+                                onFeedAdded = onFeedAdded,
+                                onNavigateBack = onNavigateBack
                             )
                         },
                         enabled = uiState.canSubmit && !uiState.isLoading,
