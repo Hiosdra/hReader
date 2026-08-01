@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -84,11 +85,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
@@ -109,6 +114,7 @@ import com.hiosdra.hreader.ui.components.OfflineAwareImage
 import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.theme.LocalCredibilityColors
 import com.hiosdra.hreader.util.cleanUrl
+import com.hiosdra.hreader.util.removeDuplicateArticleTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -122,7 +128,14 @@ import java.io.InputStream
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
+
+private const val MIN_ARTICLE_TEXT_SCALE = 0.85f
+private const val MAX_ARTICLE_TEXT_SCALE = 1.35f
+private const val ARTICLE_TEXT_SCALE_STEP = 0.1f
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -138,6 +151,7 @@ fun ArticleScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(initialPage = 0) { uiState.entries.size }
     var isWebViewMode by remember { mutableStateOf(false) }
+    var textScale by rememberSaveable { mutableFloatStateOf(1f) }
     // The pager opens on page 0 and only then jumps to the article being read, so
     // neither read state nor the reader's position may be touched before it lands.
     var pagerPositioned by remember { mutableStateOf(false) }
@@ -193,8 +207,24 @@ fun ArticleScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            if (ttsState.articleId != null) {
-                ArticleTtsBar(ttsState, ttsController::pause, ttsController::resume, ttsController::stop)
+            Column {
+                if (ttsState.articleId != null) {
+                    ArticleTtsBar(ttsState, ttsController::pause, ttsController::resume, ttsController::stop)
+                }
+                if (uiState.entries.isNotEmpty() && !isWebViewMode) {
+                    ArticleReadingBar(
+                        textScale = textScale,
+                        onDecrease = {
+                            textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
+                                .coerceAtLeast(MIN_ARTICLE_TEXT_SCALE)
+                        },
+                        onReset = { textScale = 1f },
+                        onIncrease = {
+                            textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
+                                .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
+                        }
+                    )
+                }
             }
         },
         topBar = {
@@ -216,7 +246,10 @@ fun ArticleScreen(
                             ttsController.play(
                                 articleId = entry.id,
                                 title = entry.title,
-                                html = viewModel.getContentForEntry(entry.id).orEmpty()
+                                html = removeDuplicateArticleTitle(
+                                    viewModel.getContentForEntry(entry.id).orEmpty(),
+                                    entry.title
+                                )
                             )
                         }
                     }
@@ -277,6 +310,7 @@ fun ArticleScreen(
                     entries = uiState.entries,
                     pagerState = pagerState,
                     isWebViewMode = isWebViewMode,
+                    textScale = textScale,
                     paddingValues = paddingValues,
                     onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
                     getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
@@ -360,6 +394,7 @@ private fun ArticlePager(
     entries: List<Entry>,
     pagerState: PagerState,
     isWebViewMode: Boolean,
+    textScale: Float,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
     onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
     getContentForEntry: (Long) -> String?,
@@ -403,6 +438,7 @@ private fun ArticlePager(
                 ArticleContent(
                     entry = entry,
                     mainImageUrl = getLeadImageForEntry(entry.id),
+                    textScale = textScale,
                     modifier = Modifier.padding(paddingValues),
                     onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
                     articleContent = getContentForEntry(entry.id) ?: "No content available",
@@ -457,9 +493,6 @@ private fun ArticleTopBar(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
         },
-        // Three ways of getting at the page itself, and a menu for the rest. Everything visible
-        // here is about reading the article a different way, which is what a reader reaches for
-        // while an article is disappointing them; starring and sharing come after.
         actions = {
             val overflowExpanded = remember { mutableStateOf(false) }
             IconButton(onClick = onToggleSpeech) {
@@ -469,23 +502,15 @@ private fun ArticleTopBar(
                 )
             }
             if (entryUrl != null) {
-                IconButton(onClick = onToggleWebView, enabled = isOnline) {
-                    Icon(
-                        painter = painterResource(
-                            id = if (isWebViewMode) {
-                                R.drawable.baseline_web_asset_off_24
-                            } else {
-                                R.drawable.baseline_web_asset_24
-                            }
-                        ),
-                        contentDescription = if (isWebViewMode) "Show Content" else "Show WebView",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                FeedWebToggle(
+                    isWebViewMode = isWebViewMode,
+                    isOnline = isOnline,
+                    onToggleWebView = onToggleWebView
+                )
                 IconButton(onClick = onOpenInChrome, enabled = isOnline) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_chrome_logo),
-                        contentDescription = "Open in Chrome",
+                        contentDescription = "Open original page in Chrome",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -493,7 +518,7 @@ private fun ArticleTopBar(
                     IconButton(onClick = onBypassPaywall, enabled = isOnline) {
                         Icon(
                             Icons.Filled.Lock,
-                            contentDescription = "Bypass Paywall",
+                            contentDescription = "Open through paywall bypass",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -567,6 +592,69 @@ private fun ArticleTopBar(
 }
 
 @Composable
+private fun FeedWebToggle(
+    isWebViewMode: Boolean,
+    isOnline: Boolean,
+    onToggleWebView: () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.padding(horizontal = 4.dp)
+    ) {
+        Row(modifier = Modifier.padding(2.dp)) {
+            ReaderModeOption(
+                label = "FEED",
+                selected = !isWebViewMode,
+                enabled = true,
+                contentDescription = "Show feed content",
+                onClick = { if (isWebViewMode) onToggleWebView() }
+            )
+            ReaderModeOption(
+                label = "WEB",
+                selected = isWebViewMode,
+                enabled = isOnline,
+                contentDescription = if (isOnline) "Show original web page" else "Web mode unavailable offline",
+                onClick = { if (!isWebViewMode && isOnline) onToggleWebView() }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReaderModeOption(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = if (selected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            Color.Transparent
+        },
+        modifier = Modifier
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { this.contentDescription = contentDescription }
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = when {
+                selected -> MaterialTheme.colorScheme.onPrimaryContainer
+                enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            },
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
 private fun ArticleTtsBar(
     state: ArticleTtsState,
     onPause: () -> Unit,
@@ -611,9 +699,54 @@ private fun ArticleTtsBar(
 }
 
 @Composable
+private fun ArticleReadingBar(
+    textScale: Float,
+    onDecrease: () -> Unit,
+    onReset: () -> Unit,
+    onIncrease: () -> Unit
+) {
+    Surface(tonalElevation = 2.dp) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Text size",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TextButton(
+                onClick = onDecrease,
+                enabled = textScale > MIN_ARTICLE_TEXT_SCALE,
+                modifier = Modifier.semantics { contentDescription = "Decrease text size" }
+            ) {
+                Text("A−", fontSize = 16.sp)
+            }
+            TextButton(
+                onClick = onReset,
+                modifier = Modifier.semantics { contentDescription = "Reset text size" }
+            ) {
+                Text("${(textScale * 100).roundToInt()}%")
+            }
+            TextButton(
+                onClick = onIncrease,
+                enabled = textScale < MAX_ARTICLE_TEXT_SCALE,
+                modifier = Modifier.semantics { contentDescription = "Increase text size" }
+            ) {
+                Text("A+", fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
 private fun ArticleContent(
     entry: Entry,
     mainImageUrl: String?,
+    textScale: Float,
     modifier: Modifier = Modifier,
     onReadStatusChange: ((Boolean) -> Unit)? = null,
     articleContent: String,
@@ -627,7 +760,11 @@ private fun ArticleContent(
     isAnalyzingCredibility: Boolean = false,
     onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
 ) {
-    val dateText = remember(entry.publishedAt) { formatTimestamp(entry.publishedAt) }
+    val locale = LocalLocale.current.platformLocale
+    val dateText = remember(entry.publishedAt, locale) { formatArticleDate(entry.publishedAt, locale) }
+    val readableArticleContent = remember(articleContent, entry.title) {
+        removeDuplicateArticleTitle(articleContent, entry.title)
+    }
     val progressState = remember { mutableFloatStateOf(0f) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
@@ -650,19 +787,35 @@ private fun ArticleContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .widthIn(max = 900.dp)
+                        .widthIn(max = 760.dp)
                         .padding(top = 12.dp)
                 ) {
+                    if (entry.feed.title.isNotBlank()) {
+                        Text(
+                            text = entry.feed.title.uppercase(locale),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                         Text(
                             text = entry.title,
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontSize = 28.sp,
+                                lineHeight = 34.sp
+                            ),
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
                         Checkbox(
                             checked = entry.isRead,
-                            onCheckedChange = { checked -> onReadStatusChange?.invoke(checked) }
+                            onCheckedChange = { checked -> onReadStatusChange?.invoke(checked) },
+                            modifier = Modifier.semantics {
+                                contentDescription = if (entry.isRead) "Mark as unread" else "Mark as read"
+                            }
                         )
                     }
                     if (progressState.floatValue in 0.02f..0.98f) {
@@ -710,11 +863,12 @@ private fun ArticleContent(
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                     ArticleWebView(
-                        articleContent = articleContent,
+                        articleContent = readableArticleContent,
                         baseUrl = entry.url,
                         modifier = Modifier.fillMaxWidth(),
                         allowNetworkLoads = isOnline,
                         localImagePaths = localImagePaths,
+                        textScale = textScale,
                         onLinkClick = { url ->
                             // A custom tab offline is a browser error page, and the link is gone
                             // by the time the reader is back in range.
@@ -1182,6 +1336,12 @@ private fun credibilityDisclaimer(report: CredibilityReport): String = buildStri
 
 private fun formatTimestamp(instant: Instant): String =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(instant)
+
+private fun formatArticleDate(instant: Instant, locale: Locale): String =
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
+        .withLocale(locale)
+        .withZone(ZoneId.systemDefault())
+        .format(instant)
 
 @Composable
 private fun ImageActionsDialog(
