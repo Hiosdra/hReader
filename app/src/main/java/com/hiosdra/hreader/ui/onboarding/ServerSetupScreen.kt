@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.ui.settings.BackendServerFields
 import com.hiosdra.hreader.ui.settings.OpenRouterKeyField
 import com.hiosdra.hreader.ui.settings.SettingsViewModel
+import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import org.koin.androidx.compose.koinViewModel
 
@@ -34,6 +35,7 @@ fun ServerSetupScreen(
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsState()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsState()
+    val requestNotificationPermission = rememberNotificationPermissionRequest()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,7 +69,11 @@ fun ServerSetupScreen(
             ) {
                 BackendServerFields(
                     state = serverSettings,
-                    onBackendTypeChange = settingsViewModel::onBackendTypeRequested,
+                    onBackendTypeChange = { backendType ->
+                        requestNotificationPermission {
+                            settingsViewModel.onBackendTypeRequested(backendType)
+                        }
+                    },
                     onServerUrlChange = settingsViewModel::onServerUrlChange,
                     onUsernameChange = settingsViewModel::onUsernameChange,
                     onSecretChange = settingsViewModel::onSecretChange,
@@ -88,8 +94,10 @@ fun ServerSetupScreen(
             }
             TextButton(
                 onClick = {
-                    settingsViewModel.onSetupFinished()
-                    onSetupFinished()
+                    requestNotificationPermission {
+                        settingsViewModel.onSetupFinished()
+                        onSetupFinished()
+                    }
                 },
                 enabled = serverSettings.hasAllFields,
                 modifier = Modifier.fillMaxWidth()

@@ -14,9 +14,11 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 private const val CONTENT_SYNC_WORK = "ContentSyncWorker"
@@ -35,12 +37,32 @@ internal const val KEY_IGNORE_QUIET_HOURS = "ignore_quiet_hours"
 internal const val KEY_DRAIN_REMAINING = "drain_remaining"
 internal const val KEY_PROGRESS_DONE = "progress_done"
 internal const val KEY_PROGRESS_TOTAL = "progress_total"
+internal const val KEY_USER_VISIBLE = "user_visible"
+internal const val KEY_OPERATION_TITLE = "operation_title"
+internal const val KEY_ERROR_MESSAGE = "error_message"
 
-/** How far along a "prepare for offline" run is, for the screen that started it. */
+enum class SyncOperationState {
+    IDLE,
+    RUNNING,
+    SUCCEEDED,
+    FAILED,
+    CANCELLED
+}
+
+data class SyncOperationStatus(
+    val state: SyncOperationState = SyncOperationState.IDLE,
+    val errorMessage: String? = null,
+    val workIds: Set<UUID> = emptySet()
+) {
+    val isRunning: Boolean
+        get() = state == SyncOperationState.RUNNING
+}
+
 data class OfflinePreparationProgress(
     val isRunning: Boolean = false,
     val done: Int = 0,
-    val total: Int = 0
+    val total: Int = 0,
+    val status: SyncOperationStatus = SyncOperationStatus()
 )
 
 /**
@@ -132,13 +154,43 @@ class SyncScheduler(
      * A sync the reader has just asked for by doing something — switching backend, finishing setup
      * — rather than one the clock asked for. Unthrottled, because it answers an action.
      */
-    fun syncNow(forceFullSync: Boolean = false) {
-        if (!preferencesManager.hasBackendCredentials()) return
+    fun syncNow(
+        forceFullSync: Boolean = false,
+        userVisible: Boolean = false,
+        operationTitle: String = context.getString(R.string.notification_sync_title)
+    ): UUID? {
+        if (!preferencesManager.hasBackendCredentials()) return null
+        val syncWork = syncRequest(
+            forceFullSync = forceFullSync,
+            ignoreQuietHours = userVisible,
+            userVisible = userVisible,
+            operationTitle = operationTitle
+        )
         workManager
-            .beginUniqueWork(REQUESTED_SYNC_WORK, ExistingWorkPolicy.REPLACE, syncRequest(forceFullSync))
-            .then(prefetchRequest())
+            .beginUniqueWork(
+                REQUESTED_SYNC_WORK,
+                ExistingWorkPolicy.REPLACE,
+                syncWork
+            )
+            .then(
+                prefetchRequest(
+                    ignoreQuietHours = userVisible,
+                    userVisible = userVisible,
+                    operationTitle = operationTitle
+                )
+            )
             .enqueue()
+        return syncWork.id
     }
+
+    fun resyncNow(): UUID? = syncNow(
+        forceFullSync = true,
+        userVisible = true,
+        operationTitle = context.getString(R.string.notification_resync_title)
+    )
+
+    fun observeRequestedSync(): Flow<SyncOperationStatus> =
+        workManager.getWorkInfosForUniqueWorkFlow(REQUESTED_SYNC_WORK).map(::operationStatus)
 
     /** Stops everything in flight. What is queued has no account left to run against. */
     fun cancelAllSync() {
@@ -178,15 +230,32 @@ class SyncScheduler(
      * allows; here the reader has asked for the whole cache, so what a run leaves over is worth
      * another run rather than the next hour's.
      */
-    fun prepareForOffline() {
+    fun prepareForOffline(): UUID? {
+        if (!preferencesManager.hasBackendCredentials()) return null
+        val syncWork = syncRequest(
+            forceFullSync = true,
+            expedited = true,
+            ignoreQuietHours = true,
+            userVisible = true,
+            operationTitle = context.getString(R.string.notification_offline_title)
+        )
         workManager
             .beginUniqueWork(
                 OFFLINE_PREPARATION_WORK,
                 ExistingWorkPolicy.REPLACE,
-                syncRequest(forceFullSync = true, expedited = true, ignoreQuietHours = true)
+                syncWork
             )
-            .then(prefetchRequest(expedited = true, ignoreQuietHours = true, drainRemaining = true))
+            .then(
+                prefetchRequest(
+                    expedited = true,
+                    ignoreQuietHours = true,
+                    drainRemaining = true,
+                    userVisible = true,
+                    operationTitle = context.getString(R.string.notification_offline_title)
+                )
+            )
             .enqueue()
+        return syncWork.id
     }
 
     /**
@@ -196,17 +265,22 @@ class SyncScheduler(
     fun observeOfflinePreparation(): Flow<OfflinePreparationProgress> =
         workManager.getWorkInfosForUniqueWorkFlow(OFFLINE_PREPARATION_WORK).map { infos ->
             val progress = infos.firstOrNull { it.state == WorkInfo.State.RUNNING }?.progress
+                ?: infos.lastOrNull()?.progress
+            val status = operationStatus(infos)
             OfflinePreparationProgress(
-                isRunning = infos.any { !it.state.isFinished },
+                isRunning = status.isRunning,
                 done = progress?.getInt(KEY_PROGRESS_DONE, 0) ?: 0,
-                total = progress?.getInt(KEY_PROGRESS_TOTAL, 0) ?: 0
+                total = progress?.getInt(KEY_PROGRESS_TOTAL, 0) ?: 0,
+                status = status
             )
         }
 
     private fun syncRequest(
         forceFullSync: Boolean,
         expedited: Boolean = false,
-        ignoreQuietHours: Boolean = false
+        ignoreQuietHours: Boolean = false,
+        userVisible: Boolean = false,
+        operationTitle: String = context.getString(R.string.notification_sync_title)
     ) = OneTimeWorkRequestBuilder<ContentSyncWorker>()
         .setConstraints(networkConstraints())
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
@@ -215,6 +289,8 @@ class SyncScheduler(
                 .putBoolean(KEY_FORCE_FULL_SYNC, forceFullSync)
                 .putBoolean(KEY_PREFETCH_CHAINED, true)
                 .putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours)
+                .putBoolean(KEY_USER_VISIBLE, userVisible)
+                .putString(KEY_OPERATION_TITLE, operationTitle)
                 .build()
         )
         .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
@@ -223,7 +299,9 @@ class SyncScheduler(
     private fun prefetchRequest(
         expedited: Boolean = false,
         ignoreQuietHours: Boolean = false,
-        drainRemaining: Boolean = false
+        drainRemaining: Boolean = false,
+        userVisible: Boolean = false,
+        operationTitle: String = context.getString(R.string.notification_sync_title)
     ) =
         OneTimeWorkRequestBuilder<ArticleContentSyncWorker>()
             .setConstraints(networkConstraints())
@@ -232,8 +310,30 @@ class SyncScheduler(
                 Data.Builder()
                     .putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours)
                     .putBoolean(KEY_DRAIN_REMAINING, drainRemaining)
+                    .putBoolean(KEY_USER_VISIBLE, userVisible)
+                    .putString(KEY_OPERATION_TITLE, operationTitle)
                     .build()
             )
             .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
             .build()
+}
+
+private fun operationStatus(infos: List<WorkInfo>): SyncOperationStatus {
+    val workIds = infos.map { it.id }.toSet()
+    if (infos.isEmpty()) return SyncOperationStatus(workIds = workIds)
+    val failed = infos.firstOrNull { it.state == WorkInfo.State.FAILED }
+    if (failed != null) {
+        return SyncOperationStatus(
+            state = SyncOperationState.FAILED,
+            errorMessage = failed.outputData.getString(KEY_ERROR_MESSAGE),
+            workIds = workIds
+        )
+    }
+    if (infos.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }) {
+        return SyncOperationStatus(state = SyncOperationState.RUNNING, workIds = workIds)
+    }
+    if (infos.any { it.state == WorkInfo.State.CANCELLED }) {
+        return SyncOperationStatus(state = SyncOperationState.CANCELLED, workIds = workIds)
+    }
+    return SyncOperationStatus(state = SyncOperationState.SUCCEEDED, workIds = workIds)
 }

@@ -35,6 +35,7 @@ import com.hiosdra.hreader.data.tts.TtsModelManager
 import com.hiosdra.hreader.data.tts.TtsModelStatus
 import com.hiosdra.hreader.data.tts.TtsLanguages
 import com.hiosdra.hreader.ui.theme.sectionCardColors
+import com.hiosdra.hreader.worker.TtsModelDownloadScheduler
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -42,7 +43,9 @@ import kotlin.math.roundToInt
 @Composable
 internal fun TtsSettingsSection(
     preferences: PreferencesManager,
-    modelManager: TtsModelManager
+    modelManager: TtsModelManager,
+    downloadScheduler: TtsModelDownloadScheduler,
+    onRequestNotifications: (() -> Unit) -> Unit
 ) {
     val statuses by modelManager.statuses.collectAsState()
     val scope = rememberCoroutineScope()
@@ -103,21 +106,29 @@ internal fun TtsSettingsSection(
                                     selectedModel = TtsModel.ANDROID
                                     preferences.setTtsModel(TtsModel.ANDROID)
                                 }
+                                downloadScheduler.cancelDownload(model)
                                 scope.launch { modelManager.remove(model) }
                             }) {
                                 Text("Remove")
                             }
                         }
                         TtsModelStatus.NotInstalled, is TtsModelStatus.Failed -> {
-                            Button(onClick = { scope.launch { modelManager.download(model) } }) {
+                            Button(onClick = {
+                                onRequestNotifications { downloadScheduler.enqueueDownload(model) }
+                            }) {
                                 Text("Download")
                             }
                         }
                         is TtsModelStatus.Downloading -> {
-                            CircularProgressIndicator(
-                                progress = { status.progress },
-                                modifier = Modifier.padding(8.dp)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(
+                                    progress = { status.progress },
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                                TextButton(onClick = { downloadScheduler.cancelDownload(model) }) {
+                                    Text("Cancel")
+                                }
+                            }
                         }
                     }
                 }

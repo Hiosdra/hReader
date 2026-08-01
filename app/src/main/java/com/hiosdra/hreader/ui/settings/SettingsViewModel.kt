@@ -10,11 +10,15 @@ import com.hiosdra.hreader.data.model.OfflineReadiness
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.repository.FeedRepository
 import com.hiosdra.hreader.data.repository.LocalCacheRepository
+import com.hiosdra.hreader.worker.SyncOperationState
+import com.hiosdra.hreader.worker.SyncOperationStatus
 import com.hiosdra.hreader.worker.SyncScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class ServerSettingsUiState(
     val backendType: BackendType = BackendType.FRESHRSS,
@@ -59,7 +63,8 @@ data class OfflineUiState(
     val imageCacheBudgetMegabytes: Int = 0,
     val isPreparing: Boolean = false,
     val preparationDone: Int = 0,
-    val preparationTotal: Int = 0
+    val preparationTotal: Int = 0,
+    val preparationStatus: SyncOperationStatus = SyncOperationStatus()
 ) {
     /** Null while the worker has not reported counts yet, which reads as indeterminate. */
     val preparationProgress: Float?
@@ -73,7 +78,9 @@ data class SyncUiState(
     val quietHoursEnabled: Boolean = false,
     val quietHoursStart: Int = PreferencesManager.DEFAULT_QUIET_HOURS_START,
     val quietHoursEnd: Int = PreferencesManager.DEFAULT_QUIET_HOURS_END,
-    val isResyncing: Boolean = false
+    val isResyncing: Boolean = false,
+    val resyncStatus: SyncOperationStatus = SyncOperationStatus(),
+    val showResyncStatus: Boolean = false
 )
 
 class SettingsViewModel(
@@ -95,9 +102,13 @@ class SettingsViewModel(
 
     private val _offline = MutableStateFlow(currentOfflineSettings())
     val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
+    private var offlineAwaitingWork = false
+    private var offlineWorkId: UUID? = null
 
     private val _sync = MutableStateFlow(currentSyncSettings())
     val sync: StateFlow<SyncUiState> = _sync.asStateFlow()
+    private var resyncAwaitingWork = false
+    private var resyncWorkId: UUID? = null
 
     init {
         loadAiModels()
@@ -108,18 +119,93 @@ class SettingsViewModel(
         }
         viewModelScope.launch {
             syncScheduler.observeOfflinePreparation().collect { progress ->
+                if (offlineAwaitingWork) {
+                    val expectedWorkId = offlineWorkId ?: return@collect
+                    if (expectedWorkId !in progress.status.workIds) return@collect
+                }
                 _offline.value = _offline.value.copy(
                     isPreparing = progress.isRunning,
                     preparationDone = progress.done,
-                    preparationTotal = progress.total
+                    preparationTotal = progress.total,
+                    preparationStatus = progress.status
                 )
+                if (
+                    offlineAwaitingWork &&
+                    progress.status.state != SyncOperationState.RUNNING &&
+                    progress.status.state != SyncOperationState.IDLE
+                ) {
+                    offlineAwaitingWork = false
+                    offlineWorkId = null
+                }
+            }
+        }
+        viewModelScope.launch {
+            syncScheduler.observeRequestedSync().collect { status ->
+                val expectedWorkId = resyncWorkId ?: return@collect
+                if (expectedWorkId !in status.workIds) return@collect
+                _sync.value = _sync.value.copy(resyncStatus = status)
+                if (!resyncAwaitingWork) return@collect
+                when (status.state) {
+                    SyncOperationState.RUNNING -> {
+                        _sync.value = _sync.value.copy(isResyncing = true)
+                    }
+                    SyncOperationState.SUCCEEDED,
+                    SyncOperationState.FAILED,
+                    SyncOperationState.CANCELLED -> {
+                        resyncAwaitingWork = false
+                        resyncWorkId = null
+                        _sync.value = _sync.value.copy(isResyncing = false)
+                    }
+                    SyncOperationState.IDLE -> Unit
+                }
             }
         }
     }
 
     fun prepareForOffline() {
-        _offline.value = _offline.value.copy(isPreparing = true, preparationDone = 0, preparationTotal = 0)
-        syncScheduler.prepareForOffline()
+        offlineAwaitingWork = true
+        offlineWorkId = null
+        _offline.value = _offline.value.copy(
+            isPreparing = true,
+            preparationDone = 0,
+            preparationTotal = 0,
+            preparationStatus = SyncOperationStatus(SyncOperationState.RUNNING)
+        )
+        val workId = syncScheduler.prepareForOffline()
+        if (workId == null) {
+            offlineAwaitingWork = false
+            offlineWorkId = null
+            _offline.value = _offline.value.copy(
+                isPreparing = false,
+                preparationStatus = SyncOperationStatus(
+                    state = SyncOperationState.FAILED,
+                    errorMessage = "Configure a feed server first."
+                )
+            )
+        } else {
+            offlineAwaitingWork = true
+            offlineWorkId = workId
+            watchOfflinePreparation(workId)
+        }
+    }
+
+    private fun watchOfflinePreparation(workId: UUID) {
+        viewModelScope.launch {
+            val terminalProgress = syncScheduler.observeOfflinePreparation().first { progress ->
+                workId in progress.status.workIds &&
+                    progress.status.state != SyncOperationState.RUNNING &&
+                    progress.status.state != SyncOperationState.IDLE
+            }
+            if (offlineWorkId != workId) return@launch
+            offlineAwaitingWork = false
+            offlineWorkId = null
+            _offline.value = _offline.value.copy(
+                isPreparing = terminalProgress.isRunning,
+                preparationDone = terminalProgress.done,
+                preparationTotal = terminalProgress.total,
+                preparationStatus = terminalProgress.status
+            )
+        }
     }
 
     fun onSyncIntervalChange(minutes: Int) {
@@ -177,15 +263,63 @@ class SettingsViewModel(
      */
     fun resyncFromScratch() {
         viewModelScope.launch {
-            _sync.value = _sync.value.copy(isResyncing = true)
+            resyncAwaitingWork = false
+            resyncWorkId = null
+            _sync.value = _sync.value.copy(
+                isResyncing = true,
+                resyncStatus = SyncOperationStatus(SyncOperationState.RUNNING),
+                showResyncStatus = true
+            )
             syncScheduler.cancelAllSync()
             val cleared = runCatching { localCacheRepository.clearBackendData() }
             // Rescheduled even when clearing failed: leaving the periodic worker deregistered
             // would turn a failed wipe into an app that never syncs again.
             syncScheduler.schedulePeriodicSync()
-            if (cleared.isSuccess) syncScheduler.syncNow(forceFullSync = true)
-            _sync.value = _sync.value.copy(isResyncing = false)
+            if (cleared.isSuccess) {
+                val workId = syncScheduler.resyncNow()
+                if (workId != null) {
+                    resyncWorkId = workId
+                    resyncAwaitingWork = true
+                    watchResync(workId)
+                } else {
+                    resyncAwaitingWork = false
+                    _sync.value = _sync.value.copy(
+                        isResyncing = false,
+                        resyncStatus = SyncOperationStatus(
+                            state = SyncOperationState.FAILED,
+                            errorMessage = "Configure a feed server first."
+                        )
+                    )
+                }
+            } else {
+                _sync.value = _sync.value.copy(
+                    isResyncing = false,
+                    resyncStatus = SyncOperationStatus(
+                        state = SyncOperationState.FAILED,
+                        errorMessage = cleared.exceptionOrNull()?.message
+                    )
+                )
+            }
             _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
+        }
+    }
+
+    private fun watchResync(workId: UUID) {
+        viewModelScope.launch {
+            val terminalStatus = syncScheduler.observeRequestedSync().first { status ->
+                workId in status.workIds && (
+                    status.state == SyncOperationState.SUCCEEDED ||
+                        status.state == SyncOperationState.FAILED ||
+                        status.state == SyncOperationState.CANCELLED
+                    )
+            }
+            if (resyncWorkId != workId) return@launch
+            resyncAwaitingWork = false
+            resyncWorkId = null
+            _sync.value = _sync.value.copy(
+                isResyncing = false,
+                resyncStatus = terminalStatus
+            )
         }
     }
 
@@ -274,7 +408,10 @@ class SettingsViewModel(
             // The switch wipes everything downloaded, so the new backend is fetched from scratch
             // rather than leaving the reader with an empty list until the next scheduled run.
             syncScheduler.schedulePeriodicSync()
-            syncScheduler.syncNow(forceFullSync = true)
+            syncScheduler.syncNow(
+                forceFullSync = true,
+                userVisible = true
+            )
             _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
         }
     }
@@ -318,7 +455,7 @@ class SettingsViewModel(
      */
     fun onSetupFinished() {
         syncScheduler.schedulePeriodicSync()
-        syncScheduler.syncNow(forceFullSync = true)
+        syncScheduler.syncNow(forceFullSync = true, userVisible = true)
     }
 
     fun testConnection() {
