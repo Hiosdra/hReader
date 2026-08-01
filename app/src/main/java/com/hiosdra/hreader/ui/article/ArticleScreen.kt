@@ -106,6 +106,7 @@ import com.hiosdra.hreader.data.tts.ArticleTtsController
 import com.hiosdra.hreader.data.tts.ArticleTtsState
 import com.hiosdra.hreader.navigation.openChromeCustomTab
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
+import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.theme.LocalCredibilityColors
 import com.hiosdra.hreader.util.cleanUrl
 import kotlinx.coroutines.Dispatchers
@@ -146,6 +147,7 @@ fun ArticleScreen(
     val paywallBypassService: PaywallBypassService = koinInject()
     val ttsController: ArticleTtsController = koinInject()
     val ttsState by ttsController.state.collectAsState()
+    val requestNotificationPermission = rememberNotificationPermissionRequest()
 
     LaunchedEffect(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis) {
         viewModel.openList(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis)
@@ -205,11 +207,13 @@ fun ArticleScreen(
                     if (ttsState.articleId == entry.id) {
                         ttsController.stop()
                     } else {
-                        ttsController.play(
-                            articleId = entry.id,
-                            title = entry.title,
-                            html = viewModel.getContentForEntry(entry.id).orEmpty()
-                        )
+                        requestNotificationPermission {
+                            ttsController.play(
+                                articleId = entry.id,
+                                title = entry.title,
+                                html = viewModel.getContentForEntry(entry.id).orEmpty()
+                            )
+                        }
                     }
                 },
                 onBack = { navController.popBackStack() },

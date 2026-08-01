@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.data.model.OfflineReadiness
+import com.hiosdra.hreader.worker.SyncOperationState
 import java.time.Duration
 import java.time.Instant
 
@@ -121,6 +122,28 @@ fun OfflineReadinessSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
         )
+        when (state.preparationStatus.state) {
+            SyncOperationState.SUCCEEDED -> Text(
+                text = "Offline preparation complete.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            SyncOperationState.FAILED -> Text(
+                text = "Offline preparation failed: ${state.preparationStatus.errorMessage ?: "try again."}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            SyncOperationState.CANCELLED -> Text(
+                text = "Offline preparation cancelled.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            SyncOperationState.IDLE,
+            SyncOperationState.RUNNING -> Unit
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider()

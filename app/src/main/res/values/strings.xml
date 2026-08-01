@@ -2,4 +2,15 @@
     <string name="app_name">hReader</string>
     <string name="shortcut_add_feed_short">Subscribe</string>
     <string name="shortcut_add_feed_long">Add a subscription</string>
+    <string name="notification_channel_sync">Background sync</string>
+    <string name="notification_channel_tts">Read aloud</string>
+    <string name="notification_channel_model_download">Voice model downloads</string>
+    <string name="notification_sync_title">Syncing articles</string>
+    <string name="notification_offline_title">Preparing offline reading</string>
+    <string name="notification_resync_title">Rebuilding local cache</string>
+    <string name="notification_sync_text">Synchronizing articles</string>
+    <string name="notification_prefetch_text">Downloading article content</string>
+    <string name="notification_model_download_title">Downloading voice model</string>
+    <string name="notification_cancel">Cancel</string>
+    <string name="notification_tts_title">Read aloud</string>
 </resources>

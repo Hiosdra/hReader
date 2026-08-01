@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.worker.SyncOperationState
 
 /** Keeps a long list of options inside the dialog instead of pushing its buttons off screen. */
 private val CHOICE_LIST_MAX_HEIGHT = 320.dp
@@ -113,6 +114,27 @@ fun SyncSection(
                     MaterialTheme.colorScheme.error
                 }
             )
+        }
+        if (state.showResyncStatus) {
+            when (state.resyncStatus.state) {
+                SyncOperationState.SUCCEEDED -> Text(
+                    text = "Resync complete.",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                SyncOperationState.FAILED -> Text(
+                    text = "Resync failed: ${state.resyncStatus.errorMessage ?: "try again."}",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                SyncOperationState.CANCELLED -> Text(
+                    text = "Resync cancelled.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                SyncOperationState.IDLE,
+                SyncOperationState.RUNNING -> Unit
+            }
         }
     }
 
