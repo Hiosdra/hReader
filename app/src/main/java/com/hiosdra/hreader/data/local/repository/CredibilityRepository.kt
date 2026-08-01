@@ -8,6 +8,7 @@ import com.hiosdra.hreader.data.model.CredibilityConfidence
 import com.hiosdra.hreader.data.model.CredibilityFactor
 import com.hiosdra.hreader.data.model.CredibilityReport
 import com.hiosdra.hreader.data.model.CredibilitySource
+import kotlinx.coroutines.CancellationException
 
 private const val TAG = "CredibilityRepo"
 private const val LINE_SEPARATOR = "\n"
@@ -40,8 +41,13 @@ class CredibilityRepository(
 
         return articleAiService.analyzeCredibility(source, modelId)
             .onSuccess { report ->
-                runCatching { articleCredibilityDao.upsert(report.toEntity(entryId)) }
-                    .onFailure { Log.e(TAG, "Failed to cache credibility for entry $entryId", it) }
+                try {
+                    articleCredibilityDao.upsert(report.toEntity(entryId))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to cache credibility for entry $entryId", e)
+                }
             }
     }
 

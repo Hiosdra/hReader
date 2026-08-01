@@ -9,6 +9,7 @@ import com.hiosdra.hreader.data.remote.ENTRIES_PAGE_LIMIT
 import com.hiosdra.hreader.data.remote.EntriesPage
 import com.hiosdra.hreader.data.remote.FeedBackend
 import com.hiosdra.hreader.data.remote.FeedDiscoveryService
+import com.hiosdra.hreader.data.remote.fetchHtml
 import com.hiosdra.hreader.data.remote.freshrss.dto.StreamContentsResponse
 import com.hiosdra.hreader.data.remote.freshrss.dto.StreamEnclosure
 import com.hiosdra.hreader.data.remote.freshrss.dto.StreamItem
@@ -19,6 +20,8 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Instant
+import okhttp3.OkHttpClient
+import org.jsoup.Jsoup
 
 private const val JSON_OUTPUT = "json"
 private const val OLDEST_FIRST = "o"
@@ -33,7 +36,8 @@ private const val WORDS_PER_MINUTE = 250
 
 class FreshRssBackend(
     private val apiService: FreshRssApiService,
-    private val feedDiscoveryService: FeedDiscoveryService
+    private val feedDiscoveryService: FeedDiscoveryService,
+    private val httpClient: OkHttpClient
 ) : FeedBackend {
 
     override suspend fun getUnreadEntries(limit: Int, cursor: String?): EntriesPage =
@@ -132,7 +136,21 @@ class FreshRssBackend(
         }
     }
 
-    override suspend fun fetchFullContent(entryId: Long): String? = null
+    override suspend fun fetchFullContent(entryId: Long, articleUrl: String?): String? {
+        val url = articleUrl?.takeIf { it.startsWith("http://") || it.startsWith("https://") } ?: return null
+        val document = Jsoup.parse(httpClient.fetchHtml(url), url)
+        document.select("script, style, noscript, nav, header, footer, aside, form").remove()
+        val candidate = listOf(
+            "[itemprop=articleBody]",
+            "article",
+            "main",
+            "body"
+        ).asSequence()
+            .mapNotNull { selector -> document.select(selector).firstOrNull() }
+            .firstOrNull { it.text().trim().length >= 80 }
+            ?: return null
+        return candidate.html().takeIf { Jsoup.parse(it).text().isNotBlank() }
+    }
 
     private suspend fun streamContents(limit: Int, cursor: String?, startTimeSeconds: Long?): EntriesPage =
         apiService.getStreamContents(

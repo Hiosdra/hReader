@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.model.DiscoveredFeed
 import com.hiosdra.hreader.data.repository.FeedRepository
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
+import com.hiosdra.hreader.util.NetworkMonitor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +27,8 @@ data class AddFeedUiState(
 
 class AddFeedViewModel(
     private val feedRepository: FeedRepository,
-    private val feedsViewModel: FeedsViewModel
+    private val feedsViewModel: FeedsViewModel,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AddFeedUiState())
     val uiState: StateFlow<AddFeedUiState> = _uiState.asStateFlow()
@@ -68,6 +70,10 @@ class AddFeedViewModel(
     }
 
     fun onAddFeed(onFeedAdded: () -> Unit, onNavigateBack: () -> Unit) {
+        if (!networkMonitor.isOnline.value) {
+            _uiState.value = _uiState.value.copy(error = "Adding a subscription needs a connection")
+            return
+        }
         val feedUrl = _uiState.value.feedUrl.trim()
         if (!_uiState.value.canSubmit) {
             _uiState.value = _uiState.value.copy(error = "Enter a valid feed or site URL.")
@@ -102,6 +108,10 @@ class AddFeedViewModel(
     }
 
     fun onSelectDiscoveredFeed(discovered: DiscoveredFeed, onFeedAdded: () -> Unit, onNavigateBack: () -> Unit) {
+        if (!networkMonitor.isOnline.value) {
+            _uiState.value = _uiState.value.copy(error = "Adding a subscription needs a connection")
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {

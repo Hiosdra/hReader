@@ -5,6 +5,7 @@ import com.hiosdra.hreader.data.model.CredibilityReport
 import com.hiosdra.hreader.data.model.CredibilitySource
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import java.time.Instant
 
@@ -44,27 +45,28 @@ class ArticleAiService(
 
         Log.d(TAG, "Analyzing credibility with model: $modelId")
 
-        executeChat(prompt.request)
-            .recoverCatching { error ->
-                if (!isUnsupportedResponseFormat(error)) throw error
+        val firstAttempt = executeChat(prompt.request)
+        val chatResult = firstAttempt.exceptionOrNull()
+            ?.takeIf(::isUnsupportedResponseFormat)
+            ?.let {
                 Log.i(TAG, "Model $modelId rejected response_format, retrying without it")
-                executeChat(prompt.request.copy(responseFormat = null)).getOrThrow()
+                executeChat(prompt.request.copy(responseFormat = null))
             }
-            .mapCatching { raw ->
-                val parsed = credibilityResponseParser.parse(raw)
-                CredibilityReport(
-                    score = parsed.score,
-                    confidence = parsed.confidence,
-                    summary = parsed.summary,
-                    reasons = parsed.reasons,
-                    redFlags = parsed.redFlags,
-                    factors = parsed.factors,
-                    modelId = modelId,
-                    analyzedAt = Instant.now(),
-                    contentTruncated = prompt.contentTruncated
-                )
-            }
-            .onFailure { Log.e(TAG, "Credibility analysis failed", it) }
+            ?: firstAttempt
+        chatResult.mapCatching { raw ->
+            val parsed = credibilityResponseParser.parse(raw)
+            CredibilityReport(
+                score = parsed.score,
+                confidence = parsed.confidence,
+                summary = parsed.summary,
+                reasons = parsed.reasons,
+                redFlags = parsed.redFlags,
+                factors = parsed.factors,
+                modelId = modelId,
+                analyzedAt = Instant.now(),
+                contentTruncated = prompt.contentTruncated
+            )
+        }.onFailure { Log.e(TAG, "Credibility analysis failed", it) }
     }
 
     private suspend fun executeChat(request: OpenRouterRequest): Result<String> {
@@ -93,6 +95,8 @@ class ArticleAiService(
                 return Result.failure(OpenRouterException(null, "The model returned an empty response."))
             }
             Result.success(content)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Chat completion failed", e)
             Result.failure(e)

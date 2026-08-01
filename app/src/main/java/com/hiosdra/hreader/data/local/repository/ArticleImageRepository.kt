@@ -5,8 +5,10 @@ import android.util.Log
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleImageDao
 import com.hiosdra.hreader.data.local.entity.ArticleImage
+import com.hiosdra.hreader.data.local.entity.ArticleImageManifest
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -49,6 +51,8 @@ class ArticleImageRepository(
 
     suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): ArticleImage? =
         withContext(Dispatchers.IO) {
+            var localFile: File? = null
+            var stored = false
             try {
                 if (!preferencesManager.getImageDownloadEnabled()) return@withContext null
 
@@ -59,71 +63,85 @@ class ArticleImageRepository(
 
                 // Download image
                 val request = Request.Builder().url(imageUrl).build()
-                val response = okHttpClient.newCall(request).execute()
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
 
-                if (!response.isSuccessful) {
-                    response.close()
-                    return@withContext null
+                    val body = response.body
+                    val contentType = body.contentType()?.toString()
+
+                    // A declared length settles it without spending any bandwidth at all. Most
+                    // CDNs send the image chunked and declare nothing, which is what the streaming
+                    // cap below is for.
+                    val declaredLength = body.contentLength()
+                    if (declaredLength > MAX_IMAGE_BYTES) {
+                        Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
+                        return@withContext null
+                    }
+
+                    val imageId = generateImageId(entryId, imageUrl)
+                    val extension = getFileExtension(contentType, imageUrl)
+                    val target = File(imagesDir, "$imageId$extension")
+                    localFile = target
+
+                    // Streamed with the cap applied as it goes. A response without a declared
+                    // length — anything chunked, which is most CDNs — used to sail past the check
+                    // above and be downloaded in full before its size could be objected to.
+                    val fileSize = copyAtMost(body.byteStream(), target, MAX_IMAGE_BYTES)
+                    if (fileSize == null) {
+                        Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
+                        return@withContext null
+                    }
+
+                    val articleImage = ArticleImage(
+                        id = imageId,
+                        entryId = entryId,
+                        originalUrl = imageUrl,
+                        localFilePath = target.absolutePath,
+                        mimeType = contentType,
+                        downloadedAt = Instant.now(),
+                        fileSize = fileSize
+                    )
+
+                    articleImageDao.insertArticleImage(articleImage)
+                    stored = true
+                    enforceCacheBudget()
+                    articleImage
                 }
-
-                val body = response.body
-                val contentType = body.contentType()?.toString()
-
-                // A declared length settles it without spending any bandwidth at all. Most CDNs
-                // send the image chunked and declare nothing, which is what the streaming cap
-                // below is for.
-                val declaredLength = body.contentLength()
-                if (declaredLength > MAX_IMAGE_BYTES) {
-                    Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
-                    response.close()
-                    return@withContext null
-                }
-
-                // Generate file name and path
-                val imageId = generateImageId(entryId, imageUrl)
-                val extension = getFileExtension(contentType, imageUrl)
-                val fileName = "$imageId$extension"
-                val localFile = File(imagesDir, fileName)
-
-                // Streamed with the cap applied as it goes. A response without a declared length —
-                // anything chunked, which is most CDNs — used to sail past the check above and be
-                // downloaded in full before its size could be objected to.
-                val fileSize = response.use { copyAtMost(body.byteStream(), localFile, MAX_IMAGE_BYTES) }
-                if (fileSize == null) {
-                    Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
-                    localFile.delete()
-                    return@withContext null
-                }
-
-                val articleImage = ArticleImage(
-                    id = imageId,
-                    entryId = entryId,
-                    originalUrl = imageUrl,
-                    localFilePath = localFile.absolutePath,
-                    mimeType = contentType,
-                    downloadedAt = Instant.now(),
-                    fileSize = fileSize
-                )
-
-                articleImageDao.insertArticleImage(articleImage)
-                enforceCacheBudget()
-                articleImage
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to download/store image $imageUrl for entry $entryId", e)
                 null
+            } finally {
+                if (!stored) localFile?.delete()
             }
         }
 
     suspend fun getLocalImagePath(entryId: Long, imageUrl: String): String? =
-        articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
-            ?.takeIf { fileExists(it.localFilePath) }
-            ?.localFilePath
+        articleImageDao.getImageForArticleByUrl(entryId, imageUrl)?.let { image ->
+            if (fileExists(image.localFilePath)) image.localFilePath
+            else {
+                articleImageDao.deleteArticleImage(image)
+                null
+            }
+        }
 
     /** Every downloaded image of one article, keyed by the address it was published under. */
     suspend fun getLocalImagePaths(entryId: Long): Map<String, String> =
-        articleImageDao.getImagesForArticle(entryId)
-            .filter { fileExists(it.localFilePath) }
-            .associate { it.originalUrl to it.localFilePath }
+        articleImageDao.getImagesForArticle(entryId).mapNotNull { image ->
+            if (fileExists(image.localFilePath)) {
+                image.originalUrl to image.localFilePath
+            } else {
+                articleImageDao.deleteArticleImage(image)
+                null
+            }
+        }.toMap()
+
+    suspend fun setExpectedImages(entryId: Long, imageUrls: List<String>) {
+        articleImageDao.deleteExpectedImagesForArticle(entryId)
+        val expected = imageUrls.distinct().map { url -> ArticleImageManifest(entryId, url) }
+        if (expected.isNotEmpty()) articleImageDao.insertExpectedImages(expected)
+    }
 
     /**
      * Copies [input] into [target], stopping and reporting null once it goes past [limit]. Returns
@@ -177,7 +195,9 @@ class ArticleImageRepository(
      * than the image rows: retention and full-sync reconciliation can orphan thousands at once.
      */
     suspend fun cleanupOrphanedImages() {
-        val storedEntryIds = articleImageDao.getAllImageEntryIds()
+        val storedEntryIds = (
+            articleImageDao.getAllImageEntryIds() + articleImageDao.getAllExpectedImageEntryIds()
+            ).distinct()
         if (storedEntryIds.isEmpty()) return
 
         val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
@@ -187,6 +207,7 @@ class ArticleImageRepository(
         orphaned.chunked(DELETE_CHUNK).forEach { chunk ->
             articleImageDao.getImagePathsForArticles(chunk).forEach { File(it).delete() }
             articleImageDao.deleteImagesForArticles(chunk)
+            articleImageDao.deleteExpectedImagesForArticles(chunk)
         }
     }
 

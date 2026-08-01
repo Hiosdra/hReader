@@ -9,6 +9,7 @@ import androidx.paging.cachedIn
 import com.hiosdra.hreader.data.ai.AiModelRepository
 import com.hiosdra.hreader.data.ai.SelectedModelStatus
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
+import com.hiosdra.hreader.data.repository.LocalCacheRepository
 import com.hiosdra.hreader.data.model.ArticleListEntry
 import com.hiosdra.hreader.data.model.ArticleListQuery
 import com.hiosdra.hreader.data.model.ArticleStatus
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -87,7 +89,8 @@ class MainViewModel(
     private val aiModelRepository: AiModelRepository,
     private val syncScheduler: SyncScheduler,
     private val savedStateHandle: SavedStateHandle,
-    networkMonitor: NetworkMonitor
+    networkMonitor: NetworkMonitor,
+    private val localCacheRepository: LocalCacheRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         MainUiState(
@@ -110,15 +113,22 @@ class MainViewModel(
     /** What the text field holds, which lags the query it drives by one debounce. */
     private val searchInput = MutableStateFlow(_uiState.value.searchQuery)
 
+    private val cacheReady = MutableStateFlow(false)
+
+    private val readyQuery = cacheReady
+        .filter { it }
+        .flatMapLatest { query }
+
     /**
      * Cached in the view-model scope so a configuration change re-collects the pages already
      * loaded instead of starting the list again from the top.
      */
-    val articles: Flow<PagingData<ArticleListEntry>> = query
+    val articles: Flow<PagingData<ArticleListEntry>> = readyQuery
         .flatMapLatest { articleRepository.pageArticles(it) }
         .cachedIn(viewModelScope)
 
     init {
+        ensureCacheOwner()
         observeSearchInput()
         observeCounts()
         observeFeedTitle()
@@ -126,6 +136,18 @@ class MainViewModel(
         viewModelScope.launch {
             networkMonitor.isOnline.collect { online ->
                 _uiState.update { it.copy(isOnline = online) }
+            }
+        }
+    }
+
+    private fun ensureCacheOwner() {
+        viewModelScope.launch {
+            try {
+                localCacheRepository.ensureCacheOwner()
+                cacheReady.value = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not verify the local cache owner", e)
+                _uiState.update { it.copy(error = "Could not prepare the local cache: ${e.message}") }
             }
         }
     }
@@ -154,7 +176,7 @@ class MainViewModel(
      * a page at a time, counting what is on screen would report a fraction of the real total.
      */
     private fun observeCounts() {
-        query
+        readyQuery
             .map { it.feedId to it.starredOnly }
             .distinctUntilChanged()
             .flatMapLatest { (feedId, starredOnly) ->
@@ -170,7 +192,7 @@ class MainViewModel(
     }
 
     private fun observeFeedTitle() {
-        query
+        readyQuery
             .map { it.feedId }
             .distinctUntilChanged()
             .onEach { feedId ->
@@ -221,6 +243,10 @@ class MainViewModel(
     }
 
     fun refreshFromNetwork() {
+        if (!_uiState.value.isOnline) {
+            _uiState.update { it.copy(error = "Refresh needs a connection") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             // Before the network rather than after it: the read articles clear out the moment the
@@ -233,6 +259,8 @@ class MainViewModel(
                 // articles readable offline are what this queues. Without it a pull-to-refresh
                 // right before losing signal left a list of titles and nothing behind them.
                 syncScheduler.enqueuePrefetch()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Network refresh failed: ${e.message}") }
             } finally {

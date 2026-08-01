@@ -107,8 +107,26 @@ class ArticleReconciliationTest {
         assertNull(remote.reconciledWith(null, now).backlogFetchedAt)
     }
 
+    @Test
+    fun `full content stays searchable while the feed representation is unchanged`() {
+        val local = article(content = "<p>Feed body</p>", fullContent = "<p>Full body</p>")
+        val remote = article(content = "<p>Feed body</p>")
+
+        assertEquals("<p>Full body</p>", remote.reconciledWith(local, now).fullContent)
+    }
+
+    @Test
+    fun `changed feed content invalidates cached full content`() {
+        val local = article(content = "<p>Old feed body</p>", fullContent = "<p>Old full body</p>")
+        val remote = article(content = "<p>New feed body</p>")
+
+        assertNull(remote.reconciledWith(local, now).fullContent)
+    }
+
     private fun article(
         title: String = "Title",
+        content: String? = null,
+        fullContent: String? = null,
         status: ArticleStatus = ArticleStatus.UNREAD,
         pendingSync: Boolean = false,
         readAt: Instant? = null,
@@ -119,7 +137,8 @@ class ArticleReconciliationTest {
         author = null,
         url = "https://example.com/1",
         publishedAt = Instant.EPOCH,
-        content = null,
+        content = content,
+        fullContent = fullContent,
         feedId = 1L,
         readingTime = null,
         enclosures = emptyList(),

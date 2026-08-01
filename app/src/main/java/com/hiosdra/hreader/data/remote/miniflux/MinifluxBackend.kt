@@ -105,7 +105,7 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
         }
     }
 
-    override suspend fun fetchFullContent(entryId: Long): String? =
+    override suspend fun fetchFullContent(entryId: Long, articleUrl: String?): String? =
         withRetries { apiService.fetchOriginalContent(entryId).content.takeIf { it.isNotBlank() } }
 
     private suspend fun fetchFeeds(): List<Feed> = apiService.getFeeds().map { it.toDomain() }
