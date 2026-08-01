@@ -1,6 +1,9 @@
 package com.hiosdra.hreader.data.tts
 
 import android.content.Context
+import android.content.Intent
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -8,6 +11,7 @@ import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -61,12 +65,29 @@ class ArticleTtsController(
     private var audioTrack: AudioTrack? = null
     private var androidTts: TextToSpeech? = null
     private var resumeSignal = CompletableDeferred(Unit)
+    private val audioManager = appContext.getSystemService(AudioManager::class.java)
+    private val speechAudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
+    private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> pause()
+            AudioManager.AUDIOFOCUS_LOSS -> stop()
+        }
+    }
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     fun play(articleId: Long, title: String, html: String) {
         stopPlayback()
         val chunks = TtsTextProcessor.fromHtml(title, html)
         if (chunks.isEmpty()) {
             _state.value = ArticleTtsState(error = "There is no article text to read.")
+            scheduleWarmRelease()
+            return
+        }
+        if (!requestAudioFocus()) {
+            _state.value = ArticleTtsState(error = "Audio focus is unavailable.")
             scheduleWarmRelease()
             return
         }
@@ -80,60 +101,66 @@ class ArticleTtsController(
             isPreparing = true,
             totalChunks = chunks.size
         )
+        if (!startPlaybackService()) {
+            abandonAudioFocus()
+            _state.value = ArticleTtsState(error = "Could not start background audio playback.")
+            scheduleWarmRelease()
+            return
+        }
         playbackJob = scope.launch {
-            val language = withContext(Dispatchers.Default) {
-                languageDetector.detect(chunks.take(2).joinToString(" "))
-            }
-            val requestedModel = preferences.getTtsModelForLanguage(language)
-            val available = modelManager.statuses.value[requestedModel] == TtsModelStatus.Available
-            val compatible = TtsLanguages.isCompatible(requestedModel, language)
-            val model = if (
-                available &&
-                compatible &&
-                Build.SUPPORTED_64_BIT_ABIS.contains("arm64-v8a")
-            ) {
-                requestedModel
-            } else {
-                TtsModel.ANDROID
-            }
-            _state.value = _state.value.copy(
-                model = model,
-                isPreparing = true,
-                error = null
-            )
-            runCatching {
-                if (model == TtsModel.ANDROID) {
-                    speakWithAndroid(chunks, language)
+            try {
+                val language = withContext(Dispatchers.Default) {
+                    languageDetector.detect(chunks.take(2).joinToString(" "))
+                }
+                val requestedModel = preferences.getTtsModelForLanguage(language)
+                val available = modelManager.statuses.value[requestedModel] == TtsModelStatus.Available
+                val compatible = TtsLanguages.isCompatible(requestedModel, language)
+                val model = if (
+                    available &&
+                    compatible &&
+                    Build.SUPPORTED_64_BIT_ABIS.contains("arm64-v8a")
+                ) {
+                    requestedModel
                 } else {
-                    speakWithSherpa(model, chunks, language)
+                    TtsModel.ANDROID
                 }
-            }.onFailure failure@{
-                if (version != playbackVersion) return@failure
-                if (it !is CancellationException && model != TtsModel.ANDROID) {
-                    Log.e(TAG, "Neural TTS failed for ${model.name}", it)
-                    _state.value = _state.value.copy(
-                        model = TtsModel.ANDROID,
-                        isPreparing = true,
-                        error = neuralFallbackMessage(model, it)
-                    )
-                    runCatching { speakWithAndroid(chunks, language) }
-                        .onFailure { androidFailure ->
-                            if (version == playbackVersion && androidFailure !is CancellationException) {
-                                _state.value = _state.value.copy(
-                                    isPreparing = false,
-                                    isPlaying = false,
-                                    error = androidFailure.message
-                                        ?: "Android TTS playback failed."
-                                )
+                _state.value = _state.value.copy(
+                    model = model,
+                    isPreparing = true,
+                    error = null
+                )
+                runCatching {
+                    if (model == TtsModel.ANDROID) {
+                        speakWithAndroid(chunks, language)
+                    } else {
+                        speakWithSherpa(model, chunks, language)
+                    }
+                }.onFailure failure@{
+                    if (version != playbackVersion) return@failure
+                    if (it !is CancellationException && model != TtsModel.ANDROID) {
+                        Log.e(TAG, "Neural TTS failed for ${model.name}", it)
+                        _state.value = _state.value.copy(
+                            model = TtsModel.ANDROID,
+                            isPreparing = true,
+                            error = neuralFallbackMessage(model, it)
+                        )
+                        runCatching { speakWithAndroid(chunks, language) }
+                            .onFailure { androidFailure ->
+                                if (version == playbackVersion && androidFailure !is CancellationException) {
+                                    finishPlaybackWithError(
+                                        version,
+                                        androidFailure.message ?: "Android TTS playback failed."
+                                    )
+                                }
                             }
-                        }
-                } else if (it !is CancellationException) {
-                    _state.value = _state.value.copy(
-                        isPreparing = false,
-                        isPlaying = false,
-                        error = it.message ?: "Speech playback failed."
-                    )
+                    } else if (it !is CancellationException) {
+                        finishPlaybackWithError(version, it.message ?: "Speech playback failed.")
+                    }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                finishPlaybackWithError(version, e.message ?: "Speech playback failed.")
             }
             if (version == playbackVersion) scheduleWarmRelease()
         }
@@ -142,6 +169,7 @@ class ArticleTtsController(
     fun stop() {
         stopPlayback()
         scheduleWarmRelease()
+        stopPlaybackService()
     }
 
     fun pause() {
@@ -149,11 +177,16 @@ class ArticleTtsController(
         resumeSignal = CompletableDeferred()
         audioTrack?.runCatching { pause() }
         androidTts?.runCatching { stop() }
+        abandonAudioFocus()
         _state.value = _state.value.copy(isPaused = true, isPlaying = false)
     }
 
     fun resume() {
         if (!_state.value.isPaused) return
+        if (!requestAudioFocus()) {
+            _state.value = _state.value.copy(error = "Audio focus is unavailable.")
+            return
+        }
         resumeSignal.complete(Unit)
         audioTrack?.runCatching { play() }
         _state.value = _state.value.copy(isPaused = false, isPlaying = true)
@@ -164,9 +197,61 @@ class ArticleTtsController(
         playbackJob?.cancel()
         playbackJob = null
         audioTrack?.runCatching { stop() }
-        androidTts?.stop()
+        androidTts?.runCatching { stop() }
+        androidTts?.runCatching { shutdown() }
+        androidTts = null
+        abandonAudioFocus()
         resumeSignal.complete(Unit)
         _state.value = ArticleTtsState()
+    }
+
+    internal fun stopFromService() {
+        stopPlayback()
+        scheduleWarmRelease()
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            .setAudioAttributes(speechAudioAttributes)
+            .setOnAudioFocusChangeListener(audioFocusListener)
+            .build()
+        audioFocusRequest = request
+        return audioManager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    }
+
+    private fun abandonAudioFocus() {
+        audioFocusRequest?.let(audioManager::abandonAudioFocusRequest)
+        audioFocusRequest = null
+    }
+
+    private fun startPlaybackService(): Boolean {
+        return try {
+            ContextCompat.startForegroundService(
+                appContext,
+                Intent(appContext, ArticleTtsPlaybackService::class.java)
+                    .setAction(ArticleTtsPlaybackService.ACTION_START)
+            )
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not start TTS playback service", e)
+            false
+        }
+    }
+
+    private fun stopPlaybackService() {
+        appContext.stopService(Intent(appContext, ArticleTtsPlaybackService::class.java))
+    }
+
+    private fun finishPlaybackWithError(version: Int, message: String) {
+        if (version != playbackVersion) return
+        abandonAudioFocus()
+        _state.value = _state.value.copy(
+            isPreparing = false,
+            isPlaying = false,
+            isPaused = false,
+            error = message
+        )
+        stopPlaybackService()
     }
 
     private fun scheduleWarmRelease() {
@@ -205,6 +290,7 @@ class ArticleTtsController(
                 audio = nextAudio?.await() ?: return@coroutineScope
             }
         }
+        abandonAudioFocus()
         _state.value = ArticleTtsState()
     }
 
@@ -220,10 +306,7 @@ class ArticleTtsController(
         )
         val track = AudioTrack.Builder()
             .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
+                speechAudioAttributes
             )
             .setAudioFormat(
                 AudioFormat.Builder()
@@ -254,28 +337,34 @@ class ArticleTtsController(
 
     private suspend fun speakWithAndroid(chunks: List<String>, language: String) {
         val tts = initializeAndroidTts()
-        tts.setSpeechRate(preferences.getTtsSpeed())
-        val languageResult = tts.setLanguage(Locale.forLanguageTag(language))
-        if (
-            languageResult == TextToSpeech.LANG_MISSING_DATA ||
-            languageResult == TextToSpeech.LANG_NOT_SUPPORTED
-        ) {
-            val fallbackResult = tts.setLanguage(Locale.getDefault())
-            check(
-                fallbackResult != TextToSpeech.LANG_MISSING_DATA &&
-                    fallbackResult != TextToSpeech.LANG_NOT_SUPPORTED
-            ) { "Android TTS does not support this language." }
+        try {
+            tts.setSpeechRate(preferences.getTtsSpeed())
+            val languageResult = tts.setLanguage(Locale.forLanguageTag(language))
+            if (
+                languageResult == TextToSpeech.LANG_MISSING_DATA ||
+                languageResult == TextToSpeech.LANG_NOT_SUPPORTED
+            ) {
+                val fallbackResult = tts.setLanguage(Locale.getDefault())
+                check(
+                    fallbackResult != TextToSpeech.LANG_MISSING_DATA &&
+                        fallbackResult != TextToSpeech.LANG_NOT_SUPPORTED
+                ) { "Android TTS does not support this language." }
+            }
+            chunks.forEachIndexed { index, chunk ->
+                resumeSignal.await()
+                _state.value = _state.value.copy(
+                    isPreparing = false,
+                    isPlaying = !_state.value.isPaused,
+                    currentChunk = index
+                )
+                while (!speakChunk(tts, chunk)) resumeSignal.await()
+            }
+            abandonAudioFocus()
+            _state.value = ArticleTtsState()
+        } finally {
+            if (androidTts === tts) androidTts = null
+            tts.runCatching { shutdown() }
         }
-        chunks.forEachIndexed { index, chunk ->
-            resumeSignal.await()
-            _state.value = _state.value.copy(
-                isPreparing = false,
-                isPlaying = !_state.value.isPaused,
-                currentChunk = index
-            )
-            while (!speakChunk(tts, chunk)) resumeSignal.await()
-        }
-        _state.value = ArticleTtsState()
     }
 
     private suspend fun speakChunk(tts: TextToSpeech, text: String): Boolean =
@@ -319,13 +408,24 @@ class ArticleTtsController(
         kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
             lateinit var instance: TextToSpeech
             instance = TextToSpeech(appContext) { status ->
-                if (status == TextToSpeech.SUCCESS) {
+                if (status == TextToSpeech.SUCCESS && continuation.isActive) {
                     androidTts = instance
-                    continuation.resume(instance) { _, _, _ -> instance.shutdown() }
+                    continuation.resume(instance) { _, _, _ ->
+                        if (androidTts === instance) androidTts = null
+                        instance.shutdown()
+                    }
                 } else {
                     instance.shutdown()
-                    continuation.cancel(IllegalStateException("Android TTS is unavailable."))
+                    if (continuation.isActive) {
+                        continuation.resumeWithException(
+                            IllegalStateException("Android TTS is unavailable.")
+                        )
+                    }
                 }
+            }
+            continuation.invokeOnCancellation {
+                if (androidTts === instance) androidTts = null
+                instance.shutdown()
             }
         }
     }

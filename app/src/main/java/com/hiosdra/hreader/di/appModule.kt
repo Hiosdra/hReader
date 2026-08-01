@@ -26,6 +26,8 @@ import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.worker.ContentSyncWorker
 import com.hiosdra.hreader.worker.SyncScheduler
+import com.hiosdra.hreader.worker.TtsModelDownloadWorker
+import com.hiosdra.hreader.worker.TtsModelDownloadScheduler
 import org.koin.android.ext.koin.androidApplication
 import org.koin.androidx.workmanager.dsl.worker
 import org.koin.core.module.dsl.viewModel
@@ -56,6 +58,7 @@ val appModule = module {
     single { PaywallBypassService() }
     single { PreferencesManager(androidApplication()) }
     single { TtsModelManager(androidApplication(), get()) }
+    single { TtsModelDownloadScheduler(androidApplication(), get()) }
     single { ArticleTtsController(androidApplication(), get(), get()) }
     single { SyncPerformanceLogger(get()) }
     single { ImageLoader(get()) }
@@ -63,6 +66,7 @@ val appModule = module {
     single { SyncScheduler(androidApplication(), get()) }
     worker { ContentSyncWorker(get(), get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get()) }
+    worker { TtsModelDownloadWorker(get(), get(), get()) }
     viewModel { MainViewModel(get(), get(), get(), get(), get()) }
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get(), get(), get(), get(), get(), get(), get()) }
