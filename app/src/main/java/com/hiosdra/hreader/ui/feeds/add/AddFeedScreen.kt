@@ -4,8 +4,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -24,6 +29,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import org.koin.androidx.compose.koinViewModel
@@ -34,7 +42,8 @@ fun AddFeedScreen(
     navController: NavController,
     /** A URL shared into the app from elsewhere, so the field is already filled in. */
     initialUrl: String? = null,
-    onFeedAdded: () -> Unit = {}
+    onFeedAdded: () -> Unit = {},
+    onNavigateBack: () -> Unit = { navController.popBackStack() }
 ) {
     val addFeedViewModel: AddFeedViewModel = koinViewModel()
     val uiState by addFeedViewModel.uiState.collectAsState()
@@ -48,20 +57,45 @@ fun AddFeedScreen(
             TopAppBar(
                 title = { Text("Add Feed", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         },
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        val keyboardController = LocalSoftwareKeyboardController.current
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .imePadding()
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 24.dp)
+            ) {
                 OutlinedTextField(
                     value = uiState.feedUrl,
                     onValueChange = { addFeedViewModel.onFeedUrlChange(it) },
                     label = { Text("Feed URL or Site URL") },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = {
+                        keyboardController?.hide()
+                        if (uiState.canSubmit && !uiState.isLoading) {
+                            addFeedViewModel.onAddFeed(
+                                onFeedAdded = onFeedAdded,
+                                onNavigateBack = onNavigateBack
+                            )
+                        }
+                    }),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     isError = uiState.error != null
                 )
@@ -78,7 +112,7 @@ fun AddFeedScreen(
                                 addFeedViewModel.onSelectDiscoveredFeed(
                                     discovered = discovered,
                                     onFeedAdded = onFeedAdded,
-                                    onNavigateBack = { navController.popBackStack() }
+                                    onNavigateBack = onNavigateBack
                                 )
                             },
                             modifier = Modifier.padding(vertical = 4.dp)
@@ -91,7 +125,7 @@ fun AddFeedScreen(
                         onClick = {
                             addFeedViewModel.onAddFeed(
                                 onFeedAdded = onFeedAdded,
-                                onNavigateBack = { navController.popBackStack() }
+                                onNavigateBack = onNavigateBack
                             )
                         },
                         enabled = uiState.canSubmit && !uiState.isLoading,

@@ -29,6 +29,8 @@ class StartupBaselineProfile {
         // The article list is what the app opens onto, so let it settle and scroll once: the first
         // scroll is where the list, the row layout and the image loader are all first touched.
         device.waitForIdle()
+        device.swipe(540, 1500, 540, 500, 12)
+        device.waitForIdle()
         device.setOrientationNatural()
     }
 }

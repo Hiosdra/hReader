@@ -7,9 +7,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.DefaultAlpha
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import com.hiosdra.hreader.util.ImageLoader
@@ -41,6 +43,8 @@ fun OfflineAwareImage(
         modifier = modifier,
         contentScale = contentScale,
         alpha = alpha,
-        colorFilter = colorFilter
+        colorFilter = colorFilter,
+        placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
+        error = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
     )
 }
