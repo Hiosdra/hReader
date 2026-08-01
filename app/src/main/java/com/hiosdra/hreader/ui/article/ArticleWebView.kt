@@ -1,9 +1,10 @@
 package com.hiosdra.hreader.ui.article
 
-import android.os.SystemClock
+import android.content.Context
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.material3.MaterialTheme
@@ -32,10 +33,11 @@ fun ArticleWebView(
     modifier: Modifier = Modifier,
     allowNetworkLoads: Boolean = true,
     localImagePaths: Map<String, String> = emptyMap(),
+    scrollEnabled: Boolean = true,
+    onContentHeightChanged: ((Int) -> Unit)? = null,
     restoreScrollY: Int = 0,
     onScrollYChanged: ((Int) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
-    onScrollProgress: ((Float) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
     preferencesManager: PreferencesManager = koinInject()
 ) {
@@ -47,9 +49,10 @@ fun ArticleWebView(
     // Read by the request interceptor below, which outlives any single recomposition: the client is
     // built once with the WebView, while the downloaded images arrive with the article body.
     val currentLocalImagePaths = rememberUpdatedState(localImagePaths)
+    val currentScrollEnabled = rememberUpdatedState(scrollEnabled)
+    val currentOnContentHeightChanged = rememberUpdatedState(onContentHeightChanged)
     val currentRestoreScrollY = rememberUpdatedState(restoreScrollY)
     val currentOnScrollYChanged = rememberUpdatedState(onScrollYChanged)
-    val currentOnScrollProgress = rememberUpdatedState(onScrollProgress)
     val currentOnLinkClick = rememberUpdatedState(onLinkClick)
     val currentOnImageLongClick = rememberUpdatedState(onImageLongClick)
 
@@ -71,37 +74,33 @@ fun ArticleWebView(
 
     /**
      * What was last handed to the WebView. The update block runs on every recomposition — a read
-     * state changing, images arriving, a scroll progress callback — and reloading there threw away
-     * the reader's position in the article each time.
+     * state changing or images arriving — and reloading there threw away the reader's position in
+     * the article each time.
      */
     val loadedHtml = remember { mutableStateOf<String?>(null) }
-    val loadedWebView = remember { mutableStateOf<WebView?>(null) }
+    val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
 
     AndroidView(
         factory = { context ->
-            WebView(context).apply {
-                var lastProgress = -1f
-                var lastScrollY = -1
-                var lastProgressAt = 0L
-                fun updateScrollProgress(wv: WebView) {
-                    val contentHeightPx = wv.contentHeight * wv.resources.displayMetrics.density
-                    val viewHeight = wv.height.toFloat()
-                    val denom = (contentHeightPx - viewHeight).coerceAtLeast(1f)
-                    val progress = (wv.scrollY / denom).coerceIn(0f, 1f)
-                    val now = SystemClock.elapsedRealtime()
-                    if (abs(progress - lastProgress) >= 0.01f || now - lastProgressAt >= 500L) {
-                        lastProgress = progress
-                        lastProgressAt = now
-                        currentOnScrollProgress.value?.invoke(progress)
-                    }
-                    if (lastScrollY < 0 || abs(wv.scrollY - lastScrollY) >= 8 || progress == 0f || progress == 1f) {
-                        lastScrollY = wv.scrollY
-                        currentOnScrollYChanged.value?.invoke(wv.scrollY)
-                    }
+            ReaderWebView(context).apply {
+                var lastReportedScrollY = -1
+
+                fun updateContentHeight(wv: WebView) {
+                    val contentHeightPx = (wv.contentHeight * wv.resources.displayMetrics.density).toInt()
+                    if (contentHeightPx > 0) currentOnContentHeightChanged.value?.invoke(contentHeightPx)
                 }
+
+                allowScroll = currentScrollEnabled.value
                 settings.javaScriptEnabled = false
                 settings.defaultFontSize = 16
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                isVerticalScrollBarEnabled = allowScroll
+                isHorizontalScrollBarEnabled = allowScroll
+                overScrollMode = if (allowScroll) View.OVER_SCROLL_IF_CONTENT_SCROLLS else View.OVER_SCROLL_NEVER
+                setOnTouchListener { view, _ ->
+                    if (!currentScrollEnabled.value) view.parent?.requestDisallowInterceptTouchEvent(false)
+                    false
+                }
                 webViewClient = object : WebViewClient() {
                     /**
                      * Serves an image from the copy prefetching downloaded instead of fetching it
@@ -136,13 +135,26 @@ fun ArticleWebView(
                         if (view != null) {
                             view.post {
                                 view.scrollTo(0, currentRestoreScrollY.value)
-                                updateScrollProgress(view)
+                                updateContentHeight(view)
                             }
                         }
                     }
                 }
+                webChromeClient = object : WebChromeClient() {
+                    override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                        if (newProgress == 100) view?.post { updateContentHeight(view) }
+                    }
+                }
+                addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+                    if (view is WebView) view.post { updateContentHeight(view) }
+                }
                 setOnScrollChangeListener { v, _, _, _, _ ->
-                    if (v is WebView) updateScrollProgress(v)
+                    if (v is WebView &&
+                        (lastReportedScrollY < 0 || abs(v.scrollY - lastReportedScrollY) >= 8 || v.scrollY == 0)
+                    ) {
+                        lastReportedScrollY = v.scrollY
+                        currentOnScrollYChanged.value?.invoke(v.scrollY)
+                    }
                 }
                 setOnLongClickListener { v: View ->
                     val result = (v as? WebView)?.hitTestResult
@@ -165,6 +177,14 @@ fun ArticleWebView(
             // were downloaded. Whatever is left points at the network, and offline every one of
             // those costs a connect timeout before the page settles.
             webView.settings.blockNetworkLoads = !allowNetworkLoads
+            webView.allowScroll = currentScrollEnabled.value
+            webView.isVerticalScrollBarEnabled = webView.allowScroll
+            webView.isHorizontalScrollBarEnabled = webView.allowScroll
+            webView.overScrollMode = if (webView.allowScroll) {
+                View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            } else {
+                View.OVER_SCROLL_NEVER
+            }
 
             if (loadedWebView.value !== webView || loadedHtml.value != htmlData) {
                 loadedWebView.value = webView
@@ -175,6 +195,18 @@ fun ArticleWebView(
         },
         modifier = modifier
     )
+}
+
+private class ReaderWebView(context: Context) : WebView(context) {
+    var allowScroll: Boolean = true
+
+    override fun scrollTo(x: Int, y: Int) {
+        super.scrollTo(x, if (allowScroll) y else 0)
+    }
+
+    override fun scrollBy(x: Int, y: Int) {
+        super.scrollBy(x, if (allowScroll) y else 0)
+    }
 }
 
 private fun articleHtml(
