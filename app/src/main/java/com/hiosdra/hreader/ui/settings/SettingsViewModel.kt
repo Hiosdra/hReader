@@ -31,7 +31,8 @@ data class ServerSettingsUiState(
     val statusMessage: String? = null,
     val isConnected: Boolean = false,
     val pendingBackendType: BackendType? = null,
-    val isSwitchingBackend: Boolean = false
+    val isSwitchingBackend: Boolean = false,
+    val signOutCompleted: Boolean = false
 ) {
     val hasAllFields: Boolean
         get() = serverUrl.isNotBlank() &&
@@ -421,7 +422,7 @@ class SettingsViewModel(
     fun signOut() {
         val backendType = _uiState.value.backendType
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSwitchingBackend = true)
+            _uiState.value = _uiState.value.copy(isSwitchingBackend = true, signOutCompleted = false)
             syncScheduler.cancelAllSync()
             val cleared = runCatching { localCacheRepository.clearBackendData() }
             preferencesManager.setBackendSecret(backendType, "")
@@ -431,7 +432,9 @@ class SettingsViewModel(
             // Deregisters the periodic worker: without credentials every run wakes the radio only
             // to fail on a missing token, hourly, for as long as the app stays installed.
             syncScheduler.schedulePeriodicSync()
-            _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
+            _uiState.value = currentSettings()
+                .withClearFailure(cleared.exceptionOrNull())
+                .copy(signOutCompleted = cleared.isSuccess)
         }
     }
 

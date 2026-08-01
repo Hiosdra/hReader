@@ -35,9 +35,10 @@ private const val MISSING_CONTENT_MESSAGE =
  *
  * The pager observes its articles with one `id IN (…)` statement, and SQLite on Android binds at
  * most 999 variables — a cached backlog of several thousand would take the query down. Nobody
- * swipes two hundred articles in one sitting, and going back to the list starts a fresh window.
+ * swipes dozens of articles in one sitting, and going back to the list starts a fresh window.
  */
-private const val PAGER_WINDOW_RADIUS = 200
+private const val PAGER_WINDOW_RADIUS = 50
+private const val CONTENT_CACHE_RADIUS = 24
 
 private const val PARTIAL_CONTENT_MESSAGE =
     "The full text of this article was never downloaded, so this is only what the feed itself carried."
@@ -223,10 +224,24 @@ class ArticleViewModel(
     private suspend fun store(entryId: Long, html: String, leadImage: String?, isFullText: Boolean) {
         val localPaths = imageLoader.getLocalImagePaths(entryId)
         _uiState.update {
+            val focusIndex = it.entries.indexOfFirst { entry -> entry.id == entryId }
+            val cacheStart = if (focusIndex >= 0) {
+                (focusIndex - CONTENT_CACHE_RADIUS).coerceAtLeast(0)
+            } else {
+                0
+            }
+            val cacheEnd = if (focusIndex >= 0) {
+                (focusIndex + CONTENT_CACHE_RADIUS + 1).coerceAtMost(it.entries.size)
+            } else {
+                it.entries.size
+            }
+            val cachedIds = it.entries.subList(cacheStart, cacheEnd).mapTo(mutableSetOf()) { entry -> entry.id }
+                .also { ids -> ids += entryId }
             val stored = it.copy(
-                content = it.content + (entryId to html),
-                leadImages = it.leadImages + (entryId to leadImage),
-                localImagePaths = it.localImagePaths + (entryId to localPaths)
+                content = (it.content + (entryId to html)).filterKeys { id -> id in cachedIds },
+                leadImages = (it.leadImages + (entryId to leadImage)).filterKeys { id -> id in cachedIds },
+                localImagePaths = (it.localImagePaths + (entryId to localPaths)).filterKeys { id -> id in cachedIds },
+                partialContentIds = it.partialContentIds.filterTo(mutableSetOf()) { id -> id in cachedIds }
             )
             if (isFullText) {
                 stored.copy(
@@ -247,6 +262,12 @@ class ArticleViewModel(
         if (cachedOverview != null) {
             _uiState.update { it.copy(aiOverviews = it.aiOverviews + (entryId to cachedOverview)) }
         }
+        val currentIds = _uiState.value.entries.mapIndexedNotNull { index, entry ->
+            entry.id.takeIf {
+                index in (_uiState.value.currentIndex - CONTENT_CACHE_RADIUS.._uiState.value.currentIndex + CONTENT_CACHE_RADIUS)
+            }
+        }.toSet()
+        requestedContentIds.retainAll(currentIds)
     }
 
     fun updateReadStatus(index: Int, isRead: Boolean) {

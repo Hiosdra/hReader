@@ -70,6 +70,7 @@ class AddFeedViewModel(
     }
 
     fun onAddFeed(onFeedAdded: () -> Unit, onNavigateBack: () -> Unit) {
+        if (_uiState.value.isLoading) return
         if (!networkMonitor.isOnline.value) {
             _uiState.value = _uiState.value.copy(error = "Adding a subscription needs a connection")
             return
@@ -108,6 +109,7 @@ class AddFeedViewModel(
     }
 
     fun onSelectDiscoveredFeed(discovered: DiscoveredFeed, onFeedAdded: () -> Unit, onNavigateBack: () -> Unit) {
+        if (_uiState.value.isLoading) return
         if (!networkMonitor.isOnline.value) {
             _uiState.value = _uiState.value.copy(error = "Adding a subscription needs a connection")
             return

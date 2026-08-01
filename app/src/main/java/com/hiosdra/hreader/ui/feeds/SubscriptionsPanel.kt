@@ -420,6 +420,15 @@ private fun PanelRow(
             }
         }
         Box {
+            if (onRename != null || onUnsubscribe != null) {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = "Feed actions",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 onRename?.let { rename ->
                     DropdownMenuItem(

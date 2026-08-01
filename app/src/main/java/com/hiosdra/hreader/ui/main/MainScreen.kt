@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Menu
@@ -58,6 +58,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -75,7 +76,7 @@ import org.koin.androidx.compose.koinViewModel
 fun MainScreen(
     navController: NavController,
     onOpenSubscriptions: () -> Unit,
-    onLeaveFeed: () -> Unit,
+    onLeaveFeed: () -> Unit = {},
     feedId: Long? = null,
     viewModel: MainViewModel = koinViewModel()
 ) {
@@ -89,13 +90,29 @@ fun MainScreen(
     val isSearching = uiState.searchQuery.isNotBlank()
     val unreadCount = if (isSearching) 0 else uiState.unreadCount
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    // Switching subscription puts a different list on screen, so it opens at the top. The screen
-    // itself stays composed across the switch, and its scroll offset would otherwise carry over —
-    // into the middle of the new list, or past its end when that one is shorter.
     val listState = rememberSaveable(feedId, saver = LazyListState.Saver) { LazyListState() }
-    val searchActive = remember { mutableStateOf(false) }
+    val searchActive = rememberSaveable { mutableStateOf(false) }
+    val searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
+
+    BackHandler(enabled = searchActive.value) {
+        searchActive.value = false
+        viewModel.updateSearchQuery("")
+        keyboardController?.hide()
+    }
+
+    LaunchedEffect(searchActive.value) {
+        if (searchActive.value) {
+            searchFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    LaunchedEffect(uiState.searchQuery) {
+        if (uiState.searchQuery.isNotBlank()) searchActive.value = true
+    }
 
     // Actions that already happened are offered back, instead of being asked about beforehand.
     uiState.undo?.let { undo ->
@@ -158,33 +175,27 @@ fun MainScreen(
                         )
                     },
                     navigationIcon = {
-                        if (feedId == null) {
-                            IconButton(
-                                onClick = onOpenSubscriptions,
-                                modifier = Modifier.padding(8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Filled.Menu,
-                                    contentDescription = "Feeds",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        } else {
-                            IconButton(
-                                onClick = onLeaveFeed,
-                                modifier = Modifier.padding(8.dp)
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                        IconButton(
+                            onClick = onOpenSubscriptions,
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Menu,
+                                contentDescription = "Feeds",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     },
                     actions = {
                         IconButton(
-                            onClick = { searchActive.value = !searchActive.value },
+                            onClick = {
+                                val closing = searchActive.value
+                                searchActive.value = !closing
+                                if (closing) {
+                                    viewModel.updateSearchQuery("")
+                                    keyboardController?.hide()
+                                }
+                            },
                             modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
                             Icon(
@@ -315,9 +326,17 @@ fun MainScreen(
                         OutlinedTextField(
                             value = uiState.searchQuery,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(searchFocusRequester),
                             singleLine = true,
                             placeholder = { Text("Search articles") },
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                            ),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                onSearch = { keyboardController?.hide() }
+                            ),
                             trailingIcon = {
                                 if (uiState.searchQuery.isNotEmpty()) {
                                     IconButton(onClick = { viewModel.updateSearchQuery("") }) {

@@ -29,8 +29,10 @@ fun SubscriptionsDrawer(
 ) {
     val scope = rememberCoroutineScope()
     val closeThen: (() -> Unit) -> Unit = { action ->
-        scope.launch { drawerState.close() }
-        action()
+        scope.launch {
+            drawerState.close()
+            action()
+        }
     }
 
     ModalNavigationDrawer(
