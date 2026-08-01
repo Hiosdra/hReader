@@ -27,6 +27,9 @@ interface ArticleImageDao {
     @Query("SELECT DISTINCT entryId FROM article_images")
     suspend fun getAllImageEntryIds(): List<Long>
 
+    @Query("SELECT DISTINCT entryId FROM article_image_manifest")
+    suspend fun getAllExpectedImageEntryIds(): List<Long>
+
     @Query("SELECT localFilePath FROM article_images WHERE entryId IN (:entryIds)")
     suspend fun getImagePathsForArticles(entryIds: List<Long>): List<String>
 

@@ -77,10 +77,22 @@ class ArticleImageRepositoryTest {
     @Test
     fun cleanupOrphanedImages_keepsImagesOfArticlesStillCached() = runBlocking {
         coEvery { articleImageDao.getAllImageEntryIds() } returns listOf(7L)
+        coEvery { articleImageDao.getAllExpectedImageEntryIds() } returns emptyList()
         coEvery { articleDao.getAllIds() } returns listOf("7")
 
         repo.cleanupOrphanedImages()
 
         coVerify(exactly = 0) { articleImageDao.deleteImagesForArticles(any()) }
+    }
+
+    @Test
+    fun cleanupOrphanedImages_removesManifestOnlyEntries() = runBlocking {
+        coEvery { articleImageDao.getAllImageEntryIds() } returns emptyList()
+        coEvery { articleImageDao.getAllExpectedImageEntryIds() } returns listOf(99L)
+        coEvery { articleDao.getAllIds() } returns emptyList()
+
+        repo.cleanupOrphanedImages()
+
+        coVerify { articleImageDao.deleteExpectedImagesForArticles(listOf(99L)) }
     }
 }
