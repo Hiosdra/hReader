@@ -16,6 +16,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,8 +36,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -75,7 +77,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -88,6 +90,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -410,7 +413,12 @@ private fun ArticlePager(
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            flingBehavior = PagerDefaults.flingBehavior(
+                state = pagerState,
+                pagerSnapDistance = PagerSnapDistance.atMost(1),
+                snapPositionalThreshold = 0.72f
+            )
         ) { page ->
             val entry = entries.getOrNull(page) ?: return@HorizontalPager
             key(entry.id) {
@@ -778,12 +786,18 @@ private fun ArticleContent(
     val readableArticleContent = remember(articleContent, entry.title) {
         removeDuplicateArticleTitle(articleContent, entry.title)
     }
-    val progressState = remember { mutableFloatStateOf(0f) }
-    var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
+    val articleScrollState = rememberSaveable(entry.id, saver = ScrollState.Saver) { ScrollState(0) }
+    var webContentHeightPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val webViewHeight = with(LocalDensity.current) { webContentHeightPx.toDp() }
+    val scrollProgress = if (articleScrollState.maxValue > 0) {
+        articleScrollState.value.toFloat() / articleScrollState.maxValue
+    } else {
+        0f
+    }
     Surface(
         modifier = modifier.fillMaxSize(),
         tonalElevation = 0.dp,
@@ -793,7 +807,7 @@ private fun ArticleContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(articleScrollState)
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -832,10 +846,10 @@ private fun ArticleContent(
                             }
                         )
                     }
-                    if (progressState.floatValue in 0.02f..0.98f) {
+                    if (scrollProgress in 0.02f..0.98f) {
                         Spacer(modifier = Modifier.height(8.dp))
                         LinearProgressIndicator(
-                            progress = { progressState.floatValue },
+                            progress = { scrollProgress },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(3.dp)
@@ -881,12 +895,13 @@ private fun ArticleContent(
                         articleContent = readableArticleContent,
                         baseUrl = entry.url,
                         modifier = Modifier
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .height(webViewHeight.coerceAtLeast(240.dp)),
                         allowNetworkLoads = isOnline,
                         localImagePaths = localImagePaths,
                         textScale = textScale,
-                        restoreScrollY = savedScrollY,
-                        onScrollYChanged = { savedScrollY = it },
+                        scrollEnabled = false,
+                        onContentHeightChanged = { height -> webContentHeightPx = height },
                         onLinkClick = { url ->
                             // A custom tab offline is a browser error page, and the link is gone
                             // by the time the reader is back in range.
@@ -897,7 +912,6 @@ private fun ArticleContent(
                                 Toast.makeText(context, "Offline — link copied", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        onScrollProgress = { p -> progressState.floatValue = p },
                         onImageLongClick = { url -> imageActionsUrl = url }
                     )
                 }
