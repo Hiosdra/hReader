@@ -10,6 +10,7 @@ import com.hiosdra.hreader.data.local.AppDatabase
 import com.hiosdra.hreader.data.local.buildFtsMatchQuery
 import com.hiosdra.hreader.data.local.buildLikePattern
 import com.hiosdra.hreader.data.local.dao.ArticleDao
+import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.dao.FeedDao
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
 import com.hiosdra.hreader.data.local.entity.ArticleListItem
@@ -85,6 +86,7 @@ private val PAGING_CONFIG = PagingConfig(
 
 class ArticleRepository(
     private val articleDao: ArticleDao,
+    private val articleContentDao: ArticleContentDao,
     private val feedDao: FeedDao,
     private val api: FeedBackend,
     private val db: AppDatabase,
@@ -186,7 +188,7 @@ class ArticleRepository(
             }
         }
 
-        feedDao.insertFeeds(api.getFeeds().map { it.toFeedEntity() })
+        reconcileFeeds()
 
         // Reconciliation deletes every locally unread article this run did not see, so it may only
         // run over a complete answer. Cut short by the page cap it would delete precisely the part
@@ -273,6 +275,19 @@ class ArticleRepository(
         }
     }
 
+    private suspend fun reconcileFeeds() {
+        val incoming = api.getFeeds().map { it.toFeedEntity() }
+        val incomingIds = incoming.mapTo(hashSetOf()) { it.id }
+        val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
+        db.withTransaction {
+            if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
+            staleIds.forEach { feedId ->
+                articleDao.deleteByFeedId(feedId)
+                feedDao.deleteById(feedId)
+            }
+        }
+    }
+
     /**
      * A full sync is also forced every [FULL_SYNC_INTERVAL] regardless of how recently the app
      * synced. With an hourly worker the 24h rule alone would never expire, so the reconciliation
@@ -304,6 +319,13 @@ class ArticleRepository(
     private suspend fun insertArticlesPreservingPendingStatus(fetchedArticles: List<ArticleEntity>) {
         val existingArticles = articleDao.getArticlesImmediate(fetchedArticles.map { it.id }).associateBy { it.id }
         val now = Instant.now()
+        fetchedArticles.mapNotNull { fetched ->
+            val local = existingArticles[fetched.id] ?: return@mapNotNull null
+            fetched.id.toLongOrNull()
+                ?.takeIf { local.url != fetched.url || local.content != fetched.content }
+        }.chunked(DELETE_CHUNK).forEach { changedEntryIds ->
+            articleContentDao.deleteArticlesContent(changedEntryIds)
+        }
         articleDao.insertArticles(fetchedArticles.map { it.reconciledWith(existingArticles[it.id], now) })
     }
 
@@ -379,7 +401,6 @@ class ArticleRepository(
         articleIds.chunked(LOCAL_UPDATE_CHUNK).forEach { chunk ->
             articleDao.updateStatusForIds(chunk, newStatus, readAt)
         }
-        pushStatusOrLeaveQueued(articleIds, newStatus)
     }
 
     suspend fun updateReadStatus(articleId: String, newStatus: ArticleStatus) {
@@ -400,7 +421,6 @@ class ArticleRepository(
     suspend fun updateStarred(articleId: Long, starred: Boolean) {
         val ids = listOf(articleId.toString())
         articleDao.updateStarredForIds(ids, starred)
-        pushStarOrLeaveQueued(ids, starred)
     }
 
     /**
@@ -468,6 +488,7 @@ internal fun ArticleEntity.reconciledWith(local: ArticleEntity?, now: Instant): 
     // A freshly fetched entity never knows it was downloaded as backlog, so the local marker is
     // carried over; losing it would expose the article to full-sync reconciliation.
     return merged.copy(
+        fullContent = local?.fullContent?.takeIf { local.url == url && local.content == content },
         readAt = readAt,
         backlogFetchedAt = local?.backlogFetchedAt,
         starred = if (starPending) local.starred else merged.starred,

@@ -5,6 +5,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ImageLoaderTest {
@@ -29,5 +30,15 @@ class ImageLoaderTest {
         val loader = ImageLoader(mockRepo) { false }
         val result = loader.getImagePath(entryId, imageUrl)
         assertEquals(imageUrl, result)
+    }
+
+    @Test
+    fun returnsNoModelOffline_whenNoLocalImage() = runBlocking {
+        val entryId = 3L
+        val imageUrl = "https://example.com/image3.jpg"
+        coEvery { mockRepo.getLocalImagePath(entryId, imageUrl) } returns null
+        val loader = ImageLoader(mockRepo) { false }
+
+        assertNull(loader.getImageModel(entryId, imageUrl, allowNetwork = false))
     }
 }

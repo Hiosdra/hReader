@@ -38,7 +38,15 @@ class FeedRepository(
 
     suspend fun refreshFeeds(): List<Feed> {
         val feeds = backend.getFeeds()
-        feedDao.insertFeeds(feeds.map { it.toFeedEntity() })
+        val incoming = feeds.map { it.toFeedEntity() }
+        val staleIds = feedDao.getAllIds().filterNot { id -> incoming.any { it.id == id } }
+        db.withTransaction {
+            if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
+            staleIds.forEach { feedId ->
+                articleDao.deleteByFeedId(feedId)
+                feedDao.deleteById(feedId)
+            }
+        }
         return feeds
     }
 

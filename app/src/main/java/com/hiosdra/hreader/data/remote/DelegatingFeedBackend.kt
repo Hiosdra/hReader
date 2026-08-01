@@ -48,7 +48,8 @@ class DelegatingFeedBackend(
     override suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean) =
         active.updateEntriesStarred(entryIds, starred)
 
-    override suspend fun fetchFullContent(entryId: Long): String? = active.fetchFullContent(entryId)
+    override suspend fun fetchFullContent(entryId: Long, articleUrl: String?): String? =
+        active.fetchFullContent(entryId, articleUrl)
 
     override suspend fun verifyConnection(): Int = active.verifyConnection()
 }

@@ -13,6 +13,8 @@ import com.hiosdra.hreader.data.repository.LocalCacheRepository
 import com.hiosdra.hreader.worker.SyncOperationState
 import com.hiosdra.hreader.worker.SyncOperationStatus
 import com.hiosdra.hreader.worker.SyncScheduler
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -91,6 +93,7 @@ class SettingsViewModel(
     private val offlineReadinessRepository: OfflineReadinessRepository,
     private val syncScheduler: SyncScheduler
 ) : ViewModel() {
+    private var cacheOwnerCheckJob: Job? = null
     private val _uiState = MutableStateFlow(currentSettings())
     val uiState: StateFlow<ServerSettingsUiState> = _uiState.asStateFlow()
 
@@ -408,10 +411,9 @@ class SettingsViewModel(
             // The switch wipes everything downloaded, so the new backend is fetched from scratch
             // rather than leaving the reader with an empty list until the next scheduled run.
             syncScheduler.schedulePeriodicSync()
-            syncScheduler.syncNow(
-                forceFullSync = true,
-                userVisible = true
-            )
+            if (cleared.isSuccess) {
+                syncScheduler.syncNow(forceFullSync = true, userVisible = true)
+            }
             _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
         }
     }
@@ -436,16 +438,39 @@ class SettingsViewModel(
     fun onServerUrlChange(serverUrl: String) {
         preferencesManager.setServerUrl(_uiState.value.backendType, serverUrl)
         _uiState.value = _uiState.value.copy(serverUrl = serverUrl).cleared()
+        scheduleCacheOwnerCheck()
     }
 
     fun onUsernameChange(username: String) {
         preferencesManager.setFreshRssUsername(username)
         _uiState.value = _uiState.value.copy(username = username).cleared()
+        scheduleCacheOwnerCheck()
     }
 
     fun onSecretChange(secret: String) {
         preferencesManager.setBackendSecret(_uiState.value.backendType, secret)
         _uiState.value = _uiState.value.copy(secret = secret).cleared()
+        scheduleCacheOwnerCheck()
+    }
+
+    private fun scheduleCacheOwnerCheck() {
+        cacheOwnerCheckJob?.cancel()
+        cacheOwnerCheckJob = viewModelScope.launch {
+            delay(500)
+            val result = runCatching { localCacheRepository.ensureCacheOwnerWhenConfigured() }
+            if (result.getOrDefault(false)) {
+                syncScheduler.cancelAllSync()
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Downloaded data was cleared for the new account."
+                )
+                syncScheduler.schedulePeriodicSync()
+            } else if (result.isFailure) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = result.exceptionOrNull()?.message
+                        ?: "Could not update the local cache."
+                )
+            }
+        }
     }
 
     /**
@@ -454,22 +479,41 @@ class SettingsViewModel(
      * first sync is started here too rather than leaving a new install empty for an hour.
      */
     fun onSetupFinished() {
-        syncScheduler.schedulePeriodicSync()
-        syncScheduler.syncNow(forceFullSync = true, userVisible = true)
+        viewModelScope.launch {
+            val ownerCheck = runCatching { localCacheRepository.ensureCacheOwner() }
+            if (ownerCheck.isFailure) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = ownerCheck.exceptionOrNull()?.message
+                        ?: "Could not prepare the local cache."
+                )
+                return@launch
+            }
+            syncScheduler.schedulePeriodicSync()
+            syncScheduler.syncNow(forceFullSync = true, userVisible = true)
+        }
     }
 
     fun testConnection() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isTesting = true, statusMessage = null)
             val result = runCatching { feedRepository.verifyConnection() }
-            if (result.isSuccess) syncScheduler.schedulePeriodicSync()
+            val ownerCheck = if (result.isSuccess) {
+                runCatching { localCacheRepository.ensureCacheOwner() }
+            } else {
+                Result.success(false)
+            }
+            if (result.isSuccess && ownerCheck.isSuccess) {
+                syncScheduler.schedulePeriodicSync()
+            }
+            val failure = result.exceptionOrNull() ?: ownerCheck.exceptionOrNull()
             _uiState.value = _uiState.value.copy(
                 isTesting = false,
-                isConnected = result.isSuccess,
-                statusMessage = result.fold(
-                    onSuccess = { "Connected. Found $it subscriptions." },
-                    onFailure = { it.message ?: "Could not connect to the server." }
-                )
+                isConnected = result.isSuccess && ownerCheck.isSuccess,
+                statusMessage = if (failure == null) {
+                    "Connected. Found ${result.getOrThrow()} subscriptions."
+                } else {
+                    failure.message ?: "Could not connect to the server."
+                }
             )
         }
     }

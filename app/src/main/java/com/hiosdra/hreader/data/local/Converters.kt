@@ -2,6 +2,7 @@ package com.hiosdra.hreader.data.local
 
 import androidx.room.TypeConverter
 import com.hiosdra.hreader.data.model.ArticleStatus
+import com.hiosdra.hreader.data.model.ArticleContentSource
 import com.hiosdra.hreader.data.model.Enclosure
 import java.time.Instant
 
@@ -34,6 +35,14 @@ class Converters {
     @TypeConverter
     fun stringToArticleStatus(value: String?): ArticleStatus? =
         value?.let { name -> ArticleStatus.entries.find { it.name == name } ?: ArticleStatus.UNREAD }
+
+    @TypeConverter
+    fun articleContentSourceToString(source: ArticleContentSource): String = source.name
+
+    @TypeConverter
+    fun stringToArticleContentSource(value: String?): ArticleContentSource =
+        value?.let { name -> ArticleContentSource.entries.find { it.name == name } }
+            ?: ArticleContentSource.FEED_FALLBACK
 }
 
 private const val RECORD_SEPARATOR = "\u001e"

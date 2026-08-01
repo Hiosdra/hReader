@@ -120,7 +120,7 @@ fun SubscriptionsPanel(
         ) {
             Text("Subscriptions", style = MaterialTheme.typography.titleLarge)
             Row {
-                IconButton(onClick = onAddFeed) {
+                IconButton(onClick = onAddFeed, enabled = isOnline) {
                     Icon(Icons.Filled.Add, contentDescription = "Add subscription")
                 }
                 var menuOpen by remember { mutableStateOf(false) }
@@ -131,6 +131,7 @@ fun SubscriptionsPanel(
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
                             text = { Text("Import OPML") },
+                            enabled = isOnline,
                             onClick = {
                                 menuOpen = false
                                 // Any type: exporters write OPML as text/xml, application/xml or
@@ -169,7 +170,7 @@ fun SubscriptionsPanel(
         }
         if (!isOnline) {
             Text(
-                text = "Offline – some actions may fail",
+                text = "Offline – subscription changes need a connection",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier
@@ -196,7 +197,7 @@ fun SubscriptionsPanel(
                         Button(onClick = { viewModel.reload() }, modifier = Modifier.padding(top = 16.dp)) {
                             Text("Retry")
                         }
-                        OutlinedButton(onClick = onAddFeed, modifier = Modifier.padding(top = 8.dp)) {
+                        OutlinedButton(onClick = onAddFeed, enabled = isOnline, modifier = Modifier.padding(top = 8.dp)) {
                             Text("Add subscription")
                         }
                     }
@@ -206,11 +207,12 @@ fun SubscriptionsPanel(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("No subscriptions yet", style = MaterialTheme.typography.titleMedium)
-                        Button(onClick = onAddFeed, modifier = Modifier.padding(top = 16.dp)) {
+                        Button(onClick = onAddFeed, enabled = isOnline, modifier = Modifier.padding(top = 16.dp)) {
                             Text("Add your first feed")
                         }
                         OutlinedButton(
                             onClick = { importLauncher.launch(arrayOf("*/*")) },
+                            enabled = isOnline,
                             modifier = Modifier.padding(top = 8.dp)
                         ) { Text("Import from OPML") }
                     }
