@@ -3,6 +3,7 @@ package com.hiosdra.hreader.application
 import android.app.Application
 import com.hiosdra.hreader.di.appModule
 import com.hiosdra.hreader.di.networkModule
+import com.hiosdra.hreader.notification.NotificationChannels
 import com.hiosdra.hreader.worker.SyncScheduler
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -13,6 +14,7 @@ class MyApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        NotificationChannels.ensure(this)
 
         val koin = startKoin {
             androidLogger()

@@ -1,7 +1,10 @@
 package com.hiosdra.hreader.data.tts
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,13 +25,33 @@ class TtsModelManager(
     context: Context,
     client: OkHttpClient
 ) {
+    private val appContext = context.applicationContext
     private val client = client.newBuilder().apply { interceptors().clear() }.build()
-    private val modelRoot = File(context.filesDir, "tts_models")
+    private val modelRoot = File(appContext.filesDir, "tts_models")
     private val modelLocks = TtsModel.entries.associateWith { Mutex() }
     private val _statuses = MutableStateFlow(currentStatuses())
     val statuses: StateFlow<Map<TtsModel, TtsModelStatus>> = _statuses.asStateFlow()
 
     fun directory(model: TtsModel): File = File(modelRoot, model.directoryName)
+
+    internal fun markDownloadEnqueued(model: TtsModel) {
+        _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
+    }
+
+    internal fun markDownloadCancelled(model: TtsModel) {
+        if (_statuses.value[model] is TtsModelStatus.Downloading) {
+            _statuses.value = _statuses.value + (model to TtsModelStatus.NotInstalled)
+        }
+    }
+
+    internal fun markDownloadFailed(model: TtsModel, message: String) {
+        _statuses.value = _statuses.value + (model to TtsModelStatus.Failed(message))
+    }
+
+    internal fun markDownloadRetrying(model: TtsModel) {
+        val progress = (_statuses.value[model] as? TtsModelStatus.Downloading)?.progress ?: 0f
+        _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(progress))
+    }
 
     suspend fun download(model: TtsModel) = withContext(Dispatchers.IO) {
         val artifact = model.artifact ?: return@withContext
@@ -37,19 +60,22 @@ class TtsModelManager(
             modelRoot.mkdirs()
             val archive = File(modelRoot, "${model.directoryName}.download")
             val staging = File(modelRoot, "${model.directoryName}.staging")
-            runCatching {
+            try {
                 _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
                 staging.deleteRecursively()
                 staging.mkdirs()
                 if (artifact.files.isEmpty()) {
                     downloadArchive(model, artifact, archive, staging)
                 } else {
-                    runCatching { downloadFiles(model, artifact, staging) }
-                        .getOrElse {
-                            staging.deleteRecursively()
-                            staging.mkdirs()
-                            downloadArchive(model, artifact, archive, staging)
-                        }
+                    try {
+                        downloadFiles(model, artifact, staging)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        staging.deleteRecursively()
+                        staging.mkdirs()
+                        downloadArchive(model, artifact, archive, staging)
+                    }
                 }
                 val content = staging.singleFileOrSelf()
                 check(artifact.isComplete(content)) {
@@ -57,17 +83,19 @@ class TtsModelManager(
                 }
                 replaceInstallation(model, content)
                 _statuses.value = _statuses.value + (model to TtsModelStatus.Available)
-            }.onFailure {
-                _statuses.value = _statuses.value + (
-                    model to TtsModelStatus.Failed(it.message ?: "Could not install model")
-                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                markDownloadFailed(model, e.message ?: "Could not install model")
+                throw e
+            } finally {
+                archive.delete()
+                staging.deleteRecursively()
             }
-            archive.delete()
-            staging.deleteRecursively()
         }
     }
 
-    private fun downloadFiles(model: TtsModel, artifact: ModelArtifact, staging: File) {
+    private suspend fun downloadFiles(model: TtsModel, artifact: ModelArtifact, staging: File) {
         val total = artifact.files.sumOf { it.size }
         var downloaded = 0L
         artifact.files.forEach { remote ->
@@ -82,7 +110,7 @@ class TtsModelManager(
         }
     }
 
-    private fun downloadArchive(
+    private suspend fun downloadArchive(
         model: TtsModel,
         artifact: ModelArtifact,
         archive: File,
@@ -98,7 +126,7 @@ class TtsModelManager(
         extract(archive, staging)
     }
 
-    private fun downloadTo(url: String, output: File, onBytes: (Long) -> Unit) {
+    private suspend fun downloadTo(url: String, output: File, onBytes: (Long) -> Unit) {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
             check(response.isSuccessful) { "Download failed (${response.code})" }
@@ -107,6 +135,7 @@ class TtsModelManager(
                 FileOutputStream(output).use { target ->
                     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
                     while (true) {
+                        currentCoroutineContext().ensureActive()
                         val count = input.read(buffer)
                         if (count < 0) break
                         target.write(buffer, 0, count)

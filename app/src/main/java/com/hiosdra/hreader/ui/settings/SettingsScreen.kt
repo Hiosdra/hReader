@@ -42,6 +42,8 @@ import androidx.navigation.NavController
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.tts.TtsModelManager
+import com.hiosdra.hreader.worker.TtsModelDownloadScheduler
+import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import com.hiosdra.hreader.util.SyncPerformanceRecord
 import org.koin.androidx.compose.koinViewModel
@@ -53,6 +55,7 @@ fun SettingsScreen(
     navController: NavController? = null,
     preferencesManager: PreferencesManager = koinInject(),
     ttsModelManager: TtsModelManager = koinInject(),
+    ttsModelDownloadScheduler: TtsModelDownloadScheduler = koinInject(),
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsState()
@@ -60,6 +63,7 @@ fun SettingsScreen(
     val aiModels by settingsViewModel.aiModels.collectAsState()
     val offline by settingsViewModel.offline.collectAsState()
     val sync by settingsViewModel.sync.collectAsState()
+    val requestNotificationPermission = rememberNotificationPermissionRequest()
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
     var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
     var credibilityScoreEnabled by remember { mutableStateOf(preferencesManager.getCredibilityScoreEnabled()) }
@@ -120,7 +124,11 @@ fun SettingsScreen(
                 ) {
                     BackendServerFields(
                         state = serverSettings,
-                        onBackendTypeChange = settingsViewModel::onBackendTypeRequested,
+                        onBackendTypeChange = { backendType ->
+                            requestNotificationPermission {
+                                settingsViewModel.onBackendTypeRequested(backendType)
+                            }
+                        },
                         onServerUrlChange = settingsViewModel::onServerUrlChange,
                         onUsernameChange = settingsViewModel::onUsernameChange,
                         onSecretChange = settingsViewModel::onSecretChange,
@@ -150,7 +158,9 @@ fun SettingsScreen(
                         onSyncWhileRoamingChange = settingsViewModel::onSyncWhileRoamingChange,
                         onQuietHoursEnabledChange = settingsViewModel::onQuietHoursEnabledChange,
                         onQuietHoursChange = settingsViewModel::onQuietHoursChange,
-                        onResyncFromScratch = settingsViewModel::resyncFromScratch,
+                        onResyncFromScratch = {
+                            requestNotificationPermission(settingsViewModel::resyncFromScratch)
+                        },
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -170,7 +180,9 @@ fun SettingsScreen(
                 ) {
                     OfflineReadinessSection(
                         state = offline,
-                        onPrepare = settingsViewModel::prepareForOffline,
+                        onPrepare = {
+                            requestNotificationPermission(settingsViewModel::prepareForOffline)
+                        },
                         onBacklogTargetChange = settingsViewModel::onBacklogTargetChange,
                         onImageDownloadEnabledChange = settingsViewModel::onImageDownloadEnabledChange,
                         onImageCacheBudgetChange = settingsViewModel::onImageCacheBudgetChange,
@@ -225,7 +237,9 @@ fun SettingsScreen(
             item {
                 TtsSettingsSection(
                     preferences = preferencesManager,
-                    modelManager = ttsModelManager
+                    modelManager = ttsModelManager,
+                    downloadScheduler = ttsModelDownloadScheduler,
+                    onRequestNotifications = requestNotificationPermission
                 )
             }
 

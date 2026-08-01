@@ -3,10 +3,14 @@ package com.hiosdra.hreader.worker
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.isRetryable
+import com.hiosdra.hreader.notification.AppNotificationFactory
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.util.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
@@ -27,6 +31,15 @@ class ContentSyncWorker(
         private const val TAG = "ContentSyncWorker"
     }
 
+    override suspend fun getForegroundInfo(): ForegroundInfo =
+        AppNotificationFactory.syncForegroundInfo(
+            context = applicationContext,
+            workerId = id,
+            title = inputData.getString(KEY_OPERATION_TITLE)
+                ?: applicationContext.getString(R.string.notification_sync_title),
+            text = applicationContext.getString(R.string.notification_sync_text)
+        )
+
     override suspend fun doWork(): Result {
         if (isSilenced()) {
             Log.i(TAG, "Inside quiet hours; skipping this run")
@@ -38,6 +51,7 @@ class ContentSyncWorker(
     private suspend fun runSync(): Result = try {
         val forceFullSync = inputData.getBoolean(KEY_FORCE_FULL_SYNC, false)
         Log.i(TAG, "Starting ContentSyncWorker (forceFullSync=$forceFullSync)")
+        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) setForeground(getForegroundInfo())
 
         syncPerformanceLogger.measureSyncTime("Article refresh") {
             repository.refreshArticles(forceFullSync)
@@ -55,7 +69,13 @@ class ContentSyncWorker(
         Log.e(TAG, "ContentSyncWorker failed: ${e.message}", e)
         // A 5xx or a dropped connection is worth another attempt; a 4xx (bad token, bad request)
         // will fail identically every time, so it waits for the next period instead.
-        if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) Result.retry() else Result.failure()
+        if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) {
+            Result.retry()
+        } else {
+            Result.failure(
+                workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Article synchronization failed."))
+            )
+        }
     }
 
     /**

@@ -3,13 +3,16 @@ package com.hiosdra.hreader.worker
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.local.entity.PrefetchTarget
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.isRetryable
+import com.hiosdra.hreader.notification.AppNotificationFactory
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.util.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
@@ -60,6 +63,17 @@ class ArticleContentSyncWorker(
     private val done = AtomicInteger()
     private val total = AtomicInteger()
 
+    override suspend fun getForegroundInfo(): ForegroundInfo =
+        AppNotificationFactory.syncForegroundInfo(
+            context = applicationContext,
+            workerId = id,
+            title = inputData.getString(KEY_OPERATION_TITLE)
+                ?: applicationContext.getString(R.string.notification_sync_title),
+            text = applicationContext.getString(R.string.notification_prefetch_text),
+            done = done.get(),
+            total = total.get()
+        )
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         // Downloading bodies and images is where the bandwidth and the radio time actually go, so
         // quiet hours have to cover it. Silencing only the article sync still left the prefetch
@@ -71,6 +85,7 @@ class ArticleContentSyncWorker(
 
         Log.i(TAG, "Starting ArticleContentSyncWorker")
         try {
+            if (inputData.getBoolean(KEY_USER_VISIBLE, false)) setForeground(getForegroundInfo())
             performOrphanedContentCleanup()
             backfillPreviews()
 
@@ -103,7 +118,13 @@ class ArticleContentSyncWorker(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "ArticleContentSyncWorker failed: ${e.message}", e)
-            if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) Result.retry() else Result.failure()
+            if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) {
+                Result.retry()
+            } else {
+                Result.failure(
+                    workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Article content download failed."))
+                )
+            }
         }
     }
 
@@ -178,6 +199,7 @@ class ArticleContentSyncWorker(
                 KEY_PROGRESS_TOTAL to total.get()
             )
         )
+        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) setForeground(getForegroundInfo())
     }
 
     /**
