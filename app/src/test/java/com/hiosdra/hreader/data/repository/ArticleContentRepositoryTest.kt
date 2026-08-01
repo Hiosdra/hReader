@@ -7,6 +7,7 @@ import com.hiosdra.hreader.data.local.entity.ArticleEntity
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleAiOverviewRepository
 import com.hiosdra.hreader.data.local.repository.ArticleImageRepository
+import com.hiosdra.hreader.data.local.repository.ArticlePageRepository
 import com.hiosdra.hreader.data.local.repository.CredibilityRepository
 import com.hiosdra.hreader.data.model.Enclosure
 import com.hiosdra.hreader.data.model.ArticleContentSource
@@ -36,6 +37,7 @@ class ArticleContentRepositoryTest {
     private val articleImageRepository = mockk<ArticleImageRepository>(relaxed = true)
     private val credibilityRepository = mockk<CredibilityRepository>(relaxed = true)
     private val articleAiOverviewRepository = mockk<ArticleAiOverviewRepository>(relaxed = true)
+    private val articlePageRepository = mockk<ArticlePageRepository>(relaxed = true)
 
     private val repository = ArticleContentRepository(
         backend,
@@ -43,7 +45,8 @@ class ArticleContentRepositoryTest {
         articleDao,
         articleImageRepository,
         credibilityRepository,
-        articleAiOverviewRepository
+        articleAiOverviewRepository,
+        articlePageRepository
     )
 
     private fun article(

@@ -3,6 +3,7 @@ package com.hiosdra.hreader.data.local.repository
 import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleImageDao
+import com.hiosdra.hreader.data.local.dao.ArticlePageSnapshotDao
 import com.hiosdra.hreader.data.model.ArticleContentSource
 import com.hiosdra.hreader.data.model.OfflineReadiness
 import com.hiosdra.hreader.data.preferences.PreferencesManager
@@ -15,6 +16,7 @@ class OfflineReadinessRepository(
     private val articleDao: ArticleDao,
     private val articleContentDao: ArticleContentDao,
     private val articleImageDao: ArticleImageDao,
+    private val articlePageSnapshotDao: ArticlePageSnapshotDao,
     private val preferencesManager: PreferencesManager
 ) {
     fun observe(): Flow<OfflineReadiness> = combine(
@@ -54,6 +56,8 @@ class OfflineReadinessRepository(
             expectedImageCount = images.expectedImageCount,
             storedExpectedImageCount = images.storedExpectedImageCount
         )
+    }.combine(articlePageSnapshotDao.observeOfflineCompleteCount()) { readiness, storedFullPageCount ->
+        readiness.copy(storedFullPageCount = storedFullPageCount)
     }.combine(preferencesManager.observeLastSyncTimestamp()) { readiness, lastSync ->
         readiness.toOfflineReadiness(lastSync)
     }.distinctUntilChanged()
@@ -75,7 +79,8 @@ class OfflineReadinessRepository(
         val offlineTargetCount: Int,
         val storedFullContentCount: Int,
         val expectedImageCount: Int,
-        val storedExpectedImageCount: Int
+        val storedExpectedImageCount: Int,
+        val storedFullPageCount: Int = 0
     )
 
     private data class ImageReadiness(
@@ -96,6 +101,7 @@ class OfflineReadinessRepository(
         storedFullContentCount = storedFullContentCount,
         expectedImageCount = expectedImageCount,
         storedExpectedImageCount = storedExpectedImageCount,
+        storedFullPageCount = storedFullPageCount,
         lastSyncAt = lastSync.takeIf { it > 0 }?.let(Instant::ofEpochMilli)
     )
 }

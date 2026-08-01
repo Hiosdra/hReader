@@ -68,6 +68,8 @@ class SyncSchedulerTest {
                 any<OneTimeWorkRequest>()
             )
         }
+        verify(exactly = 1) { workContinuation.then(any<OneTimeWorkRequest>()) }
+        assertTrue(request.captured.tags.none { it == "FullOfflinePreparation" })
     }
 
     @Test
@@ -81,5 +83,23 @@ class SyncSchedulerTest {
                 any<OneTimeWorkRequest>()
             )
         }
+    }
+
+    @Test
+    fun fullOfflinePreparation_addsFullPageStageToThePipeline() {
+        val request = slot<OneTimeWorkRequest>()
+
+        every {
+            workManager.beginUniqueWork(
+                "SyncPipeline",
+                ExistingWorkPolicy.REPLACE,
+                capture(request)
+            )
+        } returns workContinuation
+
+        assertNotNull(scheduler.prepareFullOffline())
+
+        assertTrue(request.captured.tags.contains("FullOfflinePreparation"))
+        verify(exactly = 2) { workContinuation.then(any<OneTimeWorkRequest>()) }
     }
 }

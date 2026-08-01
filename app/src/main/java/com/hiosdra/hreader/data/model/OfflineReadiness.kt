@@ -17,7 +17,8 @@ data class OfflineReadiness(
     val offlineTargetCount: Int = articleCount,
     val storedFullContentCount: Int = storedContentCount,
     val expectedImageCount: Int = 0,
-    val storedExpectedImageCount: Int = 0
+    val storedExpectedImageCount: Int = 0,
+    val storedFullPageCount: Int = 0
 ) {
     val missingContentCount: Int
         get() = (offlineTargetCount - storedContentCount).coerceAtLeast(0)
@@ -27,6 +28,9 @@ data class OfflineReadiness(
 
     val missingImageCount: Int
         get() = (expectedImageCount - storedExpectedImageCount).coerceAtLeast(0)
+
+    val missingFullPageCount: Int
+        get() = (offlineTargetCount - storedFullPageCount).coerceAtLeast(0)
 
     val isComplete: Boolean
         get() = offlineTargetCount > 0 && missingContentCount == 0
