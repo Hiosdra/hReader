@@ -207,24 +207,8 @@ fun ArticleScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            Column {
-                if (ttsState.articleId != null) {
-                    ArticleTtsBar(ttsState, ttsController::pause, ttsController::resume, ttsController::stop)
-                }
-                if (uiState.entries.isNotEmpty() && !isWebViewMode) {
-                    ArticleReadingBar(
-                        textScale = textScale,
-                        onDecrease = {
-                            textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
-                                .coerceAtLeast(MIN_ARTICLE_TEXT_SCALE)
-                        },
-                        onReset = { textScale = 1f },
-                        onIncrease = {
-                            textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
-                                .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
-                        }
-                    )
-                }
+            if (ttsState.articleId != null) {
+                ArticleTtsBar(ttsState, ttsController::pause, ttsController::resume, ttsController::stop)
             }
         },
         topBar = {
@@ -232,10 +216,22 @@ fun ArticleScreen(
             ArticleTopBar(
                 entryUrl = entry?.url,
                 feedTitle = entry?.feed?.title,
+                listPosition = uiState.currentListPosition,
+                listSize = uiState.listSize,
                 isWebViewMode = isWebViewMode,
                 isOnline = uiState.isOnline,
                 isStarred = entry?.starred == true,
                 isSpeaking = entry?.id == ttsState.articleId,
+                textScale = textScale,
+                onDecreaseTextScale = {
+                    textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
+                        .coerceAtLeast(MIN_ARTICLE_TEXT_SCALE)
+                },
+                onResetTextScale = { textScale = 1f },
+                onIncreaseTextScale = {
+                    textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
+                        .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
+                },
                 onToggleStar = { if (entry != null) viewModel.setStarred(entry.id, !entry.starred) },
                 onToggleSpeech = {
                     if (entry == null) return@ArticleTopBar
@@ -462,10 +458,16 @@ private fun ArticlePager(
 private fun ArticleTopBar(
     entryUrl: String?,
     feedTitle: String?,
+    listPosition: Int,
+    listSize: Int,
     isWebViewMode: Boolean,
     isOnline: Boolean,
     isStarred: Boolean,
     isSpeaking: Boolean,
+    textScale: Float,
+    onDecreaseTextScale: () -> Unit,
+    onResetTextScale: () -> Unit,
+    onIncreaseTextScale: () -> Unit,
     onToggleStar: () -> Unit,
     onToggleSpeech: () -> Unit,
     onBack: () -> Unit,
@@ -481,12 +483,21 @@ private fun ArticleTopBar(
             // One line, cut short if it has to be. A feed named "Subiektywnie o finansach — Maciej
             // Samcik" wrapped to four of them, which grew the bar over the status bar above it and
             // the article below.
-            Text(
-                text = feedTitle ?: "hReader",
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Column {
+                Text(
+                    text = feedTitle ?: "hReader",
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (listPosition in 1..listSize) {
+                    Text(
+                        text = "$listPosition / $listSize",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -580,6 +591,35 @@ private fun ArticleTopBar(
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
+                        )
+                    }
+                    if (listSize > 0) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        DropdownMenuItem(
+                            text = { Text("Decrease text size") },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onDecreaseTextScale()
+                            },
+                            enabled = textScale > MIN_ARTICLE_TEXT_SCALE,
+                            leadingIcon = { Text("A−") }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Text size: ${(textScale * 100).roundToInt()}%") },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onResetTextScale()
+                            },
+                            leadingIcon = { Text("A") }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Increase text size") },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onIncreaseTextScale()
+                            },
+                            enabled = textScale < MAX_ARTICLE_TEXT_SCALE,
+                            leadingIcon = { Text("A+") }
                         )
                     }
                 }
@@ -693,50 +733,6 @@ private fun ArticleTtsBar(
             }
             IconButton(onClick = onStop) {
                 Icon(Icons.Filled.Close, contentDescription = "Stop reading")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArticleReadingBar(
-    textScale: Float,
-    onDecrease: () -> Unit,
-    onReset: () -> Unit,
-    onIncrease: () -> Unit
-) {
-    Surface(tonalElevation = 2.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Text size",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            TextButton(
-                onClick = onDecrease,
-                enabled = textScale > MIN_ARTICLE_TEXT_SCALE,
-                modifier = Modifier.semantics { contentDescription = "Decrease text size" }
-            ) {
-                Text("A−", fontSize = 16.sp)
-            }
-            TextButton(
-                onClick = onReset,
-                modifier = Modifier.semantics { contentDescription = "Reset text size" }
-            ) {
-                Text("${(textScale * 100).roundToInt()}%")
-            }
-            TextButton(
-                onClick = onIncrease,
-                enabled = textScale < MAX_ARTICLE_TEXT_SCALE,
-                modifier = Modifier.semantics { contentDescription = "Increase text size" }
-            ) {
-                Text("A+", fontSize = 16.sp)
             }
         }
     }
