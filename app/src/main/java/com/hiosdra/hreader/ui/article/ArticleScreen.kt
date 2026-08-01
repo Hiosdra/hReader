@@ -432,69 +432,69 @@ private fun ArticlePager(
         ) { page ->
             val entry = entries.getOrNull(page) ?: return@HorizontalPager
             key(entry.id) {
-            val offlinePage = getOfflinePageForEntry(entry.id)
-            if (isWebViewMode && (isOnline || offlinePage != null)) {
-                if (!isOnline && offlinePage != null) {
-                    OfflinePageWebView(
-                        page = offlinePage,
-                        onLinkClick = { url ->
-                            copyTextToClipboard(context, "Link", url)
-                            Toast.makeText(context, "Offline — link copied", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.padding(paddingValues)
-                    )
-                } else {
-                    val loadedUrl = remember { mutableStateOf<String?>(null) }
-                    val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
-                    var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
-                    AndroidView(
-                        factory = { context ->
-                            ReaderWebView(context).apply {
-                                settings.javaScriptEnabled = false
-                                webViewClient = object : WebViewClient() {
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        super.onPageFinished(view, url)
-                                        val readerView = view as? ReaderWebView ?: return
-                                        readerView.postIfActive { readerView.scrollTo(0, savedScrollY) }
+                val offlinePage = getOfflinePageForEntry(entry.id)
+                if (isWebViewMode && (isOnline || offlinePage != null)) {
+                    if (!isOnline && offlinePage != null) {
+                        OfflinePageWebView(
+                            page = offlinePage,
+                            onLinkClick = { url ->
+                                copyTextToClipboard(context, "Link", url)
+                                Toast.makeText(context, "Offline — link copied", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.padding(paddingValues)
+                        )
+                    } else {
+                        val loadedUrl = remember { mutableStateOf<String?>(null) }
+                        val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
+                        var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
+                        AndroidView(
+                            factory = { context ->
+                                ReaderWebView(context).apply {
+                                    settings.javaScriptEnabled = false
+                                    webViewClient = object : WebViewClient() {
+                                        override fun onPageFinished(view: WebView?, url: String?) {
+                                            super.onPageFinished(view, url)
+                                            val readerView = view as? ReaderWebView ?: return
+                                            readerView.postIfActive { readerView.scrollTo(0, savedScrollY) }
+                                        }
                                     }
+                                    setOnScrollChangeListener { _, _, scrollY, _, _ -> savedScrollY = scrollY }
                                 }
-                                setOnScrollChangeListener { _, _, scrollY, _, _ -> savedScrollY = scrollY }
-                            }
-                        },
-                        update = { webView ->
-                            webView.settings.blockNetworkLoads = !isOnline
-                            if (loadedWebView.value !== webView || loadedUrl.value != entry.url) {
-                                loadedWebView.value = webView
-                                loadedUrl.value = entry.url
-                                webView.loadUrl(entry.url)
-                                webView.postIfActive { webView.scrollTo(0, savedScrollY) }
-                            }
-                        },
-                        onRelease = { webView -> webView.releaseResources() },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
+                            },
+                            update = { webView ->
+                                webView.settings.blockNetworkLoads = !isOnline
+                                if (loadedWebView.value !== webView || loadedUrl.value != entry.url) {
+                                    loadedWebView.value = webView
+                                    loadedUrl.value = entry.url
+                                    webView.loadUrl(entry.url)
+                                    webView.postIfActive { webView.scrollTo(0, savedScrollY) }
+                                }
+                            },
+                            onRelease = { webView -> webView.releaseResources() },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues)
+                        )
+                    }
+                } else {
+                    ArticleContent(
+                        entry = entry,
+                        mainImageUrl = getLeadImageForEntry(entry.id),
+                        textScale = textScale,
+                        modifier = Modifier.padding(paddingValues),
+                        onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
+                        articleContent = getContentForEntry(entry.id) ?: "No content available",
+                        localImagePaths = localImagePaths[entry.id].orEmpty(),
+                        isOnline = isOnline,
+                        aiOverview = aiOverviews[entry.id],
+                        isGeneratingOverview = generatingOverviewIds.contains(entry.id),
+                        onAiOverview = onAiOverview,
+                        credibilityEnabled = credibilityEnabled,
+                        credibilityReport = credibilityReports[entry.id],
+                        isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
+                        onAnalyzeCredibility = onAnalyzeCredibility
                     )
                 }
-            } else {
-                ArticleContent(
-                    entry = entry,
-                    mainImageUrl = getLeadImageForEntry(entry.id),
-                    textScale = textScale,
-                    modifier = Modifier.padding(paddingValues),
-                    onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
-                    articleContent = getContentForEntry(entry.id) ?: "No content available",
-                    localImagePaths = localImagePaths[entry.id].orEmpty(),
-                    isOnline = isOnline,
-                    aiOverview = aiOverviews[entry.id],
-                    isGeneratingOverview = generatingOverviewIds.contains(entry.id),
-                    onAiOverview = onAiOverview,
-                    credibilityEnabled = credibilityEnabled,
-                    credibilityReport = credibilityReports[entry.id],
-                    isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
-                    onAnalyzeCredibility = onAnalyzeCredibility
-                )
-            }
             }
         }
     }

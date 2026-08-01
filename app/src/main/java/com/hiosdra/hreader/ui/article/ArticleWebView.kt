@@ -273,11 +273,12 @@ fun OfflinePageWebView(
     onLinkClick: ((String) -> Unit)? = null
 ) {
     val currentPage = androidx.compose.runtime.rememberUpdatedState(page)
+    val currentOnLinkClick = androidx.compose.runtime.rememberUpdatedState(onLinkClick)
     val loadedPageKey = remember { mutableStateOf<Pair<Long, Int>?>(null) }
 
     AndroidView(
         factory = { context ->
-            WebView(context).apply {
+            ReaderWebView(context).apply {
                 settings.javaScriptEnabled = false
                 settings.blockNetworkLoads = true
                 settings.allowFileAccess = false
@@ -297,8 +298,8 @@ fun OfflinePageWebView(
                         val url = requestUri.toString()
                         val pageUri = Uri.parse(currentPage.value.baseUrl)
                         if (requestUri.host == pageUri.host) return false
-                        onLinkClick?.invoke(cleanUrl(url))
-                        return onLinkClick != null
+                        currentOnLinkClick.value?.invoke(cleanUrl(url))
+                        return currentOnLinkClick.value != null
                     }
                 }
             }
@@ -310,8 +311,46 @@ fun OfflinePageWebView(
                 webView.loadDataWithBaseURL(page.baseUrl, page.html, "text/html", "UTF-8", null)
             }
         },
+        onRelease = { webView -> webView.releaseResources() },
         modifier = modifier
     )
+}
+
+internal class ReaderWebView(context: Context) : WebView(context) {
+    private var released = false
+
+    val isReleased: Boolean
+        get() = released
+
+    fun postIfActive(action: () -> Unit) {
+        if (released) return
+        post {
+            if (!released) action()
+        }
+    }
+
+    fun releaseResources() {
+        if (released) return
+        released = true
+        setOnTouchListener(null)
+        setOnScrollChangeListener(null)
+        setOnLongClickListener(null)
+        webViewClient = WebViewClient()
+        webChromeClient = null
+        stopLoading()
+        removeAllViews()
+        destroy()
+    }
+
+    override fun scrollTo(x: Int, y: Int) {
+        if (released) return
+        super.scrollTo(x, y)
+    }
+
+    override fun scrollBy(x: Int, y: Int) {
+        if (released) return
+        super.scrollBy(x, y)
+    }
 }
 
 private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse? {
