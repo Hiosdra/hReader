@@ -21,6 +21,7 @@ import org.koin.compose.koinInject
 import java.io.File
 import java.io.FileInputStream
 import java.net.URLConnection
+import kotlin.math.roundToInt
 
 @Composable
 fun ArticleWebView(
@@ -29,6 +30,7 @@ fun ArticleWebView(
     modifier: Modifier = Modifier,
     allowNetworkLoads: Boolean = true,
     localImagePaths: Map<String, String> = emptyMap(),
+    textScale: Float = 1f,
     onLinkClick: ((String) -> Unit)? = null,
     onScrollProgress: ((Float) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
@@ -139,6 +141,10 @@ fun ArticleWebView(
             // were downloaded. Whatever is left points at the network, and offline every one of
             // those costs a connect timeout before the page settles.
             webView.settings.blockNetworkLoads = !allowNetworkLoads
+            val textZoom = (textScale.coerceIn(0.85f, 1.35f) * 100).roundToInt()
+            if (webView.settings.textZoom != textZoom) {
+                webView.settings.textZoom = textZoom
+            }
 
             if (loadedHtml.value != htmlData) {
                 loadedHtml.value = htmlData
@@ -162,7 +168,7 @@ private fun articleHtml(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             :root { --text:$textColorHex; --link:$linkColorHex; --code:$codeBg; --rule:$ruleColor; }
-            body { font-family: system-ui,-apple-system,Roboto,sans-serif; line-height:1.6; margin:0; padding:0 0 32px 0; color:var(--text); background:transparent; }
+            body { font-family: system-ui,-apple-system,Roboto,sans-serif; font-size:16px; line-height:1.6; margin:0; padding:0 0 32px 0; color:var(--text); background:transparent; }
             h1,h2,h3 { line-height:1.25; margin:1.4em 0 .6em; }
             h1 { font-size:1.5em; }
             h2 { font-size:1.3em; }
