@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,9 +36,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -46,8 +46,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,7 +56,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -72,6 +72,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -183,10 +184,10 @@ fun ArticleScreen(
 
     // Reporting back only once the pager has been placed keeps page 0 - where it
     // still sits on the first frame - from overwriting the position it was sent to.
-    LaunchedEffect(pagerState.currentPage, pagerPositioned) {
+    LaunchedEffect(pagerState.settledPage, pagerPositioned) {
         if (!pagerPositioned) return@LaunchedEffect
-        if (pagerState.currentPage != uiState.currentIndex && pagerState.currentPage in uiState.entries.indices) {
-            viewModel.setCurrentIndex(pagerState.currentPage)
+        if (pagerState.settledPage != uiState.currentIndex && pagerState.settledPage in uiState.entries.indices) {
+            viewModel.setCurrentIndex(pagerState.settledPage)
         }
     }
 
@@ -202,6 +203,8 @@ fun ArticleScreen(
             ArticleTopBar(
                 entryUrl = entry?.url,
                 feedTitle = entry?.feed?.title,
+                listPosition = if (entry != null) uiState.currentListPosition else 0,
+                listSize = uiState.listSize,
                 isWebViewMode = isWebViewMode,
                 isOnline = uiState.isOnline,
                 isStarred = entry?.starred == true,
@@ -379,43 +382,56 @@ private fun ArticlePager(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-            val entry = entries[page]
-            if (isWebViewMode && isOnline) {
-                // What the WebView was last sent. The update block runs on every recomposition —
-                // read state changing, a neighbouring page settling — and loading there threw the
-                // page away and started it again, losing the reader's position each time.
-                val loadedUrl = remember { mutableStateOf<String?>(null) }
-                AndroidView(
-                    factory = { context ->
-                        WebView(context).apply {
-                            webViewClient = WebViewClient()
-                        }
-                    },
-                    update = { webView ->
-                        if (loadedUrl.value != entry.url) {
-                            loadedUrl.value = entry.url
-                            webView.loadUrl(entry.url)
-                        }
-                    },
-                    modifier = Modifier.padding(paddingValues)
-                )
-            } else {
-                ArticleContent(
-                    entry = entry,
-                    mainImageUrl = getLeadImageForEntry(entry.id),
-                    modifier = Modifier.padding(paddingValues),
-                    onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
-                    articleContent = getContentForEntry(entry.id) ?: "No content available",
-                    localImagePaths = localImagePaths[entry.id].orEmpty(),
-                    isOnline = isOnline,
-                    aiOverview = aiOverviews[entry.id],
-                    isGeneratingOverview = generatingOverviewIds.contains(entry.id),
-                    onAiOverview = onAiOverview,
-                    credibilityEnabled = credibilityEnabled,
-                    credibilityReport = credibilityReports[entry.id],
-                    isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
-                    onAnalyzeCredibility = onAnalyzeCredibility
-                )
+            val entry = entries.getOrNull(page) ?: return@HorizontalPager
+            key(entry.id) {
+                if (isWebViewMode && isOnline) {
+                    val loadedUrl = remember { mutableStateOf<String?>(null) }
+                    val loadedWebView = remember { mutableStateOf<WebView?>(null) }
+                    var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
+                    AndroidView(
+                        factory = { context ->
+                            WebView(context).apply {
+                                settings.javaScriptEnabled = false
+                                webViewClient = object : WebViewClient() {
+                                    override fun onPageFinished(view: WebView?, url: String?) {
+                                        super.onPageFinished(view, url)
+                                        view?.post { view.scrollTo(0, savedScrollY) }
+                                    }
+                                }
+                                setOnScrollChangeListener { _, _, scrollY, _, _ -> savedScrollY = scrollY }
+                            }
+                        },
+                        update = { webView ->
+                            webView.settings.blockNetworkLoads = !isOnline
+                            if (loadedWebView.value !== webView || loadedUrl.value != entry.url) {
+                                loadedWebView.value = webView
+                                loadedUrl.value = entry.url
+                                webView.loadUrl(entry.url)
+                                webView.post { webView.scrollTo(0, savedScrollY) }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                    )
+                } else {
+                    ArticleContent(
+                        entry = entry,
+                        mainImageUrl = getLeadImageForEntry(entry.id),
+                        modifier = Modifier.padding(paddingValues),
+                        onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
+                        articleContent = getContentForEntry(entry.id) ?: "No content available",
+                        localImagePaths = localImagePaths[entry.id].orEmpty(),
+                        isOnline = isOnline,
+                        aiOverview = aiOverviews[entry.id],
+                        isGeneratingOverview = generatingOverviewIds.contains(entry.id),
+                        onAiOverview = onAiOverview,
+                        credibilityEnabled = credibilityEnabled,
+                        credibilityReport = credibilityReports[entry.id],
+                        isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
+                        onAnalyzeCredibility = onAnalyzeCredibility
+                    )
+                }
             }
         }
     }
@@ -426,6 +442,8 @@ private fun ArticlePager(
 private fun ArticleTopBar(
     entryUrl: String?,
     feedTitle: String?,
+    listPosition: Int,
+    listSize: Int,
     isWebViewMode: Boolean,
     isOnline: Boolean,
     isStarred: Boolean,
@@ -442,15 +460,21 @@ private fun ArticleTopBar(
 
     TopAppBar(
         title = {
-            // One line, cut short if it has to be. A feed named "Subiektywnie o finansach — Maciej
-            // Samcik" wrapped to four of them, which grew the bar over the status bar above it and
-            // the article below.
-            Text(
-                text = feedTitle ?: "hReader",
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Column {
+                Text(
+                    text = feedTitle ?: "hReader",
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (listPosition in 1..listSize) {
+                    Text(
+                        text = "$listPosition / $listSize",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -629,6 +653,7 @@ private fun ArticleContent(
 ) {
     val dateText = remember(entry.publishedAt) { formatTimestamp(entry.publishedAt) }
     val progressState = remember { mutableFloatStateOf(0f) }
+    var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
@@ -642,7 +667,6 @@ private fun ArticleContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -651,6 +675,7 @@ private fun ArticleContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 900.dp)
+                        .fillMaxHeight()
                         .padding(top = 12.dp)
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -703,6 +728,7 @@ private fun ArticleContent(
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
                                 .clip(MaterialTheme.shapes.large)
                                 .clickable { zoomImageUrl = mainImageUrl },
                             contentScale = ContentScale.Crop
@@ -712,9 +738,13 @@ private fun ArticleContent(
                     ArticleWebView(
                         articleContent = articleContent,
                         baseUrl = entry.url,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
                         allowNetworkLoads = isOnline,
                         localImagePaths = localImagePaths,
+                        restoreScrollY = savedScrollY,
+                        onScrollYChanged = { savedScrollY = it },
                         onLinkClick = { url ->
                             // A custom tab offline is a browser error page, and the link is gone
                             // by the time the reader is back in range.
@@ -1183,6 +1213,7 @@ private fun credibilityDisclaimer(report: CredibilityReport): String = buildStri
 private fun formatTimestamp(instant: Instant): String =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(instant)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ImageActionsDialog(
     imageUrl: String,
@@ -1193,33 +1224,33 @@ private fun ImageActionsDialog(
     onDownload: () -> Unit,
     onShare: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Image") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(imageUrl, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-        },
-        confirmButton = {
-            Column {
-                Button(onClick = onView, modifier = Modifier.fillMaxWidth()) { Text("View") }
-                Spacer(Modifier.height(4.dp))
-                Button(onClick = onCopy, modifier = Modifier.fillMaxWidth()) { Text("Copy URL") }
-                Spacer(Modifier.height(4.dp))
-                Button(onClick = onDownload, enabled = isOnline, modifier = Modifier.fillMaxWidth()) {
-                    Text("Download")
-                }
-                Spacer(Modifier.height(4.dp))
-                Button(onClick = onShare, enabled = isOnline, modifier = Modifier.fillMaxWidth()) {
-                    Text("Share image")
-                }
-                Spacer(Modifier.height(4.dp))
-                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Close") }
-            }
-        },
-        dismissButton = {}
-    )
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            Text(
+                text = imageUrl,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            )
+            ListItem(
+                headlineContent = { Text("View") },
+                modifier = Modifier.clickable(onClick = onView)
+            )
+            ListItem(
+                headlineContent = { Text("Copy URL") },
+                modifier = Modifier.clickable(onClick = onCopy)
+            )
+            ListItem(
+                headlineContent = { Text("Download") },
+                modifier = Modifier.clickable(enabled = isOnline, onClick = onDownload)
+            )
+            ListItem(
+                headlineContent = { Text("Share image") },
+                modifier = Modifier.clickable(enabled = isOnline, onClick = onShare)
+            )
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Close") }
+        }
+    }
 }
 
 private fun copyTextToClipboard(context: Context, label: String, text: String) {

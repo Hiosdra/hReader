@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.ui.article
 
+import android.os.SystemClock
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -11,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
@@ -21,6 +23,7 @@ import org.koin.compose.koinInject
 import java.io.File
 import java.io.FileInputStream
 import java.net.URLConnection
+import kotlin.math.abs
 
 @Composable
 fun ArticleWebView(
@@ -29,6 +32,8 @@ fun ArticleWebView(
     modifier: Modifier = Modifier,
     allowNetworkLoads: Boolean = true,
     localImagePaths: Map<String, String> = emptyMap(),
+    restoreScrollY: Int = 0,
+    onScrollYChanged: ((Int) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
     onScrollProgress: ((Float) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
@@ -41,8 +46,12 @@ fun ArticleWebView(
 
     // Read by the request interceptor below, which outlives any single recomposition: the client is
     // built once with the WebView, while the downloaded images arrive with the article body.
-    val cachedImages = remember { mutableStateOf(localImagePaths) }
-    cachedImages.value = localImagePaths
+    val currentLocalImagePaths = rememberUpdatedState(localImagePaths)
+    val currentRestoreScrollY = rememberUpdatedState(restoreScrollY)
+    val currentOnScrollYChanged = rememberUpdatedState(onScrollYChanged)
+    val currentOnScrollProgress = rememberUpdatedState(onScrollProgress)
+    val currentOnLinkClick = rememberUpdatedState(onLinkClick)
+    val currentOnImageLongClick = rememberUpdatedState(onImageLongClick)
 
     // Watched rather than read once, so turning the setting on redraws the article already open.
     val bionicReadingEnabled by preferencesManager.observeBionicReadingEnabled()
@@ -66,17 +75,29 @@ fun ArticleWebView(
      * the reader's position in the article each time.
      */
     val loadedHtml = remember { mutableStateOf<String?>(null) }
+    val loadedWebView = remember { mutableStateOf<WebView?>(null) }
 
     AndroidView(
         factory = { context ->
             WebView(context).apply {
+                var lastProgress = -1f
+                var lastScrollY = -1
+                var lastProgressAt = 0L
                 fun updateScrollProgress(wv: WebView) {
-                    if (onScrollProgress == null) return
                     val contentHeightPx = wv.contentHeight * wv.resources.displayMetrics.density
                     val viewHeight = wv.height.toFloat()
                     val denom = (contentHeightPx - viewHeight).coerceAtLeast(1f)
                     val progress = (wv.scrollY / denom).coerceIn(0f, 1f)
-                    onScrollProgress.invoke(progress)
+                    val now = SystemClock.elapsedRealtime()
+                    if (abs(progress - lastProgress) >= 0.01f || now - lastProgressAt >= 500L) {
+                        lastProgress = progress
+                        lastProgressAt = now
+                        currentOnScrollProgress.value?.invoke(progress)
+                    }
+                    if (lastScrollY < 0 || abs(wv.scrollY - lastScrollY) >= 8 || progress == 0f || progress == 1f) {
+                        lastScrollY = wv.scrollY
+                        currentOnScrollYChanged.value?.invoke(wv.scrollY)
+                    }
                 }
                 settings.javaScriptEnabled = false
                 settings.defaultFontSize = 16
@@ -93,7 +114,7 @@ fun ArticleWebView(
                         request: WebResourceRequest?
                     ): WebResourceResponse? {
                         val url = request?.url?.toString() ?: return null
-                        val localPath = cachedImages.value[url] ?: return null
+                        val localPath = currentLocalImagePaths.value[url] ?: return null
                         val file = File(localPath)
                         if (!file.exists()) return null
                         return runCatching {
@@ -107,12 +128,17 @@ fun ArticleWebView(
 
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                         val url = request?.url?.toString() ?: return false
-                        onLinkClick?.invoke(cleanUrl(url))
+                        currentOnLinkClick.value?.invoke(cleanUrl(url))
                         return true
                     }
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
-                        if (view != null) view.post { updateScrollProgress(view) }
+                        if (view != null) {
+                            view.post {
+                                view.scrollTo(0, currentRestoreScrollY.value)
+                                updateScrollProgress(view)
+                            }
+                        }
                     }
                 }
                 setOnScrollChangeListener { v, _, _, _, _ ->
@@ -125,7 +151,7 @@ fun ArticleWebView(
                         if (type == WebView.HitTestResult.IMAGE_TYPE || type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
                             val url = result.extra
                             if (!url.isNullOrBlank()) {
-                                onImageLongClick?.invoke(url)
+                                currentOnImageLongClick.value?.invoke(url)
                                 return@setOnLongClickListener true
                             }
                         }
@@ -140,9 +166,11 @@ fun ArticleWebView(
             // those costs a connect timeout before the page settles.
             webView.settings.blockNetworkLoads = !allowNetworkLoads
 
-            if (loadedHtml.value != htmlData) {
+            if (loadedWebView.value !== webView || loadedHtml.value != htmlData) {
+                loadedWebView.value = webView
                 loadedHtml.value = htmlData
                 webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
+                webView.post { webView.scrollTo(0, currentRestoreScrollY.value) }
             }
         },
         modifier = modifier

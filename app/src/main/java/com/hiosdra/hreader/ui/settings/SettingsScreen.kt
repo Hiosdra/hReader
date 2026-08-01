@@ -29,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +54,7 @@ import org.koin.compose.koinInject
 @Composable
 fun SettingsScreen(
     navController: NavController? = null,
+    onSignedOut: () -> Unit = {},
     preferencesManager: PreferencesManager = koinInject(),
     ttsModelManager: TtsModelManager = koinInject(),
     ttsModelDownloadScheduler: TtsModelDownloadScheduler = koinInject(),
@@ -70,6 +72,7 @@ fun SettingsScreen(
     var showPerformanceDialog by remember { mutableStateOf(false) }
     var showBypassDialog by remember { mutableStateOf(false) }
     var showModelSheet by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
     val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
         bionicReadingEnabled = enabled
         preferencesManager.setBionicReadingEnabled(enabled)
@@ -77,6 +80,10 @@ fun SettingsScreen(
     val onToggleCredibilityScore: (Boolean) -> Unit = { enabled ->
         credibilityScoreEnabled = enabled
         preferencesManager.setCredibilityScoreEnabled(enabled)
+    }
+
+    LaunchedEffect(serverSettings.signOutCompleted) {
+        if (serverSettings.signOutCompleted) onSignedOut()
     }
     Scaffold(
         topBar = {
@@ -134,7 +141,7 @@ fun SettingsScreen(
                         onSecretChange = settingsViewModel::onSecretChange,
                         onTestConnection = settingsViewModel::testConnection,
                         modifier = Modifier.padding(16.dp),
-                        onSignOut = settingsViewModel::signOut
+                        onSignOut = { showSignOutDialog = true }
                     )
                 }
             }
@@ -440,6 +447,25 @@ fun SettingsScreen(
                 performanceRecords = preferencesManager.getSyncPerformanceRecords(),
                 onDismiss = { showPerformanceDialog = false },
                 onClearRecords = { preferencesManager.clearSyncPerformanceRecords() }
+            )
+        }
+        if (showSignOutDialog) {
+            AlertDialog(
+                onDismissRequest = { showSignOutDialog = false },
+                title = { Text("Sign out and clear downloaded articles") },
+                text = { Text("Your server credentials and downloaded articles will be removed from this device.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showSignOutDialog = false
+                            settingsViewModel.signOut()
+                        },
+                        enabled = !serverSettings.isSwitchingBackend
+                    ) { Text("Sign out") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+                }
             )
         }
     }

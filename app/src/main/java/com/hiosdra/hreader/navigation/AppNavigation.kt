@@ -1,6 +1,9 @@
 package com.hiosdra.hreader.navigation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,7 +44,22 @@ fun AppNavigation(
             else -> Routes.MAIN
         }
     }
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        enterTransition = {
+            fadeIn() + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+        },
+        exitTransition = {
+            fadeOut() + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+        },
+        popEnterTransition = {
+            fadeIn() + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+        },
+        popExitTransition = {
+            fadeOut() + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+        }
+    ) {
         composable(Routes.SERVER_SETUP) {
             ServerSetupScreen(
                 onSetupFinished = {
@@ -109,7 +127,14 @@ fun AppNavigation(
             }
         }
         composable(Routes.SETTINGS) { _ ->
-            SettingsScreen(navController)
+            SettingsScreen(
+                navController = navController,
+                onSignedOut = {
+                    navController.navigate(Routes.SERVER_SETUP) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }
@@ -134,7 +159,7 @@ private fun MainWithSubscriptions(navController: NavHostController) {
         onSelectFeed = { selected -> selectedFeedId = selected },
         onFeedDetails = { navController.navigate(Routes.feed(it)) },
         onAddFeed = { navController.navigate(Routes.addFeed()) },
-        gesturesEnabled = selectedFeedId == null
+        gesturesEnabled = true
     ) {
         MainScreen(
             navController = navController,
