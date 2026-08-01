@@ -377,6 +377,9 @@ private fun PanelRow(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     color = if (selected) {
                         MaterialTheme.colorScheme.onSecondaryContainer
                     } else {
@@ -388,7 +391,9 @@ private fun PanelRow(
                         text = "  ($unreadCount)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(start = 4.dp)
+                        modifier = Modifier.padding(start = 4.dp),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
