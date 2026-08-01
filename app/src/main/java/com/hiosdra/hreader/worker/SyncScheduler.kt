@@ -180,8 +180,6 @@ class SyncScheduler(
      * regularly fired against the previous article set and re-fetched nothing useful.
      */
     fun enqueuePrefetch() {
-        // KEEP: a periodic sync must not interrupt a user-triggered pipeline that is already
-        // downloading the cache.
         workManager.enqueueUniqueWork(
             SYNC_PIPELINE_WORK,
             ExistingWorkPolicy.KEEP,
