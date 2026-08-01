@@ -26,6 +26,13 @@ private const val MAX_RUN_ATTEMPTS = 5
 private const val MAX_PAGES_PER_RUN = 100
 private const val PROGRESS_REPORT_INTERVAL_MILLIS = 500L
 
+internal fun shouldRetryFullPageSync(
+    remaining: Int,
+    previousOutstanding: Int,
+    runAttemptCount: Int
+): Boolean = remaining > 0 &&
+    (remaining < previousOutstanding || runAttemptCount < MAX_RUN_ATTEMPTS)
+
 class FullPageSyncWorker(
     appContext: Context,
     params: WorkerParameters,
@@ -84,10 +91,15 @@ class FullPageSyncWorker(
             val remaining = articlePageRepository.entriesMissingPages(
                 targets.map { it.id.toLong() to it.url }
             ).size
-            if (remaining > 0 && runAttemptCount < MAX_RUN_ATTEMPTS) {
-                Result.retry()
-            } else {
-                Result.success()
+            when {
+                remaining == 0 -> Result.success()
+                shouldRetryFullPageSync(remaining, outstanding.size, runAttemptCount) -> Result.retry()
+                else -> Result.failure(
+                    workDataOf(
+                        KEY_ERROR_MESSAGE to
+                            "$remaining full pages could not be archived."
+                    )
+                )
             }
         } catch (e: CancellationException) {
             throw e
