@@ -45,6 +45,9 @@ private const val PARTIAL_CONTENT_MESSAGE =
 data class ArticleUiState(
     val entries: List<Entry> = emptyList(),
     val currentIndex: Int = 0,
+    val currentListPosition: Int = 0,
+    val listSize: Int = 0,
+    val listWindowStartIndex: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null,
     /** Each article's text as it is read, with every image address already resolved. */
@@ -124,8 +127,14 @@ class ArticleViewModel(
     fun setCurrentIndex(index: Int) {
         _uiState.update { state ->
             val arrivedAt = state.entries.getOrNull(index)?.id
+            val listPosition = if (state.listSize > 0) {
+                (state.listWindowStartIndex + index + 1).coerceIn(1, state.listSize)
+            } else {
+                0
+            }
             state.copy(
                 currentIndex = index,
+                currentListPosition = listPosition,
                 contentError = if (arrivedAt in state.partialContentIds) {
                     PARTIAL_CONTENT_MESSAGE
                 } else {
@@ -286,7 +295,18 @@ class ArticleViewModel(
                 )
                 val ids = listed.windowAround(startArticleId).ifEmpty { listOf(startArticleId) }
                 val startIndex = ids.indexOf(startArticleId).coerceAtLeast(0)
-                _uiState.update { it.copy(currentIndex = startIndex) }
+                val listSize = listed.size.coerceAtLeast(ids.size)
+                val listWindowStartIndex = listed.indexOf(ids.first()).coerceAtLeast(0)
+                val currentListPosition = (listWindowStartIndex + startIndex + 1)
+                    .coerceIn(1, listSize)
+                _uiState.update {
+                    it.copy(
+                        currentIndex = startIndex,
+                        currentListPosition = currentListPosition,
+                        listSize = listSize,
+                        listWindowStartIndex = listWindowStartIndex
+                    )
+                }
                 observeArticles(ids)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Unknown error") }
