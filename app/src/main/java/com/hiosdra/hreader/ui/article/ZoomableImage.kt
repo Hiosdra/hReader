@@ -29,7 +29,7 @@ fun ZoomableImage(entryId: Long, url: String, onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { containerSize = it }
-                .pointerInput(containerSize, scale) {
+                .pointerInput(containerSize) {
                     detectTransformGestures { _, pan, zoom, _ ->
                         val nextScale = (scale * zoom).coerceIn(1f, 5f)
                         val maxOffsetX = (containerSize.width * (nextScale - 1f) / 2f).coerceAtLeast(0f)

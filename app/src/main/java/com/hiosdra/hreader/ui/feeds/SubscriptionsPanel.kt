@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -49,10 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.displayUrl
@@ -355,8 +354,7 @@ private fun PanelRow(
     onRename: (() -> Unit)? = null,
     onUnsubscribe: (() -> Unit)? = null
 ) {
-    // Renaming and unsubscribing hang off a long press rather than a third button: these rows were
-    // deliberately quietened down, and a menu per row would undo that for two rare actions.
+    // Secondary feed actions stay behind one menu so the row keeps its reading priority.
     var menuOpen by remember { mutableStateOf(false) }
 
     Row(
@@ -409,18 +407,8 @@ private fun PanelRow(
                 )
             }
         }
-        if (onDetailsClick != null) {
-            IconButton(onClick = onDetailsClick) {
-                Icon(
-                    painter = painterResource(id = R.drawable.baseline_details_24),
-                    contentDescription = "Feed details",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
         Box {
-            if (onRename != null || onUnsubscribe != null) {
+            if (onDetailsClick != null || onRename != null || onUnsubscribe != null) {
                 IconButton(onClick = { menuOpen = true }) {
                     Icon(
                         Icons.Filled.MoreVert,
@@ -430,6 +418,16 @@ private fun PanelRow(
                 }
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                onDetailsClick?.let { details ->
+                    DropdownMenuItem(
+                        text = { Text("Feed details") },
+                        leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            details()
+                        }
+                    )
+                }
                 onRename?.let { rename ->
                     DropdownMenuItem(
                         text = { Text("Rename") },
