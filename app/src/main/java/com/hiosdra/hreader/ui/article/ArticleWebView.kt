@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.ui.article
 
+import android.content.Context
 import android.os.SystemClock
 import android.view.View
 import android.webkit.WebResourceRequest
@@ -77,15 +78,16 @@ fun ArticleWebView(
      * the reader's position in the article each time.
      */
     val loadedHtml = remember { mutableStateOf<String?>(null) }
-    val loadedWebView = remember { mutableStateOf<WebView?>(null) }
+    val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
 
     AndroidView(
         factory = { context ->
-            WebView(context).apply {
+            ReaderWebView(context).apply {
                 var lastProgress = -1f
                 var lastScrollY = -1
                 var lastProgressAt = 0L
-                fun updateScrollProgress(wv: WebView) {
+                fun updateScrollProgress(wv: ReaderWebView) {
+                    if (wv.isReleased) return
                     val contentHeightPx = wv.contentHeight * wv.resources.displayMetrics.density
                     val viewHeight = wv.height.toFloat()
                     val denom = (contentHeightPx - viewHeight).coerceAtLeast(1f)
@@ -135,16 +137,15 @@ fun ArticleWebView(
                     }
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
-                        if (view != null) {
-                            view.post {
-                                view.scrollTo(0, currentRestoreScrollY.value)
-                                updateScrollProgress(view)
-                            }
+                        val readerView = view as? ReaderWebView ?: return
+                        readerView.postIfActive {
+                            readerView.scrollTo(0, currentRestoreScrollY.value)
+                            updateScrollProgress(readerView)
                         }
                     }
                 }
                 setOnScrollChangeListener { v, _, _, _, _ ->
-                    if (v is WebView) updateScrollProgress(v)
+                    if (v is ReaderWebView) updateScrollProgress(v)
                 }
                 setOnLongClickListener { v: View ->
                     val result = (v as? WebView)?.hitTestResult
@@ -176,11 +177,49 @@ fun ArticleWebView(
                 loadedWebView.value = webView
                 loadedHtml.value = htmlData
                 webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
-                webView.post { webView.scrollTo(0, currentRestoreScrollY.value) }
+                webView.postIfActive { webView.scrollTo(0, currentRestoreScrollY.value) }
             }
         },
+        onRelease = { webView -> webView.releaseResources() },
         modifier = modifier
     )
+}
+
+internal class ReaderWebView(context: Context) : WebView(context) {
+    private var released = false
+
+    val isReleased: Boolean
+        get() = released
+
+    fun postIfActive(action: () -> Unit) {
+        if (released) return
+        post {
+            if (!released) action()
+        }
+    }
+
+    fun releaseResources() {
+        if (released) return
+        released = true
+        setOnTouchListener(null)
+        setOnScrollChangeListener(null)
+        setOnLongClickListener(null)
+        webViewClient = WebViewClient()
+        webChromeClient = null
+        stopLoading()
+        removeAllViews()
+        destroy()
+    }
+
+    override fun scrollTo(x: Int, y: Int) {
+        if (released) return
+        super.scrollTo(x, y)
+    }
+
+    override fun scrollBy(x: Int, y: Int) {
+        if (released) return
+        super.scrollBy(x, y)
+    }
 }
 
 private fun articleHtml(

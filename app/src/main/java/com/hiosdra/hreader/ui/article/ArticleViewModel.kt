@@ -43,6 +43,16 @@ private const val CONTENT_CACHE_RADIUS = 24
 private const val PARTIAL_CONTENT_MESSAGE =
     "The full text of this article was never downloaded, so this is only what the feed itself carried."
 
+internal fun mergeReaderEntries(
+    ids: List<Long>,
+    latestEntries: List<Entry>,
+    previousEntries: List<Entry>
+): List<Entry> {
+    val latestById = latestEntries.associateBy { it.id }
+    val previousById = previousEntries.associateBy { it.id }
+    return ids.mapNotNull { id -> latestById[id] ?: previousById[id] }
+}
+
 data class ArticleUiState(
     val entries: List<Entry> = emptyList(),
     val currentIndex: Int = 0,
@@ -339,11 +349,15 @@ class ArticleViewModel(
         articleRepository.getArticlesByIds(ids).collect { articles ->
             // Room returns them ordered by date; the pager has to walk them in the order the list
             // handed over, which is the same order but resolved once rather than re-derived.
-            val byId = articles.associateBy { it.id }
-            val ordered = ids.mapNotNull { byId[it] }
-            _uiState.update { it.copy(entries = ordered, isLoading = false, error = null) }
+            _uiState.update { state ->
+                state.copy(
+                    entries = mergeReaderEntries(ids, articles, state.entries),
+                    isLoading = false,
+                    error = null
+                )
+            }
             loadAround(_uiState.value.currentIndex)
-            loadCachedCredibility(ordered.map { it.id })
+            loadCachedCredibility(_uiState.value.entries.map { it.id })
         }
     }
 
