@@ -316,43 +316,6 @@ fun OfflinePageWebView(
     )
 }
 
-internal class ReaderWebView(context: Context) : WebView(context) {
-    private var released = false
-
-    val isReleased: Boolean
-        get() = released
-
-    fun postIfActive(action: () -> Unit) {
-        if (released) return
-        post {
-            if (!released) action()
-        }
-    }
-
-    fun releaseResources() {
-        if (released) return
-        released = true
-        setOnTouchListener(null)
-        setOnScrollChangeListener(null)
-        setOnLongClickListener(null)
-        webViewClient = WebViewClient()
-        webChromeClient = null
-        stopLoading()
-        removeAllViews()
-        destroy()
-    }
-
-    override fun scrollTo(x: Int, y: Int) {
-        if (released) return
-        super.scrollTo(x, y)
-    }
-
-    override fun scrollBy(x: Int, y: Int) {
-        if (released) return
-        super.scrollBy(x, y)
-    }
-}
-
 private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse? {
     uri ?: return null
     val baseUri = Uri.parse(page.baseUrl)
