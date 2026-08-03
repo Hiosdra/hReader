@@ -3,7 +3,9 @@ package com.hiosdra.hreader.ui.article
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebChromeClient
@@ -29,6 +31,28 @@ import java.io.FileInputStream
 import java.net.URLConnection
 import kotlin.math.roundToInt
 import kotlin.math.abs
+
+internal enum class ReaderGestureDirection {
+    Horizontal,
+    Vertical
+}
+
+internal fun readerGestureDirection(
+    deltaX: Float,
+    deltaY: Float,
+    touchSlop: Float
+): ReaderGestureDirection? {
+    val absoluteX = abs(deltaX)
+    val absoluteY = abs(deltaY)
+    if (maxOf(absoluteX, absoluteY) <= touchSlop) return null
+
+    val directionalBias = 1.25f
+    return when {
+        absoluteX > absoluteY * directionalBias -> ReaderGestureDirection.Horizontal
+        absoluteY > absoluteX * directionalBias -> ReaderGestureDirection.Vertical
+        else -> null
+    }
+}
 
 @Composable
 fun ArticleWebView(
@@ -229,8 +253,20 @@ fun ArticleWebView(
 
 internal class ReaderWebView(context: Context) : WebView(context) {
     private var released = false
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
+    private var pagerGestureDirection: ReaderGestureDirection? = null
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
 
     var allowScroll: Boolean = true
+    var protectVerticalScrollFromPager: Boolean = false
+        set(value) {
+            field = value
+            if (!value) {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                pagerGestureDirection = null
+            }
+        }
 
     val isReleased: Boolean
         get() = released
@@ -244,6 +280,8 @@ internal class ReaderWebView(context: Context) : WebView(context) {
 
     fun releaseResources() {
         if (released) return
+        parent?.requestDisallowInterceptTouchEvent(false)
+        pagerGestureDirection = null
         released = true
         setOnTouchListener(null)
         setOnScrollChangeListener(null)
@@ -253,6 +291,41 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         stopLoading()
         removeAllViews()
         destroy()
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (protectVerticalScrollFromPager) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialTouchX = event.x
+                    initialTouchY = event.y
+                    pagerGestureDirection = null
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (pagerGestureDirection == null) {
+                        pagerGestureDirection = readerGestureDirection(
+                            deltaX = event.x - initialTouchX,
+                            deltaY = event.y - initialTouchY,
+                            touchSlop = touchSlop
+                        )
+                        if (pagerGestureDirection == ReaderGestureDirection.Horizontal) {
+                            parent?.requestDisallowInterceptTouchEvent(false)
+                        }
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    pagerGestureDirection = null
+                }
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    override fun onDetachedFromWindow() {
+        parent?.requestDisallowInterceptTouchEvent(false)
+        super.onDetachedFromWindow()
     }
 
     override fun scrollTo(x: Int, y: Int) {
@@ -279,6 +352,7 @@ fun OfflinePageWebView(
     AndroidView(
         factory = { context ->
             ReaderWebView(context).apply {
+                protectVerticalScrollFromPager = true
                 settings.javaScriptEnabled = false
                 settings.blockNetworkLoads = true
                 settings.allowFileAccess = false
