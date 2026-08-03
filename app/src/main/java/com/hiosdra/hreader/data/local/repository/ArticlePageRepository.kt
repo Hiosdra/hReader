@@ -89,7 +89,12 @@ class ArticlePageRepository(
     suspend fun entriesMissingPages(entries: List<Pair<Long, String>>): List<Pair<Long, String>> =
         withContext(Dispatchers.IO) {
             val stored = snapshotDao.getAll()
-                .filter { it.isComplete }
+                .filter { snapshot ->
+                    snapshot.isComplete &&
+                        pageDirectory(snapshot.entryId, snapshot.directoryPath)
+                            ?.resolve(INDEX_FILE)
+                            ?.isFile == true
+                }
                 .associate { it.entryId to it.originalUrl }
             entries.filterNot { (entryId, url) -> stored[entryId] == url }
         }
@@ -364,23 +369,27 @@ class ArticlePageRepository(
 
     private suspend fun fetch(url: String, maximumBytes: Long): FetchedResource? =
         withContext(Dispatchers.IO) {
-            runCatching {
+            try {
                 val request = Request.Builder()
                     .url(url)
                     .header("User-Agent", USER_AGENT)
                     .build()
                 httpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@runCatching null
+                    if (!response.isSuccessful) return@withContext null
                     val body = response.body
-                    if (body.contentLength() > maximumBytes) return@runCatching null
-                    val bytes = readAtMost(body.byteStream(), maximumBytes) ?: return@runCatching null
+                    if (body.contentLength() > maximumBytes) return@withContext null
+                    val bytes = readAtMost(body.byteStream(), maximumBytes) ?: return@withContext null
                     FetchedResource(
                         bytes = bytes,
                         finalUrl = response.request.url.toString(),
                         contentType = body.contentType()?.toString()
                     )
                 }
-            }.getOrNull()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
         }
 
     private fun readAtMost(input: java.io.InputStream, maximumBytes: Long): ByteArray? {

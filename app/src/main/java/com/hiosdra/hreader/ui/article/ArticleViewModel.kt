@@ -116,7 +116,7 @@ class ArticleViewModel(
      */
     private val requestedContentIds = mutableSetOf<Long>()
 
-    private val requestedOfflinePageIds = mutableSetOf<Long>()
+    private val requestedOfflinePageUrls = mutableMapOf<Long, String>()
 
     /** Articles whose stored credibility report has already been looked up, for the same reason. */
     private val checkedCredibilityIds = mutableSetOf<Long>()
@@ -176,7 +176,7 @@ class ArticleViewModel(
             entries.getOrNull(index + 1)
         )
         val nearbyIds = nearby.map { it.id }.toSet()
-        requestedOfflinePageIds.retainAll(nearbyIds)
+        requestedOfflinePageUrls.keys.retainAll(nearbyIds)
         _uiState.update { state ->
             state.copy(offlinePages = state.offlinePages.filterKeys(nearbyIds::contains))
         }
@@ -187,7 +187,12 @@ class ArticleViewModel(
     }
 
     private fun loadOfflinePage(entryId: Long, url: String) {
-        if (_uiState.value.offlinePages.containsKey(entryId) || !requestedOfflinePageIds.add(entryId)) return
+        val loadedPage = _uiState.value.offlinePages[entryId]
+        if (loadedPage?.originalUrl == url || requestedOfflinePageUrls[entryId] == url) return
+        requestedOfflinePageUrls[entryId] = url
+        if (loadedPage != null) {
+            _uiState.update { it.copy(offlinePages = it.offlinePages - entryId) }
+        }
         viewModelScope.launch {
             val offlinePage = try {
                 articlePageRepository.getOfflinePage(entryId, url)
@@ -197,7 +202,8 @@ class ArticleViewModel(
                 null
             }
             _uiState.update { state ->
-                if (entryId !in requestedOfflinePageIds) return@update state
+                if (requestedOfflinePageUrls[entryId] != url) return@update state
+                requestedOfflinePageUrls.remove(entryId)
                 state.copy(
                     offlinePages = if (offlinePage == null) {
                         state.offlinePages - entryId

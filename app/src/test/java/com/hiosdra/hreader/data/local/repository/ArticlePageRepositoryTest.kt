@@ -16,6 +16,7 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.MediaType.Companion.toMediaType
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -81,6 +82,37 @@ class ArticlePageRepositoryTest {
         } finally {
             root.deleteRecursively()
             outside.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `treats a complete snapshot without its index as missing`() = runBlocking {
+        val root = Files.createTempDirectory("hreader-pages").toFile()
+        try {
+            val pageDirectory = File(root, "article_pages/42").apply { mkdirs() }
+            val context = mockk<Context>()
+            every { context.filesDir } returns root
+            val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
+            val articleDao = mockk<ArticleDao>(relaxed = true)
+            coEvery { snapshotDao.getAll() } returns listOf(
+                ArticlePageSnapshot(
+                    entryId = 42L,
+                    originalUrl = ARTICLE_URL,
+                    finalUrl = ARTICLE_URL,
+                    directoryPath = pageDirectory.absolutePath,
+                    fetchedAt = java.time.Instant.EPOCH,
+                    byteSize = 0,
+                    isComplete = true
+                )
+            )
+            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient())
+
+            assertEquals(
+                listOf(42L to ARTICLE_URL),
+                repository.entriesMissingPages(listOf(42L to ARTICLE_URL))
+            )
+        } finally {
+            root.deleteRecursively()
         }
     }
 

@@ -274,7 +274,7 @@ fun OfflinePageWebView(
 ) {
     val currentPage = androidx.compose.runtime.rememberUpdatedState(page)
     val currentOnLinkClick = androidx.compose.runtime.rememberUpdatedState(onLinkClick)
-    val loadedPageKey = remember { mutableStateOf<Pair<Long, Int>?>(null) }
+    val loadedPageKey = remember { mutableStateOf<Pair<Long, String>?>(null) }
 
     AndroidView(
         factory = { context ->
@@ -305,7 +305,7 @@ fun OfflinePageWebView(
             }
         },
         update = { webView ->
-            val key = page.entryId to page.html.hashCode()
+            val key = page.entryId to page.html
             if (loadedPageKey.value != key) {
                 loadedPageKey.value = key
                 webView.loadDataWithBaseURL(page.baseUrl, page.html, "text/html", "UTF-8", null)

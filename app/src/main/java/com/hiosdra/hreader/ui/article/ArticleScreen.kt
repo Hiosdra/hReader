@@ -441,7 +441,9 @@ private fun ArticlePager(
                                 copyTextToClipboard(context, "Link", url)
                                 Toast.makeText(context, "Offline — link copied", Toast.LENGTH_SHORT).show()
                             },
-                            modifier = Modifier.padding(paddingValues)
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues)
                         )
                     } else {
                         val loadedUrl = remember { mutableStateOf<String?>(null) }
