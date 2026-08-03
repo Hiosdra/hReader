@@ -22,7 +22,7 @@ object AppNotificationFactory {
     ): ForegroundInfo {
         NotificationChannels.ensure(context)
         val notification = NotificationCompat.Builder(context, NotificationChannels.SYNC)
-            .setSmallIcon(R.drawable.baseline_details_24)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
@@ -54,7 +54,7 @@ object AppNotificationFactory {
         NotificationChannels.ensure(context)
         val percentage = (progress.coerceIn(0f, 1f) * 100).toInt()
         val notification = NotificationCompat.Builder(context, NotificationChannels.MODEL_DOWNLOAD)
-            .setSmallIcon(R.drawable.baseline_details_24)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(context.getString(R.string.notification_model_download_title))
             .setContentText(modelName)
             .setOngoing(true)

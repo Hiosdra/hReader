@@ -150,7 +150,7 @@ class ArticleTtsPlaybackService : Service() {
             else -> getString(R.string.notification_tts_title)
         }
         val builder = NotificationCompat.Builder(this, NotificationChannels.TTS)
-            .setSmallIcon(R.drawable.baseline_details_24)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(state.title.ifBlank { getString(R.string.notification_tts_title) })
             .setContentText(text)
             .setContentIntent(contentIntent())
