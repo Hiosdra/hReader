@@ -11,6 +11,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -101,5 +102,22 @@ class SyncSchedulerTest {
 
         assertTrue(request.captured.tags.contains("FullOfflinePreparation"))
         verify(exactly = 2) { workContinuation.then(any<OneTimeWorkRequest>()) }
+    }
+
+    @Test
+    fun identifies_each_offline_preparation_stage() {
+        assertEquals(
+            OfflinePreparationStage.SYNCING,
+            offlinePreparationStage(setOf("OfflineSyncStage"))
+        )
+        assertEquals(
+            OfflinePreparationStage.DOWNLOADING_CONTENT,
+            offlinePreparationStage(setOf("OfflineContentStage"))
+        )
+        assertEquals(
+            OfflinePreparationStage.ARCHIVING_PAGES,
+            offlinePreparationStage(setOf("OfflinePagesStage"))
+        )
+        assertEquals(OfflinePreparationStage.IDLE, offlinePreparationStage(emptySet()))
     }
 }

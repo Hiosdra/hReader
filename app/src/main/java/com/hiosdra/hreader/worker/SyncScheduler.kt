@@ -39,6 +39,9 @@ private const val REQUESTED_SYNC_WORK = "RequestedSync"
 private const val SYNC_PIPELINE_WORK = "SyncPipeline"
 private const val OFFLINE_PREPARATION_TAG = "OfflinePreparation"
 private const val FULL_OFFLINE_PREPARATION_TAG = "FullOfflinePreparation"
+private const val OFFLINE_SYNC_STAGE_TAG = "OfflineSyncStage"
+private const val OFFLINE_CONTENT_STAGE_TAG = "OfflineContentStage"
+private const val OFFLINE_PAGES_STAGE_TAG = "OfflinePagesStage"
 
 private const val BACKOFF_DELAY_SECONDS = 30L
 private const val CHAINED_SYNC_THROTTLE_MILLIS = 2 * 60 * 1000L
@@ -61,6 +64,13 @@ enum class SyncOperationState {
     CANCELLED
 }
 
+enum class OfflinePreparationStage {
+    IDLE,
+    SYNCING,
+    DOWNLOADING_CONTENT,
+    ARCHIVING_PAGES
+}
+
 data class SyncOperationStatus(
     val state: SyncOperationState = SyncOperationState.IDLE,
     val errorMessage: String? = null,
@@ -75,8 +85,16 @@ data class OfflinePreparationProgress(
     val done: Int = 0,
     val total: Int = 0,
     val status: SyncOperationStatus = SyncOperationStatus(),
-    val isFullOffline: Boolean = false
+    val isFullOffline: Boolean = false,
+    val stage: OfflinePreparationStage = OfflinePreparationStage.IDLE
 )
+
+internal fun offlinePreparationStage(tags: Set<String>): OfflinePreparationStage = when {
+    OFFLINE_SYNC_STAGE_TAG in tags -> OfflinePreparationStage.SYNCING
+    OFFLINE_CONTENT_STAGE_TAG in tags -> OfflinePreparationStage.DOWNLOADING_CONTENT
+    OFFLINE_PAGES_STAGE_TAG in tags -> OfflinePreparationStage.ARCHIVING_PAGES
+    else -> OfflinePreparationStage.IDLE
+}
 
 /**
  * Every enqueue point in the app, so they cannot drift apart on constraints. They did: the periodic
@@ -359,15 +377,21 @@ class SyncScheduler(
             } else {
                 infos
             }
-            val progress = operationInfos.firstOrNull { it.state == WorkInfo.State.RUNNING }?.progress
-                ?: operationInfos.lastOrNull()?.progress
+            val activeWork = operationInfos.firstOrNull { it.state == WorkInfo.State.RUNNING }
+                ?: operationInfos.firstOrNull { it.state == WorkInfo.State.ENQUEUED }
+                ?: operationInfos.firstOrNull { it.state == WorkInfo.State.BLOCKED }
+                ?: operationInfos.lastOrNull()
+            val progress = activeWork?.progress
             val status = operationStatus(operationInfos)
+            val isFullOffline = activeWork?.let { FULL_OFFLINE_PREPARATION_TAG in it.tags }
+                ?: operationInfos.any { FULL_OFFLINE_PREPARATION_TAG in it.tags }
             OfflinePreparationProgress(
                 isRunning = status.isRunning,
                 done = progress?.getInt(KEY_PROGRESS_DONE, 0) ?: 0,
                 total = progress?.getInt(KEY_PROGRESS_TOTAL, 0) ?: 0,
                 status = status,
-                isFullOffline = operationInfos.any { FULL_OFFLINE_PREPARATION_TAG in it.tags }
+                isFullOffline = isFullOffline,
+                stage = offlinePreparationStage(activeWork?.tags.orEmpty())
             )
         }
 
@@ -402,7 +426,10 @@ class SyncScheduler(
         )
         .apply {
             if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            if (offlinePreparation) addTag(OFFLINE_PREPARATION_TAG)
+            if (offlinePreparation) {
+                addTag(OFFLINE_PREPARATION_TAG)
+                addTag(OFFLINE_SYNC_STAGE_TAG)
+            }
             if (fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
         }
         .build()
@@ -434,7 +461,10 @@ class SyncScheduler(
             )
             .apply {
                 if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                if (offlinePreparation) addTag(OFFLINE_PREPARATION_TAG)
+                if (offlinePreparation) {
+                    addTag(OFFLINE_PREPARATION_TAG)
+                    addTag(OFFLINE_CONTENT_STAGE_TAG)
+                }
                 if (fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
             }
             .build()
@@ -463,6 +493,7 @@ class SyncScheduler(
             if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             addTag(OFFLINE_PREPARATION_TAG)
             addTag(FULL_OFFLINE_PREPARATION_TAG)
+            addTag(OFFLINE_PAGES_STAGE_TAG)
         }
         .build()
 }
