@@ -190,6 +190,9 @@ fun SettingsScreen(
                         onPrepare = {
                             requestNotificationPermission(settingsViewModel::prepareForOffline)
                         },
+                        onFullOfflineSync = {
+                            requestNotificationPermission(settingsViewModel::prepareFullOffline)
+                        },
                         onBacklogTargetChange = settingsViewModel::onBacklogTargetChange,
                         onImageDownloadEnabledChange = settingsViewModel::onImageDownloadEnabledChange,
                         onImageCacheBudgetChange = settingsViewModel::onImageCacheBudgetChange,

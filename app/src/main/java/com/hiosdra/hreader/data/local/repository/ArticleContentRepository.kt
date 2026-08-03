@@ -26,7 +26,8 @@ class ArticleContentRepository(
     private val articleDao: ArticleDao,
     private val articleImageRepository: ArticleImageRepository,
     private val credibilityRepository: CredibilityRepository,
-    private val articleAiOverviewRepository: ArticleAiOverviewRepository
+    private val articleAiOverviewRepository: ArticleAiOverviewRepository,
+    private val articlePageRepository: ArticlePageRepository
 ) {
     companion object {
         private const val TAG = "ArticleContentRepo"
@@ -241,6 +242,7 @@ class ArticleContentRepository(
         // Runs unconditionally: images outlive their content rows, and bailing out when no
         // articles are left is exactly when every stored image has become an orphan.
         articleImageRepository.cleanupOrphanedImages()
+        articlePageRepository.cleanupOrphanedPages()
         // Also here, not only after each download: lowering the budget in settings has to shrink a
         // cache that is already over it, even when nothing new is being fetched.
         articleImageRepository.enforceCacheBudget()

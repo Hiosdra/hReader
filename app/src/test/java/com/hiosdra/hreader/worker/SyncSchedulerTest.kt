@@ -11,6 +11,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -68,6 +69,8 @@ class SyncSchedulerTest {
                 any<OneTimeWorkRequest>()
             )
         }
+        verify(exactly = 1) { workContinuation.then(any<OneTimeWorkRequest>()) }
+        assertTrue(request.captured.tags.none { it == "FullOfflinePreparation" })
     }
 
     @Test
@@ -81,5 +84,40 @@ class SyncSchedulerTest {
                 any<OneTimeWorkRequest>()
             )
         }
+    }
+
+    @Test
+    fun fullOfflinePreparation_addsFullPageStageToThePipeline() {
+        val request = slot<OneTimeWorkRequest>()
+
+        every {
+            workManager.beginUniqueWork(
+                "SyncPipeline",
+                ExistingWorkPolicy.REPLACE,
+                capture(request)
+            )
+        } returns workContinuation
+
+        assertNotNull(scheduler.prepareFullOffline())
+
+        assertTrue(request.captured.tags.contains("FullOfflinePreparation"))
+        verify(exactly = 2) { workContinuation.then(any<OneTimeWorkRequest>()) }
+    }
+
+    @Test
+    fun identifies_each_offline_preparation_stage() {
+        assertEquals(
+            OfflinePreparationStage.SYNCING,
+            offlinePreparationStage(setOf("OfflineSyncStage"))
+        )
+        assertEquals(
+            OfflinePreparationStage.DOWNLOADING_CONTENT,
+            offlinePreparationStage(setOf("OfflineContentStage"))
+        )
+        assertEquals(
+            OfflinePreparationStage.ARCHIVING_PAGES,
+            offlinePreparationStage(setOf("OfflinePagesStage"))
+        )
+        assertEquals(OfflinePreparationStage.IDLE, offlinePreparationStage(emptySet()))
     }
 }
