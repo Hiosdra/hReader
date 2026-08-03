@@ -68,29 +68,33 @@ class FullPageSyncWorker(
             val batch = outstanding.take(MAX_PAGES_PER_RUN)
             if (batch.isEmpty()) return@withContext Result.success()
 
-            total.set(outstanding.size)
+            val completedBeforeRun = (targets.size - outstanding.size).coerceAtLeast(0)
+            total.set(targets.size)
+            done.set(completedBeforeRun)
             val reporter = launch {
                 while (isActive) {
                     publishProgress()
                     delay(PROGRESS_REPORT_INTERVAL_MILLIS)
                 }
             }
+            publishProgress()
             try {
                 syncPerformanceLogger.measureSyncTime("Full page prefetch") {
                     articlePageRepository.prefetchPages(
                         entries = batch,
                         limit = null,
-                        onProgress = { completed, _ -> done.set(completed) }
+                        onProgress = { completed, _ -> done.set(completedBeforeRun + completed) }
                     )
                 }
             } finally {
                 reporter.cancel()
             }
-            publishProgress()
 
             val remaining = articlePageRepository.entriesMissingPages(
                 targets.map { it.id.toLong() to it.url }
             ).size
+            done.set((targets.size - remaining).coerceIn(0, targets.size))
+            publishProgress()
             when {
                 remaining == 0 -> Result.success()
                 shouldRetryFullPageSync(remaining, outstanding.size, runAttemptCount) -> Result.retry()

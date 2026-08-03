@@ -13,6 +13,7 @@ import com.hiosdra.hreader.data.repository.LocalCacheRepository
 import com.hiosdra.hreader.worker.SyncOperationState
 import com.hiosdra.hreader.worker.SyncOperationStatus
 import com.hiosdra.hreader.worker.SyncScheduler
+import com.hiosdra.hreader.worker.OfflinePreparationStage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,6 +69,7 @@ data class OfflineUiState(
     val preparationDone: Int = 0,
     val preparationTotal: Int = 0,
     val isFullOfflinePreparation: Boolean = false,
+    val preparationStage: OfflinePreparationStage = OfflinePreparationStage.IDLE,
     val preparationStatus: SyncOperationStatus = SyncOperationStatus()
 ) {
     /** Null while the worker has not reported counts yet, which reads as indeterminate. */
@@ -133,6 +135,7 @@ class SettingsViewModel(
                     preparationDone = progress.done,
                     preparationTotal = progress.total,
                     isFullOfflinePreparation = progress.isFullOffline,
+                    preparationStage = progress.stage,
                     preparationStatus = progress.status
                 )
                 if (
@@ -184,6 +187,7 @@ class SettingsViewModel(
             preparationDone = 0,
             preparationTotal = 0,
             isFullOfflinePreparation = fullOffline,
+            preparationStage = OfflinePreparationStage.SYNCING,
             preparationStatus = SyncOperationStatus(SyncOperationState.RUNNING)
         )
         val workId = if (fullOffline) {
@@ -197,6 +201,7 @@ class SettingsViewModel(
             _offline.value = _offline.value.copy(
                 isPreparing = false,
                 isFullOfflinePreparation = false,
+                preparationStage = OfflinePreparationStage.IDLE,
                 preparationStatus = SyncOperationStatus(
                     state = SyncOperationState.FAILED,
                     errorMessage = "Configure a feed server first."
@@ -224,6 +229,7 @@ class SettingsViewModel(
                 preparationDone = terminalProgress.done,
                 preparationTotal = terminalProgress.total,
                 isFullOfflinePreparation = terminalProgress.isFullOffline,
+                preparationStage = terminalProgress.stage,
                 preparationStatus = terminalProgress.status
             )
         }
