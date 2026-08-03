@@ -59,4 +59,15 @@ class OfflineReadinessTest {
 
         assertEquals(2, readiness.missingImageCount)
     }
+
+    @Test
+    fun `full page shortfall is counted within the offline scope`() {
+        val readiness = OfflineReadiness(
+            articleCount = 100,
+            offlineTargetCount = 12,
+            storedFullPageCount = 7
+        )
+
+        assertEquals(5, readiness.missingFullPageCount)
+    }
 }

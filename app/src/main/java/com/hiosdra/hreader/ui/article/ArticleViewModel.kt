@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleAiOverviewRepository
+import com.hiosdra.hreader.data.local.repository.ArticlePageRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.local.repository.CredibilityRepository
 import com.hiosdra.hreader.data.model.ArticleListQuery
@@ -13,6 +14,7 @@ import com.hiosdra.hreader.data.model.ArticleStatus
 import com.hiosdra.hreader.data.model.CredibilityReport
 import com.hiosdra.hreader.data.model.CredibilitySource
 import com.hiosdra.hreader.data.model.Entry
+import com.hiosdra.hreader.data.model.OfflinePage
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
@@ -74,6 +76,7 @@ data class ArticleUiState(
     val partialContentIds: Set<Long> = emptySet(),
     /** Per article, where each of its images was downloaded, keyed by published address. */
     val localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
+    val offlinePages: Map<Long, OfflinePage> = emptyMap(),
     val contentError: String? = null,
     val isOnline: Boolean = true,
     val aiOverviews: Map<Long, String> = emptyMap(),
@@ -88,6 +91,7 @@ data class ArticleUiState(
 class ArticleViewModel(
     private val articleRepository: ArticleRepository,
     private val articleContentRepository: ArticleContentRepository,
+    private val articlePageRepository: ArticlePageRepository,
     private val articleAiService: ArticleAiService,
     private val articleAiOverviewRepository: ArticleAiOverviewRepository,
     private val credibilityRepository: CredibilityRepository,
@@ -111,6 +115,8 @@ class ArticleViewModel(
      * read tick re-emits them; without this the article on screen was fetched again on each one.
      */
     private val requestedContentIds = mutableSetOf<Long>()
+
+    private val requestedOfflinePageUrls = mutableMapOf<Long, String>()
 
     /** Articles whose stored credibility report has already been looked up, for the same reason. */
     private val checkedCredibilityIds = mutableSetOf<Long>()
@@ -164,8 +170,49 @@ class ArticleViewModel(
      */
     private fun loadAround(index: Int) {
         val entries = _uiState.value.entries
-        listOfNotNull(entries.getOrNull(index), entries.getOrNull(index - 1), entries.getOrNull(index + 1))
-            .forEach { entry -> loadArticleText(entry.id, entry.url) }
+        val nearby = listOfNotNull(
+            entries.getOrNull(index),
+            entries.getOrNull(index - 1),
+            entries.getOrNull(index + 1)
+        )
+        val nearbyIds = nearby.map { it.id }.toSet()
+        requestedOfflinePageUrls.keys.retainAll(nearbyIds)
+        _uiState.update { state ->
+            state.copy(offlinePages = state.offlinePages.filterKeys(nearbyIds::contains))
+        }
+        nearby.forEach { entry ->
+            loadOfflinePage(entry.id, entry.url)
+            loadArticleText(entry.id, entry.url)
+        }
+    }
+
+    private fun loadOfflinePage(entryId: Long, url: String) {
+        val loadedPage = _uiState.value.offlinePages[entryId]
+        if (loadedPage?.originalUrl == url || requestedOfflinePageUrls[entryId] == url) return
+        requestedOfflinePageUrls[entryId] = url
+        if (loadedPage != null) {
+            _uiState.update { it.copy(offlinePages = it.offlinePages - entryId) }
+        }
+        viewModelScope.launch {
+            val offlinePage = try {
+                articlePageRepository.getOfflinePage(entryId, url)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            _uiState.update { state ->
+                if (requestedOfflinePageUrls[entryId] != url) return@update state
+                requestedOfflinePageUrls.remove(entryId)
+                state.copy(
+                    offlinePages = if (offlinePage == null) {
+                        state.offlinePages - entryId
+                    } else {
+                        state.offlinePages + (entryId to offlinePage)
+                    }
+                )
+            }
+        }
     }
 
     /**
@@ -384,6 +431,8 @@ class ArticleViewModel(
             ?: _uiState.value.entries.find { it.id == entryId }?.content
 
     fun getLeadImageForEntry(entryId: Long): String? = _uiState.value.leadImages[entryId]
+
+    fun getOfflinePageForEntry(entryId: Long): OfflinePage? = _uiState.value.offlinePages[entryId]
 
     fun clearContentError() {
         _uiState.update { it.copy(contentError = null) }

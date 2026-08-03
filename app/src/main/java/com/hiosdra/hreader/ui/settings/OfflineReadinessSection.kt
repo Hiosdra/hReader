@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.data.model.OfflineReadiness
+import com.hiosdra.hreader.worker.OfflinePreparationStage
 import com.hiosdra.hreader.worker.SyncOperationState
 import java.time.Duration
 import java.time.Instant
@@ -39,6 +40,7 @@ private const val BYTES_PER_MEGABYTE = 1024.0 * 1024
 fun OfflineReadinessSection(
     state: OfflineUiState,
     onPrepare: () -> Unit,
+    onFullOfflineSync: () -> Unit,
     onBacklogTargetChange: (Int) -> Unit,
     onImageDownloadEnabledChange: (Boolean) -> Unit,
     onImageCacheBudgetChange: (Int) -> Unit,
@@ -77,22 +79,23 @@ fun OfflineReadinessSection(
             enabled = !state.isPreparing,
             modifier = Modifier.fillMaxWidth()
         ) {
-            if (state.isPreparing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(
-                    if (state.preparationTotal > 0) {
-                        "Downloading ${state.preparationDone} of ${state.preparationTotal}…"
-                    } else {
-                        "Downloading…"
-                    }
-                )
+            if (state.isPreparing && !state.isFullOfflinePreparation) {
+                PreparationProgressContent(state)
             } else {
                 Text("Prepare for offline")
+            }
+        }
+        Button(
+            onClick = onFullOfflineSync,
+            enabled = !state.isPreparing,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        ) {
+            if (state.isPreparing && state.isFullOfflinePreparation) {
+                PreparationProgressContent(state)
+            } else {
+                Text("Full offline sync")
             }
         }
         // A real count rather than a spinner of unknown length: the reader is deciding whether
@@ -116,8 +119,8 @@ fun OfflineReadinessSection(
             }
         }
         Text(
-            text = "Full sync, then unread, starred and backlog article bodies and images. Runs in " +
-                "the background — keep the connection until the counts above stop moving.",
+            text = "Prepare for offline downloads article bodies and images. Full offline sync also " +
+                "archives the original web pages, but only when you press its button.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
@@ -236,8 +239,42 @@ private fun OfflineReadiness.detailLine(): String {
     } else {
         "$storedImageCount images"
     }
+    val fullPages = if (offlineTargetCount > 0) {
+        "$storedFullPageCount/$offlineTargetCount full pages"
+    } else {
+        "0 full pages"
+    }
     return "$unreadCount unread$backlog · $storedFullContentCount full text, " +
-        "$images (%.0f MB)".format(megabytes)
+        "$fullPages, $images (%.0f MB)".format(megabytes)
+}
+
+@Composable
+private fun PreparationProgressContent(state: OfflineUiState) {
+    CircularProgressIndicator(
+        modifier = Modifier.size(16.dp),
+        strokeWidth = 2.dp,
+        color = MaterialTheme.colorScheme.onPrimary
+    )
+    Spacer(modifier = Modifier.size(8.dp))
+    Text(state.preparationLabel())
+}
+
+private fun OfflineUiState.preparationLabel(): String {
+    val count = if (preparationTotal > 0) {
+        " $preparationDone of $preparationTotal"
+    } else {
+        ""
+    }
+    return when (preparationStage) {
+        OfflinePreparationStage.SYNCING -> "Syncing articles…"
+        OfflinePreparationStage.DOWNLOADING_CONTENT -> "Downloading article content$count…"
+        OfflinePreparationStage.ARCHIVING_PAGES -> "Archiving full pages$count…"
+        OfflinePreparationStage.IDLE -> if (isFullOfflinePreparation) {
+            "Preparing full offline…"
+        } else {
+            "Preparing offline…"
+        }
+    }
 }
 
 private fun OfflineReadiness.lastSyncLabel(): String {
