@@ -30,15 +30,13 @@ data class ArticleListItem(
     val feedUrl: String?
 )
 
-/** The full article plus its feed, for the reader. Same join, without dropping the body. */
-data class ArticleWithFeed(
+/** The reader metadata plus its feed. The body is loaded only for the nearby pages. */
+data class ArticleReaderItem(
     val id: String,
     val title: String,
     val author: String?,
     val url: String,
     val publishedAt: Instant,
-    val content: String?,
-    val preview: String?,
     val readingTime: Int?,
     val enclosures: List<Enclosure>,
     val status: ArticleStatus?,

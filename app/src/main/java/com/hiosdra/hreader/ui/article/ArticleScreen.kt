@@ -176,9 +176,12 @@ fun ArticleScreen(
         viewModel.openList(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis)
     }
 
-    LaunchedEffect(uiState.isOnline, uiState.currentIndex, uiState.offlinePages) {
-        val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
-        if (!uiState.isOnline && currentEntry?.id !in uiState.offlinePages) {
+    val currentOfflinePageAvailable = uiState.entries
+        .getOrNull(uiState.currentIndex)
+        ?.id
+        ?.let(uiState.offlinePages::containsKey) == true
+    LaunchedEffect(uiState.isOnline, uiState.currentIndex, currentOfflinePageAvailable) {
+        if (!uiState.isOnline && !currentOfflinePageAvailable) {
             isWebViewMode = false
         }
     }
@@ -426,6 +429,7 @@ private fun ArticlePager(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 0,
             flingBehavior = PagerDefaults.flingBehavior(
                 state = pagerState,
                 pagerSnapDistance = PagerSnapDistance.atMost(1),
