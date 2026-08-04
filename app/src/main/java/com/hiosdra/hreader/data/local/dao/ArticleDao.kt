@@ -7,7 +7,7 @@ import androidx.room.Upsert
 import com.hiosdra.hreader.data.local.entity.ArticleBody
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
 import com.hiosdra.hreader.data.local.entity.ArticleListItem
-import com.hiosdra.hreader.data.local.entity.ArticleWithFeed
+import com.hiosdra.hreader.data.local.entity.ArticleReaderItem
 import com.hiosdra.hreader.data.local.entity.FeedUnreadCount
 import com.hiosdra.hreader.data.local.entity.PendingStar
 import com.hiosdra.hreader.data.local.entity.PendingStatus
@@ -143,10 +143,15 @@ interface ArticleDao {
     ): Flow<Int>
 
     @Query(
-        "SELECT $LIST_COLUMNS, a.content AS content $FROM_ARTICLES_WITH_FEED " +
+        "SELECT a.id AS id, a.title AS title, a.author AS author, a.url AS url, " +
+            "a.publishedAt AS publishedAt, a.readingTime AS readingTime, " +
+            "a.enclosures AS enclosures, a.status AS status, a.starred AS starred, " +
+            "a.backlogFetchedAt AS backlogFetchedAt, a.feedId AS feedId, " +
+            "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl " +
+            "$FROM_ARTICLES_WITH_FEED " +
             "WHERE a.id IN (:ids) ORDER BY a.publishedAt ASC"
     )
-    fun getArticlesWithFeedByIds(ids: List<String>): Flow<List<ArticleWithFeed>>
+    fun getArticlesWithFeedByIds(ids: List<String>): Flow<List<ArticleReaderItem>>
 
     @Query(
         "SELECT id, content FROM articles WHERE preview IS NULL AND content IS NOT NULL LIMIT :limit"
