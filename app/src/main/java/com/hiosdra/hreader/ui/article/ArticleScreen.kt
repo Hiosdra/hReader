@@ -9,11 +9,19 @@ import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
@@ -44,6 +52,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -95,6 +105,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -235,6 +246,7 @@ fun ArticleScreen(
                 canUseWebView = uiState.isOnline ||
                     (entry?.id?.let { uiState.offlinePages.containsKey(it) } == true),
                 isStarred = entry?.starred == true,
+                isRead = entry?.isRead == true,
                 isSpeaking = entry?.id == ttsState.articleId,
                 textScale = textScale,
                 onDecreaseTextScale = {
@@ -247,6 +259,9 @@ fun ArticleScreen(
                         .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
                 },
                 onToggleStar = { if (entry != null) viewModel.setStarred(entry.id, !entry.starred) },
+                onToggleRead = {
+                    entry?.let { viewModel.updateReadStatus(uiState.currentIndex, !it.isRead) }
+                },
                 onToggleSpeech = {
                     if (entry == null) return@ArticleTopBar
                     if (ttsState.articleId == entry.id) {
@@ -520,12 +535,14 @@ private fun ArticleTopBar(
     isOnline: Boolean,
     canUseWebView: Boolean,
     isStarred: Boolean,
+    isRead: Boolean,
     isSpeaking: Boolean,
     textScale: Float,
     onDecreaseTextScale: () -> Unit,
     onResetTextScale: () -> Unit,
     onIncreaseTextScale: () -> Unit,
     onToggleStar: () -> Unit,
+    onToggleRead: () -> Unit,
     onToggleSpeech: () -> Unit,
     onBack: () -> Unit,
     onOpenInChrome: () -> Unit,
@@ -575,6 +592,20 @@ private fun ArticleTopBar(
                     canUseWebView = canUseWebView,
                     onToggleWebView = onToggleWebView
                 )
+                AnimatedVisibility(
+                    visible = isWebViewMode && canUseWebView,
+                    enter = fadeIn(animationSpec = tween(180)) +
+                        scaleIn(initialScale = 0.85f, animationSpec = tween(180)) +
+                        expandHorizontally(animationSpec = tween(180)),
+                    exit = fadeOut(animationSpec = tween(120)) +
+                        scaleOut(targetScale = 0.85f, animationSpec = tween(120)) +
+                        shrinkHorizontally(animationSpec = tween(120))
+                ) {
+                    ReadStatusButton(
+                        isRead = isRead,
+                        onToggleRead = onToggleRead
+                    )
+                }
                 IconButton(onClick = onOpenInChrome, enabled = isOnline) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_chrome_logo),
@@ -686,6 +717,47 @@ private fun ArticleTopBar(
             containerColor = MaterialTheme.colorScheme.surface
         )
     )
+}
+
+@Composable
+private fun ReadStatusButton(
+    isRead: Boolean,
+    onToggleRead: () -> Unit
+) {
+    val iconTint by animateColorAsState(
+        targetValue = if (isRead) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = tween(160),
+        label = "read status color"
+    )
+
+    IconButton(
+        onClick = onToggleRead,
+        modifier = Modifier.semantics {
+            contentDescription = readStatusActionLabel(isRead)
+            stateDescription = if (isRead) "Read" else "Unread"
+        }
+    ) {
+        AnimatedContent(
+            targetState = isRead,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(120)) +
+                    scaleIn(initialScale = 0.8f, animationSpec = tween(120))) togetherWith
+                    (fadeOut(animationSpec = tween(80)) +
+                        scaleOut(targetScale = 0.8f, animationSpec = tween(80)))
+            },
+            label = "read status icon"
+        ) { read ->
+            Icon(
+                imageVector = if (read) Icons.Filled.CheckCircle else Icons.Filled.Done,
+                contentDescription = null,
+                tint = iconTint
+            )
+        }
+    }
 }
 
 @Composable
@@ -874,7 +946,7 @@ private fun ArticleContent(
                             checked = entry.isRead,
                             onCheckedChange = { checked -> onReadStatusChange?.invoke(checked) },
                             modifier = Modifier.semantics {
-                                contentDescription = if (entry.isRead) "Mark as unread" else "Mark as read"
+                                contentDescription = readStatusActionLabel(entry.isRead)
                             }
                         )
                     }
