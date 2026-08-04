@@ -14,7 +14,7 @@ import com.hiosdra.hreader.data.local.dao.ArticleContentDao
 import com.hiosdra.hreader.data.local.dao.FeedDao
 import com.hiosdra.hreader.data.local.entity.ArticleEntity
 import com.hiosdra.hreader.data.local.entity.ArticleListItem
-import com.hiosdra.hreader.data.local.entity.ArticleWithFeed
+import com.hiosdra.hreader.data.local.entity.ArticleReaderItem
 import com.hiosdra.hreader.data.local.entity.FeedEntity
 import com.hiosdra.hreader.data.local.entity.PrefetchTarget
 import com.hiosdra.hreader.data.model.ArticleListEntry
@@ -513,13 +513,13 @@ private fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
     isBacklog = backlogFetchedAt != null
 )
 
-private fun ArticleWithFeed.toEntry(): Entry = Entry(
+private fun ArticleReaderItem.toEntry(): Entry = Entry(
     id = id.toLong(),
     title = title,
     author = author,
     url = url,
     publishedAt = publishedAt,
-    content = content,
+    content = null,
     feed = Feed(
         id = feedId,
         title = feedTitle ?: UNKNOWN_FEED_TITLE,
