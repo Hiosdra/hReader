@@ -143,6 +143,8 @@ import kotlin.math.roundToInt
 private const val MIN_ARTICLE_TEXT_SCALE = 0.85f
 private const val MAX_ARTICLE_TEXT_SCALE = 1.35f
 private const val ARTICLE_TEXT_SCALE_STEP = 0.1f
+private const val FEED_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.72f
+private const val WEB_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.85f
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -427,7 +429,11 @@ private fun ArticlePager(
             flingBehavior = PagerDefaults.flingBehavior(
                 state = pagerState,
                 pagerSnapDistance = PagerSnapDistance.atMost(1),
-                snapPositionalThreshold = 0.72f
+                snapPositionalThreshold = if (isWebViewMode) {
+                    WEB_PAGER_SNAP_POSITIONAL_THRESHOLD
+                } else {
+                    FEED_PAGER_SNAP_POSITIONAL_THRESHOLD
+                }
             )
         ) { page ->
             val entry = entries.getOrNull(page) ?: return@HorizontalPager
@@ -452,6 +458,7 @@ private fun ArticlePager(
                         AndroidView(
                             factory = { context ->
                                 ReaderWebView(context).apply {
+                                    protectVerticalScrollFromPager = true
                                     settings.javaScriptEnabled = false
                                     webViewClient = object : WebViewClient() {
                                         override fun onPageFinished(view: WebView?, url: String?) {
