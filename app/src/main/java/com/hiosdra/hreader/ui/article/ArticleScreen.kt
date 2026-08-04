@@ -12,12 +12,10 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -38,6 +36,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,6 +47,7 @@ import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -227,27 +227,72 @@ fun ArticleScreen(
         }
     }
 
+    val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            if (ttsState.articleId != null) {
-                ArticleTtsBar(ttsState, ttsController::pause, ttsController::resume, ttsController::stop)
+            AnimatedVisibility(
+                visible = currentEntry != null,
+                enter = slideInVertically(
+                    animationSpec = tween(180),
+                    initialOffsetY = { it / 2 }
+                ) + fadeIn(animationSpec = tween(180)),
+                exit = slideOutVertically(
+                    animationSpec = tween(120),
+                    targetOffsetY = { it / 2 }
+                ) + fadeOut(animationSpec = tween(120))
+            ) {
+                currentEntry?.let { entry ->
+                    ArticleBottomActionBar(
+                        state = ttsState,
+                        entryUrl = entry.url.takeIf(String::isNotBlank),
+                        isOnline = uiState.isOnline,
+                        canUsePaywallBypass = entry.url.isNotBlank() &&
+                            !paywallBypassService.isPaywallBypassUrl(entry.url),
+                        onToggleSpeech = {
+                            if (ttsState.articleId != null) {
+                                ttsController.stop()
+                            } else {
+                                requestNotificationPermission {
+                                    ttsController.play(
+                                        articleId = entry.id,
+                                        title = entry.title,
+                                        html = removeDuplicateArticleTitle(
+                                            viewModel.getContentForEntry(entry.id).orEmpty(),
+                                            entry.title
+                                        )
+                                    )
+                                }
+                            }
+                        },
+                        onPauseSpeech = ttsController::pause,
+                        onResumeSpeech = ttsController::resume,
+                        onOpenInChrome = {
+                            openChromeCustomTab(navController.context, cleanUrl(entry.url))
+                        },
+                        onBypassPaywall = {
+                            if (entry.url.isNotBlank()) {
+                                val bypassMethod = preferencesManager.getPaywallBypassMethod()
+                                val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
+                                openChromeCustomTab(navController.context, bypassUrl)
+                            }
+                        }
+                    )
+                }
             }
         },
         topBar = {
-            val entry = uiState.entries.getOrNull(uiState.currentIndex)
             ArticleTopBar(
-                entryUrl = entry?.url,
-                feedTitle = entry?.feed?.title,
+                entryUrl = currentEntry?.url,
+                feedTitle = currentEntry?.feed?.title,
                 listPosition = uiState.currentListPosition,
                 listSize = uiState.listSize,
                 isWebViewMode = isWebViewMode,
-                isOnline = uiState.isOnline,
                 canUseWebView = uiState.isOnline ||
-                    (entry?.id?.let { uiState.offlinePages.containsKey(it) } == true),
-                isStarred = entry?.starred == true,
-                isRead = entry?.isRead == true,
-                isSpeaking = entry?.id == ttsState.articleId,
+                    (currentEntry?.id?.let { uiState.offlinePages.containsKey(it) } == true),
+                isStarred = currentEntry?.starred == true,
+                isRead = currentEntry?.isRead == true,
                 textScale = textScale,
                 onDecreaseTextScale = {
                     textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
@@ -258,39 +303,18 @@ fun ArticleScreen(
                     textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
                         .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
                 },
-                onToggleStar = { if (entry != null) viewModel.setStarred(entry.id, !entry.starred) },
-                onToggleRead = {
-                    entry?.let { viewModel.updateReadStatus(uiState.currentIndex, !it.isRead) }
+                onToggleStar = {
+                    currentEntry?.let { entry -> viewModel.setStarred(entry.id, !entry.starred) }
                 },
-                onToggleSpeech = {
-                    if (entry == null) return@ArticleTopBar
-                    if (ttsState.articleId == entry.id) {
-                        ttsController.stop()
-                    } else {
-                        requestNotificationPermission {
-                            ttsController.play(
-                                articleId = entry.id,
-                                title = entry.title,
-                                html = removeDuplicateArticleTitle(
-                                    viewModel.getContentForEntry(entry.id).orEmpty(),
-                                    entry.title
-                                )
-                            )
-                        }
+                onToggleRead = {
+                    currentEntry?.let { entry ->
+                        viewModel.updateReadStatus(uiState.currentIndex, !entry.isRead)
                     }
                 },
                 onBack = { navController.popBackStack() },
-                onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, cleanUrl(entry.url)) },
                 onToggleWebView = { isWebViewMode = !isWebViewMode },
-                onBypassPaywall = {
-                    if (entry != null && entry.url.isNotBlank()) {
-                        val bypassMethod = preferencesManager.getPaywallBypassMethod()
-                        val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
-                        openChromeCustomTab(navController.context, bypassUrl)
-                    }
-                },
                 onShare = {
-                    if (entry != null) {
+                    currentEntry?.let { entry ->
                         val ctx = navController.context
                         val sendIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
@@ -532,26 +556,19 @@ private fun ArticleTopBar(
     listPosition: Int,
     listSize: Int,
     isWebViewMode: Boolean,
-    isOnline: Boolean,
     canUseWebView: Boolean,
     isStarred: Boolean,
     isRead: Boolean,
-    isSpeaking: Boolean,
     textScale: Float,
     onDecreaseTextScale: () -> Unit,
     onResetTextScale: () -> Unit,
     onIncreaseTextScale: () -> Unit,
     onToggleStar: () -> Unit,
     onToggleRead: () -> Unit,
-    onToggleSpeech: () -> Unit,
     onBack: () -> Unit,
-    onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit,
-    onBypassPaywall: () -> Unit,
     onShare: () -> Unit
 ) {
-    val paywallBypassService: PaywallBypassService = koinInject()
-
     TopAppBar(
         title = {
             // One line, cut short if it has to be. A feed named "Subiektywnie o finansach — Maciej
@@ -580,48 +597,13 @@ private fun ArticleTopBar(
         },
         actions = {
             val overflowExpanded = remember { mutableStateOf(false) }
-            IconButton(onClick = onToggleSpeech) {
-                Icon(
-                    imageVector = if (isSpeaking) Icons.Filled.Close else Icons.Filled.PlayArrow,
-                    contentDescription = if (isSpeaking) "Stop reading" else "Read aloud"
-                )
-            }
             if (entryUrl != null) {
                 FeedWebToggle(
                     isWebViewMode = isWebViewMode,
                     canUseWebView = canUseWebView,
                     onToggleWebView = onToggleWebView
                 )
-                AnimatedVisibility(
-                    visible = isWebViewMode && canUseWebView,
-                    enter = fadeIn(animationSpec = tween(180)) +
-                        scaleIn(initialScale = 0.85f, animationSpec = tween(180)) +
-                        expandHorizontally(animationSpec = tween(180)),
-                    exit = fadeOut(animationSpec = tween(120)) +
-                        scaleOut(targetScale = 0.85f, animationSpec = tween(120)) +
-                        shrinkHorizontally(animationSpec = tween(120))
-                ) {
-                    ReadStatusButton(
-                        isRead = isRead,
-                        onToggleRead = onToggleRead
-                    )
-                }
-                IconButton(onClick = onOpenInChrome, enabled = isOnline) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_chrome_logo),
-                        contentDescription = "Open original page in Chrome",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
-                    IconButton(onClick = onBypassPaywall, enabled = isOnline) {
-                        Icon(
-                            Icons.Filled.Lock,
-                            contentDescription = "Open through paywall bypass",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+                ReadStatusButton(isRead = isRead, onToggleRead = onToggleRead)
             }
             // Outside the branch above: an entry that carries no address can still be starred, and
             // that is the one action here which is about the article rather than about its page.
@@ -824,45 +806,114 @@ private fun ReaderModeOption(
 }
 
 @Composable
-private fun ArticleTtsBar(
+private fun ArticleBottomActionBar(
     state: ArticleTtsState,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit
+    entryUrl: String?,
+    isOnline: Boolean,
+    canUsePaywallBypass: Boolean,
+    onToggleSpeech: () -> Unit,
+    onPauseSpeech: () -> Unit,
+    onResumeSpeech: () -> Unit,
+    onOpenInChrome: () -> Unit,
+    onBypassPaywall: () -> Unit
 ) {
-    Surface(tonalElevation = 4.dp, shadowElevation = 4.dp) {
-        Row(
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f),
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .navigationBarsPadding()
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (state.isPreparing) "Preparing voice…" else state.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = state.error ?: state.model?.displayName.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                LinearProgressIndicator(
-                    progress = { state.progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
+            if (state.articleId != null) {
+                ArticleTtsDetails(
+                    state = state,
+                    onPause = onPauseSpeech,
+                    onResume = onResumeSpeech
                 )
             }
-            TextButton(onClick = if (state.isPaused) onResume else onPause) {
-                Text(if (state.isPaused) "Resume" else "Pause")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = onToggleSpeech) {
+                    Icon(
+                        imageVector = if (state.articleId != null) {
+                            Icons.Filled.Close
+                        } else {
+                            Icons.Filled.PlayArrow
+                        },
+                        contentDescription = if (state.articleId != null) {
+                            "Stop reading"
+                        } else {
+                            "Read aloud"
+                        }
+                    )
+                }
+                if (entryUrl != null) {
+                    IconButton(onClick = onOpenInChrome, enabled = isOnline) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_chrome_logo),
+                            contentDescription = "Open original page in Chrome",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    if (canUsePaywallBypass) {
+                        IconButton(onClick = onBypassPaywall, enabled = isOnline) {
+                            Icon(
+                                Icons.Filled.Lock,
+                                contentDescription = "Open through paywall bypass",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
             }
-            IconButton(onClick = onStop) {
-                Icon(Icons.Filled.Close, contentDescription = "Stop reading")
-            }
+        }
+    }
+}
+
+@Composable
+private fun ArticleTtsDetails(
+    state: ArticleTtsState,
+    onPause: () -> Unit,
+    onResume: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (state.isPreparing) "Preparing voice…" else state.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = state.error ?: state.model?.displayName.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LinearProgressIndicator(
+                progress = { state.progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            )
+        }
+        TextButton(onClick = if (state.isPaused) onResume else onPause) {
+            Text(if (state.isPaused) "Resume" else "Pause")
         }
     }
 }
