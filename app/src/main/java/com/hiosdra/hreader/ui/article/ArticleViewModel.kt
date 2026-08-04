@@ -18,15 +18,11 @@ import com.hiosdra.hreader.data.model.OfflinePage
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
-import com.hiosdra.hreader.util.leadImageUrl
-import com.hiosdra.hreader.util.prepareArticleImages
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.Instant
 
 private const val MISSING_CONTENT_MESSAGE =
@@ -40,7 +36,7 @@ private const val MISSING_CONTENT_MESSAGE =
  * swipes dozens of articles in one sitting, and going back to the list starts a fresh window.
  */
 private const val PAGER_WINDOW_RADIUS = 50
-private const val CONTENT_CACHE_RADIUS = 24
+private const val CONTENT_CACHE_RADIUS = 1
 
 private const val PARTIAL_CONTENT_MESSAGE =
     "The full text of this article was never downloaded, so this is only what the feed itself carried."
@@ -87,6 +83,27 @@ data class ArticleUiState(
     val analyzingCredibilityIds: Set<Long> = emptySet(),
     val scoreError: String? = null
 )
+
+internal fun ArticleUiState.readerWindowIds(index: Int = currentIndex): Set<Long> {
+    if (entries.isEmpty()) return emptySet()
+    val focus = index.coerceIn(0, entries.lastIndex)
+    val start = (focus - CONTENT_CACHE_RADIUS).coerceAtLeast(0)
+    val endExclusive = (focus + CONTENT_CACHE_RADIUS + 1).coerceAtMost(entries.size)
+    return entries.subList(start, endExclusive).mapTo(mutableSetOf()) { it.id }
+}
+
+internal fun ArticleUiState.trimReaderState(index: Int = currentIndex): ArticleUiState {
+    val retainedIds = readerWindowIds(index)
+    return copy(
+        content = content.filterKeys { it in retainedIds },
+        leadImages = leadImages.filterKeys { it in retainedIds },
+        localImagePaths = localImagePaths.filterKeys { it in retainedIds },
+        offlinePages = offlinePages.filterKeys { it in retainedIds },
+        aiOverviews = aiOverviews.filterKeys { it in retainedIds },
+        credibilityReports = credibilityReports.filterKeys { it in retainedIds },
+        partialContentIds = partialContentIds.filterTo(mutableSetOf()) { it in retainedIds }
+    )
+}
 
 class ArticleViewModel(
     private val articleRepository: ArticleRepository,
@@ -157,7 +174,7 @@ class ArticleViewModel(
                 } else {
                     state.contentError
                 }
-            )
+            ).trimReaderState(index)
         }
         loadAround(index)
     }
@@ -177,13 +194,14 @@ class ArticleViewModel(
         )
         val nearbyIds = nearby.map { it.id }.toSet()
         requestedOfflinePageUrls.keys.retainAll(nearbyIds)
-        _uiState.update { state ->
-            state.copy(offlinePages = state.offlinePages.filterKeys(nearbyIds::contains))
-        }
+        requestedContentIds.retainAll(nearbyIds)
+        checkedCredibilityIds.retainAll(nearbyIds)
+        _uiState.update { it.trimReaderState(index) }
         nearby.forEach { entry ->
             loadOfflinePage(entry.id, entry.url)
             loadArticleText(entry.id, entry.url)
         }
+        loadCachedCredibility(nearbyIds.toList())
     }
 
     private fun loadOfflinePage(entryId: Long, url: String) {
@@ -224,44 +242,24 @@ class ArticleViewModel(
      * connection returns so it can be upgraded to the full text.
      */
     private fun loadArticleText(entryId: Long, url: String) {
+        if (_uiState.value.content.containsKey(entryId)) return
         if (!requestedContentIds.add(entryId)) return
         viewModelScope.launch {
-            val text = try {
-                articleContentRepository.getArticleContent(entryId, url, _uiState.value.isOnline)
+            try {
+                val text = articleContentRepository.getArticleContent(entryId, url, _uiState.value.isOnline)
+                store(entryId, text.html, text.leadImageUrl, text.source == ArticleContentSource.FULL)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
-                null
-            }
-            if (text != null) {
-                store(entryId, text.html, text.leadImageUrl, text.source == ArticleContentSource.FULL)
-                return@launch
-            }
-
-            val entry = _uiState.value.entries.find { it.id == entryId }
-            val syncedWithFeed = entry?.content
-            if (syncedWithFeed.isNullOrBlank()) {
                 markPartial(entryId)
-                return@launch
             }
-
-            // The one body that never reaches the store where the rest are prepared, so it is
-            // prepared here instead.
-            val (images, leadImage) = withContext(Dispatchers.Default) {
-                val images = prepareArticleImages(syncedWithFeed, url)
-                images to leadImageUrl(
-                    enclosureUrl = entry.enclosures.firstOrNull { it.isImage }?.url,
-                    feedContent = syncedWithFeed,
-                    bodyImageUrls = images.imageUrls,
-                    baseUri = url
-                )
-            }
-            store(entryId, images.html, leadImage, isFullText = false)
         }
     }
 
     private fun markPartial(entryId: Long) {
-        _uiState.update { it.withPartialContent(entryId) }
+        _uiState.update { state ->
+            if (entryId !in state.readerWindowIds()) state else state.withPartialContent(entryId)
+        }
     }
 
     /**
@@ -281,34 +279,22 @@ class ArticleViewModel(
     private suspend fun store(entryId: Long, html: String, leadImage: String?, isFullText: Boolean) {
         val localPaths = imageLoader.getLocalImagePaths(entryId)
         _uiState.update {
-            val focusIndex = it.entries.indexOfFirst { entry -> entry.id == entryId }
-            val cacheStart = if (focusIndex >= 0) {
-                (focusIndex - CONTENT_CACHE_RADIUS).coerceAtLeast(0)
-            } else {
-                0
-            }
-            val cacheEnd = if (focusIndex >= 0) {
-                (focusIndex + CONTENT_CACHE_RADIUS + 1).coerceAtMost(it.entries.size)
-            } else {
-                it.entries.size
-            }
-            val cachedIds = it.entries.subList(cacheStart, cacheEnd).mapTo(mutableSetOf()) { entry -> entry.id }
-                .also { ids -> ids += entryId }
-            val stored = it.copy(
-                content = (it.content + (entryId to html)).filterKeys { id -> id in cachedIds },
-                leadImages = (it.leadImages + (entryId to leadImage)).filterKeys { id -> id in cachedIds },
-                localImagePaths = (it.localImagePaths + (entryId to localPaths)).filterKeys { id -> id in cachedIds },
-                partialContentIds = it.partialContentIds.filterTo(mutableSetOf()) { id -> id in cachedIds }
+            val stored = it.trimReaderState()
+            if (entryId !in stored.readerWindowIds()) return@update stored
+            val withContent = stored.copy(
+                content = stored.content + (entryId to html),
+                leadImages = stored.leadImages + (entryId to leadImage),
+                localImagePaths = stored.localImagePaths + (entryId to localPaths)
             )
             if (isFullText) {
-                stored.copy(
-                    partialContentIds = stored.partialContentIds - entryId,
-                    contentError = if (stored.entries.getOrNull(stored.currentIndex)?.id == entryId &&
-                        stored.contentError == PARTIAL_CONTENT_MESSAGE
+                withContent.copy(
+                    partialContentIds = withContent.partialContentIds - entryId,
+                    contentError = if (withContent.entries.getOrNull(withContent.currentIndex)?.id == entryId &&
+                        withContent.contentError == PARTIAL_CONTENT_MESSAGE
                     ) null else stored.contentError
                 )
             } else {
-                stored.withPartialContent(entryId)
+                withContent.withPartialContent(entryId)
             }
         }
         val cachedOverview = articleAiOverviewRepository.get(
@@ -317,14 +303,15 @@ class ArticleViewModel(
             modelId = preferencesManager.getAiModelId()
         )
         if (cachedOverview != null) {
-            _uiState.update { it.copy(aiOverviews = it.aiOverviews + (entryId to cachedOverview)) }
-        }
-        val currentIds = _uiState.value.entries.mapIndexedNotNull { index, entry ->
-            entry.id.takeIf {
-                index in (_uiState.value.currentIndex - CONTENT_CACHE_RADIUS.._uiState.value.currentIndex + CONTENT_CACHE_RADIUS)
+            _uiState.update { state ->
+                if (entryId !in state.readerWindowIds()) {
+                    state
+                } else {
+                    state.copy(aiOverviews = state.aiOverviews + (entryId to cachedOverview))
+                }
             }
-        }.toSet()
-        requestedContentIds.retainAll(currentIds)
+        }
+        requestedContentIds.retainAll(_uiState.value.readerWindowIds())
     }
 
     fun updateReadStatus(index: Int, isRead: Boolean) {
@@ -404,7 +391,6 @@ class ArticleViewModel(
                 )
             }
             loadAround(_uiState.value.currentIndex)
-            loadCachedCredibility(_uiState.value.entries.map { it.id })
         }
     }
 
@@ -472,7 +458,13 @@ class ArticleViewModel(
                 state.copy(
                     generatingOverviewIds = state.generatingOverviewIds - entryId,
                     aiOverviews = result.fold(
-                        onSuccess = { state.aiOverviews + (entryId to it) },
+                        onSuccess = { overview ->
+                            if (entryId in state.readerWindowIds()) {
+                                state.aiOverviews + (entryId to overview)
+                            } else {
+                                state.aiOverviews
+                            }
+                        },
                         onFailure = { state.aiOverviews }
                     ),
                     overviewError = result.exceptionOrNull()
@@ -518,7 +510,13 @@ class ArticleViewModel(
                 state.copy(
                     analyzingCredibilityIds = state.analyzingCredibilityIds - entryId,
                     credibilityReports = result.fold(
-                        onSuccess = { state.credibilityReports + (entryId to it) },
+                        onSuccess = { report ->
+                            if (entryId in state.readerWindowIds()) {
+                                state.credibilityReports + (entryId to report)
+                            } else {
+                                state.credibilityReports
+                            }
+                        },
                         onFailure = { state.credibilityReports }
                     ),
                     scoreError = result.exceptionOrNull()
@@ -540,7 +538,13 @@ class ArticleViewModel(
         viewModelScope.launch {
             val cached = runCatching { credibilityRepository.getCached(missing) }.getOrElse { emptyMap() }
             if (cached.isEmpty()) return@launch
-            _uiState.update { it.copy(credibilityReports = cached + it.credibilityReports) }
+            _uiState.update { state ->
+                val retainedIds = state.readerWindowIds()
+                state.copy(
+                    credibilityReports = state.credibilityReports.filterKeys { it in retainedIds } +
+                        cached.filterKeys { it in retainedIds }
+                )
+            }
         }
     }
 
