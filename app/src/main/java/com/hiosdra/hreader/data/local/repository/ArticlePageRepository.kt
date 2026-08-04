@@ -73,6 +73,11 @@ class ArticlePageRepository(
                 directory.deleteRecursively()
                 return@withContext null
             }
+            if (htmlFile.length() > MAX_HTML_BYTES) {
+                snapshotDao.deleteForEntries(listOf(entryId))
+                directory.deleteRecursively()
+                return@withContext null
+            }
 
             val html = runCatching { htmlFile.readText(UTF_8) }.getOrNull()
                 ?: return@withContext null

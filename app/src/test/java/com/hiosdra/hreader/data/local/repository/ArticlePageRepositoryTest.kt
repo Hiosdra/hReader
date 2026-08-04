@@ -116,6 +116,35 @@ class ArticlePageRepositoryTest {
         }
     }
 
+    @Test
+    fun `rejects an index that is too large to load into the reader`() = runBlocking {
+        val root = Files.createTempDirectory("hreader-pages").toFile()
+        try {
+            val pageDirectory = File(root, "article_pages/42").apply { mkdirs() }
+            File(pageDirectory, "index.html").writeBytes(ByteArray(5 * 1024 * 1024 + 1))
+            val context = mockk<Context>()
+            every { context.filesDir } returns root
+            val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
+            val articleDao = mockk<ArticleDao>(relaxed = true)
+            coEvery { snapshotDao.get(42L) } returns ArticlePageSnapshot(
+                entryId = 42L,
+                originalUrl = ARTICLE_URL,
+                finalUrl = ARTICLE_URL,
+                directoryPath = pageDirectory.absolutePath,
+                fetchedAt = java.time.Instant.EPOCH,
+                byteSize = 5L * 1024 * 1024 + 1,
+                isComplete = true
+            )
+            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient())
+
+            assertTrue(repository.getOfflinePage(42L, ARTICLE_URL) == null)
+            coVerify { snapshotDao.deleteForEntries(listOf(42L)) }
+            assertFalse(pageDirectory.exists())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun httpClient(): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(Interceptor { chain ->
             val request = chain.request()

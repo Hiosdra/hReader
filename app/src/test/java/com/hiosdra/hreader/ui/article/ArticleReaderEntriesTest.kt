@@ -2,6 +2,7 @@ package com.hiosdra.hreader.ui.article
 
 import com.hiosdra.hreader.data.model.Entry
 import com.hiosdra.hreader.data.model.Feed
+import com.hiosdra.hreader.data.model.OfflinePage
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -30,6 +31,35 @@ class ArticleReaderEntriesTest {
         )
 
         assertEquals(listOf(1L, 3L), result.map { it.id })
+    }
+
+    @Test
+    fun `reader state keeps article payloads around the current page only`() {
+        val entries = (1L..5L).map(::entry)
+        val state = ArticleUiState(
+            entries = entries,
+            currentIndex = 2,
+            content = entries.associate { it.id to "<p>${it.id}</p>" },
+            leadImages = entries.associate { it.id to "https://example.com/${it.id}.jpg" },
+            localImagePaths = entries.associate { it.id to mapOf("image" to "/tmp/${it.id}.jpg") },
+            offlinePages = entries.associate { item ->
+                item.id to OfflinePage(
+                    entryId = item.id,
+                    originalUrl = item.url,
+                    baseUrl = "https://offline.hreader.local/article/${item.id}/",
+                    html = "<p>${item.id}</p>",
+                    resourceDirectory = "/tmp/${item.id}",
+                    isComplete = true
+                )
+            }
+        )
+
+        val trimmed = state.trimReaderState()
+
+        assertEquals(setOf(2L, 3L, 4L), trimmed.content.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.leadImages.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.localImagePaths.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.offlinePages.keys)
     }
 
     private fun entry(id: Long, title: String = "Article $id") = Entry(
