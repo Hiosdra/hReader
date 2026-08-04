@@ -61,7 +61,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -364,7 +363,6 @@ fun ArticleScreen(
                     isWebViewMode = isWebViewMode,
                     textScale = textScale,
                     paddingValues = paddingValues,
-                    onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
                     getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                     getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                     getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
@@ -449,7 +447,6 @@ private fun ArticlePager(
     isWebViewMode: Boolean,
     textScale: Float,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
-    onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
     getContentForEntry: (Long) -> String?,
     getLeadImageForEntry: (Long) -> String?,
     getOfflinePageForEntry: (Long) -> OfflinePage?,
@@ -534,7 +531,6 @@ private fun ArticlePager(
                         mainImageUrl = getLeadImageForEntry(entry.id),
                         textScale = textScale,
                         modifier = Modifier.padding(paddingValues),
-                        onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
                         articleContent = getContentForEntry(entry.id) ?: "No content available",
                         localImagePaths = localImagePaths[entry.id].orEmpty(),
                         isOnline = isOnline,
@@ -928,7 +924,6 @@ private fun ArticleContent(
     mainImageUrl: String?,
     textScale: Float,
     modifier: Modifier = Modifier,
-    onReadStatusChange: ((Boolean) -> Unit)? = null,
     articleContent: String,
     localImagePaths: Map<String, String> = emptyMap(),
     isOnline: Boolean = true,
@@ -987,24 +982,15 @@ private fun ArticleContent(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                        Text(
-                            text = entry.title,
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontSize = 28.sp,
-                                lineHeight = 34.sp
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Checkbox(
-                            checked = entry.isRead,
-                            onCheckedChange = { checked -> onReadStatusChange?.invoke(checked) },
-                            modifier = Modifier.semantics {
-                                contentDescription = readStatusActionLabel(entry.isRead)
-                            }
-                        )
-                    }
+                    Text(
+                        text = entry.title,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 28.sp,
+                            lineHeight = 34.sp
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     if (scrollProgress in 0.02f..0.98f) {
                         Spacer(modifier = Modifier.height(8.dp))
                         LinearProgressIndicator(
