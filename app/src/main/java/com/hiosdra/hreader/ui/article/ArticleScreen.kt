@@ -47,7 +47,6 @@ import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -97,7 +96,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalDensity
@@ -108,6 +109,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -155,6 +157,7 @@ private const val MAX_ARTICLE_TEXT_SCALE = 1.35f
 private const val ARTICLE_TEXT_SCALE_STEP = 0.1f
 private const val FEED_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.72f
 private const val WEB_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.85f
+private const val ARTICLE_BOTTOM_BAR_ALPHA = 0.72f
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -230,59 +233,19 @@ fun ArticleScreen(
     }
 
     val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
+    var bottomActionBarHeightPx by remember { mutableIntStateOf(0) }
+    val bottomActionBarHeight = if (currentEntry == null) {
+        0.dp
+    } else {
+        with(LocalDensity.current) { bottomActionBarHeightPx.toDp() }
+    }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            AnimatedVisibility(
-                visible = currentEntry != null,
-                enter = slideInVertically(
-                    animationSpec = tween(180),
-                    initialOffsetY = { it / 2 }
-                ) + fadeIn(animationSpec = tween(180)),
-                exit = slideOutVertically(
-                    animationSpec = tween(120),
-                    targetOffsetY = { it / 2 }
-                ) + fadeOut(animationSpec = tween(120))
-            ) {
-                currentEntry?.let { entry ->
-                    ArticleBottomActionBar(
-                        state = ttsState,
-                        entryUrl = entry.url.takeIf(String::isNotBlank),
-                        isOnline = uiState.isOnline,
-                        canUsePaywallBypass = entry.url.isNotBlank() &&
-                            !paywallBypassService.isPaywallBypassUrl(entry.url),
-                        onToggleSpeech = {
-                            if (ttsState.articleId != null) {
-                                ttsController.stop()
-                            } else {
-                                requestNotificationPermission {
-                                    ttsController.play(
-                                        articleId = entry.id,
-                                        title = entry.title,
-                                        html = removeDuplicateArticleTitle(
-                                            viewModel.getContentForEntry(entry.id).orEmpty(),
-                                            entry.title
-                                        )
-                                    )
-                                }
-                            }
-                        },
-                        onPauseSpeech = ttsController::pause,
-                        onResumeSpeech = ttsController::resume,
-                        onOpenInChrome = {
-                            openChromeCustomTab(navController.context, cleanUrl(entry.url))
-                        },
-                        onBypassPaywall = {
-                            if (entry.url.isNotBlank()) {
-                                val bypassMethod = preferencesManager.getPaywallBypassMethod()
-                                val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
-                                openChromeCustomTab(navController.context, bypassUrl)
-                            }
-                        }
-                    )
-                }
-            }
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomActionBarHeight)
+            )
         },
         topBar = {
             ArticleTopBar(
@@ -329,89 +292,157 @@ fun ArticleScreen(
             )
         }
     ) { paddingValues ->
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(bottom = bottomActionBarHeight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-            uiState.error != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = uiState.error ?: "",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(bottom = bottomActionBarHeight)
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = uiState.error ?: "",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                uiState.entries.isNotEmpty() -> {
+                    ArticlePager(
+                        entries = uiState.entries,
+                        pagerState = pagerState,
+                        isWebViewMode = isWebViewMode,
+                        textScale = textScale,
+                        paddingValues = paddingValues,
+                        bottomContentPadding = bottomActionBarHeight,
+                        getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
+                        getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
+                        getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
+                        localImagePaths = uiState.localImagePaths,
+                        isOnline = uiState.isOnline,
+                        aiOverviews = uiState.aiOverviews,
+                        generatingOverviewIds = uiState.generatingOverviewIds,
+                        onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
+                        credibilityEnabled = uiState.credibilityEnabled,
+                        credibilityReports = uiState.credibilityReports,
+                        analyzingCredibilityIds = uiState.analyzingCredibilityIds,
+                        onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) }
                     )
                 }
             }
-            uiState.entries.isNotEmpty() -> {
-                ArticlePager(
-                    entries = uiState.entries,
-                    pagerState = pagerState,
-                    isWebViewMode = isWebViewMode,
-                    textScale = textScale,
-                    paddingValues = paddingValues,
-                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
-                    getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
-                    getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
-                    localImagePaths = uiState.localImagePaths,
-                    isOnline = uiState.isOnline,
-                    aiOverviews = uiState.aiOverviews,
-                    generatingOverviewIds = uiState.generatingOverviewIds,
-                    onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
-                    credibilityEnabled = uiState.credibilityEnabled,
-                    credibilityReports = uiState.credibilityReports,
-                    analyzingCredibilityIds = uiState.analyzingCredibilityIds,
-                    onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) }
+
+            // Errors interrupt reading as little as possible: a modal with a single OK button stopped
+            // the article dead to report something the reader can act on later, or not at all.
+            val currentEntryId = uiState.entries.getOrNull(uiState.currentIndex)?.id
+
+            uiState.overviewError?.let { error ->
+                RetryableSnackbar(
+                    hostState = snackbarHostState,
+                    message = error,
+                    actionLabel = "Retry".takeIf { currentEntryId != null },
+                    onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
+                    onDismissed = viewModel::clearOverviewError
                 )
             }
-        }
 
-        // Errors interrupt reading as little as possible: a modal with a single OK button stopped
-        // the article dead to report something the reader can act on later, or not at all.
-        val currentEntryId = uiState.entries.getOrNull(uiState.currentIndex)?.id
+            // What is missing offline, said out loud rather than left as an empty screen.
+            uiState.contentError?.let { message ->
+                RetryableSnackbar(
+                    hostState = snackbarHostState,
+                    message = message,
+                    actionLabel = null,
+                    onAction = {},
+                    onDismissed = viewModel::clearContentError
+                )
+            }
 
-        uiState.overviewError?.let { error ->
-            RetryableSnackbar(
-                hostState = snackbarHostState,
-                message = error,
-                actionLabel = "Retry".takeIf { currentEntryId != null },
-                onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
-                onDismissed = viewModel::clearOverviewError
-            )
-        }
+            uiState.scoreError?.let { error ->
+                RetryableSnackbar(
+                    hostState = snackbarHostState,
+                    message = error,
+                    actionLabel = "Retry".takeIf { currentEntryId != null },
+                    onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
+                    onDismissed = viewModel::clearScoreError
+                )
+            }
 
-        // What is missing offline, said out loud rather than left as an empty screen.
-        uiState.contentError?.let { message ->
-            RetryableSnackbar(
-                hostState = snackbarHostState,
-                message = message,
-                actionLabel = null,
-                onAction = {},
-                onDismissed = viewModel::clearContentError
-            )
-        }
-
-        uiState.scoreError?.let { error ->
-            RetryableSnackbar(
-                hostState = snackbarHostState,
-                message = error,
-                actionLabel = "Retry".takeIf { currentEntryId != null },
-                onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
-                onDismissed = viewModel::clearScoreError
-            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+            ) {
+                AnimatedVisibility(
+                    visible = currentEntry != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    enter = slideInVertically(
+                        animationSpec = tween(180),
+                        initialOffsetY = { it / 2 }
+                    ) + fadeIn(animationSpec = tween(180)),
+                    exit = slideOutVertically(
+                        animationSpec = tween(120),
+                        targetOffsetY = { it / 2 }
+                    ) + fadeOut(animationSpec = tween(120))
+                ) {
+                    currentEntry?.let { entry ->
+                        ArticleBottomActionBar(
+                            modifier = Modifier.onSizeChanged { size ->
+                                if (bottomActionBarHeightPx != size.height) {
+                                    bottomActionBarHeightPx = size.height
+                                }
+                            },
+                            state = ttsState,
+                            entryUrl = entry.url.takeIf(String::isNotBlank),
+                            isOnline = uiState.isOnline,
+                            canUsePaywallBypass = entry.url.isNotBlank() &&
+                                !paywallBypassService.isPaywallBypassUrl(entry.url),
+                            onToggleSpeech = {
+                                if (ttsState.articleId != null) {
+                                    ttsController.stop()
+                                } else {
+                                    requestNotificationPermission {
+                                        ttsController.play(
+                                            articleId = entry.id,
+                                            title = entry.title,
+                                            html = removeDuplicateArticleTitle(
+                                                viewModel.getContentForEntry(entry.id).orEmpty(),
+                                                entry.title
+                                            )
+                                        )
+                                    }
+                                }
+                            },
+                            onPauseSpeech = ttsController::pause,
+                            onResumeSpeech = ttsController::resume,
+                            onOpenInChrome = {
+                                openChromeCustomTab(navController.context, cleanUrl(entry.url))
+                            },
+                            onBypassPaywall = {
+                                if (entry.url.isNotBlank()) {
+                                    val bypassMethod = preferencesManager.getPaywallBypassMethod()
+                                    val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
+                                    openChromeCustomTab(navController.context, bypassUrl)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -447,6 +478,7 @@ private fun ArticlePager(
     isWebViewMode: Boolean,
     textScale: Float,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
+    bottomContentPadding: Dp = 0.dp,
     getContentForEntry: (Long) -> String?,
     getLeadImageForEntry: (Long) -> String?,
     getOfflinePageForEntry: (Long) -> OfflinePage?,
@@ -490,6 +522,7 @@ private fun ArticlePager(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(paddingValues)
+                                .padding(bottom = bottomContentPadding)
                         )
                     } else {
                         val loadedUrl = remember { mutableStateOf<String?>(null) }
@@ -523,6 +556,7 @@ private fun ArticlePager(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(paddingValues)
+                                .padding(bottom = bottomContentPadding)
                         )
                     }
                 } else {
@@ -530,7 +564,9 @@ private fun ArticlePager(
                         entry = entry,
                         mainImageUrl = getLeadImageForEntry(entry.id),
                         textScale = textScale,
-                        modifier = Modifier.padding(paddingValues),
+                        modifier = Modifier
+                            .padding(paddingValues)
+                            .padding(bottom = bottomContentPadding),
                         articleContent = getContentForEntry(entry.id) ?: "No content available",
                         localImagePaths = localImagePaths[entry.id].orEmpty(),
                         isOnline = isOnline,
@@ -807,6 +843,7 @@ private fun ReaderModeOption(
 
 @Composable
 private fun ArticleBottomActionBar(
+    modifier: Modifier = Modifier,
     state: ArticleTtsState,
     entryUrl: String?,
     isOnline: Boolean,
@@ -818,16 +855,14 @@ private fun ArticleBottomActionBar(
     onBypassPaywall: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f),
-        tonalElevation = 4.dp,
-        shadowElevation = 4.dp
+        modifier = modifier.fillMaxWidth(),
+        shape = RectangleShape,
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = ARTICLE_BOTTOM_BAR_ALPHA),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
+            modifier = Modifier.fillMaxWidth()
         ) {
             if (state.articleId != null) {
                 ArticleTtsDetails(
