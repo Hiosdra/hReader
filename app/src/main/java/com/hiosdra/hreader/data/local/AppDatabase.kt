@@ -9,6 +9,7 @@ import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleImageDao
 import com.hiosdra.hreader.data.local.dao.ArticleAiOverviewDao
 import com.hiosdra.hreader.data.local.dao.ArticlePageSnapshotDao
+import com.hiosdra.hreader.data.local.dao.ArticleReadingPositionDao
 import com.hiosdra.hreader.data.local.dao.FeedDao
 import com.hiosdra.hreader.data.local.entity.ArticleContent
 import com.hiosdra.hreader.data.local.entity.ArticleCredibility
@@ -19,6 +20,7 @@ import com.hiosdra.hreader.data.local.entity.ArticleImageManifest
 import com.hiosdra.hreader.data.local.entity.ArticleAiOverview
 import com.hiosdra.hreader.data.local.entity.FeedEntity
 import com.hiosdra.hreader.data.local.entity.ArticlePageSnapshot
+import com.hiosdra.hreader.data.local.entity.ArticleReadingPosition
 
 @Database(
     entities = [
@@ -30,9 +32,10 @@ import com.hiosdra.hreader.data.local.entity.ArticlePageSnapshot
         ArticleImageManifest::class,
         ArticleCredibility::class,
         ArticleAiOverview::class,
-        ArticlePageSnapshot::class
+        ArticlePageSnapshot::class,
+        ArticleReadingPosition::class
     ],
-    version = 14
+    version = 15
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -43,4 +46,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun articleCredibilityDao(): ArticleCredibilityDao
     abstract fun articleAiOverviewDao(): ArticleAiOverviewDao
     abstract fun articlePageSnapshotDao(): ArticlePageSnapshotDao
+    abstract fun articleReadingPositionDao(): ArticleReadingPositionDao
 }

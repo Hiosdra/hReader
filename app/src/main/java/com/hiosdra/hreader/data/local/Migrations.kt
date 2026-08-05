@@ -183,6 +183,18 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
     }
 }
 
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `article_reading_positions` (" +
+                "`articleId` TEXT NOT NULL, `progress` REAL NOT NULL, " +
+                "PRIMARY KEY(`articleId`), " +
+                "FOREIGN KEY(`articleId`) REFERENCES `articles`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE CASCADE)"
+        )
+    }
+}
+
 private val FTS_CONTENT_SYNC_TRIGGERS_WITH_FULL_CONTENT = listOf(
     "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE " +
         "BEFORE UPDATE ON `articles` BEGIN DELETE FROM `articles_fts` WHERE `docid`=OLD.`rowid`; END",
@@ -208,5 +220,6 @@ val ALL_MIGRATIONS = arrayOf(
     MIGRATION_10_11,
     MIGRATION_11_12,
     MIGRATION_12_13,
-    MIGRATION_13_14
+    MIGRATION_13_14,
+    MIGRATION_14_15
 )
