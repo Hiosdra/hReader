@@ -25,6 +25,7 @@ fun prepareArticleImages(html: String, baseUri: String): PreparedArticleImages {
     if (html.isBlank()) return PreparedArticleImages(html, emptyList())
 
     val document = Jsoup.parse(html, baseUri)
+    sanitizeArticleDocument(document)
     document.select("source[srcset]").forEach { it.removeAttr("srcset") }
     val imageUrls = document.select("img").map { image ->
         image.removeAttr("srcset")
