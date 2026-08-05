@@ -6,6 +6,7 @@ import com.hiosdra.hreader.data.ai.ArticleAiService
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleAiOverviewRepository
 import com.hiosdra.hreader.data.local.repository.ArticlePageRepository
+import com.hiosdra.hreader.data.local.repository.ArticleReadingPositionRepository
 import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.local.repository.CredibilityRepository
 import com.hiosdra.hreader.data.model.ArticleListQuery
@@ -18,6 +19,8 @@ import com.hiosdra.hreader.data.model.OfflinePage
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,6 +75,8 @@ data class ArticleUiState(
     val partialContentIds: Set<Long> = emptySet(),
     /** Per article, where each of its images was downloaded, keyed by published address. */
     val localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
+    val readingPositions: Map<Long, Float> = emptyMap(),
+    val readingPositionLoadedIds: Set<Long> = emptySet(),
     val offlinePages: Map<Long, OfflinePage> = emptyMap(),
     val contentError: String? = null,
     val isOnline: Boolean = true,
@@ -98,6 +103,8 @@ internal fun ArticleUiState.trimReaderState(index: Int = currentIndex): ArticleU
         content = content.filterKeys { it in retainedIds },
         leadImages = leadImages.filterKeys { it in retainedIds },
         localImagePaths = localImagePaths.filterKeys { it in retainedIds },
+        readingPositions = readingPositions.filterKeys { it in retainedIds },
+        readingPositionLoadedIds = readingPositionLoadedIds.filterTo(mutableSetOf()) { it in retainedIds },
         offlinePages = offlinePages.filterKeys { it in retainedIds },
         aiOverviews = aiOverviews.filterKeys { it in retainedIds },
         credibilityReports = credibilityReports.filterKeys { it in retainedIds },
@@ -107,6 +114,7 @@ internal fun ArticleUiState.trimReaderState(index: Int = currentIndex): ArticleU
 
 class ArticleViewModel(
     private val articleRepository: ArticleRepository,
+    private val articleReadingPositionRepository: ArticleReadingPositionRepository,
     private val articleContentRepository: ArticleContentRepository,
     private val articlePageRepository: ArticlePageRepository,
     private val articleAiService: ArticleAiService,
@@ -137,6 +145,10 @@ class ArticleViewModel(
 
     /** Articles whose stored credibility report has already been looked up, for the same reason. */
     private val checkedCredibilityIds = mutableSetOf<Long>()
+
+    private val requestedReadingPositionIds = mutableSetOf<Long>()
+    private val readingPositionWriteJobs = mutableMapOf<Long, Job>()
+    private val readingPositionSaveBlockedIds = mutableSetOf<Long>()
 
     init {
         viewModelScope.launch {
@@ -196,12 +208,42 @@ class ArticleViewModel(
         requestedOfflinePageUrls.keys.retainAll(nearbyIds)
         requestedContentIds.retainAll(nearbyIds)
         checkedCredibilityIds.retainAll(nearbyIds)
+        requestedReadingPositionIds.retainAll(nearbyIds)
+        readingPositionSaveBlockedIds.retainAll(nearbyIds)
         _uiState.update { it.trimReaderState(index) }
+        loadReadingPositions(nearbyIds)
         nearby.forEach { entry ->
             loadOfflinePage(entry.id, entry.url)
             loadArticleText(entry.id, entry.url)
         }
         loadCachedCredibility(nearbyIds.toList())
+    }
+
+    private fun loadReadingPositions(articleIds: Set<Long>) {
+        val state = _uiState.value
+        val missing = articleIds.filter { entryId ->
+            entryId !in state.readingPositionLoadedIds && requestedReadingPositionIds.add(entryId)
+        }
+        if (missing.isEmpty()) return
+        viewModelScope.launch {
+            val positions = try {
+                articleReadingPositionRepository.getProgresses(missing)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                requestedReadingPositionIds.removeAll(missing.toSet())
+                emptyMap()
+            }
+            _uiState.update { state ->
+                val retainedIds = state.readerWindowIds()
+                state.copy(
+                    readingPositions = state.readingPositions.filterKeys { it in retainedIds } +
+                        positions.filterKeys { it in retainedIds },
+                    readingPositionLoadedIds = state.readingPositionLoadedIds +
+                        missing.filter { it in retainedIds }
+                )
+            }
+        }
     }
 
     private fun loadOfflinePage(entryId: Long, url: String) {
@@ -314,13 +356,19 @@ class ArticleViewModel(
         requestedContentIds.retainAll(_uiState.value.readerWindowIds())
     }
 
-    fun updateReadStatus(index: Int, isRead: Boolean) {
+    fun updateReadStatus(index: Int, isRead: Boolean, clearReadingPosition: Boolean = false) {
         val entry = _uiState.value.entries.getOrNull(index) ?: return
         val newStatus = if (isRead) ArticleStatus.READ else ArticleStatus.UNREAD
         _uiState.update { state ->
             state.copy(
                 entries = state.entries.map { if (it.id == entry.id) it.copy(status = newStatus) else it }
             )
+        }
+        if (isRead && clearReadingPosition) {
+            readingPositionSaveBlockedIds.add(entry.id)
+            clearReadingProgress(entry.id)
+        } else if (!isRead) {
+            readingPositionSaveBlockedIds.remove(entry.id)
         }
         viewModelScope.launch {
             articleRepository.updateReadStatus(entry.id.toString(), newStatus)
@@ -417,6 +465,42 @@ class ArticleViewModel(
             ?: _uiState.value.entries.find { it.id == entryId }?.content
 
     fun getLeadImageForEntry(entryId: Long): String? = _uiState.value.leadImages[entryId]
+
+    fun getReadingProgressForEntry(entryId: Long): Float? =
+        _uiState.value.readingPositions[entryId]
+
+    fun saveReadingProgress(entryId: Long, progress: Float) {
+        if (entryId in readingPositionSaveBlockedIds) return
+        val normalized = progress.coerceIn(0f, 1f)
+        if (normalized == 0f) {
+            clearReadingProgress(entryId)
+            return
+        }
+        _uiState.update { state ->
+            if (entryId !in state.readerWindowIds()) {
+                state
+            } else {
+                state.copy(readingPositions = state.readingPositions + (entryId to normalized))
+            }
+        }
+        enqueueReadingPositionWrite(entryId) {
+            articleReadingPositionRepository.saveProgress(entryId, normalized)
+        }
+    }
+
+    fun clearReadingProgress(entryId: Long) {
+        _uiState.update { state ->
+            state.copy(readingPositions = state.readingPositions - entryId)
+        }
+        enqueueReadingPositionWrite(entryId) {
+            articleReadingPositionRepository.deleteProgress(entryId)
+        }
+    }
+
+    private fun enqueueReadingPositionWrite(entryId: Long, operation: suspend () -> Unit) {
+        readingPositionWriteJobs.remove(entryId)?.cancel()
+        readingPositionWriteJobs[entryId] = viewModelScope.launch { operation() }
+    }
 
     fun getOfflinePageForEntry(entryId: Long): OfflinePage? = _uiState.value.offlinePages[entryId]
 
