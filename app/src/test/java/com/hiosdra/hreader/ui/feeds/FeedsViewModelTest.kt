@@ -143,3 +143,28 @@ class FeedsSearchTest {
         }
     }
 }
+
+class FeedsViewModelTest {
+
+    @Test
+    fun `successful action with no success message stays quiet`() {
+        val message = feedActionMessage(
+            result = Result.success(Unit),
+            success = null,
+            failure = { "Could not rename: ${it.message}" }
+        )
+
+        assertNull(message)
+    }
+
+    @Test
+    fun `failed action still exposes failure message`() {
+        val message = feedActionMessage(
+            result = Result.failure<Unit>(IllegalStateException("server rejected it")),
+            success = null,
+            failure = { "Could not rename: ${it.message}" }
+        )
+
+        assertEquals("Could not rename: server rejected it", message)
+    }
+}

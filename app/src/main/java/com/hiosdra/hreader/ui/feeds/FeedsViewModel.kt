@@ -132,7 +132,6 @@ class FeedsViewModel(
         val trimmed = title.trim()
         if (trimmed.isBlank()) return
         runFeedAction(
-            success = { "Renamed to $trimmed" },
             failure = { "Could not rename: ${it.message}" }
         ) { feedRepository.renameFeed(feedId, trimmed) }
     }
@@ -167,7 +166,7 @@ class FeedsViewModel(
     }
 
     private fun <T> runFeedAction(
-        success: (T) -> String,
+        success: ((T) -> String)? = null,
         failure: (Throwable) -> String,
         action: suspend () -> T
     ) {
@@ -180,7 +179,7 @@ class FeedsViewModel(
             val result = runCatching { action() }
             _uiState.value = _uiState.value.copy(
                 isBusy = false,
-                message = result.fold(onSuccess = success, onFailure = failure)
+                message = feedActionMessage(result, success, failure)
             )
             if (result.isSuccess) loadFeeds()
         }
@@ -211,6 +210,15 @@ class FeedsViewModel(
         }
     }
 }
+
+internal fun <T> feedActionMessage(
+    result: Result<T>,
+    success: ((T) -> String)?,
+    failure: (Throwable) -> String
+): String? = result.fold(
+    onSuccess = { success?.invoke(it) },
+    onFailure = failure
+)
 
 /** The feeds with something to read come first, the rest alphabetically. */
 internal fun sortSubscriptions(feeds: List<Feed>, unreadCounts: Map<Long, Int>): List<Feed> =
