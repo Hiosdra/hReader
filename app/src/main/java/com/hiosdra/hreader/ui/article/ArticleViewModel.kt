@@ -148,7 +148,6 @@ class ArticleViewModel(
 
     private val requestedReadingPositionIds = mutableSetOf<Long>()
     private val readingPositionWriteJobs = mutableMapOf<Long, Job>()
-    private val readingPositionSaveBlockedIds = mutableSetOf<Long>()
 
     init {
         viewModelScope.launch {
@@ -209,7 +208,6 @@ class ArticleViewModel(
         requestedContentIds.retainAll(nearbyIds)
         checkedCredibilityIds.retainAll(nearbyIds)
         requestedReadingPositionIds.retainAll(nearbyIds)
-        readingPositionSaveBlockedIds.retainAll(nearbyIds)
         _uiState.update { it.trimReaderState(index) }
         loadReadingPositions(nearbyIds)
         nearby.forEach { entry ->
@@ -356,19 +354,13 @@ class ArticleViewModel(
         requestedContentIds.retainAll(_uiState.value.readerWindowIds())
     }
 
-    fun updateReadStatus(index: Int, isRead: Boolean, clearReadingPosition: Boolean = false) {
+    fun updateReadStatus(index: Int, isRead: Boolean) {
         val entry = _uiState.value.entries.getOrNull(index) ?: return
         val newStatus = if (isRead) ArticleStatus.READ else ArticleStatus.UNREAD
         _uiState.update { state ->
             state.copy(
                 entries = state.entries.map { if (it.id == entry.id) it.copy(status = newStatus) else it }
             )
-        }
-        if (isRead && clearReadingPosition) {
-            readingPositionSaveBlockedIds.add(entry.id)
-            clearReadingProgress(entry.id)
-        } else if (!isRead) {
-            readingPositionSaveBlockedIds.remove(entry.id)
         }
         viewModelScope.launch {
             articleRepository.updateReadStatus(entry.id.toString(), newStatus)
@@ -470,7 +462,6 @@ class ArticleViewModel(
         _uiState.value.readingPositions[entryId]
 
     fun saveReadingProgress(entryId: Long, progress: Float) {
-        if (entryId in readingPositionSaveBlockedIds) return
         val normalized = progress.coerceIn(0f, 1f)
         if (normalized == 0f) {
             clearReadingProgress(entryId)
