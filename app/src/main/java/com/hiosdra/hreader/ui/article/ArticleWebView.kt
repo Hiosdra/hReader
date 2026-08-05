@@ -6,31 +6,47 @@ import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewGroup
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.model.OfflinePage
 import com.hiosdra.hreader.util.BionicReadingProcessor
 import com.hiosdra.hreader.util.cleanUrl
+import com.hiosdra.hreader.util.sanitizeArticleHtml
 import org.koin.compose.koinInject
 import java.io.File
 import java.io.FileInputStream
 import java.net.URLConnection
-import kotlin.math.roundToInt
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private const val CONTENT_HEIGHT_UPDATE_ATTEMPTS = 12
 private const val CONTENT_HEIGHT_UPDATE_DELAY_MS = 100L
@@ -94,11 +110,12 @@ fun ArticleWebView(
     val bionicReadingEnabled by preferencesManager.observeBionicReadingEnabled()
         .collectAsState(initial = preferencesManager.getBionicReadingEnabled())
 
-    val processedContent = remember(articleContent, bionicReadingEnabled) {
+    val processedContent = remember(articleContent, baseUrl, bionicReadingEnabled) {
+        val safeContent = sanitizeArticleHtml(articleContent, baseUrl)
         if (bionicReadingEnabled) {
-            BionicReadingProcessor.processTextToBionic(articleContent)
+            BionicReadingProcessor.processTextToBionic(safeContent)
         } else {
-            articleContent
+            safeContent
         }
     }
 
@@ -112,153 +129,212 @@ fun ArticleWebView(
      * the article each time.
      */
     val loadedHtml = remember { mutableStateOf<String?>(null) }
+    val loadedBaseUrl = remember { mutableStateOf<String?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
+    var renderProcessError by remember(articleContent, baseUrl) { mutableStateOf(false) }
+    var renderAttempt by remember(articleContent, baseUrl) { mutableIntStateOf(0) }
 
-    AndroidView(
-        factory = { context ->
-            ReaderWebView(context).apply {
-                var lastProgress = -1f
-                var lastScrollY = -1
-                var lastProgressAt = 0L
-                fun updateScrollProgress(wv: ReaderWebView) {
-                    if (wv.isReleased) return
-                    val contentHeightPx = wv.contentHeight * wv.resources.displayMetrics.density
-                    val viewHeight = wv.height.toFloat()
-                    val denom = (contentHeightPx - viewHeight).coerceAtLeast(1f)
-                    val progress = (wv.scrollY / denom).coerceIn(0f, 1f)
-                    val now = SystemClock.elapsedRealtime()
-                    if (abs(progress - lastProgress) >= 0.01f || now - lastProgressAt >= 500L) {
-                        lastProgress = progress
-                        lastProgressAt = now
-                        currentOnScrollProgress.value?.invoke(progress)
-                    }
-                    if (lastScrollY < 0 || abs(wv.scrollY - lastScrollY) >= 8 || progress == 0f || progress == 1f) {
-                        lastScrollY = wv.scrollY
-                        currentOnScrollYChanged.value?.invoke(wv.scrollY)
-                    }
-                }
+    if (renderProcessError) {
+        ReaderWebViewError(
+            modifier = modifier,
+            onRetry = {
+                renderProcessError = false
+                renderAttempt += 1
+            }
+        )
+    } else {
+        key(renderAttempt) {
+            AndroidView(
+                factory = { context ->
+                    ReaderWebView(context).apply {
+                        var lastProgress = -1f
+                        var lastScrollY = -1
+                        var lastProgressAt = 0L
+                        fun updateScrollProgress(wv: ReaderWebView) {
+                            if (wv.isReleased) return
+                            val contentHeightPx = wv.contentHeight * wv.resources.displayMetrics.density
+                            val viewHeight = wv.height.toFloat()
+                            val denom = (contentHeightPx - viewHeight).coerceAtLeast(1f)
+                            val progress = (wv.scrollY / denom).coerceIn(0f, 1f)
+                            val now = SystemClock.elapsedRealtime()
+                            if (abs(progress - lastProgress) >= 0.01f || now - lastProgressAt >= 500L) {
+                                lastProgress = progress
+                                lastProgressAt = now
+                                currentOnScrollProgress.value?.invoke(progress)
+                            }
+                            if (lastScrollY < 0 || abs(wv.scrollY - lastScrollY) >= 8 || progress == 0f || progress == 1f) {
+                                lastScrollY = wv.scrollY
+                                currentOnScrollYChanged.value?.invoke(wv.scrollY)
+                            }
+                        }
 
-                allowScroll = currentScrollEnabled.value
-                settings.javaScriptEnabled = false
-                settings.defaultFontSize = 16
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                isVerticalScrollBarEnabled = allowScroll
-                isHorizontalScrollBarEnabled = allowScroll
-                overScrollMode = if (allowScroll) View.OVER_SCROLL_IF_CONTENT_SCROLLS else View.OVER_SCROLL_NEVER
-                setOnTouchListener { view, _ ->
-                    if (!currentScrollEnabled.value) view.parent?.requestDisallowInterceptTouchEvent(false)
-                    false
-                }
-                webViewClient = object : WebViewClient() {
-                    /**
-                     * Serves an image from the copy prefetching downloaded instead of fetching it
-                     * again. Interception rather than rewriting the `src` to a `file://` address:
-                     * the document is loaded under the article's own https origin, which is not
-                     * allowed to pull in local files.
-                     */
-                    override fun shouldInterceptRequest(
-                        view: WebView?,
-                        request: WebResourceRequest?
-                    ): WebResourceResponse? {
-                        val url = request?.url?.toString() ?: return null
-                        val localPath = currentLocalImagePaths.value[url] ?: return null
-                        val file = File(localPath)
-                        if (!file.exists()) return null
-                        return runCatching {
-                            WebResourceResponse(
-                                URLConnection.guessContentTypeFromName(file.name) ?: "image/*",
-                                null,
-                                FileInputStream(file)
-                            )
-                        }.getOrNull()
-                    }
+                        allowScroll = currentScrollEnabled.value
+                        settings.javaScriptEnabled = false
+                        settings.defaultFontSize = 16
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        isVerticalScrollBarEnabled = allowScroll
+                        isHorizontalScrollBarEnabled = allowScroll
+                        overScrollMode = if (allowScroll) {
+                            View.OVER_SCROLL_IF_CONTENT_SCROLLS
+                        } else {
+                            View.OVER_SCROLL_NEVER
+                        }
+                        setOnTouchListener { view, _ ->
+                            if (!currentScrollEnabled.value) {
+                                view.parent?.requestDisallowInterceptTouchEvent(false)
+                            }
+                            false
+                        }
+                        webViewClient = object : WebViewClient() {
+                            override fun onRenderProcessGone(
+                                view: WebView,
+                                detail: RenderProcessGoneDetail
+                            ): Boolean {
+                                loadedWebView.value = null
+                                (view as? ReaderWebView)?.destroyAfterRenderProcessGone()
+                                renderProcessError = true
+                                return true
+                            }
 
-                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                        val url = request?.url?.toString() ?: return false
-                        currentOnLinkClick.value?.invoke(cleanUrl(url))
-                        return true
-                    }
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        val readerView = view as? ReaderWebView ?: return
-                        readerView.postIfActive {
-                            readerView.scrollTo(0, currentRestoreScrollY.value)
+                            /**
+                             * Serves an image from the copy prefetching downloaded instead of fetching it
+                             * again. Interception rather than rewriting the `src` to a `file://` address:
+                             * the document is loaded under the article's own https origin, which is not
+                             * allowed to pull in local files.
+                             */
+                            override fun shouldInterceptRequest(
+                                view: WebView?,
+                                request: WebResourceRequest?
+                            ): WebResourceResponse? {
+                                val url = request?.url?.toString() ?: return null
+                                val localPath = currentLocalImagePaths.value[url] ?: return null
+                                val file = File(localPath)
+                                if (!file.exists()) return null
+                                return runCatching {
+                                    WebResourceResponse(
+                                        URLConnection.guessContentTypeFromName(file.name) ?: "image/*",
+                                        null,
+                                        FileInputStream(file)
+                                    )
+                                }.getOrNull()
+                            }
+
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?
+                            ): Boolean {
+                                val url = request?.url?.toString() ?: return false
+                                currentOnLinkClick.value?.invoke(cleanUrl(url))
+                                return true
+                            }
+
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                super.onPageFinished(view, url)
+                                val readerView = view as? ReaderWebView ?: return
+                                readerView.postIfActive {
+                                    readerView.scrollTo(0, currentRestoreScrollY.value)
+                                    readerView.scheduleContentHeightUpdates { height ->
+                                        currentOnContentHeightChanged.value?.invoke(height)
+                                    }
+                                    updateScrollProgress(readerView)
+                                }
+                            }
+                        }
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                                val readerView = view as? ReaderWebView ?: return
+                                if (newProgress == 100) {
+                                    readerView.scheduleContentHeightUpdates { height ->
+                                        currentOnContentHeightChanged.value?.invoke(height)
+                                    }
+                                }
+                            }
+                        }
+                        addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+                            val readerView = view as? ReaderWebView ?: return@addOnLayoutChangeListener
                             readerView.scheduleContentHeightUpdates { height ->
                                 currentOnContentHeightChanged.value?.invoke(height)
                             }
-                            updateScrollProgress(readerView)
                         }
-                    }
-                }
-                webChromeClient = object : WebChromeClient() {
-                    override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                        val readerView = view as? ReaderWebView ?: return
-                        if (newProgress == 100) {
-                            readerView.scheduleContentHeightUpdates { height ->
-                                currentOnContentHeightChanged.value?.invoke(height)
+                        setOnScrollChangeListener { v, _, _, _, _ ->
+                            if (v is ReaderWebView) updateScrollProgress(v)
+                        }
+                        setOnLongClickListener { v: View ->
+                            val result = (v as? WebView)?.hitTestResult
+                            if (result != null) {
+                                val type = result.type
+                                if (type == WebView.HitTestResult.IMAGE_TYPE ||
+                                    type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
+                                ) {
+                                    val url = result.extra
+                                    if (!url.isNullOrBlank()) {
+                                        currentOnImageLongClick.value?.invoke(url)
+                                        return@setOnLongClickListener true
+                                    }
+                                }
                             }
+                            false
                         }
                     }
-                }
-                addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
-                    val readerView = view as? ReaderWebView ?: return@addOnLayoutChangeListener
-                    readerView.scheduleContentHeightUpdates { height ->
-                        currentOnContentHeightChanged.value?.invoke(height)
-                    }
-                }
-                setOnScrollChangeListener { v, _, _, _, _ ->
-                    if (v is ReaderWebView) updateScrollProgress(v)
-                }
-                setOnLongClickListener { v: View ->
-                    val result = (v as? WebView)?.hitTestResult
-                    if (result != null) {
-                        val type = result.type
-                        if (type == WebView.HitTestResult.IMAGE_TYPE || type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
-                            val url = result.extra
-                            if (!url.isNullOrBlank()) {
-                                currentOnImageLongClick.value?.invoke(url)
-                                return@setOnLongClickListener true
-                            }
+                },
+                update = { webView ->
+                    // Images the article references have already been rewritten to local files where they
+                    // were downloaded. Whatever is left points at the network, and offline every one of
+                    // those costs a connect timeout before the page settles.
+                    webView.settings.blockNetworkLoads = !allowNetworkLoads
+                    val textZoom = (textScale.coerceIn(0.85f, 1.35f) * 100).roundToInt()
+                    if (webView.settings.textZoom != textZoom) {
+                        webView.settings.textZoom = textZoom
+                        webView.scheduleContentHeightUpdates { height ->
+                            currentOnContentHeightChanged.value?.invoke(height)
                         }
                     }
-                    false
-                }
-            }
-        },
-        update = { webView ->
-            // Images the article references have already been rewritten to local files where they
-            // were downloaded. Whatever is left points at the network, and offline every one of
-            // those costs a connect timeout before the page settles.
-            webView.settings.blockNetworkLoads = !allowNetworkLoads
-            val textZoom = (textScale.coerceIn(0.85f, 1.35f) * 100).roundToInt()
-            if (webView.settings.textZoom != textZoom) {
-                webView.settings.textZoom = textZoom
-                webView.scheduleContentHeightUpdates { height ->
-                    currentOnContentHeightChanged.value?.invoke(height)
-                }
-            }
-            webView.allowScroll = currentScrollEnabled.value
-            webView.isVerticalScrollBarEnabled = webView.allowScroll
-            webView.isHorizontalScrollBarEnabled = webView.allowScroll
-            webView.overScrollMode = if (webView.allowScroll) {
-                View.OVER_SCROLL_IF_CONTENT_SCROLLS
-            } else {
-                View.OVER_SCROLL_NEVER
-            }
+                    webView.allowScroll = currentScrollEnabled.value
+                    webView.isVerticalScrollBarEnabled = webView.allowScroll
+                    webView.isHorizontalScrollBarEnabled = webView.allowScroll
+                    webView.overScrollMode = if (webView.allowScroll) {
+                        View.OVER_SCROLL_IF_CONTENT_SCROLLS
+                    } else {
+                        View.OVER_SCROLL_NEVER
+                    }
 
-            if (loadedWebView.value !== webView || loadedHtml.value != htmlData) {
-                loadedWebView.value = webView
-                loadedHtml.value = htmlData
-                webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
-                webView.postIfActive { webView.scrollTo(0, currentRestoreScrollY.value) }
-                webView.scheduleContentHeightUpdates { height ->
-                    currentOnContentHeightChanged.value?.invoke(height)
-                }
-            }
-        },
-        onRelease = { webView -> webView.releaseResources() },
-        modifier = modifier
-    )
+                    if (
+                        loadedWebView.value !== webView ||
+                        loadedHtml.value != htmlData ||
+                        loadedBaseUrl.value != baseUrl
+                    ) {
+                        loadedWebView.value = webView
+                        loadedHtml.value = htmlData
+                        loadedBaseUrl.value = baseUrl
+                        webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
+                        webView.postIfActive { webView.scrollTo(0, currentRestoreScrollY.value) }
+                        webView.scheduleContentHeightUpdates { height ->
+                            currentOnContentHeightChanged.value?.invoke(height)
+                        }
+                    }
+                },
+                onRelease = { webView -> webView.releaseResources() },
+                modifier = modifier
+            )
+        }
+    }
+}
+
+@Composable
+internal fun ReaderWebViewError(
+    modifier: Modifier = Modifier,
+    onRetry: () -> Unit
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Could not display this article.", textAlign = TextAlign.Center)
+            TextButton(onClick = onRetry) { Text("Try again") }
+        }
+    }
 }
 
 internal class ReaderWebView(context: Context) : WebView(context) {
@@ -331,6 +407,17 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         destroy()
     }
 
+    internal fun destroyAfterRenderProcessGone() {
+        if (released) return
+        released = true
+        parent?.requestDisallowInterceptTouchEvent(false)
+        (parent as? ViewGroup)?.removeView(this)
+        pagerGestureDirection = null
+        contentHeightUpdateRunnable?.let(::removeCallbacks)
+        contentHeightUpdateRunnable = null
+        destroy()
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (protectVerticalScrollFromPager) {
             when (event.actionMasked) {
@@ -385,47 +472,73 @@ fun OfflinePageWebView(
 ) {
     val currentPage = androidx.compose.runtime.rememberUpdatedState(page)
     val currentOnLinkClick = androidx.compose.runtime.rememberUpdatedState(onLinkClick)
-    val loadedPageKey = remember { mutableStateOf<Pair<Long, String>?>(null) }
+    val loadedPageKey = remember { mutableStateOf<Triple<Long, String, String>?>(null) }
+    val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
+    var renderProcessError by remember(page.entryId, page.html) { mutableStateOf(false) }
+    var renderAttempt by remember(page.entryId, page.html) { mutableIntStateOf(0) }
 
-    AndroidView(
-        factory = { context ->
-            ReaderWebView(context).apply {
-                protectVerticalScrollFromPager = true
-                settings.javaScriptEnabled = false
-                settings.blockNetworkLoads = true
-                settings.allowFileAccess = false
-                settings.allowContentAccess = false
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                webViewClient = object : WebViewClient() {
-                    override fun shouldInterceptRequest(
-                        view: WebView?,
-                        request: WebResourceRequest?
-                    ): WebResourceResponse? = serveOfflineAsset(currentPage.value, request?.url)
+    if (renderProcessError) {
+        ReaderWebViewError(
+            modifier = modifier,
+            onRetry = {
+                renderProcessError = false
+                renderAttempt += 1
+            }
+        )
+    } else {
+        key(renderAttempt) {
+            AndroidView(
+                factory = { context ->
+                    ReaderWebView(context).apply {
+                        protectVerticalScrollFromPager = true
+                        settings.javaScriptEnabled = false
+                        settings.blockNetworkLoads = true
+                        settings.allowFileAccess = false
+                        settings.allowContentAccess = false
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        webViewClient = object : WebViewClient() {
+                            override fun onRenderProcessGone(
+                                view: WebView,
+                                detail: RenderProcessGoneDetail
+                            ): Boolean {
+                                loadedWebView.value = null
+                                (view as? ReaderWebView)?.destroyAfterRenderProcessGone()
+                                renderProcessError = true
+                                return true
+                            }
 
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView?,
-                        request: WebResourceRequest?
-                    ): Boolean {
-                        val requestUri = request?.url ?: return false
-                        val url = requestUri.toString()
-                        val pageUri = Uri.parse(currentPage.value.baseUrl)
-                        if (requestUri.host == pageUri.host) return false
-                        currentOnLinkClick.value?.invoke(cleanUrl(url))
-                        return currentOnLinkClick.value != null
+                            override fun shouldInterceptRequest(
+                                view: WebView?,
+                                request: WebResourceRequest?
+                            ): WebResourceResponse? = serveOfflineAsset(currentPage.value, request?.url)
+
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?
+                            ): Boolean {
+                                val requestUri = request?.url ?: return false
+                                val url = requestUri.toString()
+                                val pageUri = Uri.parse(currentPage.value.baseUrl)
+                                if (requestUri.host == pageUri.host) return false
+                                currentOnLinkClick.value?.invoke(cleanUrl(url))
+                                return currentOnLinkClick.value != null
+                            }
+                        }
                     }
-                }
-            }
-        },
-        update = { webView ->
-            val key = page.entryId to page.html
-            if (loadedPageKey.value != key) {
-                loadedPageKey.value = key
-                webView.loadDataWithBaseURL(page.baseUrl, page.html, "text/html", "UTF-8", null)
-            }
-        },
-        onRelease = { webView -> webView.releaseResources() },
-        modifier = modifier
-    )
+                },
+                update = { webView ->
+                    val key = Triple(page.entryId, page.html, page.baseUrl)
+                    if (loadedWebView.value !== webView || loadedPageKey.value != key) {
+                        loadedWebView.value = webView
+                        loadedPageKey.value = key
+                        webView.loadDataWithBaseURL(page.baseUrl, page.html, "text/html", "UTF-8", null)
+                    }
+                },
+                onRelease = { webView -> webView.releaseResources() },
+                modifier = modifier
+            )
+        }
+    }
 }
 
 private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse? {
