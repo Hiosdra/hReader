@@ -185,7 +185,7 @@ fun ArticleRow(
                     checked = checked,
                     onCheckedChange = { onCheckedChange(entry.id, it) },
                     modifier = Modifier.semantics {
-                        contentDescription = if (checked) "Mark as unread" else "Mark as read"
+                        contentDescription = readStatusActionLabel(checked)
                     }
                 )
             }

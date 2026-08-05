@@ -32,6 +32,9 @@ import java.net.URLConnection
 import kotlin.math.roundToInt
 import kotlin.math.abs
 
+private const val CONTENT_HEIGHT_UPDATE_ATTEMPTS = 12
+private const val CONTENT_HEIGHT_UPDATE_DELAY_MS = 100L
+
 internal enum class ReaderGestureDirection {
     Horizontal,
     Vertical
@@ -135,11 +138,6 @@ fun ArticleWebView(
                     }
                 }
 
-                fun updateContentHeight(wv: WebView) {
-                    val contentHeightPx = (wv.contentHeight * wv.resources.displayMetrics.density).toInt()
-                    if (contentHeightPx > 0) currentOnContentHeightChanged.value?.invoke(contentHeightPx)
-                }
-
                 allowScroll = currentScrollEnabled.value
                 settings.javaScriptEnabled = false
                 settings.defaultFontSize = 16
@@ -185,7 +183,9 @@ fun ArticleWebView(
                         val readerView = view as? ReaderWebView ?: return
                         readerView.postIfActive {
                             readerView.scrollTo(0, currentRestoreScrollY.value)
-                            updateContentHeight(readerView)
+                            readerView.scheduleContentHeightUpdates { height ->
+                                currentOnContentHeightChanged.value?.invoke(height)
+                            }
                             updateScrollProgress(readerView)
                         }
                     }
@@ -194,13 +194,17 @@ fun ArticleWebView(
                     override fun onProgressChanged(view: WebView?, newProgress: Int) {
                         val readerView = view as? ReaderWebView ?: return
                         if (newProgress == 100) {
-                            readerView.postIfActive { updateContentHeight(readerView) }
+                            readerView.scheduleContentHeightUpdates { height ->
+                                currentOnContentHeightChanged.value?.invoke(height)
+                            }
                         }
                     }
                 }
                 addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
                     val readerView = view as? ReaderWebView ?: return@addOnLayoutChangeListener
-                    readerView.postIfActive { updateContentHeight(readerView) }
+                    readerView.scheduleContentHeightUpdates { height ->
+                        currentOnContentHeightChanged.value?.invoke(height)
+                    }
                 }
                 setOnScrollChangeListener { v, _, _, _, _ ->
                     if (v is ReaderWebView) updateScrollProgress(v)
@@ -229,6 +233,9 @@ fun ArticleWebView(
             val textZoom = (textScale.coerceIn(0.85f, 1.35f) * 100).roundToInt()
             if (webView.settings.textZoom != textZoom) {
                 webView.settings.textZoom = textZoom
+                webView.scheduleContentHeightUpdates { height ->
+                    currentOnContentHeightChanged.value?.invoke(height)
+                }
             }
             webView.allowScroll = currentScrollEnabled.value
             webView.isVerticalScrollBarEnabled = webView.allowScroll
@@ -244,6 +251,9 @@ fun ArticleWebView(
                 loadedHtml.value = htmlData
                 webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
                 webView.postIfActive { webView.scrollTo(0, currentRestoreScrollY.value) }
+                webView.scheduleContentHeightUpdates { height ->
+                    currentOnContentHeightChanged.value?.invoke(height)
+                }
             }
         },
         onRelease = { webView -> webView.releaseResources() },
@@ -253,6 +263,7 @@ fun ArticleWebView(
 
 internal class ReaderWebView(context: Context) : WebView(context) {
     private var released = false
+    private var contentHeightUpdateRunnable: Runnable? = null
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var pagerGestureDirection: ReaderGestureDirection? = null
@@ -278,10 +289,37 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         }
     }
 
+    fun scheduleContentHeightUpdates(onHeightChanged: (Int) -> Unit) {
+        if (contentHeightUpdateRunnable != null) return
+        val update = object : Runnable {
+            private var attempts = 0
+            private var lastHeight = 0
+
+            override fun run() {
+                if (released) return
+                val height = (contentHeight * resources.displayMetrics.density).roundToInt()
+                if (height > 0 && height != lastHeight) {
+                    lastHeight = height
+                    onHeightChanged(height)
+                }
+                if (attempts < CONTENT_HEIGHT_UPDATE_ATTEMPTS) {
+                    attempts += 1
+                    postDelayed(this, CONTENT_HEIGHT_UPDATE_DELAY_MS)
+                } else {
+                    contentHeightUpdateRunnable = null
+                }
+            }
+        }
+        contentHeightUpdateRunnable = update
+        post(update)
+    }
+
     fun releaseResources() {
         if (released) return
         parent?.requestDisallowInterceptTouchEvent(false)
         pagerGestureDirection = null
+        contentHeightUpdateRunnable?.let(::removeCallbacks)
+        contentHeightUpdateRunnable = null
         released = true
         setOnTouchListener(null)
         setOnScrollChangeListener(null)
