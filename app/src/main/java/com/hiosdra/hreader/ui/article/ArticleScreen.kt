@@ -82,8 +82,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -91,6 +93,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -136,6 +139,10 @@ import com.hiosdra.hreader.ui.theme.LocalCredibilityColors
 import com.hiosdra.hreader.util.cleanUrl
 import com.hiosdra.hreader.util.removeDuplicateArticleTitle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -159,6 +166,7 @@ private const val ARTICLE_TEXT_SCALE_STEP = 0.1f
 private const val FEED_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.72f
 private const val WEB_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.85f
 private const val ARTICLE_BOTTOM_BAR_ALPHA = 0.72f
+private const val READING_POSITION_SAMPLE_MILLIS = 400L
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -274,7 +282,10 @@ fun ArticleScreen(
                 },
                 onToggleRead = {
                     currentEntry?.let { entry ->
-                        viewModel.updateReadStatus(uiState.currentIndex, !entry.isRead)
+                        viewModel.updateReadStatus(
+                            index = uiState.currentIndex,
+                            isRead = !entry.isRead
+                        )
                     }
                 },
                 onBack = { navController.popBackStack() },
@@ -334,6 +345,11 @@ fun ArticleScreen(
                         getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                         getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                         getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
+                        loadedContentIds = uiState.content.keys,
+                        loadedReadingPositionIds = uiState.readingPositionLoadedIds,
+                        readingProgressForEntry = { entryId -> viewModel.getReadingProgressForEntry(entryId) },
+                        onReadingProgressChanged = viewModel::saveReadingProgress,
+                        onReadingCompleted = viewModel::clearReadingProgress,
                         localImagePaths = uiState.localImagePaths,
                         isOnline = uiState.isOnline,
                         aiOverviews = uiState.aiOverviews,
@@ -483,6 +499,11 @@ private fun ArticlePager(
     getContentForEntry: (Long) -> String?,
     getLeadImageForEntry: (Long) -> String?,
     getOfflinePageForEntry: (Long) -> OfflinePage?,
+    loadedContentIds: Set<Long>,
+    loadedReadingPositionIds: Set<Long>,
+    readingProgressForEntry: (Long) -> Float?,
+    onReadingProgressChanged: (Long, Float) -> Unit,
+    onReadingCompleted: (Long) -> Unit,
     localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     isOnline: Boolean = true,
     aiOverviews: Map<Long, String> = emptyMap(),
@@ -598,6 +619,11 @@ private fun ArticlePager(
                             .padding(paddingValues)
                             .padding(bottom = bottomContentPadding),
                         articleContent = getContentForEntry(entry.id) ?: "No content available",
+                        contentLoaded = entry.id in loadedContentIds,
+                        readingPositionLoaded = entry.id in loadedReadingPositionIds,
+                        savedReadingProgress = readingProgressForEntry(entry.id),
+                        onReadingProgressChanged = onReadingProgressChanged,
+                        onReadingCompleted = onReadingCompleted,
                         localImagePaths = localImagePaths[entry.id].orEmpty(),
                         isOnline = isOnline,
                         aiOverview = aiOverviews[entry.id],
@@ -983,6 +1009,7 @@ private fun ArticleTtsDetails(
     }
 }
 
+@OptIn(FlowPreview::class)
 @Composable
 private fun ArticleContent(
     entry: Entry,
@@ -990,6 +1017,11 @@ private fun ArticleContent(
     textScale: Float,
     modifier: Modifier = Modifier,
     articleContent: String,
+    contentLoaded: Boolean,
+    readingPositionLoaded: Boolean,
+    savedReadingProgress: Float?,
+    onReadingProgressChanged: (Long, Float) -> Unit,
+    onReadingCompleted: (Long) -> Unit,
     localImagePaths: Map<String, String> = emptyMap(),
     isOnline: Boolean = true,
     aiOverview: String? = null,
@@ -1006,16 +1038,73 @@ private fun ArticleContent(
         removeDuplicateArticleTitle(articleContent, entry.title)
     }
     val articleScrollState = rememberSaveable(entry.id, saver = ScrollState.Saver) { ScrollState(0) }
+    var restoredContentFingerprint by rememberSaveable(entry.id) { mutableStateOf<Int?>(null) }
+    var readingCompletionReported by rememberSaveable(entry.id) { mutableStateOf(false) }
     var webContentHeightPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val webViewHeight = with(LocalDensity.current) { webContentHeightPx.toDp() }
-    val scrollProgress = if (articleScrollState.maxValue > 0) {
-        articleScrollState.value.toFloat() / articleScrollState.maxValue
-    } else {
-        0f
+    val scrollProgress by remember(articleScrollState) {
+        derivedStateOf {
+            articleScrollProgress(articleScrollState.value, articleScrollState.maxValue)
+        }
+    }
+    val latestReadingPositionLoaded = rememberUpdatedState(readingPositionLoaded)
+    val latestOnReadingProgressChanged = rememberUpdatedState(onReadingProgressChanged)
+    val latestOnReadingCompleted = rememberUpdatedState(onReadingCompleted)
+    val contentFingerprint = readableArticleContent.hashCode()
+
+    LaunchedEffect(
+        entry.id,
+        contentLoaded,
+        readingPositionLoaded,
+        savedReadingProgress,
+        contentFingerprint
+    ) {
+        if (restoredContentFingerprint == contentFingerprint || !contentLoaded || !readingPositionLoaded) {
+            return@LaunchedEffect
+        }
+        val progress = savedReadingProgress
+        if (progress == null) {
+            restoredContentFingerprint = contentFingerprint
+            return@LaunchedEffect
+        }
+        val maxValue = snapshotFlow { articleScrollState.maxValue }.first { it > 0 }
+        articleScrollState.scrollTo(articleScrollOffset(progress, maxValue))
+        restoredContentFingerprint = contentFingerprint
+    }
+
+    LaunchedEffect(entry.id, readingPositionLoaded) {
+        if (!readingPositionLoaded) return@LaunchedEffect
+        snapshotFlow { articleScrollState.value to articleScrollState.maxValue }
+            .filter { (_, maxValue) -> maxValue > 0 }
+            .sample(READING_POSITION_SAMPLE_MILLIS)
+            .collect { (value, maxValue) ->
+                val progress = articleScrollProgress(value, maxValue)
+                if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
+                    if (!readingCompletionReported) {
+                        readingCompletionReported = true
+                        latestOnReadingCompleted.value(entry.id)
+                    }
+                } else {
+                    readingCompletionReported = false
+                    latestOnReadingProgressChanged.value(entry.id, progress)
+                }
+            }
+    }
+
+    DisposableEffect(entry.id) {
+        onDispose {
+            if (!latestReadingPositionLoaded.value || articleScrollState.maxValue <= 0) return@onDispose
+            val progress = articleScrollProgress(articleScrollState.value, articleScrollState.maxValue)
+            if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
+                latestOnReadingCompleted.value(entry.id)
+            } else {
+                latestOnReadingProgressChanged.value(entry.id, progress)
+            }
+        }
     }
     Surface(
         modifier = modifier.fillMaxSize(),

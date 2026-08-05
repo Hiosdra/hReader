@@ -7,6 +7,7 @@ import com.hiosdra.hreader.data.local.dao.ArticleCredibilityDao
 import com.hiosdra.hreader.data.local.dao.ArticleDao
 import com.hiosdra.hreader.data.local.dao.ArticleImageDao
 import com.hiosdra.hreader.data.local.dao.ArticlePageSnapshotDao
+import com.hiosdra.hreader.data.local.dao.ArticleReadingPositionDao
 import com.hiosdra.hreader.data.local.dao.ArticleAiOverviewDao
 import com.hiosdra.hreader.data.local.dao.FeedDao
 import com.hiosdra.hreader.data.remote.ServerConfig
@@ -26,6 +27,7 @@ class LocalCacheRepository(
     private val articleCredibilityDao: ArticleCredibilityDao,
     private val articleAiOverviewDao: ArticleAiOverviewDao,
     private val articlePageSnapshotDao: ArticlePageSnapshotDao,
+    private val articleReadingPositionDao: ArticleReadingPositionDao,
     private val preferencesManager: PreferencesManager,
     private val imagesDir: File,
     private val pagesDir: File,
@@ -65,6 +67,7 @@ class LocalCacheRepository(
             articleImageDao.clearAll()
             articleImageDao.clearExpectedImages()
             articlePageSnapshotDao.clearAll()
+            articleReadingPositionDao.clearAll()
             articleDao.clearAll()
             feedDao.clearAll()
         }
