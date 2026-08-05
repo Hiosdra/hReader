@@ -283,8 +283,7 @@ fun ArticleScreen(
                     currentEntry?.let { entry ->
                         viewModel.updateReadStatus(
                             index = uiState.currentIndex,
-                            isRead = !entry.isRead,
-                            clearReadingPosition = !entry.isRead
+                            isRead = !entry.isRead
                         )
                     }
                 },
