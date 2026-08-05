@@ -9,11 +9,17 @@ import android.os.Environment
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
@@ -30,6 +36,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,6 +51,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -51,7 +60,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -88,16 +96,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -145,6 +157,7 @@ private const val MAX_ARTICLE_TEXT_SCALE = 1.35f
 private const val ARTICLE_TEXT_SCALE_STEP = 0.1f
 private const val FEED_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.72f
 private const val WEB_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.85f
+private const val ARTICLE_BOTTOM_BAR_ALPHA = 0.72f
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -219,26 +232,32 @@ fun ArticleScreen(
         }
     }
 
+    val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
+    var bottomActionBarHeightPx by remember { mutableIntStateOf(0) }
+    val bottomActionBarHeight = if (currentEntry == null) {
+        0.dp
+    } else {
+        with(LocalDensity.current) { bottomActionBarHeightPx.toDp() }
+    }
+
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            if (ttsState.articleId != null) {
-                ArticleTtsBar(ttsState, ttsController::pause, ttsController::resume, ttsController::stop)
-            }
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomActionBarHeight)
+            )
         },
         topBar = {
-            val entry = uiState.entries.getOrNull(uiState.currentIndex)
             ArticleTopBar(
-                entryUrl = entry?.url,
-                feedTitle = entry?.feed?.title,
+                entryUrl = currentEntry?.url,
+                feedTitle = currentEntry?.feed?.title,
                 listPosition = uiState.currentListPosition,
                 listSize = uiState.listSize,
                 isWebViewMode = isWebViewMode,
-                isOnline = uiState.isOnline,
                 canUseWebView = uiState.isOnline ||
-                    (entry?.id?.let { uiState.offlinePages.containsKey(it) } == true),
-                isStarred = entry?.starred == true,
-                isSpeaking = entry?.id == ttsState.articleId,
+                    (currentEntry?.id?.let { uiState.offlinePages.containsKey(it) } == true),
+                isStarred = currentEntry?.starred == true,
+                isRead = currentEntry?.isRead == true,
                 textScale = textScale,
                 onDecreaseTextScale = {
                     textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
@@ -249,36 +268,18 @@ fun ArticleScreen(
                     textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
                         .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
                 },
-                onToggleStar = { if (entry != null) viewModel.setStarred(entry.id, !entry.starred) },
-                onToggleSpeech = {
-                    if (entry == null) return@ArticleTopBar
-                    if (ttsState.articleId == entry.id) {
-                        ttsController.stop()
-                    } else {
-                        requestNotificationPermission {
-                            ttsController.play(
-                                articleId = entry.id,
-                                title = entry.title,
-                                html = removeDuplicateArticleTitle(
-                                    viewModel.getContentForEntry(entry.id).orEmpty(),
-                                    entry.title
-                                )
-                            )
-                        }
+                onToggleStar = {
+                    currentEntry?.let { entry -> viewModel.setStarred(entry.id, !entry.starred) }
+                },
+                onToggleRead = {
+                    currentEntry?.let { entry ->
+                        viewModel.updateReadStatus(uiState.currentIndex, !entry.isRead)
                     }
                 },
                 onBack = { navController.popBackStack() },
-                onOpenInChrome = { if (entry != null) openChromeCustomTab(navController.context, cleanUrl(entry.url)) },
                 onToggleWebView = { isWebViewMode = !isWebViewMode },
-                onBypassPaywall = {
-                    if (entry != null && entry.url.isNotBlank()) {
-                        val bypassMethod = preferencesManager.getPaywallBypassMethod()
-                        val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
-                        openChromeCustomTab(navController.context, bypassUrl)
-                    }
-                },
                 onShare = {
-                    if (entry != null) {
+                    currentEntry?.let { entry ->
                         val ctx = navController.context
                         val sendIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
@@ -291,90 +292,157 @@ fun ArticleScreen(
             )
         }
     ) { paddingValues ->
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(bottom = bottomActionBarHeight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-            uiState.error != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = uiState.error ?: "",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(bottom = bottomActionBarHeight)
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = uiState.error ?: "",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                uiState.entries.isNotEmpty() -> {
+                    ArticlePager(
+                        entries = uiState.entries,
+                        pagerState = pagerState,
+                        isWebViewMode = isWebViewMode,
+                        textScale = textScale,
+                        paddingValues = paddingValues,
+                        bottomContentPadding = bottomActionBarHeight,
+                        getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
+                        getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
+                        getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
+                        localImagePaths = uiState.localImagePaths,
+                        isOnline = uiState.isOnline,
+                        aiOverviews = uiState.aiOverviews,
+                        generatingOverviewIds = uiState.generatingOverviewIds,
+                        onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
+                        credibilityEnabled = uiState.credibilityEnabled,
+                        credibilityReports = uiState.credibilityReports,
+                        analyzingCredibilityIds = uiState.analyzingCredibilityIds,
+                        onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) }
                     )
                 }
             }
-            uiState.entries.isNotEmpty() -> {
-                ArticlePager(
-                    entries = uiState.entries,
-                    pagerState = pagerState,
-                    isWebViewMode = isWebViewMode,
-                    textScale = textScale,
-                    paddingValues = paddingValues,
-                    onReadStatusChange = { index, status -> viewModel.updateReadStatus(index, status) },
-                    getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
-                    getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
-                    getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
-                    localImagePaths = uiState.localImagePaths,
-                    isOnline = uiState.isOnline,
-                    aiOverviews = uiState.aiOverviews,
-                    generatingOverviewIds = uiState.generatingOverviewIds,
-                    onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
-                    credibilityEnabled = uiState.credibilityEnabled,
-                    credibilityReports = uiState.credibilityReports,
-                    analyzingCredibilityIds = uiState.analyzingCredibilityIds,
-                    onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) }
+
+            // Errors interrupt reading as little as possible: a modal with a single OK button stopped
+            // the article dead to report something the reader can act on later, or not at all.
+            val currentEntryId = uiState.entries.getOrNull(uiState.currentIndex)?.id
+
+            uiState.overviewError?.let { error ->
+                RetryableSnackbar(
+                    hostState = snackbarHostState,
+                    message = error,
+                    actionLabel = "Retry".takeIf { currentEntryId != null },
+                    onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
+                    onDismissed = viewModel::clearOverviewError
                 )
             }
-        }
 
-        // Errors interrupt reading as little as possible: a modal with a single OK button stopped
-        // the article dead to report something the reader can act on later, or not at all.
-        val currentEntryId = uiState.entries.getOrNull(uiState.currentIndex)?.id
+            // What is missing offline, said out loud rather than left as an empty screen.
+            uiState.contentError?.let { message ->
+                RetryableSnackbar(
+                    hostState = snackbarHostState,
+                    message = message,
+                    actionLabel = null,
+                    onAction = {},
+                    onDismissed = viewModel::clearContentError
+                )
+            }
 
-        uiState.overviewError?.let { error ->
-            RetryableSnackbar(
-                hostState = snackbarHostState,
-                message = error,
-                actionLabel = "Retry".takeIf { currentEntryId != null },
-                onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
-                onDismissed = viewModel::clearOverviewError
-            )
-        }
+            uiState.scoreError?.let { error ->
+                RetryableSnackbar(
+                    hostState = snackbarHostState,
+                    message = error,
+                    actionLabel = "Retry".takeIf { currentEntryId != null },
+                    onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
+                    onDismissed = viewModel::clearScoreError
+                )
+            }
 
-        // What is missing offline, said out loud rather than left as an empty screen.
-        uiState.contentError?.let { message ->
-            RetryableSnackbar(
-                hostState = snackbarHostState,
-                message = message,
-                actionLabel = null,
-                onAction = {},
-                onDismissed = viewModel::clearContentError
-            )
-        }
-
-        uiState.scoreError?.let { error ->
-            RetryableSnackbar(
-                hostState = snackbarHostState,
-                message = error,
-                actionLabel = "Retry".takeIf { currentEntryId != null },
-                onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
-                onDismissed = viewModel::clearScoreError
-            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+            ) {
+                AnimatedVisibility(
+                    visible = currentEntry != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    enter = slideInVertically(
+                        animationSpec = tween(180),
+                        initialOffsetY = { it / 2 }
+                    ) + fadeIn(animationSpec = tween(180)),
+                    exit = slideOutVertically(
+                        animationSpec = tween(120),
+                        targetOffsetY = { it / 2 }
+                    ) + fadeOut(animationSpec = tween(120))
+                ) {
+                    currentEntry?.let { entry ->
+                        ArticleBottomActionBar(
+                            modifier = Modifier.onSizeChanged { size ->
+                                if (bottomActionBarHeightPx != size.height) {
+                                    bottomActionBarHeightPx = size.height
+                                }
+                            },
+                            state = ttsState,
+                            entryUrl = entry.url.takeIf(String::isNotBlank),
+                            isOnline = uiState.isOnline,
+                            canUsePaywallBypass = entry.url.isNotBlank() &&
+                                !paywallBypassService.isPaywallBypassUrl(entry.url),
+                            onToggleSpeech = {
+                                if (ttsState.articleId != null) {
+                                    ttsController.stop()
+                                } else {
+                                    requestNotificationPermission {
+                                        ttsController.play(
+                                            articleId = entry.id,
+                                            title = entry.title,
+                                            html = removeDuplicateArticleTitle(
+                                                viewModel.getContentForEntry(entry.id).orEmpty(),
+                                                entry.title
+                                            )
+                                        )
+                                    }
+                                }
+                            },
+                            onPauseSpeech = ttsController::pause,
+                            onResumeSpeech = ttsController::resume,
+                            onOpenInChrome = {
+                                openChromeCustomTab(navController.context, cleanUrl(entry.url))
+                            },
+                            onBypassPaywall = {
+                                if (entry.url.isNotBlank()) {
+                                    val bypassMethod = preferencesManager.getPaywallBypassMethod()
+                                    val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
+                                    openChromeCustomTab(navController.context, bypassUrl)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -410,7 +478,7 @@ private fun ArticlePager(
     isWebViewMode: Boolean,
     textScale: Float,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
-    onReadStatusChange: ((Int, Boolean) -> Unit)? = null,
+    bottomContentPadding: Dp = 0.dp,
     getContentForEntry: (Long) -> String?,
     getLeadImageForEntry: (Long) -> String?,
     getOfflinePageForEntry: (Long) -> OfflinePage?,
@@ -454,6 +522,7 @@ private fun ArticlePager(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(paddingValues)
+                                .padding(bottom = bottomContentPadding)
                         )
                     } else {
                         val loadedUrl = remember { mutableStateOf<String?>(null) }
@@ -487,6 +556,7 @@ private fun ArticlePager(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(paddingValues)
+                                .padding(bottom = bottomContentPadding)
                         )
                     }
                 } else {
@@ -494,8 +564,9 @@ private fun ArticlePager(
                         entry = entry,
                         mainImageUrl = getLeadImageForEntry(entry.id),
                         textScale = textScale,
-                        modifier = Modifier.padding(paddingValues),
-                        onReadStatusChange = { status -> onReadStatusChange?.invoke(page, status) },
+                        modifier = Modifier
+                            .padding(paddingValues)
+                            .padding(bottom = bottomContentPadding),
                         articleContent = getContentForEntry(entry.id) ?: "No content available",
                         localImagePaths = localImagePaths[entry.id].orEmpty(),
                         isOnline = isOnline,
@@ -521,24 +592,19 @@ private fun ArticleTopBar(
     listPosition: Int,
     listSize: Int,
     isWebViewMode: Boolean,
-    isOnline: Boolean,
     canUseWebView: Boolean,
     isStarred: Boolean,
-    isSpeaking: Boolean,
+    isRead: Boolean,
     textScale: Float,
     onDecreaseTextScale: () -> Unit,
     onResetTextScale: () -> Unit,
     onIncreaseTextScale: () -> Unit,
     onToggleStar: () -> Unit,
-    onToggleSpeech: () -> Unit,
+    onToggleRead: () -> Unit,
     onBack: () -> Unit,
-    onOpenInChrome: () -> Unit,
     onToggleWebView: () -> Unit,
-    onBypassPaywall: () -> Unit,
     onShare: () -> Unit
 ) {
-    val paywallBypassService: PaywallBypassService = koinInject()
-
     TopAppBar(
         title = {
             // One line, cut short if it has to be. A feed named "Subiektywnie o finansach — Maciej
@@ -567,34 +633,13 @@ private fun ArticleTopBar(
         },
         actions = {
             val overflowExpanded = remember { mutableStateOf(false) }
-            IconButton(onClick = onToggleSpeech) {
-                Icon(
-                    imageVector = if (isSpeaking) Icons.Filled.Close else Icons.Filled.PlayArrow,
-                    contentDescription = if (isSpeaking) "Stop reading" else "Read aloud"
-                )
-            }
             if (entryUrl != null) {
                 FeedWebToggle(
                     isWebViewMode = isWebViewMode,
                     canUseWebView = canUseWebView,
                     onToggleWebView = onToggleWebView
                 )
-                IconButton(onClick = onOpenInChrome, enabled = isOnline) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_chrome_logo),
-                        contentDescription = "Open original page in Chrome",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (!paywallBypassService.isPaywallBypassUrl(entryUrl)) {
-                    IconButton(onClick = onBypassPaywall, enabled = isOnline) {
-                        Icon(
-                            Icons.Filled.Lock,
-                            contentDescription = "Open through paywall bypass",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+                ReadStatusButton(isRead = isRead, onToggleRead = onToggleRead)
             }
             // Outside the branch above: an entry that carries no address can still be starred, and
             // that is the one action here which is about the article rather than about its page.
@@ -693,6 +738,47 @@ private fun ArticleTopBar(
 }
 
 @Composable
+private fun ReadStatusButton(
+    isRead: Boolean,
+    onToggleRead: () -> Unit
+) {
+    val iconTint by animateColorAsState(
+        targetValue = if (isRead) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = tween(160),
+        label = "read status color"
+    )
+
+    IconButton(
+        onClick = onToggleRead,
+        modifier = Modifier.semantics {
+            contentDescription = readStatusActionLabel(isRead)
+            stateDescription = if (isRead) "Read" else "Unread"
+        }
+    ) {
+        AnimatedContent(
+            targetState = isRead,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(120)) +
+                    scaleIn(initialScale = 0.8f, animationSpec = tween(120))) togetherWith
+                    (fadeOut(animationSpec = tween(80)) +
+                        scaleOut(targetScale = 0.8f, animationSpec = tween(80)))
+            },
+            label = "read status icon"
+        ) { read ->
+            Icon(
+                imageVector = if (read) Icons.Filled.CheckCircle else Icons.Filled.Done,
+                contentDescription = null,
+                tint = iconTint
+            )
+        }
+    }
+}
+
+@Composable
 private fun FeedWebToggle(
     isWebViewMode: Boolean,
     canUseWebView: Boolean,
@@ -756,45 +842,113 @@ private fun ReaderModeOption(
 }
 
 @Composable
-private fun ArticleTtsBar(
+private fun ArticleBottomActionBar(
+    modifier: Modifier = Modifier,
+    state: ArticleTtsState,
+    entryUrl: String?,
+    isOnline: Boolean,
+    canUsePaywallBypass: Boolean,
+    onToggleSpeech: () -> Unit,
+    onPauseSpeech: () -> Unit,
+    onResumeSpeech: () -> Unit,
+    onOpenInChrome: () -> Unit,
+    onBypassPaywall: () -> Unit
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RectangleShape,
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = ARTICLE_BOTTOM_BAR_ALPHA),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (state.articleId != null) {
+                ArticleTtsDetails(
+                    state = state,
+                    onPause = onPauseSpeech,
+                    onResume = onResumeSpeech
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = onToggleSpeech) {
+                    Icon(
+                        imageVector = if (state.articleId != null) {
+                            Icons.Filled.Close
+                        } else {
+                            Icons.Filled.PlayArrow
+                        },
+                        contentDescription = if (state.articleId != null) {
+                            "Stop reading"
+                        } else {
+                            "Read aloud"
+                        }
+                    )
+                }
+                if (entryUrl != null) {
+                    IconButton(onClick = onOpenInChrome, enabled = isOnline) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_chrome_logo),
+                            contentDescription = "Open original page in Chrome",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    if (canUsePaywallBypass) {
+                        IconButton(onClick = onBypassPaywall, enabled = isOnline) {
+                            Icon(
+                                Icons.Filled.Lock,
+                                contentDescription = "Open through paywall bypass",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArticleTtsDetails(
     state: ArticleTtsState,
     onPause: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit
+    onResume: () -> Unit
 ) {
-    Surface(tonalElevation = 4.dp, shadowElevation = 4.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (state.isPreparing) "Preparing voice…" else state.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = state.error ?: state.model?.displayName.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                LinearProgressIndicator(
-                    progress = { state.progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-            }
-            TextButton(onClick = if (state.isPaused) onResume else onPause) {
-                Text(if (state.isPaused) "Resume" else "Pause")
-            }
-            IconButton(onClick = onStop) {
-                Icon(Icons.Filled.Close, contentDescription = "Stop reading")
-            }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (state.isPreparing) "Preparing voice…" else state.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = state.error ?: state.model?.displayName.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LinearProgressIndicator(
+                progress = { state.progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            )
+        }
+        TextButton(onClick = if (state.isPaused) onResume else onPause) {
+            Text(if (state.isPaused) "Resume" else "Pause")
         }
     }
 }
@@ -805,7 +959,6 @@ private fun ArticleContent(
     mainImageUrl: String?,
     textScale: Float,
     modifier: Modifier = Modifier,
-    onReadStatusChange: ((Boolean) -> Unit)? = null,
     articleContent: String,
     localImagePaths: Map<String, String> = emptyMap(),
     isOnline: Boolean = true,
@@ -864,24 +1017,15 @@ private fun ArticleContent(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                        Text(
-                            text = entry.title,
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontSize = 28.sp,
-                                lineHeight = 34.sp
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Checkbox(
-                            checked = entry.isRead,
-                            onCheckedChange = { checked -> onReadStatusChange?.invoke(checked) },
-                            modifier = Modifier.semantics {
-                                contentDescription = if (entry.isRead) "Mark as unread" else "Mark as read"
-                            }
-                        )
-                    }
+                    Text(
+                        text = entry.title,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 28.sp,
+                            lineHeight = 34.sp
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     if (scrollProgress in 0.02f..0.98f) {
                         Spacer(modifier = Modifier.height(8.dp))
                         LinearProgressIndicator(
