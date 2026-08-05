@@ -165,6 +165,16 @@ class FeedsViewModel(
         _uiState.value = _uiState.value.copy(message = null)
     }
 
+    fun nextFeedId(currentFeedId: Long): Long? {
+        val state = _uiState.value
+        val visibleFeeds = state.filteredFeeds
+        return if (visibleFeeds.any { it.id == currentFeedId }) {
+            nextSubscriptionId(visibleFeeds, currentFeedId)
+        } else {
+            nextSubscriptionId(state.feeds, currentFeedId)
+        }
+    }
+
     private fun <T> runFeedAction(
         success: ((T) -> String)? = null,
         failure: (Throwable) -> String,
@@ -236,3 +246,9 @@ internal fun holdRowOrder(
     unreadCounts: Map<Long, Int>,
     rowOrder: Map<Long, Int>
 ): List<Feed> = sortSubscriptions(feeds, unreadCounts).sortedBy { rowOrder[it.id] ?: Int.MAX_VALUE }
+
+internal fun nextSubscriptionId(feeds: List<Feed>, currentFeedId: Long): Long? {
+    val currentIndex = feeds.indexOfFirst { it.id == currentFeedId }
+    if (currentIndex == -1) return null
+    return feeds.getOrNull(currentIndex + 1)?.id
+}

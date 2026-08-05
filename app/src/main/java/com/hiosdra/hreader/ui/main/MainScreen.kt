@@ -77,6 +77,7 @@ fun MainScreen(
     navController: NavController,
     onOpenSubscriptions: () -> Unit,
     onLeaveFeed: () -> Unit = {},
+    onFeedMarkedRead: (Long) -> Unit = {},
     feedId: Long? = null,
     viewModel: MainViewModel = koinViewModel()
 ) {
@@ -357,7 +358,7 @@ fun MainScreen(
                 exit = fadeOut(animationSpec = tween(durationMillis = 300))
             ) {
                 ExtendedFloatingActionButton(
-                    onClick = viewModel::markAllAsRead,
+                    onClick = { viewModel.markAllAsRead(onFeedMarkedRead) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { Icon(Icons.Filled.Done, contentDescription = null) },

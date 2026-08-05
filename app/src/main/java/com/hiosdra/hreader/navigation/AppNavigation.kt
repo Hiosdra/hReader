@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hiosdra.hreader.ui.article.ArticleScreen
 import com.hiosdra.hreader.ui.feeds.FeedDetailScreen
+import com.hiosdra.hreader.ui.feeds.FeedsViewModel
 import com.hiosdra.hreader.ui.feeds.SubscriptionsDrawer
 import com.hiosdra.hreader.ui.feeds.rememberSubscriptionsDrawerState
 import com.hiosdra.hreader.ui.feeds.add.AddFeedScreen
@@ -28,6 +29,7 @@ import com.hiosdra.hreader.ui.main.MainScreen
 import com.hiosdra.hreader.ui.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 @Composable
@@ -147,9 +149,16 @@ fun AppNavigation(
 private fun MainWithSubscriptions(navController: NavHostController) {
     val drawerState = rememberSubscriptionsDrawerState()
     val scope = rememberCoroutineScope()
+    val feedsViewModel: FeedsViewModel = koinViewModel()
     var selectedFeedId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     BackHandler(enabled = selectedFeedId != null) { selectedFeedId = null }
+
+    val onFeedMarkedRead: (Long) -> Unit = { markedFeedId ->
+        if (selectedFeedId == markedFeedId) {
+            selectedFeedId = feedsViewModel.nextFeedId(markedFeedId)
+        }
+    }
 
     SubscriptionsDrawer(
         drawerState = drawerState,
@@ -157,13 +166,15 @@ private fun MainWithSubscriptions(navController: NavHostController) {
         onSelectFeed = { selected -> selectedFeedId = selected },
         onFeedDetails = { navController.navigate(Routes.feed(it)) },
         onAddFeed = { navController.navigate(Routes.addFeed()) },
+        viewModel = feedsViewModel,
         gesturesEnabled = true
     ) {
         MainScreen(
             navController = navController,
             onOpenSubscriptions = { scope.launch { drawerState.open() } },
             feedId = selectedFeedId,
-            onLeaveFeed = { selectedFeedId = null }
+            onLeaveFeed = { selectedFeedId = null },
+            onFeedMarkedRead = onFeedMarkedRead
         )
     }
 }
