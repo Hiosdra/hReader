@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Environment
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -549,36 +550,65 @@ private fun ArticlePager(
                         val loadedUrl = remember { mutableStateOf<String?>(null) }
                         val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
                         var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
-                        AndroidView(
-                            factory = { context ->
-                                ReaderWebView(context).apply {
-                                    protectVerticalScrollFromPager = true
-                                    settings.javaScriptEnabled = false
-                                    webViewClient = object : WebViewClient() {
-                                        override fun onPageFinished(view: WebView?, url: String?) {
-                                            super.onPageFinished(view, url)
-                                            val readerView = view as? ReaderWebView ?: return
-                                            readerView.postIfActive { readerView.scrollTo(0, savedScrollY) }
+                        var renderProcessError by remember { mutableStateOf(false) }
+                        var renderAttempt by remember { mutableIntStateOf(0) }
+                        val webViewModifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(bottom = bottomContentPadding)
+                        if (renderProcessError) {
+                            ReaderWebViewError(
+                                modifier = webViewModifier,
+                                onRetry = {
+                                    renderProcessError = false
+                                    renderAttempt += 1
+                                }
+                            )
+                        } else {
+                            key(renderAttempt) {
+                                AndroidView(
+                                    factory = { context ->
+                                        ReaderWebView(context).apply {
+                                            protectVerticalScrollFromPager = true
+                                            settings.javaScriptEnabled = false
+                                            webViewClient = object : WebViewClient() {
+                                                override fun onRenderProcessGone(
+                                                    view: WebView,
+                                                    detail: RenderProcessGoneDetail
+                                                ): Boolean {
+                                                    loadedWebView.value = null
+                                                    (view as? ReaderWebView)?.destroyAfterRenderProcessGone()
+                                                    renderProcessError = true
+                                                    return true
+                                                }
+
+                                                override fun onPageFinished(view: WebView?, url: String?) {
+                                                    super.onPageFinished(view, url)
+                                                    val readerView = view as? ReaderWebView ?: return
+                                                    readerView.postIfActive {
+                                                        readerView.scrollTo(0, savedScrollY)
+                                                    }
+                                                }
+                                            }
+                                            setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                                                savedScrollY = scrollY
+                                            }
                                         }
-                                    }
-                                    setOnScrollChangeListener { _, _, scrollY, _, _ -> savedScrollY = scrollY }
-                                }
-                            },
-                            update = { webView ->
-                                webView.settings.blockNetworkLoads = !isOnline
-                                if (loadedWebView.value !== webView || loadedUrl.value != entry.url) {
-                                    loadedWebView.value = webView
-                                    loadedUrl.value = entry.url
-                                    webView.loadUrl(entry.url)
-                                    webView.postIfActive { webView.scrollTo(0, savedScrollY) }
-                                }
-                            },
-                            onRelease = { webView -> webView.releaseResources() },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(paddingValues)
-                                .padding(bottom = bottomContentPadding)
-                        )
+                                    },
+                                    update = { webView ->
+                                        webView.settings.blockNetworkLoads = !isOnline
+                                        if (loadedWebView.value !== webView || loadedUrl.value != entry.url) {
+                                            loadedWebView.value = webView
+                                            loadedUrl.value = entry.url
+                                            webView.loadUrl(entry.url)
+                                            webView.postIfActive { webView.scrollTo(0, savedScrollY) }
+                                        }
+                                    },
+                                    onRelease = { webView -> webView.releaseResources() },
+                                    modifier = webViewModifier
+                                )
+                            }
+                        }
                     }
                 } else {
                     ArticleContent(
