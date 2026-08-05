@@ -68,4 +68,48 @@ class ArticleHtmlImagesTest {
 
         assertEquals(listOf("https://example.com/photo.jpg"), prepareArticleImages(html, baseUri).imageUrls)
     }
+
+    @Test
+    fun `removes active embeds while keeping article content and linking the media`() {
+        val html = """
+            <p>Intro</p>
+            <style>.lead { color: red; }</style>
+            <svg viewBox="0 0 1 1"><path d="M0 0h1v1H0z"></path></svg>
+            <iframe src="/video"></iframe>
+            <video><source src="/clip.mp4"></video>
+            <script>alert('bad')</script>
+            <p onclick="bad()">Body</p>
+            <a href="javascript:alert('bad')">Safe label</a>
+            <a href="java&#10;script:alert('bad')">Obfuscated label</a>
+            <img src="/photo.jpg">
+        """.trimIndent()
+
+        val prepared = prepareArticleImages(html, baseUri)
+
+        assertTrue(prepared.html.contains("Intro"))
+        assertTrue(prepared.html.contains("<style>"))
+        assertTrue(prepared.html.contains("<svg"))
+        assertTrue(prepared.html.contains("Body"))
+        assertTrue(prepared.html.contains("Open embedded media"))
+        assertTrue(prepared.html.contains("https://example.com/photo.jpg"))
+        assertFalse(prepared.html.contains("<iframe"))
+        assertFalse(prepared.html.contains("<video"))
+        assertFalse(prepared.html.contains("<script"))
+        assertFalse(prepared.html.contains("onclick"))
+        assertFalse(prepared.html.contains("javascript:"))
+        assertTrue(prepared.html.contains("Obfuscated label"))
+        assertFalse(prepared.html.contains("script:"))
+    }
+
+    @Test
+    fun `sanitizes already cached article html before rendering`() {
+        val cachedHtml = "<p>Cached</p><iframe src=\"/embed\"></iframe><script>bad()</script>"
+
+        val sanitized = sanitizeArticleHtml(cachedHtml, baseUri)
+
+        assertTrue(sanitized.contains("Cached"))
+        assertTrue(sanitized.contains("Open embedded media"))
+        assertFalse(sanitized.contains("<iframe"))
+        assertFalse(sanitized.contains("<script"))
+    }
 }
