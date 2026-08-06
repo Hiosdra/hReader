@@ -62,6 +62,7 @@ class ArticleContentSyncWorker(
 
     private val done = AtomicInteger()
     private val total = AtomicInteger()
+    private var foregroundUnavailable = false
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
         AppNotificationFactory.syncForegroundInfo(
@@ -85,7 +86,7 @@ class ArticleContentSyncWorker(
 
         Log.i(TAG, "Starting ArticleContentSyncWorker")
         try {
-            if (inputData.getBoolean(KEY_USER_VISIBLE, false)) setForeground(getForegroundInfo())
+            if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
             performOrphanedContentCleanup()
             backfillPreviews()
 
@@ -204,7 +205,15 @@ class ArticleContentSyncWorker(
                 KEY_PROGRESS_TOTAL to total.get()
             )
         )
-        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) setForeground(getForegroundInfo())
+        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
+    }
+
+    private suspend fun updateForeground() {
+        if (foregroundUnavailable) return
+        if (!setForegroundIfAllowed { setForeground(getForegroundInfo()) }) {
+            foregroundUnavailable = true
+            Log.w(TAG, "Foreground notification unavailable; continuing without it")
+        }
     }
 
     /**

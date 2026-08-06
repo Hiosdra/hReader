@@ -220,6 +220,7 @@ class SyncScheduler(
         cancelLegacyOneTimeSyncWork()
         val syncWork = syncRequest(
             forceFullSync = forceFullSync,
+            expedited = userVisible,
             ignoreQuietHours = userVisible,
             userVisible = userVisible,
             operationTitle = operationTitle
@@ -232,6 +233,7 @@ class SyncScheduler(
             )
             .then(
                 prefetchRequest(
+                    expedited = userVisible,
                     ignoreQuietHours = userVisible,
                     userVisible = userVisible,
                     operationTitle = operationTitle,

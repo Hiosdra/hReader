@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.worker
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger
 private const val MAX_RUN_ATTEMPTS = 5
 private const val MAX_PAGES_PER_RUN = 100
 private const val PROGRESS_REPORT_INTERVAL_MILLIS = 500L
+private const val TAG = "FullPageSyncWorker"
 
 internal fun shouldRetryFullPageSync(
     remaining: Int,
@@ -43,6 +45,7 @@ class FullPageSyncWorker(
 ) : CoroutineWorker(appContext, params) {
     private val done = AtomicInteger()
     private val total = AtomicInteger()
+    private var foregroundUnavailable = false
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
         AppNotificationFactory.syncForegroundInfo(
@@ -59,7 +62,7 @@ class FullPageSyncWorker(
         if (isSilenced()) return@withContext Result.success()
 
         try {
-            if (inputData.getBoolean(KEY_USER_VISIBLE, false)) setForeground(getForegroundInfo())
+            if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
             articlePageRepository.cleanupOrphanedPages()
             val targets = articleRepository.getPrefetchTargets()
             val outstanding = articlePageRepository.entriesMissingPages(
@@ -123,7 +126,15 @@ class FullPageSyncWorker(
                 KEY_PROGRESS_TOTAL to total.get()
             )
         )
-        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) setForeground(getForegroundInfo())
+        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
+    }
+
+    private suspend fun updateForeground() {
+        if (foregroundUnavailable) return
+        if (!setForegroundIfAllowed { setForeground(getForegroundInfo()) }) {
+            foregroundUnavailable = true
+            Log.w(TAG, "Foreground notification unavailable; continuing without it")
+        }
     }
 
     private fun isSilenced(): Boolean {
