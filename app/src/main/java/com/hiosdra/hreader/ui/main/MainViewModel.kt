@@ -282,29 +282,35 @@ class MainViewModel(
      * guarded by a confirmation dialog: the dialog cost a tap every single time and still could not
      * put anything right when the answer was wrong.
      */
-    fun markAllAsRead() {
+    fun markAllAsRead(onMarkedAsRead: (Long) -> Unit = {}) {
+        val current = query.value
         viewModelScope.launch {
-            val current = query.value
             // Only what this actually changes. Sweeping in the already-read ones would push a
             // no-op update for every article the cache holds.
             val ids = runCatching { articleRepository.unreadIds(current.feedId, current.starredOnly) }
                 .getOrElse {
                     Log.w(TAG, "Could not read the unread set", it)
                     return@launch
-                }
+            }
             if (ids.isEmpty()) return@launch
 
-            applyReadStatus(ids, read = true)
-            _uiState.update {
-                it.copy(
-                    undo = UndoableAction(
-                        id = System.currentTimeMillis(),
-                        message = "Marked ${ids.size} as read",
-                        articleIds = ids,
-                        markedAt = Instant.now()
-                    )
-                )
-            }
+            applyReadStatus(
+                ids,
+                read = true,
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            undo = UndoableAction(
+                                id = System.currentTimeMillis(),
+                                message = "Marked ${ids.size} as read",
+                                articleIds = ids,
+                                markedAt = Instant.now()
+                            )
+                        )
+                    }
+                    current.feedId?.let(onMarkedAsRead)
+                }
+            )
         }
     }
 
@@ -333,11 +339,12 @@ class MainViewModel(
      * logged rather than surfaced — the change is stored locally and queued for the next sync, so
      * the reader has lost nothing worth a dialog.
      */
-    private fun applyReadStatus(entryIds: List<Long>, read: Boolean) {
+    private fun applyReadStatus(entryIds: List<Long>, read: Boolean, onSuccess: () -> Unit = {}) {
         val newStatus = if (read) ArticleStatus.READ else ArticleStatus.UNREAD
         viewModelScope.launch {
             runCatching { articleRepository.updateReadStatus(entryIds.map { it.toString() }, newStatus) }
                 .onFailure { Log.w(TAG, "Could not store read state for ${entryIds.size} articles", it) }
+                .onSuccess { onSuccess() }
         }
     }
 }
