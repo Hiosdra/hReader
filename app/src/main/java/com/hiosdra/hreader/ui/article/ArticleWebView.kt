@@ -16,7 +16,6 @@ import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -392,16 +391,8 @@ internal class ReaderWebView(context: Context) : WebView(context) {
 
     fun releaseResources() {
         if (released) return
-        parent?.requestDisallowInterceptTouchEvent(false)
-        pagerGestureDirection = null
-        contentHeightUpdateRunnable?.let(::removeCallbacks)
-        contentHeightUpdateRunnable = null
         released = true
-        setOnTouchListener(null)
-        setOnScrollChangeListener(null)
-        setOnLongClickListener(null)
-        webViewClient = WebViewClient()
-        webChromeClient = null
+        clearCallbacksAndClients()
         stopLoading()
         removeAllViews()
         destroy()
@@ -410,12 +401,21 @@ internal class ReaderWebView(context: Context) : WebView(context) {
     internal fun destroyAfterRenderProcessGone() {
         if (released) return
         released = true
-        parent?.requestDisallowInterceptTouchEvent(false)
+        clearCallbacksAndClients()
         (parent as? ViewGroup)?.removeView(this)
+        destroy()
+    }
+
+    private fun clearCallbacksAndClients() {
+        parent?.requestDisallowInterceptTouchEvent(false)
         pagerGestureDirection = null
         contentHeightUpdateRunnable?.let(::removeCallbacks)
         contentHeightUpdateRunnable = null
-        destroy()
+        setOnTouchListener(null)
+        setOnScrollChangeListener(null)
+        setOnLongClickListener(null)
+        webViewClient = WebViewClient()
+        webChromeClient = null
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -474,8 +474,8 @@ fun OfflinePageWebView(
     val currentOnLinkClick = androidx.compose.runtime.rememberUpdatedState(onLinkClick)
     val loadedPageKey = remember { mutableStateOf<Triple<Long, String, String>?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
-    var renderProcessError by remember(page.entryId, page.html) { mutableStateOf(false) }
-    var renderAttempt by remember(page.entryId, page.html) { mutableIntStateOf(0) }
+    var renderProcessError by remember(page.entryId, page.html, page.baseUrl) { mutableStateOf(false) }
+    var renderAttempt by remember(page.entryId, page.html, page.baseUrl) { mutableIntStateOf(0) }
 
     if (renderProcessError) {
         ReaderWebViewError(
