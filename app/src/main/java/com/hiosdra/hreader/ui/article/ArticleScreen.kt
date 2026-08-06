@@ -550,8 +550,8 @@ private fun ArticlePager(
                         val loadedUrl = remember { mutableStateOf<String?>(null) }
                         val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
                         var savedScrollY by rememberSaveable(entry.id) { mutableStateOf(0) }
-                        var renderProcessError by remember { mutableStateOf(false) }
-                        var renderAttempt by remember { mutableIntStateOf(0) }
+                        var renderProcessError by remember(entry.id, entry.url) { mutableStateOf(false) }
+                        var renderAttempt by remember(entry.id, entry.url) { mutableIntStateOf(0) }
                         val webViewModifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
