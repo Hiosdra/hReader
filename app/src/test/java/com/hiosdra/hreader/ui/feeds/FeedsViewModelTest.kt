@@ -168,3 +168,27 @@ class FeedsViewModelTest {
         assertEquals("Could not rename: server rejected it", message)
     }
 }
+
+class NextSubscriptionTest {
+
+    private val feeds = listOf(
+        Feed(id = 1, title = "First", siteUrl = null, feedUrl = "https://first.example.com/feed"),
+        Feed(id = 2, title = "Second", siteUrl = null, feedUrl = "https://second.example.com/feed"),
+        Feed(id = 3, title = "Third", siteUrl = null, feedUrl = "https://third.example.com/feed")
+    )
+
+    @Test
+    fun `returns the feed after the current row`() {
+        assertEquals(2L, nextSubscriptionId(feeds, currentFeedId = 1L))
+    }
+
+    @Test
+    fun `last row has no next feed`() {
+        assertNull(nextSubscriptionId(feeds, currentFeedId = 3L))
+    }
+
+    @Test
+    fun `unknown row has no next feed`() {
+        assertNull(nextSubscriptionId(feeds, currentFeedId = 99L))
+    }
+}

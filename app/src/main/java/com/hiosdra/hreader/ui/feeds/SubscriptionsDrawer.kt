@@ -24,6 +24,7 @@ fun SubscriptionsDrawer(
     onSelectFeed: (Long?) -> Unit,
     onFeedDetails: (Long) -> Unit,
     onAddFeed: () -> Unit,
+    viewModel: FeedsViewModel,
     gesturesEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -45,7 +46,8 @@ fun SubscriptionsDrawer(
                     visible = drawerState.isOpen,
                     onSelectFeed = { feedId -> closeThen { onSelectFeed(feedId) } },
                     onFeedDetails = { feedId -> closeThen { onFeedDetails(feedId) } },
-                    onAddFeed = { closeThen(onAddFeed) }
+                    onAddFeed = { closeThen(onAddFeed) },
+                    viewModel = viewModel
                 )
             }
         },
