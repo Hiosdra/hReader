@@ -31,6 +31,8 @@ class ContentSyncWorker(
         private const val TAG = "ContentSyncWorker"
     }
 
+    private var foregroundUnavailable = false
+
     override suspend fun getForegroundInfo(): ForegroundInfo =
         AppNotificationFactory.syncForegroundInfo(
             context = applicationContext,
@@ -51,7 +53,7 @@ class ContentSyncWorker(
     private suspend fun runSync(): Result = try {
         val forceFullSync = inputData.getBoolean(KEY_FORCE_FULL_SYNC, false)
         Log.i(TAG, "Starting ContentSyncWorker (forceFullSync=$forceFullSync)")
-        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) setForeground(getForegroundInfo())
+        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
 
         syncPerformanceLogger.measureSyncTime("Article refresh") {
             repository.refreshArticles(forceFullSync)
@@ -75,6 +77,14 @@ class ContentSyncWorker(
             Result.failure(
                 workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Article synchronization failed."))
             )
+        }
+    }
+
+    private suspend fun updateForeground() {
+        if (foregroundUnavailable) return
+        if (!setForegroundIfAllowed { setForeground(getForegroundInfo()) }) {
+            foregroundUnavailable = true
+            Log.w(TAG, "Foreground notification unavailable; continuing without it")
         }
     }
 
