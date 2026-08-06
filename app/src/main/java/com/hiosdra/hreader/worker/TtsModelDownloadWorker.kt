@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.worker
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -18,6 +19,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private const val MAX_RUN_ATTEMPTS = 5
+private const val TAG = "TtsModelDownloadWorker"
 
 class TtsModelDownloadWorker(
     appContext: Context,
@@ -36,6 +38,8 @@ class TtsModelDownloadWorker(
             TtsModel.entries.firstOrNull { it.name == name }
         }
 
+    private var foregroundUnavailable = false
+
     override suspend fun getForegroundInfo(): ForegroundInfo =
         AppNotificationFactory.modelDownloadForegroundInfo(
             context = applicationContext,
@@ -51,19 +55,12 @@ class TtsModelDownloadWorker(
 
         var reporter: Job? = null
         try {
-            setForeground(getForegroundInfo())
+            updateForeground()
             reporter = launch {
                 while (isActive) {
                     val progress = modelProgress()
                     setProgress(workDataOf(KEY_PROGRESS to progress))
-                    setForeground(
-                        AppNotificationFactory.modelDownloadForegroundInfo(
-                            context = applicationContext,
-                            workerId = id,
-                            modelName = selectedModel.displayName,
-                            progress = progress
-                        )
-                    )
+                    updateForeground()
                     delay(REPORT_INTERVAL_MILLIS)
                 }
             }
@@ -91,6 +88,14 @@ class TtsModelDownloadWorker(
             }
         } finally {
             reporter?.cancel()
+        }
+    }
+
+    private suspend fun updateForeground() {
+        if (foregroundUnavailable) return
+        if (!setForegroundIfAllowed { setForeground(getForegroundInfo()) }) {
+            foregroundUnavailable = true
+            Log.w(TAG, "Foreground notification unavailable; continuing without it")
         }
     }
 

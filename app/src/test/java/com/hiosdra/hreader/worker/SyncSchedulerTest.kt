@@ -12,6 +12,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -84,6 +85,46 @@ class SyncSchedulerTest {
                 any<OneTimeWorkRequest>()
             )
         }
+    }
+
+    @Test
+    fun resync_expeditesEveryStage() {
+        val syncRequest = slot<OneTimeWorkRequest>()
+        val prefetchRequest = slot<OneTimeWorkRequest>()
+
+        every {
+            workManager.beginUniqueWork(
+                "SyncPipeline",
+                ExistingWorkPolicy.REPLACE,
+                capture(syncRequest)
+            )
+        } returns workContinuation
+        every { workContinuation.then(capture(prefetchRequest)) } returns workContinuation
+
+        assertNotNull(scheduler.resyncNow())
+
+        assertTrue(syncRequest.captured.workSpec.expedited)
+        assertTrue(prefetchRequest.captured.workSpec.expedited)
+    }
+
+    @Test
+    fun regularSync_doesNotBecomeExpedited() {
+        val syncRequest = slot<OneTimeWorkRequest>()
+        val prefetchRequest = slot<OneTimeWorkRequest>()
+
+        every {
+            workManager.beginUniqueWork(
+                "SyncPipeline",
+                ExistingWorkPolicy.REPLACE,
+                capture(syncRequest)
+            )
+        } returns workContinuation
+        every { workContinuation.then(capture(prefetchRequest)) } returns workContinuation
+
+        assertNotNull(scheduler.syncNow())
+
+        assertFalse(syncRequest.captured.workSpec.expedited)
+        assertFalse(prefetchRequest.captured.workSpec.expedited)
     }
 
     @Test
