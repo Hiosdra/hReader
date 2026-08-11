@@ -97,6 +97,7 @@ jobs:
           path: artifacts/hreader-debug.apk
           archive: false
           if-no-files-found: error
+          retention-days: 7
 
   release:
     needs: [build, debug_apk]
@@ -163,6 +164,7 @@ jobs:
           path: artifacts/hreader-release.apk
           archive: false
           if-no-files-found: error
+          retention-days: 7
 
       - name: Remove keystore
         if: always()
