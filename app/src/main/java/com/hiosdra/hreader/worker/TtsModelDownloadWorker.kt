@@ -11,6 +11,7 @@ import com.hiosdra.hreader.data.tts.TtsModel
 import com.hiosdra.hreader.data.tts.TtsModelManager
 import com.hiosdra.hreader.data.tts.TtsModelStatus
 import com.hiosdra.hreader.notification.AppNotificationFactory
+import com.hiosdra.hreader.util.ErrorReportingManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -24,7 +25,8 @@ private const val TAG = "TtsModelDownloadWorker"
 class TtsModelDownloadWorker(
     appContext: Context,
     params: WorkerParameters,
-    private val modelManager: TtsModelManager
+    private val modelManager: TtsModelManager,
+    private val errorReportingManager: ErrorReportingManager
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -50,7 +52,11 @@ class TtsModelDownloadWorker(
 
     override suspend fun doWork(): Result = coroutineScope {
         val selectedModel = model
-            ?: return@coroutineScope Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Unknown voice model."))
+        if (selectedModel == null) {
+            val message = "Unknown voice model."
+            errorReportingManager.captureMessage(message, "tts_model_download")
+            return@coroutineScope Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
+        }
         if (selectedModel.bundled) return@coroutineScope Result.success()
 
         var reporter: Job? = null
@@ -68,7 +74,9 @@ class TtsModelDownloadWorker(
             if (modelManager.statuses.value[selectedModel] == TtsModelStatus.Available) {
                 Result.success()
             } else {
-                Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Could not install the voice model."))
+                val message = "Could not install the voice model."
+                errorReportingManager.captureMessage(message, "tts_model_download")
+                Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
             }
         } catch (e: CancellationException) {
             modelManager.markDownloadCancelled(selectedModel)
@@ -78,7 +86,9 @@ class TtsModelDownloadWorker(
                 selectedModel,
                 e.message ?: "Voice model download failed."
             )
-            if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) {
+            val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
+            if (!shouldRetry) errorReportingManager.captureException(e, "tts_model_download")
+            if (shouldRetry) {
                 modelManager.markDownloadRetrying(selectedModel)
                 Result.retry()
             } else {

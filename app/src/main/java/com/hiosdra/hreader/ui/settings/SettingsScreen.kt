@@ -43,10 +43,12 @@ import androidx.navigation.NavController
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.tts.TtsModelManager
-import com.hiosdra.hreader.worker.TtsModelDownloadScheduler
+import com.hiosdra.hreader.ui.components.ErrorReportingPreferenceCard
 import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.theme.sectionCardColors
+import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.util.SyncPerformanceRecord
+import com.hiosdra.hreader.worker.TtsModelDownloadScheduler
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -56,6 +58,7 @@ fun SettingsScreen(
     navController: NavController? = null,
     onSignedOut: () -> Unit = {},
     preferencesManager: PreferencesManager = koinInject(),
+    errorReportingManager: ErrorReportingManager = koinInject(),
     ttsModelManager: TtsModelManager = koinInject(),
     ttsModelDownloadScheduler: TtsModelDownloadScheduler = koinInject(),
     settingsViewModel: SettingsViewModel = koinViewModel()
@@ -69,6 +72,7 @@ fun SettingsScreen(
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
     var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
     var credibilityScoreEnabled by remember { mutableStateOf(preferencesManager.getCredibilityScoreEnabled()) }
+    var sentryReportingEnabled by remember { mutableStateOf(errorReportingManager.isEnabled()) }
     var showPerformanceDialog by remember { mutableStateOf(false) }
     var showBypassDialog by remember { mutableStateOf(false) }
     var showModelSheet by remember { mutableStateOf(false) }
@@ -80,6 +84,10 @@ fun SettingsScreen(
     val onToggleCredibilityScore: (Boolean) -> Unit = { enabled ->
         credibilityScoreEnabled = enabled
         preferencesManager.setCredibilityScoreEnabled(enabled)
+    }
+    val onToggleSentryReporting: (Boolean) -> Unit = { enabled ->
+        sentryReportingEnabled = enabled
+        errorReportingManager.setEnabled(enabled)
     }
 
     LaunchedEffect(serverSettings.signOutCompleted) {
@@ -387,6 +395,20 @@ fun SettingsScreen(
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
+            }
+
+            item {
+                Text(
+                    text = "Privacy & diagnostics",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                ErrorReportingPreferenceCard(
+                    enabled = sentryReportingEnabled,
+                    onEnabledChange = onToggleSentryReporting,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             // Performance Section

@@ -75,6 +75,8 @@ jobs:
           echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > keystore/debug.keystore
 
       - name: Assemble debug APK
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: ./gradlew --configuration-cache assembleDebug
 
       - name: Verify the debug APK signature
@@ -139,6 +141,10 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: ./gradlew --no-build-cache assembleRelease
 
       - name: Verify the APK is signed

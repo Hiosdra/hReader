@@ -12,6 +12,7 @@ import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.notification.AppNotificationFactory
+import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.util.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
@@ -41,7 +42,8 @@ class FullPageSyncWorker(
     private val articleRepository: ArticleRepository,
     private val articlePageRepository: ArticlePageRepository,
     private val syncPerformanceLogger: SyncPerformanceLogger,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val errorReportingManager: ErrorReportingManager
 ) : CoroutineWorker(appContext, params) {
     private val done = AtomicInteger()
     private val total = AtomicInteger()
@@ -101,17 +103,18 @@ class FullPageSyncWorker(
             when {
                 remaining == 0 -> Result.success()
                 shouldRetryFullPageSync(remaining, outstanding.size, runAttemptCount) -> Result.retry()
-                else -> Result.failure(
-                    workDataOf(
-                        KEY_ERROR_MESSAGE to
-                            "$remaining full pages could not be archived."
-                    )
-                )
+                else -> {
+                    val message = "$remaining full pages could not be archived."
+                    errorReportingManager.captureMessage(message, "full_page_sync")
+                    Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
+                }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) {
+            val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
+            if (!shouldRetry) errorReportingManager.captureException(e, "full_page_sync")
+            if (shouldRetry) {
                 Result.retry()
             } else {
                 Result.failure(workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Full offline sync failed.")))

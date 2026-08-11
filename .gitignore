@@ -14,3 +14,6 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+
+# Sentry authentication, if the wizard is ever run locally
+sentry.properties
