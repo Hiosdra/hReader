@@ -11,6 +11,7 @@ import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.notification.AppNotificationFactory
+import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.util.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
@@ -24,7 +25,8 @@ class ContentSyncWorker(
     private val repository: ArticleRepository,
     private val syncPerformanceLogger: SyncPerformanceLogger,
     private val syncScheduler: SyncScheduler,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val errorReportingManager: ErrorReportingManager
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -71,7 +73,9 @@ class ContentSyncWorker(
         Log.e(TAG, "ContentSyncWorker failed: ${e.message}", e)
         // A 5xx or a dropped connection is worth another attempt; a 4xx (bad token, bad request)
         // will fail identically every time, so it waits for the next period instead.
-        if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) {
+        val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
+        if (!shouldRetry) errorReportingManager.captureException(e, "content_sync")
+        if (shouldRetry) {
             Result.retry()
         } else {
             Result.failure(

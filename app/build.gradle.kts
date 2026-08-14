@@ -2,6 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    id("io.sentry.android.gradle")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp") version "2.3.10"
     id("androidx.room")
@@ -21,6 +22,22 @@ val keystoreProperties = Properties().apply {
 
 fun signingValue(key: String): String? =
     (System.getenv(key) ?: keystoreProperties.getProperty(key))?.takeIf { it.isNotBlank() }
+
+// Providers keep environment-backed values visible to Gradle's configuration cache. In
+// particular, a cached debug configuration must not reuse an APK's old or empty DSN.
+val sentryDsn = providers.environmentVariable("SENTRY_DSN")
+    .orElse(providers.gradleProperty("sentryDsn"))
+    .orElse("")
+val sentryAuthToken = providers.environmentVariable("SENTRY_AUTH_TOKEN").orElse("")
+val sentryOrg = providers.environmentVariable("SENTRY_ORG").orElse("")
+val sentryProject = providers.environmentVariable("SENTRY_PROJECT").orElse("")
+val sentryUploadEnabled = sentryAuthToken
+    .zip(sentryOrg) { authToken, org ->
+        authToken.isNotBlank() && org.isNotBlank()
+    }
+    .zip(sentryProject) { credentialsPresent, project ->
+        credentialsPresent && project.isNotBlank()
+    }
 
 val releaseStoreFile = rootProject.file(
     signingValue("RELEASE_KEYSTORE_PATH") ?: "keystore/release.jks"
@@ -55,6 +72,7 @@ android {
         targetSdk = 36
         versionCode = 2
         versionName = "1.1"
+        resValue("string", "sentry_dsn", sentryDsn.get())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -99,6 +117,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
     room {
         schemaDirectory("$projectDir/schemas")
@@ -111,6 +130,30 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
     arg("room.generateKotlin", "true")
+}
+
+sentry {
+    debug.set(false)
+    org.set(sentryOrg)
+    projectName.set(sentryProject)
+    authToken.set(sentryAuthToken)
+    includeProguardMapping.set(true)
+    autoUploadProguardMapping.set(sentryUploadEnabled)
+    uploadNativeSymbols.set(false)
+    autoUploadNativeSymbols.set(false)
+    includeNativeSources.set(false)
+    includeSourceContext.set(false)
+    tracingInstrumentation {
+        enabled.set(false)
+        logcat {
+            enabled.set(false)
+        }
+    }
+    autoInstallation {
+        enabled.set(false)
+    }
+    includeDependenciesReport.set(false)
+    telemetry.set(false)
 }
 
 //noinspection UseTomlInstead
@@ -158,6 +201,9 @@ dependencies {
     // JSON Processing
     implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
     ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
+
+    // Error reporting without the optional NDK and session-replay native modules.
+    implementation("io.sentry:sentry-android-core:8.50.1")
 
     // Dependency Injection (Koin)
     implementation(platform("io.insert-koin:koin-bom:4.2.2"))

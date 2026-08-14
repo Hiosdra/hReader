@@ -4,6 +4,7 @@ import android.app.Application
 import com.hiosdra.hreader.di.appModule
 import com.hiosdra.hreader.di.networkModule
 import com.hiosdra.hreader.notification.NotificationChannels
+import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.worker.SyncScheduler
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -22,6 +23,7 @@ class MyApplication : Application() {
             workManagerFactory()
             modules(appModule, networkModule)
         }.koin
+        koin.get<ErrorReportingManager>().initialize()
         // Content prefetching is chained off each successful sync, not scheduled separately.
         koin.get<SyncScheduler>().schedulePeriodicSync()
         koin.get<SyncScheduler>().start()

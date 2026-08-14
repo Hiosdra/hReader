@@ -131,6 +131,13 @@ class PreferencesManager(context: Context) {
         sharedPreferences.edit().putBoolean(KEY_BIONIC_READING_ENABLED, enabled).apply()
     }
 
+    fun getSentryReportingEnabled(): Boolean =
+        sharedPreferences.getBoolean(KEY_SENTRY_REPORTING_ENABLED, true)
+
+    fun setSentryReportingEnabled(enabled: Boolean) {
+        sharedPreferences.edit().putBoolean(KEY_SENTRY_REPORTING_ENABLED, enabled).apply()
+    }
+
     /**
      * Reading settings are watched rather than read once: an article already open used to keep the
      * rendering it was composed with until it was navigated away from and back.
@@ -362,6 +369,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_SECRETS_MIGRATED = "secrets_migrated"
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
+        private const val KEY_SENTRY_REPORTING_ENABLED = "sentry_reporting_enabled"
         private const val KEY_AI_MODEL = "ai_model"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
         private const val KEY_CACHE_OWNER = "cache_owner"

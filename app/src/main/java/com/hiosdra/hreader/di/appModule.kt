@@ -17,12 +17,12 @@ import com.hiosdra.hreader.data.repository.FeedRepository
 import com.hiosdra.hreader.data.repository.LocalCacheRepository
 import com.hiosdra.hreader.data.tts.ArticleTtsController
 import com.hiosdra.hreader.data.tts.TtsModelManager
-import java.io.File
 import com.hiosdra.hreader.ui.article.ArticleViewModel
 import com.hiosdra.hreader.ui.feeds.FeedsViewModel
 import com.hiosdra.hreader.ui.feeds.add.AddFeedViewModel
 import com.hiosdra.hreader.ui.main.MainViewModel
 import com.hiosdra.hreader.ui.settings.SettingsViewModel
+import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.SyncPerformanceLogger
@@ -36,6 +36,7 @@ import org.koin.android.ext.koin.androidApplication
 import org.koin.androidx.workmanager.dsl.worker
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
+import java.io.File
 
 val appModule = module {
     single {
@@ -83,6 +84,7 @@ val appModule = module {
     single { ArticleAiOverviewRepository(get()) }
     single { PaywallBypassService() }
     single { PreferencesManager(androidApplication()) }
+    single { ErrorReportingManager(androidApplication(), get()) }
     single { TtsModelManager(androidApplication(), get()) }
     single { TtsModelDownloadScheduler(androidApplication(), get()) }
     single { ArticleTtsController(androidApplication(), get(), get()) }
@@ -90,10 +92,10 @@ val appModule = module {
     single { ImageLoader(get()) }
     single { NetworkMonitor(androidApplication()) }
     single { SyncScheduler(androidApplication(), get(), get()) }
-    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get()) }
-    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get()) }
-    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get()) }
-    worker { TtsModelDownloadWorker(get(), get(), get()) }
+    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
+    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
+    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
+    worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { FeedsViewModel(get(), get()) }
     viewModel { ArticleViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }

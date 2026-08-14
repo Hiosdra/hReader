@@ -19,24 +19,34 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.ui.components.ErrorReportingPreferenceCard
+import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.settings.BackendServerFields
 import com.hiosdra.hreader.ui.settings.OpenRouterKeyField
 import com.hiosdra.hreader.ui.settings.SettingsViewModel
-import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.theme.sectionCardColors
+import com.hiosdra.hreader.util.ErrorReportingManager
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerSetupScreen(
     onSetupFinished: () -> Unit,
-    settingsViewModel: SettingsViewModel = koinViewModel()
+    settingsViewModel: SettingsViewModel = koinViewModel(),
+    errorReportingManager: ErrorReportingManager = koinInject()
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsState()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsState()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
+    var sentryReportingEnabled by remember {
+        mutableStateOf(errorReportingManager.isEnabled())
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -63,6 +73,14 @@ fun ServerSetupScreen(
                     "from ${serverSettings.backendType.secretHint}.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            ErrorReportingPreferenceCard(
+                enabled = sentryReportingEnabled,
+                onEnabledChange = { enabled ->
+                    sentryReportingEnabled = enabled
+                    errorReportingManager.setEnabled(enabled)
+                },
+                modifier = Modifier.fillMaxWidth()
             )
             Card(
                 modifier = Modifier.fillMaxWidth(),

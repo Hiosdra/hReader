@@ -13,6 +13,7 @@ import com.hiosdra.hreader.data.local.repository.ArticleRepository
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.notification.AppNotificationFactory
+import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.util.SyncPerformanceLogger
 import com.hiosdra.hreader.util.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
@@ -53,7 +54,8 @@ class ArticleContentSyncWorker(
     private val articleRepository: ArticleRepository,
     private val articleContentRepository: ArticleContentRepository,
     private val syncPerformanceLogger: SyncPerformanceLogger,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val errorReportingManager: ErrorReportingManager
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -119,7 +121,9 @@ class ArticleContentSyncWorker(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "ArticleContentSyncWorker failed: ${e.message}", e)
-            if (e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS) {
+            val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
+            if (!shouldRetry) errorReportingManager.captureException(e, "article_content_sync")
+            if (shouldRetry) {
                 Result.retry()
             } else {
                 Result.failure(
