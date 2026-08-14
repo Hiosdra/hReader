@@ -168,6 +168,25 @@ private const val WEB_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.85f
 private const val ARTICLE_BOTTOM_BAR_ALPHA = 0.72f
 private const val READING_POSITION_SAMPLE_MILLIS = 400L
 
+// Compose packs layout dimensions into 18 bits. Keep a margin below the 262143 px
+// representable maximum because Modifier.height converts Dp back to integer pixels.
+internal const val MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX = 262_000
+
+internal fun safeArticleWebViewHeightPx(contentHeightPx: Int): Int =
+    contentHeightPx.coerceIn(0, MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX)
+
+internal fun articleWebViewNeedsInternalScroll(contentHeightPx: Int): Boolean =
+    contentHeightPx > MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX
+
+internal fun articleWebViewRestoreScrollY(
+    progress: Float,
+    contentHeightPx: Int,
+    viewportHeightPx: Int
+): Int {
+    val maxScrollY = (contentHeightPx - viewportHeightPx).coerceAtLeast(0)
+    return (progress.coerceIn(0f, 1f) * maxScrollY).roundToInt()
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ArticleScreen(
@@ -1038,51 +1057,82 @@ private fun ArticleContent(
         removeDuplicateArticleTitle(articleContent, entry.title)
     }
     val articleScrollState = rememberSaveable(entry.id, saver = ScrollState.Saver) { ScrollState(0) }
-    var restoredContentFingerprint by rememberSaveable(entry.id) { mutableStateOf<Int?>(null) }
+    var restoredContentPositionKey by rememberSaveable(entry.id) { mutableStateOf<Int?>(null) }
     var readingCompletionReported by rememberSaveable(entry.id) { mutableStateOf(false) }
     var webContentHeightPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
+    var webViewRestoreScrollY by rememberSaveable(entry.id) { mutableIntStateOf(0) }
+    var webViewScrollProgress by rememberSaveable(entry.id) { mutableFloatStateOf(0f) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    val webViewHeight = with(LocalDensity.current) { webContentHeightPx.toDp() }
-    val scrollProgress by remember(articleScrollState) {
+    val safeWebContentHeightPx = safeArticleWebViewHeightPx(webContentHeightPx)
+    val webViewHeight = with(LocalDensity.current) { safeWebContentHeightPx.toDp() }
+    val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(webContentHeightPx)
+    val scrollProgress by remember(articleScrollState, webViewNeedsInternalScroll) {
         derivedStateOf {
-            articleScrollProgress(articleScrollState.value, articleScrollState.maxValue)
+            if (webViewNeedsInternalScroll) {
+                webViewScrollProgress
+            } else {
+                articleScrollProgress(articleScrollState.value, articleScrollState.maxValue)
+            }
         }
     }
     val latestReadingPositionLoaded = rememberUpdatedState(readingPositionLoaded)
     val latestOnReadingProgressChanged = rememberUpdatedState(onReadingProgressChanged)
     val latestOnReadingCompleted = rememberUpdatedState(onReadingCompleted)
     val contentFingerprint = readableArticleContent.hashCode()
+    val contentPositionKey = contentFingerprint xor if (webViewNeedsInternalScroll) Int.MIN_VALUE else 0
 
     LaunchedEffect(
         entry.id,
         contentLoaded,
         readingPositionLoaded,
         savedReadingProgress,
-        contentFingerprint
+        contentPositionKey,
+        webContentHeightPx > 0
     ) {
-        if (restoredContentFingerprint == contentFingerprint || !contentLoaded || !readingPositionLoaded) {
+        if (
+            restoredContentPositionKey == contentPositionKey ||
+            !contentLoaded ||
+            !readingPositionLoaded ||
+            webContentHeightPx <= 0
+        ) {
             return@LaunchedEffect
         }
         val progress = savedReadingProgress
         if (progress == null) {
-            restoredContentFingerprint = contentFingerprint
+            restoredContentPositionKey = contentPositionKey
             return@LaunchedEffect
         }
-        val maxValue = snapshotFlow { articleScrollState.maxValue }.first { it > 0 }
-        articleScrollState.scrollTo(articleScrollOffset(progress, maxValue))
-        restoredContentFingerprint = contentFingerprint
+
+        if (webViewNeedsInternalScroll) {
+            webViewRestoreScrollY = articleWebViewRestoreScrollY(
+                progress = progress,
+                contentHeightPx = webContentHeightPx,
+                viewportHeightPx = safeWebContentHeightPx
+            )
+        } else {
+            val maxValue = snapshotFlow { articleScrollState.maxValue }.first { it > 0 }
+            articleScrollState.scrollTo(articleScrollOffset(progress, maxValue))
+        }
+        restoredContentPositionKey = contentPositionKey
     }
 
-    LaunchedEffect(entry.id, readingPositionLoaded) {
+    LaunchedEffect(entry.id, readingPositionLoaded, webViewNeedsInternalScroll) {
         if (!readingPositionLoaded) return@LaunchedEffect
-        snapshotFlow { articleScrollState.value to articleScrollState.maxValue }
-            .filter { (_, maxValue) -> maxValue > 0 }
+        readingCompletionReported = false
+        snapshotFlow {
+            if (webViewNeedsInternalScroll) {
+                webViewScrollProgress to true
+            } else {
+                val maxValue = articleScrollState.maxValue
+                articleScrollProgress(articleScrollState.value, maxValue) to (maxValue > 0)
+            }
+        }
+            .filter { (_, ready) -> ready }
             .sample(READING_POSITION_SAMPLE_MILLIS)
-            .collect { (value, maxValue) ->
-                val progress = articleScrollProgress(value, maxValue)
+            .collect { (progress, _) ->
                 if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
                     if (!readingCompletionReported) {
                         readingCompletionReported = true
@@ -1095,10 +1145,16 @@ private fun ArticleContent(
             }
     }
 
-    DisposableEffect(entry.id) {
+    DisposableEffect(entry.id, webViewNeedsInternalScroll) {
         onDispose {
-            if (!latestReadingPositionLoaded.value || articleScrollState.maxValue <= 0) return@onDispose
-            val progress = articleScrollProgress(articleScrollState.value, articleScrollState.maxValue)
+            if (!latestReadingPositionLoaded.value) return@onDispose
+            val maxValue = articleScrollState.maxValue
+            if (!webViewNeedsInternalScroll && maxValue <= 0) return@onDispose
+            val progress = if (webViewNeedsInternalScroll) {
+                webViewScrollProgress
+            } else {
+                articleScrollProgress(articleScrollState.value, maxValue)
+            }
             if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
                 latestOnReadingCompleted.value(entry.id)
             } else {
@@ -1199,7 +1255,9 @@ private fun ArticleContent(
                         allowNetworkLoads = isOnline,
                         localImagePaths = localImagePaths,
                         textScale = textScale,
-                        scrollEnabled = false,
+                        scrollEnabled = webViewNeedsInternalScroll,
+                        restoreScrollY = webViewRestoreScrollY,
+                        onScrollProgress = { progress -> webViewScrollProgress = progress },
                         onContentHeightChanged = { height -> webContentHeightPx = height },
                         onLinkClick = { url ->
                             // A custom tab offline is a browser error page, and the link is gone

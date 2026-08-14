@@ -130,6 +130,7 @@ fun ArticleWebView(
     val loadedHtml = remember { mutableStateOf<String?>(null) }
     val loadedBaseUrl = remember { mutableStateOf<String?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
+    val lastAppliedRestoreScrollY = remember { mutableIntStateOf(Int.MIN_VALUE) }
     var renderProcessError by remember(articleContent, baseUrl) { mutableStateOf(false) }
     var renderAttempt by remember(articleContent, baseUrl) { mutableIntStateOf(0) }
 
@@ -289,12 +290,19 @@ fun ArticleWebView(
                         }
                     }
                     webView.allowScroll = currentScrollEnabled.value
+                    webView.protectVerticalScrollFromPager = webView.allowScroll
                     webView.isVerticalScrollBarEnabled = webView.allowScroll
                     webView.isHorizontalScrollBarEnabled = webView.allowScroll
                     webView.overScrollMode = if (webView.allowScroll) {
                         View.OVER_SCROLL_IF_CONTENT_SCROLLS
                     } else {
                         View.OVER_SCROLL_NEVER
+                    }
+
+                    val restoreScrollY = currentRestoreScrollY.value
+                    if (lastAppliedRestoreScrollY.intValue != restoreScrollY) {
+                        lastAppliedRestoreScrollY.intValue = restoreScrollY
+                        webView.postIfActive { webView.scrollTo(0, restoreScrollY) }
                     }
 
                     if (
