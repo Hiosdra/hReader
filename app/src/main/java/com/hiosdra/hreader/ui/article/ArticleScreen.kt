@@ -1073,6 +1073,8 @@ private fun ArticleContent(
     }
     val articleScrollState = rememberSaveable(entry.id, saver = ScrollState.Saver) { ScrollState(0) }
     var restoredContentPositionKey by rememberSaveable(entry.id) { mutableStateOf<Int?>(null) }
+    var restoreRequestId by rememberSaveable(entry.id) { mutableIntStateOf(0) }
+    var readingPositionRestored by rememberSaveable(entry.id) { mutableStateOf(false) }
     var readingCompletionReported by rememberSaveable(entry.id) { mutableStateOf(false) }
     var webContentHeightPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
     var webViewRestoreScrollY by rememberSaveable(entry.id) { mutableIntStateOf(0) }
@@ -1093,18 +1095,25 @@ private fun ArticleContent(
     val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(webContentHeightPx)
     val scrollProgress by remember(articleScrollState, webViewNeedsInternalScroll) {
         derivedStateOf {
-            if (webViewNeedsInternalScroll) {
-                webViewScrollProgress
-            } else {
-                articleScrollProgress(articleScrollState.value, articleScrollState.maxValue)
-            }
+            articleReadingProgress(
+                webViewNeedsInternalScroll = webViewNeedsInternalScroll,
+                webViewScrollProgress = webViewScrollProgress,
+                articleScrollValue = articleScrollState.value,
+                articleScrollMaxValue = articleScrollState.maxValue
+            )
         }
     }
     val latestReadingPositionLoaded = rememberUpdatedState(readingPositionLoaded)
+    val latestReadingPositionRestored = rememberUpdatedState(readingPositionRestored)
+    val latestWebViewNeedsInternalScroll = rememberUpdatedState(webViewNeedsInternalScroll)
+    val latestWebViewScrollProgress = rememberUpdatedState(webViewScrollProgress)
     val latestOnReadingProgressChanged = rememberUpdatedState(onReadingProgressChanged)
     val latestOnReadingCompleted = rememberUpdatedState(onReadingCompleted)
     val contentFingerprint = readableArticleContent.hashCode()
     val contentPositionKey = contentFingerprint xor if (webViewNeedsInternalScroll) Int.MIN_VALUE else 0
+    val latestRestoredContentPositionKey = rememberUpdatedState(restoredContentPositionKey)
+    val latestContentPositionKey = rememberUpdatedState(contentPositionKey)
+    val latestRestoreRequestId = rememberUpdatedState(restoreRequestId)
 
     LaunchedEffect(
         entry.id,
@@ -1112,31 +1121,38 @@ private fun ArticleContent(
         readingPositionLoaded,
         savedReadingProgress,
         contentPositionKey,
-        webContentHeightPx > 0
+        webContentHeightPx
     ) {
+        val positionAlreadyRestored = restoredContentPositionKey == contentPositionKey &&
+            (!webViewNeedsInternalScroll || readingPositionRestored)
         if (
-            restoredContentPositionKey == contentPositionKey ||
+            positionAlreadyRestored ||
             !contentLoaded ||
             !readingPositionLoaded ||
             webContentHeightPx <= 0
         ) {
             return@LaunchedEffect
         }
+        readingPositionRestored = false
+        restoreRequestId += 1
         val progress = savedReadingProgress
         if (progress == null) {
             restoredContentPositionKey = contentPositionKey
+            readingPositionRestored = true
             return@LaunchedEffect
         }
 
         if (webViewNeedsInternalScroll) {
-            webViewRestoreScrollY = articleWebViewRestoreScrollY(
+            val restoreScrollY = articleWebViewRestoreScrollY(
                 progress = progress,
                 contentHeightPx = webContentHeightPx,
                 viewportHeightPx = safeWebContentHeightPx
             )
+            webViewRestoreScrollY = restoreScrollY
         } else {
             val maxValue = snapshotFlow { articleScrollState.maxValue }.first { it > 0 }
             articleScrollState.scrollTo(articleScrollOffset(progress, maxValue))
+            readingPositionRestored = true
         }
         restoredContentPositionKey = contentPositionKey
     }
@@ -1145,12 +1161,14 @@ private fun ArticleContent(
         if (!readingPositionLoaded) return@LaunchedEffect
         readingCompletionReported = false
         snapshotFlow {
-            if (webViewNeedsInternalScroll) {
-                webViewScrollProgress to true
-            } else {
-                val maxValue = articleScrollState.maxValue
-                articleScrollProgress(articleScrollState.value, maxValue) to (maxValue > 0)
-            }
+            val maxValue = articleScrollState.maxValue
+            val positionReady = latestReadingPositionRestored.value
+            articleReadingProgress(
+                webViewNeedsInternalScroll = webViewNeedsInternalScroll,
+                webViewScrollProgress = webViewScrollProgress,
+                articleScrollValue = articleScrollState.value,
+                articleScrollMaxValue = maxValue
+            ) to (positionReady && (webViewNeedsInternalScroll || maxValue > 0))
         }
             .filter { (_, ready) -> ready }
             .sample(READING_POSITION_SAMPLE_MILLIS)
@@ -1167,16 +1185,18 @@ private fun ArticleContent(
             }
     }
 
-    DisposableEffect(entry.id, webViewNeedsInternalScroll) {
+    DisposableEffect(entry.id) {
         onDispose {
-            if (!latestReadingPositionLoaded.value) return@onDispose
+            if (!latestReadingPositionLoaded.value || !latestReadingPositionRestored.value) return@onDispose
             val maxValue = articleScrollState.maxValue
-            if (!webViewNeedsInternalScroll && maxValue <= 0) return@onDispose
-            val progress = if (webViewNeedsInternalScroll) {
-                webViewScrollProgress
-            } else {
-                articleScrollProgress(articleScrollState.value, maxValue)
-            }
+            if (!latestWebViewNeedsInternalScroll.value && maxValue <= 0) return@onDispose
+            val progress = articleReadingProgressForPersistence(
+                positionRestored = latestReadingPositionRestored.value,
+                webViewNeedsInternalScroll = latestWebViewNeedsInternalScroll.value,
+                webViewScrollProgress = latestWebViewScrollProgress.value,
+                articleScrollValue = articleScrollState.value,
+                articleScrollMaxValue = maxValue
+            ) ?: return@onDispose
             if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
                 latestOnReadingCompleted.value(entry.id)
             } else {
@@ -1277,8 +1297,35 @@ private fun ArticleContent(
                         textScale = textScale,
                         scrollEnabled = webViewNeedsInternalScroll,
                         restoreScrollY = webViewRestoreScrollY,
+                        restorePositionKey = restoreRequestId,
+                        onScrollPositionRestored = if (webViewNeedsInternalScroll) {
+                            { restoredPositionKey ->
+                                if (
+                                    latestReadingPositionLoaded.value &&
+                                    latestRestoredContentPositionKey.value == latestContentPositionKey.value &&
+                                    restoredPositionKey == latestRestoreRequestId.value
+                                ) {
+                                    readingPositionRestored = true
+                                }
+                            }
+                        } else {
+                            null
+                        },
                         onScrollProgress = { progress -> webViewScrollProgress = progress },
-                        onContentHeightChanged = { height -> webContentHeightPx = height },
+                        onContentHeightChanged = { height ->
+                            if (
+                                height != webContentHeightPx &&
+                                webViewNeedsInternalScroll &&
+                                readingPositionRestored
+                            ) {
+                                webViewRestoreScrollY = articleWebViewRestoreScrollY(
+                                    progress = webViewScrollProgress,
+                                    contentHeightPx = height,
+                                    viewportHeightPx = safeArticleWebViewHeightPx(height)
+                                )
+                            }
+                            webContentHeightPx = height
+                        },
                         onLinkClick = { url ->
                             // A custom tab offline is a browser error page, and the link is gone
                             // by the time the reader is back in range.

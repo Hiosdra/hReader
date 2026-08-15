@@ -85,6 +85,8 @@ fun ArticleWebView(
     scrollEnabled: Boolean = true,
     onContentHeightChanged: ((Int) -> Unit)? = null,
     restoreScrollY: Int = 0,
+    restorePositionKey: Int = 0,
+    onScrollPositionRestored: ((Int) -> Unit)? = null,
     onScrollYChanged: ((Int) -> Unit)? = null,
     onScrollProgress: ((Float) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
@@ -102,6 +104,8 @@ fun ArticleWebView(
     val currentScrollEnabled = rememberUpdatedState(scrollEnabled)
     val currentOnContentHeightChanged = rememberUpdatedState(onContentHeightChanged)
     val currentRestoreScrollY = rememberUpdatedState(restoreScrollY)
+    val currentRestorePositionKey = rememberUpdatedState(restorePositionKey)
+    val currentOnScrollPositionRestored = rememberUpdatedState(onScrollPositionRestored)
     val currentOnScrollYChanged = rememberUpdatedState(onScrollYChanged)
     val currentOnScrollProgress = rememberUpdatedState(onScrollProgress)
     val currentOnLinkClick = rememberUpdatedState(onLinkClick)
@@ -134,6 +138,7 @@ fun ArticleWebView(
     val loadedBaseUrl = remember { mutableStateOf<String?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
     val lastAppliedRestoreScrollY = remember { mutableIntStateOf(Int.MIN_VALUE) }
+    val lastAppliedRestorePositionKey = remember { mutableIntStateOf(Int.MIN_VALUE) }
     var renderProcessError by remember(articleContent, baseUrl) { mutableStateOf(false) }
     var renderAttempt by remember(articleContent, baseUrl) { mutableIntStateOf(0) }
 
@@ -157,8 +162,11 @@ fun ArticleWebView(
                             if (wv.isReleased) return
                             val contentHeightPx = wv.contentHeight * wv.resources.displayMetrics.density
                             val viewHeight = wv.height.toFloat()
-                            val denom = (contentHeightPx - viewHeight).coerceAtLeast(1f)
-                            val progress = (wv.scrollY / denom).coerceIn(0f, 1f)
+                            val progress = articleWebViewScrollProgress(
+                                scrollY = wv.scrollY,
+                                contentHeightPx = contentHeightPx,
+                                viewportHeightPx = viewHeight
+                            )
                             val now = SystemClock.elapsedRealtime()
                             if (abs(progress - lastProgress) >= 0.01f || now - lastProgressAt >= 500L) {
                                 lastProgress = progress
@@ -169,6 +177,16 @@ fun ArticleWebView(
                                 lastScrollY = wv.scrollY
                                 currentOnScrollYChanged.value?.invoke(wv.scrollY)
                             }
+                        }
+                        fun restoreScrollPosition(
+                            wv: ReaderWebView,
+                            scrollY: Int,
+                            positionKey: Int
+                        ) {
+                            if (wv.isReleased) return
+                            wv.scrollTo(0, scrollY)
+                            updateScrollProgress(wv)
+                            currentOnScrollPositionRestored.value?.invoke(positionKey)
                         }
 
                         allowScroll = currentScrollEnabled.value
@@ -234,12 +252,13 @@ fun ArticleWebView(
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
                                 val readerView = view as? ReaderWebView ?: return
+                                val restoreScrollY = currentRestoreScrollY.value
+                                val restorePositionKey = currentRestorePositionKey.value
                                 readerView.postIfActive {
-                                    readerView.scrollTo(0, currentRestoreScrollY.value)
+                                    restoreScrollPosition(readerView, restoreScrollY, restorePositionKey)
                                     readerView.scheduleContentHeightUpdates { height ->
                                         currentOnContentHeightChanged.value?.invoke(height)
                                     }
-                                    updateScrollProgress(readerView)
                                 }
                             }
                         }
@@ -303,9 +322,17 @@ fun ArticleWebView(
                     }
 
                     val restoreScrollY = currentRestoreScrollY.value
-                    if (lastAppliedRestoreScrollY.intValue != restoreScrollY) {
+                    val restorePositionKey = currentRestorePositionKey.value
+                    if (
+                        lastAppliedRestoreScrollY.intValue != restoreScrollY ||
+                        lastAppliedRestorePositionKey.intValue != restorePositionKey
+                    ) {
                         lastAppliedRestoreScrollY.intValue = restoreScrollY
-                        webView.postIfActive { webView.scrollTo(0, restoreScrollY) }
+                        lastAppliedRestorePositionKey.intValue = restorePositionKey
+                        webView.postIfActive {
+                            webView.scrollTo(0, restoreScrollY)
+                            currentOnScrollPositionRestored.value?.invoke(restorePositionKey)
+                        }
                     }
 
                     if (
@@ -317,7 +344,11 @@ fun ArticleWebView(
                         loadedHtml.value = htmlData
                         loadedBaseUrl.value = baseUrl
                         webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
-                        webView.postIfActive { webView.scrollTo(0, currentRestoreScrollY.value) }
+                        val restorePositionKey = currentRestorePositionKey.value
+                        webView.postIfActive {
+                            webView.scrollTo(0, restoreScrollY)
+                            currentOnScrollPositionRestored.value?.invoke(restorePositionKey)
+                        }
                         webView.scheduleContentHeightUpdates { height ->
                             currentOnContentHeightChanged.value?.invoke(height)
                         }

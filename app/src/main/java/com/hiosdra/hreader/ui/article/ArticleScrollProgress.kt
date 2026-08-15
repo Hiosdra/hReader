@@ -9,3 +9,40 @@ internal fun articleScrollProgress(value: Int, maxValue: Int): Float =
 
 internal fun articleScrollOffset(progress: Float, maxValue: Int): Int =
     (progress.coerceIn(0f, 1f) * maxValue.coerceAtLeast(0)).roundToInt()
+
+internal fun articleWebViewScrollProgress(
+    scrollY: Int,
+    contentHeightPx: Float,
+    viewportHeightPx: Float
+): Float {
+    val maxScrollPx = (contentHeightPx - viewportHeightPx).coerceAtLeast(1f)
+    return (scrollY / maxScrollPx).coerceIn(0f, 1f)
+}
+
+internal fun articleReadingProgress(
+    webViewNeedsInternalScroll: Boolean,
+    webViewScrollProgress: Float,
+    articleScrollValue: Int,
+    articleScrollMaxValue: Int
+): Float = if (webViewNeedsInternalScroll) {
+    webViewScrollProgress.coerceIn(0f, 1f)
+} else {
+    articleScrollProgress(articleScrollValue, articleScrollMaxValue)
+}
+
+internal fun articleReadingProgressForPersistence(
+    positionRestored: Boolean,
+    webViewNeedsInternalScroll: Boolean,
+    webViewScrollProgress: Float,
+    articleScrollValue: Int,
+    articleScrollMaxValue: Int
+): Float? = if (positionRestored) {
+    articleReadingProgress(
+        webViewNeedsInternalScroll = webViewNeedsInternalScroll,
+        webViewScrollProgress = webViewScrollProgress,
+        articleScrollValue = articleScrollValue,
+        articleScrollMaxValue = articleScrollMaxValue
+    )
+} else {
+    null
+}
