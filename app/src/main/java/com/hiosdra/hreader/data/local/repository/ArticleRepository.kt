@@ -26,6 +26,7 @@ import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.remote.ENTRIES_PAGE_LIMIT
 import com.hiosdra.hreader.data.remote.FeedBackend
 import com.hiosdra.hreader.util.SyncPerformanceLogger
+import com.hiosdra.hreader.util.SyncPerformanceOperation
 import com.hiosdra.hreader.util.extractArticlePreview
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -69,9 +70,6 @@ private const val MAX_BACKLOG_PAGES = 25
  * and a cache that large has other problems anyway.
  */
 private const val MAX_SYNC_PAGES = 200
-
-/** A feed unsubscribed elsewhere leaves its articles behind; the list still has to name them. */
-private const val UNKNOWN_FEED_TITLE = "Unknown feed"
 
 /**
  * A page is a little over a screenful, so scrolling stays ahead of the reader without loading the
@@ -164,7 +162,7 @@ class ArticleRepository(
         // short. Only the first case leaves [fetchedIds] holding the server's whole answer, which
         // is the one thing the reconciliation below assumes about it.
         var walkedToTheEnd = false
-        syncPerformanceLogger.measureSyncTime("Article pages") {
+        syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ARTICLE_PAGES) {
             var cursor: String? = null
             var pages = 0
             while (true) {
@@ -222,7 +220,7 @@ class ArticleRepository(
         if (storedIds.size >= target) return
 
         try {
-            syncPerformanceLogger.measureSyncTime("Offline backlog top-up") {
+            syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.OFFLINE_BACKLOG_TOP_UP) {
                 var cursor: String? = null
                 var pages = 0
                 while (storedIds.size < target && pages < MAX_BACKLOG_PAGES) {
@@ -504,7 +502,7 @@ private fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
     publishedAt = publishedAt,
     feed = Feed(
         id = feedId,
-        title = feedTitle ?: UNKNOWN_FEED_TITLE,
+        title = feedTitle.orEmpty(),
         siteUrl = feedSiteUrl,
         feedUrl = feedUrl.orEmpty()
     ),
@@ -522,7 +520,7 @@ private fun ArticleReaderItem.toEntry(): Entry = Entry(
     content = null,
     feed = Feed(
         id = feedId,
-        title = feedTitle ?: UNKNOWN_FEED_TITLE,
+        title = feedTitle.orEmpty(),
         siteUrl = feedSiteUrl,
         feedUrl = feedUrl.orEmpty()
     ),

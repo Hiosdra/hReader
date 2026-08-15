@@ -3,9 +3,11 @@ package com.hiosdra.hreader.ui.feeds
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.Feed
 import com.hiosdra.hreader.data.repository.FeedRepository
 import com.hiosdra.hreader.util.NetworkMonitor
+import com.hiosdra.hreader.ui.text.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,9 +20,9 @@ data class FeedsUiState(
     val searchQuery: String = "",
     val unreadCounts: Map<Long, Int> = emptyMap(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
     /** Result of the last delete, rename or import, for a snackbar rather than a dialog. */
-    val message: String? = null,
+    val message: UiText? = null,
     val isBusy: Boolean = false,
     val isOnline: Boolean = true
 )
@@ -109,7 +111,7 @@ class FeedsViewModel(
                     Log.w("FeedsViewModel", "Falling back to the cached subscriptions", failure)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "Could not load subscriptions. Check your connection and try again.".takeIf { cachedFeeds.isEmpty() }
+                        error = UiText.Resource(R.string.feeds_load_error).takeIf { cachedFeeds.isEmpty() }
                     )
                 }
             )
@@ -121,10 +123,16 @@ class FeedsViewModel(
      * it gone and then bring it back, articles and all, the next time the app synced.
      */
     fun deleteFeed(feedId: Long) {
-        val title = _uiState.value.feeds.find { it.id == feedId }?.title ?: "Feed"
+        val title = _uiState.value.feeds.find { it.id == feedId }?.title
         runFeedAction(
-            success = { "Unsubscribed from $title" },
-            failure = { _ -> "Could not unsubscribe. Try again." }
+            success = {
+                if (title == null) {
+                    UiText.Resource(R.string.feeds_unsubscribed_generic)
+                } else {
+                    UiText.Resource(R.string.feeds_unsubscribed, listOf(title))
+                }
+            },
+            failure = { _ -> UiText.Resource(R.string.feeds_unsubscribe_error) }
         ) { feedRepository.deleteFeed(feedId) }
     }
 
@@ -132,14 +140,31 @@ class FeedsViewModel(
         val trimmed = title.trim()
         if (trimmed.isBlank()) return
         runFeedAction(
-            failure = { _ -> "Could not rename the subscription. Try again." }
+            failure = { _ -> UiText.Resource(R.string.feeds_rename_error) }
         ) { feedRepository.renameFeed(feedId, trimmed) }
     }
 
     fun importOpml(xml: String) {
         runFeedAction(
-            success = { "Imported: ${it.added} added, ${it.skipped} already subscribed, ${it.failed.size} failed" },
-            failure = { _ -> "Could not import subscriptions. Check the file and try again." }
+            success = {
+                UiText.Resource(
+                    R.string.feeds_imported,
+                    listOf(
+                        UiText.Plural(R.plurals.feeds_imported_added, it.added, listOf(it.added)),
+                        UiText.Plural(
+                            R.plurals.feeds_imported_subscribed,
+                            it.skipped,
+                            listOf(it.skipped)
+                        ),
+                        UiText.Plural(
+                            R.plurals.feeds_imported_failed,
+                            it.failed.size,
+                            listOf(it.failed.size)
+                        )
+                    )
+                )
+            },
+            failure = { _ -> UiText.Resource(R.string.feeds_import_error) }
         ) { feedRepository.importOpml(xml) }
     }
 
@@ -147,18 +172,18 @@ class FeedsViewModel(
      * [write] receives the OPML and reports whether it landed. The panel owns the file handle the
      * storage picker returned; the view model owns what to say about the outcome.
      */
-    suspend fun exportOpmlTo(write: suspend (String) -> Boolean) {
-        val opml = runCatching { feedRepository.exportOpml() }
+    suspend fun exportOpmlTo(title: String, write: suspend (String) -> Boolean) {
+        val opml = runCatching { feedRepository.exportOpml(title) }
             .onFailure { Log.w("FeedsViewModel", "OPML export failed", it) }
             .getOrNull()
         val written = opml != null && write(opml)
         _uiState.value = _uiState.value.copy(
-            message = if (written) "Subscriptions exported" else "Could not write that file"
+            message = UiText.Resource(if (written) R.string.feeds_exported else R.string.feeds_file_write_failed)
         )
     }
 
     fun reportUnreadableFile() {
-        _uiState.value = _uiState.value.copy(message = "Could not read that file")
+        _uiState.value = _uiState.value.copy(message = UiText.Resource(R.string.feeds_file_read_failed))
     }
 
     fun dismissMessage() {
@@ -176,12 +201,12 @@ class FeedsViewModel(
     }
 
     private fun <T> runFeedAction(
-        success: ((T) -> String)? = null,
-        failure: (Throwable) -> String,
+        success: ((T) -> UiText)? = null,
+        failure: (Throwable) -> UiText,
         action: suspend () -> T
     ) {
         if (!networkMonitor.isOnline.value) {
-            _uiState.value = _uiState.value.copy(message = "You need an internet connection for this action.")
+            _uiState.value = _uiState.value.copy(message = UiText.Resource(R.string.feeds_need_connection))
             return
         }
         viewModelScope.launch {
@@ -189,7 +214,7 @@ class FeedsViewModel(
             val result = runCatching { action() }
             _uiState.value = _uiState.value.copy(
                 isBusy = false,
-                message = feedActionMessage(result, success, failure)
+                message = feedActionUiText(result, success, failure)
             )
             if (result.isSuccess) loadFeeds()
         }
@@ -226,6 +251,15 @@ internal fun <T> feedActionMessage(
     success: ((T) -> String)?,
     failure: (Throwable) -> String
 ): String? = result.fold(
+    onSuccess = { success?.invoke(it) },
+    onFailure = failure
+)
+
+private fun <T> feedActionUiText(
+    result: Result<T>,
+    success: ((T) -> UiText)?,
+    failure: (Throwable) -> UiText
+): UiText? = result.fold(
     onSuccess = { success?.invoke(it) },
     onFailure = failure
 )

@@ -60,14 +60,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.navigation.Routes
 import com.hiosdra.hreader.ui.article.ArticleListGrouped
 import com.hiosdra.hreader.ui.components.ArticleListSkeleton
+import com.hiosdra.hreader.ui.text.resolve
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -97,6 +101,9 @@ fun MainScreen(
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
+    val undoActionLabel = stringResource(R.string.action_undo)
+    val retryActionLabel = stringResource(R.string.action_retry)
+    val offlineRefreshMessage = stringResource(R.string.main_offline_refresh)
 
     BackHandler(enabled = searchActive.value) {
         searchActive.value = false
@@ -117,11 +124,12 @@ fun MainScreen(
 
     // Actions that already happened are offered back, instead of being asked about beforehand.
     uiState.undo?.let { undo ->
+        val undoMessage = undo.message.resolve()
         LaunchedEffect(undo.id) {
             try {
                 val result = snackbarHostState.showSnackbar(
-                    message = undo.message,
-                    actionLabel = "Undo",
+                    message = undoMessage,
+                    actionLabel = undoActionLabel,
                     duration = SnackbarDuration.Long
                 )
                 if (result == SnackbarResult.ActionPerformed) viewModel.undoLastAction()
@@ -137,11 +145,12 @@ fun MainScreen(
     // The empty state spells the failure out inline with a Retry next to it; over a list of
     // articles a snackbar is the only place a failed refresh can report itself.
     uiState.error?.let { message ->
+        val errorMessage = message.resolve()
         LaunchedEffect(message) {
             if (articles.itemCount == 0) return@LaunchedEffect
             val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = "Retry",
+                message = errorMessage,
+                actionLabel = retryActionLabel,
                 duration = SnackbarDuration.Long
             )
             viewModel.dismissError()
@@ -169,9 +178,15 @@ fun MainScreen(
                 TopAppBar(
                     title = {
                         val listTitle = uiState.feedTitle
-                            ?: if (uiState.starredOnly) "Starred articles" else "All articles"
+                            ?: stringResource(
+                                if (uiState.starredOnly) R.string.main_starred_articles else R.string.main_all_articles
+                            )
                         Text(
-                            listTitle + if (unreadCount > 0) "  •  $unreadCount" else "",
+                            if (unreadCount > 0) {
+                                stringResource(R.string.main_title_with_unread_count, listTitle, unreadCount)
+                            } else {
+                                listTitle
+                            },
                             style = MaterialTheme.typography.titleMedium
                         )
                     },
@@ -182,7 +197,7 @@ fun MainScreen(
                         ) {
                             Icon(
                                 Icons.Filled.Menu,
-                                contentDescription = "Feeds",
+                                contentDescription = stringResource(R.string.main_feeds),
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -201,7 +216,9 @@ fun MainScreen(
                         ) {
                             Icon(
                                 if (searchActive.value) Icons.Filled.Close else Icons.Filled.Search,
-                                contentDescription = if (searchActive.value) "Close search" else "Search",
+                                contentDescription = stringResource(
+                                    if (searchActive.value) R.string.main_close_search else R.string.action_search
+                                ),
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -222,7 +239,7 @@ fun MainScreen(
                             } else {
                                 Icon(
                                     Icons.Filled.Refresh,
-                                    contentDescription = "Refresh",
+                                    contentDescription = stringResource(R.string.action_refresh),
                                     tint = MaterialTheme.colorScheme.onSurface
                                 )
                             }
@@ -238,7 +255,7 @@ fun MainScreen(
                             ) {
                                 Icon(
                                     Icons.Filled.MoreVert,
-                                    contentDescription = "More",
+                                    contentDescription = stringResource(R.string.action_more),
                                     tint = MaterialTheme.colorScheme.onSurface
                                 )
                             }
@@ -253,7 +270,10 @@ fun MainScreen(
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            if (uiState.starredOnly) "Show all articles" else "Show starred articles",
+                                            stringResource(
+                                                if (uiState.starredOnly) R.string.main_show_all_articles
+                                                else R.string.main_show_starred_articles
+                                            ),
                                             style = MaterialTheme.typography.labelLarge
                                         )
                                     },
@@ -274,9 +294,9 @@ fun MainScreen(
                                         text = {
                                             Text(
                                                 if (uiState.showReadArticles) {
-                                                    "Unread only"
+                                                    stringResource(R.string.main_unread_only)
                                                 } else {
-                                                    "Show read articles (${uiState.readCount})"
+                                                    stringResource(R.string.main_show_read_articles, uiState.readCount)
                                                 },
                                                 style = MaterialTheme.typography.labelLarge
                                             )
@@ -295,7 +315,9 @@ fun MainScreen(
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
+                                    text = {
+                                        Text(stringResource(R.string.main_settings), style = MaterialTheme.typography.labelLarge)
+                                    },
                                     onClick = {
                                         expanded.value = false
                                         navController.navigate(Routes.SETTINGS)
@@ -331,7 +353,7 @@ fun MainScreen(
                                 .fillMaxWidth()
                                 .focusRequester(searchFocusRequester),
                             singleLine = true,
-                            placeholder = { Text("Search articles") },
+                            placeholder = { Text(stringResource(R.string.main_search_articles)) },
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                 imeAction = androidx.compose.ui.text.input.ImeAction.Search
                             ),
@@ -341,7 +363,7 @@ fun MainScreen(
                             trailingIcon = {
                                 if (uiState.searchQuery.isNotEmpty()) {
                                     IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                        Icon(Icons.Filled.Close, contentDescription = "Clear")
+                                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_clear))
                                     }
                                 }
                             },
@@ -362,7 +384,15 @@ fun MainScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { Icon(Icons.Filled.Done, contentDescription = null) },
-                    text = { Text(text = "Mark $unreadCount ${if (unreadCount == 1) "article" else "articles"} as read") }
+                    text = {
+                        Text(
+                            text = pluralStringResource(
+                                R.plurals.main_mark_articles_read,
+                                unreadCount,
+                                unreadCount
+                            )
+                        )
+                    }
                 )
             }
         }
@@ -375,7 +405,7 @@ fun MainScreen(
 
             refreshState is LoadState.Error && articles.itemCount == 0 -> EmptyState(
                 modifier = Modifier.padding(paddingValues),
-                error = refreshState.error.message ?: "Could not read the stored articles",
+                error = stringResource(R.string.main_could_not_read_stored_articles),
                 hasSearchQuery = uiState.searchQuery.isNotBlank(),
                 starredOnly = uiState.starredOnly,
                 feedId = feedId,
@@ -406,7 +436,7 @@ fun MainScreen(
                         viewModel.refreshFromNetwork()
                     } else {
                         snackbarScope.launch {
-                            snackbarHostState.showSnackbar("Offline — connect to a network to refresh.")
+                            snackbarHostState.showSnackbar(offlineRefreshMessage)
                         }
                     }
                 },
@@ -465,30 +495,32 @@ private fun EmptyState(
                         textAlign = TextAlign.Center
                     )
                     Button(onClick = onRetry, modifier = Modifier.padding(top = 20.dp)) {
-                        Text("Retry")
+                        Text(stringResource(R.string.action_retry))
                     }
                 }
 
                 hasSearchQuery -> {
                     Text(
-                        text = "Nothing matches that search",
+                        text = stringResource(R.string.main_nothing_matches_search),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
                     )
                     Button(onClick = onClearSearch, modifier = Modifier.padding(top = 20.dp)) {
-                        Text("Clear search")
+                        Text(stringResource(R.string.main_clear_search))
                     }
                 }
 
                 starredOnly -> Text(
-                    text = "No starred articles yet",
+                    text = stringResource(R.string.main_no_starred_articles),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
                 )
 
                 else -> {
                     Text(
-                        text = if (feedId == null) "No articles yet" else "No articles for this feed",
+                        text = stringResource(
+                            if (feedId == null) R.string.main_no_articles else R.string.main_no_feed_articles
+                        ),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                         textAlign = TextAlign.Center
@@ -500,7 +532,11 @@ private fun EmptyState(
                         onClick = { if (feedId == null) onBrowseFeeds() else onBack() },
                         modifier = Modifier.padding(top = 20.dp)
                     ) {
-                        Text(if (feedId == null) "Browse subscriptions" else "Back to all articles")
+                        Text(
+                            stringResource(
+                                if (feedId == null) R.string.main_browse_subscriptions else R.string.main_back_to_all_articles
+                            )
+                        )
                     }
                     // Flow rather than Row: at a large font scale the two labels no longer fit
                     // side by side on a narrow screen, and a Row would clip them.
@@ -508,8 +544,8 @@ private fun EmptyState(
                         modifier = Modifier.padding(top = 8.dp),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        TextButton(onClick = onAddFeed) { Text("Add subscription") }
-                        TextButton(onClick = onRetry) { Text("Refresh now") }
+                        TextButton(onClick = onAddFeed) { Text(stringResource(R.string.main_add_subscription)) }
+                        TextButton(onClick = onRetry) { Text(stringResource(R.string.main_refresh_now)) }
                     }
                 }
             }
@@ -525,7 +561,7 @@ private fun OfflineBanner() {
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
-            text = "Offline — showing downloaded articles. Anything you read syncs when you are back online.",
+            text = stringResource(R.string.main_offline_banner),
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             modifier = Modifier
@@ -548,17 +584,16 @@ private fun AiModelUnavailableBanner(
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(
-                text = "AI model unavailable",
+                text = stringResource(R.string.main_ai_model_unavailable_title),
                 style = MaterialTheme.typography.titleSmall
             )
             Text(
-                text = "OpenRouter no longer offers $modelId. Article summaries and credibility " +
-                    "scoring will fail until you pick another model.",
+                text = stringResource(R.string.main_ai_model_unavailable_message, modelId),
                 style = MaterialTheme.typography.bodyMedium
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onOpenSettings) { Text("Open settings") }
-                TextButton(onClick = onDismiss) { Text("Dismiss") }
+                TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.action_show_settings)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_dismiss)) }
             }
         }
     }

@@ -2,6 +2,7 @@ package com.hiosdra.hreader.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.ai.AiModelRepository
 import com.hiosdra.hreader.data.local.repository.OfflineReadinessRepository
@@ -14,6 +15,7 @@ import com.hiosdra.hreader.worker.SyncOperationState
 import com.hiosdra.hreader.worker.SyncOperationStatus
 import com.hiosdra.hreader.worker.SyncScheduler
 import com.hiosdra.hreader.worker.OfflinePreparationStage
+import com.hiosdra.hreader.ui.text.UiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +31,7 @@ data class ServerSettingsUiState(
     val username: String = "",
     val secret: String = "",
     val isTesting: Boolean = false,
-    val statusMessage: String? = null,
+    val statusMessage: UiText? = null,
     val isConnected: Boolean = false,
     val pendingBackendType: BackendType? = null,
     val isSwitchingBackend: Boolean = false,
@@ -47,7 +49,7 @@ data class AiModelsUiState(
     val searchQuery: String = "",
     val freeOnly: Boolean = true,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: UiText? = null
 ) {
     val visibleModels: List<AiModel>
         get() = models.filter { (!freeOnly || it.isFree) && it.matches(searchQuery) }
@@ -204,7 +206,7 @@ class SettingsViewModel(
                 preparationStage = OfflinePreparationStage.IDLE,
                 preparationStatus = SyncOperationStatus(
                     state = SyncOperationState.FAILED,
-                    errorMessage = "Configure a feed server first."
+                    errorMessageResId = R.string.settings_configure_server
                 )
             )
         } else {
@@ -314,7 +316,7 @@ class SettingsViewModel(
                         isResyncing = false,
                         resyncStatus = SyncOperationStatus(
                             state = SyncOperationState.FAILED,
-                            errorMessage = "Configure a feed server first."
+                            errorMessageResId = R.string.settings_configure_server
                         )
                     )
                 }
@@ -323,7 +325,7 @@ class SettingsViewModel(
                     isResyncing = false,
                     resyncStatus = SyncOperationStatus(
                         state = SyncOperationState.FAILED,
-                        errorMessage = cleared.exceptionOrNull()?.message
+                        errorMessageResId = R.string.settings_cache_update_failed
                     )
                 )
             }
@@ -385,7 +387,7 @@ class SettingsViewModel(
                 onFailure = {
                     _aiModels.value.copy(
                         isLoading = false,
-                        error = it.message ?: "Could not load the model list from OpenRouter."
+                        error = UiText.Resource(R.string.ai_model_load_error)
                     )
                 }
             )
@@ -487,13 +489,12 @@ class SettingsViewModel(
             if (result.getOrDefault(false)) {
                 syncScheduler.cancelAllSync()
                 _uiState.value = _uiState.value.copy(
-                    statusMessage = "Downloaded data was cleared for the new account."
+                    statusMessage = UiText.Resource(R.string.settings_data_cleared_new_account)
                 )
                 syncScheduler.schedulePeriodicSync()
             } else if (result.isFailure) {
                 _uiState.value = _uiState.value.copy(
-                    statusMessage = result.exceptionOrNull()?.message
-                        ?: "Could not update the local cache."
+                    statusMessage = UiText.Resource(R.string.settings_cache_update_failed)
                 )
             }
         }
@@ -509,8 +510,7 @@ class SettingsViewModel(
             val ownerCheck = runCatching { localCacheRepository.ensureCacheOwner() }
             if (ownerCheck.isFailure) {
                 _uiState.value = _uiState.value.copy(
-                    statusMessage = ownerCheck.exceptionOrNull()?.message
-                        ?: "Could not prepare the local cache."
+                    statusMessage = UiText.Resource(R.string.settings_prepare_cache_failed)
                 )
                 return@launch
             }
@@ -536,9 +536,14 @@ class SettingsViewModel(
                 isTesting = false,
                 isConnected = result.isSuccess && ownerCheck.isSuccess,
                 statusMessage = if (failure == null) {
-                    "Connected. Found ${result.getOrThrow()} subscriptions."
+                    val subscriptionCount = result.getOrThrow()
+                    UiText.Plural(
+                        id = R.plurals.settings_connected,
+                        count = subscriptionCount,
+                        args = listOf(subscriptionCount)
+                    )
                 } else {
-                    failure.message ?: "Could not connect to the server."
+                    UiText.Resource(R.string.settings_connect_failed)
                 }
             )
         }
@@ -560,4 +565,6 @@ private fun ServerSettingsUiState.cleared(): ServerSettingsUiState =
 
 private fun ServerSettingsUiState.withClearFailure(failure: Throwable?): ServerSettingsUiState =
     if (failure == null) this
-    else copy(statusMessage = failure.message ?: "Could not clear the downloaded articles.")
+    else copy(
+        statusMessage = UiText.Resource(R.string.settings_clear_articles_failed)
+    )

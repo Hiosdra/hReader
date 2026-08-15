@@ -2,7 +2,10 @@ package com.hiosdra.hreader.ui.article
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.ai.ArticleAiService
+import com.hiosdra.hreader.data.ai.EmptyContentException
+import com.hiosdra.hreader.data.ai.MissingApiKeyException
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
 import com.hiosdra.hreader.data.local.repository.ArticleAiOverviewRepository
 import com.hiosdra.hreader.data.local.repository.ArticlePageRepository
@@ -19,6 +22,7 @@ import com.hiosdra.hreader.data.model.OfflinePage
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.util.ImageLoader
 import com.hiosdra.hreader.util.NetworkMonitor
+import com.hiosdra.hreader.ui.text.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,8 +32,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 
-private const val MISSING_CONTENT_MESSAGE =
-    "The article text is still downloading. Try again in a moment."
+private val MISSING_CONTENT_MESSAGE = UiText.Resource(R.string.article_missing_content)
 
 /**
  * How many articles either side of the opened one the reader can swipe through.
@@ -41,8 +44,7 @@ private const val MISSING_CONTENT_MESSAGE =
 private const val PAGER_WINDOW_RADIUS = 50
 private const val CONTENT_CACHE_RADIUS = 1
 
-private const val PARTIAL_CONTENT_MESSAGE =
-    "The full text of this article was never downloaded, so this is only what the feed itself carried."
+private val PARTIAL_CONTENT_MESSAGE = UiText.Resource(R.string.article_partial_content)
 
 internal fun mergeReaderEntries(
     ids: List<Long>,
@@ -61,7 +63,7 @@ data class ArticleUiState(
     val listSize: Int = 0,
     val listWindowStartIndex: Int = 0,
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
     /** Each article's text as it is read, with every image address already resolved. */
     val content: Map<Long, String> = emptyMap(),
     /**
@@ -78,15 +80,15 @@ data class ArticleUiState(
     val readingPositions: Map<Long, Float> = emptyMap(),
     val readingPositionLoadedIds: Set<Long> = emptySet(),
     val offlinePages: Map<Long, OfflinePage> = emptyMap(),
-    val contentError: String? = null,
+    val contentError: UiText? = null,
     val isOnline: Boolean = true,
     val aiOverviews: Map<Long, String> = emptyMap(),
     val generatingOverviewIds: Set<Long> = emptySet(),
-    val overviewError: String? = null,
+    val overviewError: UiText? = null,
     val credibilityEnabled: Boolean = false,
     val credibilityReports: Map<Long, CredibilityReport> = emptyMap(),
     val analyzingCredibilityIds: Set<Long> = emptySet(),
-    val scoreError: String? = null
+    val scoreError: UiText? = null
 )
 
 internal fun ArticleUiState.readerWindowIds(index: Int = currentIndex): Set<Long> {
@@ -414,7 +416,7 @@ class ArticleViewModel(
                 }
                 observeArticles(ids)
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = "Could not load articles. Try again.") }
+                _uiState.update { it.copy(isLoading = false, error = UiText.Resource(R.string.article_load_error)) }
             }
         }
     }
@@ -509,18 +511,25 @@ class ArticleViewModel(
 
         viewModelScope.launch {
             val content = getContentForEntry(entryId).orEmpty()
-            val modelId = preferencesManager.getAiModelId()
-            val result = if (content.isBlank()) {
-                Result.failure(Exception(MISSING_CONTENT_MESSAGE))
-            } else {
-                val cached = articleAiOverviewRepository.get(entryId, content, modelId)
-                if (cached != null) {
-                    Result.success(cached)
-                } else articleAiService.generateArticleOverview(
-                        title = entry.title,
-                        content = content,
-                        modelId = modelId
+            if (content.isBlank()) {
+                _uiState.update { state ->
+                    state.copy(
+                        generatingOverviewIds = state.generatingOverviewIds - entryId,
+                        overviewError = MISSING_CONTENT_MESSAGE
                     )
+                }
+                return@launch
+            }
+            val modelId = preferencesManager.getAiModelId()
+            val cached = articleAiOverviewRepository.get(entryId, content, modelId)
+            val result = if (cached != null) {
+                Result.success(cached)
+            } else {
+                articleAiService.generateArticleOverview(
+                    title = entry.title,
+                    content = content,
+                    modelId = modelId
+                )
             }
 
             result.getOrNull()?.let { overview ->
@@ -543,7 +552,7 @@ class ArticleViewModel(
                         onFailure = { state.aiOverviews }
                     ),
                     overviewError = result.exceptionOrNull()
-                        ?.let { "Couldn't generate summary. Try again." }
+                        ?.let { aiErrorText(it, R.string.article_summary_error) }
                         ?: state.overviewError
                 )
             }
@@ -595,11 +604,17 @@ class ArticleViewModel(
                         onFailure = { state.credibilityReports }
                     ),
                     scoreError = result.exceptionOrNull()
-                        ?.let { it.message ?: "Failed to analyze credibility" }
+                        ?.let { aiErrorText(it, R.string.article_credibility_error) }
                         ?: state.scoreError
                 )
             }
         }
+    }
+
+    private fun aiErrorText(error: Throwable, fallbackResId: Int): UiText = when (error) {
+        is MissingApiKeyException -> UiText.Resource(R.string.article_ai_api_key_missing)
+        is EmptyContentException -> MISSING_CONTENT_MESSAGE
+        else -> UiText.Resource(fallbackResId)
     }
 
     private fun loadCachedCredibility(entryIds: List<Long>) {

@@ -4,6 +4,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.BackendType
 
 @Composable
@@ -15,20 +17,21 @@ fun BackendSwitchDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Switch to ${targetBackend.displayName}?") },
+        title = { Text(stringResource(R.string.backend_switch_title, stringResource(targetBackend.displayNameRes))) },
         text = {
             Text(
-                "hReader syncs with one server at a time. Switching signs you out of " +
-                    "${currentBackend.displayName} and deletes every article, feed and image " +
-                    "downloaded from it. Your ${targetBackend.displayName} credentials are kept " +
-                    "and a fresh sync starts afterwards."
+                stringResource(
+                    R.string.backend_switch_message,
+                    stringResource(currentBackend.displayNameRes),
+                    stringResource(targetBackend.displayNameRes)
+                )
             )
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Switch and clear data") }
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_switch_and_clear_data)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

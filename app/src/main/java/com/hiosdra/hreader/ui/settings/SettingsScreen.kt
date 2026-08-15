@@ -37,9 +37,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.tts.TtsModelManager
@@ -47,6 +51,7 @@ import com.hiosdra.hreader.ui.components.ErrorReportingPreferenceCard
 import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import com.hiosdra.hreader.util.ErrorReportingManager
+import com.hiosdra.hreader.util.SyncPerformanceOperation
 import com.hiosdra.hreader.util.SyncPerformanceRecord
 import com.hiosdra.hreader.worker.TtsModelDownloadScheduler
 import org.koin.androidx.compose.koinViewModel
@@ -98,7 +103,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = { 
                     Text(
-                        "Settings",
+                        stringResource(R.string.settings_title),
                         style = MaterialTheme.typography.titleMedium
                     ) 
                 },
@@ -106,7 +111,7 @@ fun SettingsScreen(
                     IconButton(onClick = { navController?.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.action_back),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -127,7 +132,7 @@ fun SettingsScreen(
             // FreshRSS Server Card
             item {
                 Text(
-                    text = "RSS server",
+                    text = stringResource(R.string.settings_rss_server),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -156,7 +161,7 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    text = "Sync",
+                    text = stringResource(R.string.settings_sync),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -183,7 +188,7 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    text = "Offline reading",
+                    text = stringResource(R.string.settings_offline_reading),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -212,7 +217,7 @@ fun SettingsScreen(
             // Reading Experience Card
             item {
                 Text(
-                    text = "Reading experience",
+                    text = stringResource(R.string.settings_reading_experience),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -233,12 +238,12 @@ fun SettingsScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Bionic Reading",
+                                    text = stringResource(R.string.settings_bionic_reading),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Highlight portions of words for faster reading",
+                                    text = stringResource(R.string.settings_bionic_reading_description),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -263,7 +268,7 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    text = "AI Credibility Analysis",
+                    text = stringResource(R.string.settings_ai_credibility),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -283,12 +288,12 @@ fun SettingsScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Show credibility chip",
+                                    text = stringResource(R.string.settings_show_credibility_chip),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Adds a chip to every article that rates the text for sourcing, tone and balance",
+                                    text = stringResource(R.string.settings_credibility_description),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -301,21 +306,19 @@ fun SettingsScreen(
                         if (credibilityScoreEnabled) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                             Text(
-                                text = "What the rating means:",
+                                text = stringResource(R.string.settings_rating_meaning),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
                             Text(
-                                text = "• Strong signals: sourced, evidenced, balanced\n• Mixed signals: verify before relying on it\n• Weak signals: sensational or unsupported claims",
+                                text = stringResource(R.string.settings_rating_values),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "This is an AI impression of the article text, not a fact check — " +
-                                    "the model cannot browse the web or verify claims. Each analysis sends " +
-                                    "the article to OpenRouter and is cached until you re-analyze it.",
+                                text = stringResource(R.string.settings_credibility_disclaimer),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -327,7 +330,7 @@ fun SettingsScreen(
             // Paywall Bypass Method Section
             item {
                 Text(
-                    text = "Paywall bypass service",
+                    text = stringResource(R.string.settings_paywall_service),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -338,8 +341,8 @@ fun SettingsScreen(
                     colors = sectionCardColors()
                 ) {
                     SettingRow(
-                        title = "Bypass service",
-                        value = selectedBypassMethod.displayName,
+                        title = stringResource(R.string.settings_bypass_service),
+                        value = stringResource(selectedBypassMethod.displayNameRes),
                         supportingText = selectedBypassMethod.host,
                         onClick = { showBypassDialog = true }
                     )
@@ -349,7 +352,7 @@ fun SettingsScreen(
             // OpenRouter Key Section
             item {
                 Text(
-                    text = "AI provider",
+                    text = stringResource(R.string.settings_ai_provider),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -370,7 +373,7 @@ fun SettingsScreen(
             // AI Model Selection Section
             item {
                 Text(
-                    text = "AI model for summaries",
+                    text = stringResource(R.string.settings_ai_model_summaries),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -381,7 +384,7 @@ fun SettingsScreen(
                     colors = sectionCardColors()
                 ) {
                     SettingRow(
-                        title = "Model",
+                        title = stringResource(R.string.settings_model),
                         value = aiModels.selectedModelName,
                         supportingText = aiModels.selectedModelId.takeIf { it != aiModels.selectedModelName },
                         onClick = { showModelSheet = true }
@@ -389,7 +392,7 @@ fun SettingsScreen(
                 }
                 if (aiModels.selectedModelIsMissing) {
                     Text(
-                        text = "OpenRouter no longer offers this model. Pick another one.",
+                        text = stringResource(R.string.settings_model_missing),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 8.dp)
@@ -399,7 +402,7 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    text = "Privacy & diagnostics",
+                    text = stringResource(R.string.settings_privacy_diagnostics),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -414,7 +417,7 @@ fun SettingsScreen(
             // Performance Section
             item {
                 Text(
-                    text = "Performance",
+                    text = stringResource(R.string.settings_performance),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -429,7 +432,7 @@ fun SettingsScreen(
                             onClick = { showPerformanceDialog = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Show performance info")
+                            Text(stringResource(R.string.settings_show_performance))
                         }
                     }
                 }
@@ -477,8 +480,8 @@ fun SettingsScreen(
         if (showSignOutDialog) {
             AlertDialog(
                 onDismissRequest = { showSignOutDialog = false },
-                title = { Text("Clear downloaded data and sign out") },
-                text = { Text("Your server credentials and downloaded data will be removed from this device.") },
+                title = { Text(stringResource(R.string.settings_sign_out_title)) },
+                text = { Text(stringResource(R.string.settings_sign_out_message)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -486,10 +489,10 @@ fun SettingsScreen(
                             settingsViewModel.signOut()
                         },
                         enabled = !serverSettings.isSwitchingBackend
-                    ) { Text("Sign out") }
+                    ) { Text(stringResource(R.string.action_sign_out)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showSignOutDialog = false }) { Text(stringResource(R.string.action_cancel)) }
                 }
             )
         }
@@ -506,7 +509,7 @@ private fun PerformanceInfoDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                "Sync performance info",
+                stringResource(R.string.settings_sync_performance),
                 style = MaterialTheme.typography.titleLarge
             )
         },
@@ -515,7 +518,7 @@ private fun PerformanceInfoDialog(
                 if (performanceRecords.isEmpty()) {
                     item {
                         Text(
-                            "No performance data available yet.\nSync some articles to see performance metrics.",
+                            stringResource(R.string.settings_no_performance),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -531,11 +534,11 @@ private fun PerformanceInfoDialog(
             Row {
                 if (performanceRecords.isNotEmpty()) {
                     TextButton(onClick = onClearRecords) {
-                        Text("Clear all")
+                        Text(stringResource(R.string.action_clear_all))
                     }
                 }
                 TextButton(onClick = onDismiss) {
-                    Text("Close")
+                    Text(stringResource(R.string.action_close))
                 }
             }
         }
@@ -544,23 +547,24 @@ private fun PerformanceInfoDialog(
 
 @Composable
 private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
+    val locale = LocalLocale.current.platformLocale
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = record.operationName,
+                text = stringResource(record.operationLabelRes()),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-                text = record.getFormattedDuration(),
+                text = record.durationLabel(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
         }
         Text(
-            text = record.getFormattedTimestamp(),
+            text = record.timestampLabel(locale),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -569,7 +573,12 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
         record.batchSize?.let { batchSize ->
             record.totalArticles?.let { totalArticles ->
                 Text(
-                    text = "$totalArticles articles in batches of $batchSize",
+                    text = pluralStringResource(
+                        R.plurals.settings_articles_batches,
+                        totalArticles,
+                        totalArticles,
+                        batchSize
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -577,10 +586,14 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
         }
 
         record.isIncremental?.let { isIncremental ->
-            val syncType = if (isIncremental) "Incremental" else "Full"
             val syncInfo = record.lastSyncHoursAgo?.let { hours ->
-                "$syncType sync (last sync: ${hours}h ago)"
-            } ?: "$syncType sync"
+                stringResource(
+                    if (isIncremental) R.string.settings_incremental_sync else R.string.settings_full_sync,
+                    hours
+                )
+            } ?: stringResource(
+                if (isIncremental) R.string.settings_incremental_sync_plain else R.string.settings_full_sync_plain
+            )
 
             Text(
                 text = syncInfo,
@@ -589,4 +602,32 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
             )
         }
     }
+}
+
+@Composable
+private fun SyncPerformanceRecord.durationLabel(): String = when {
+    durationMs < 1000 -> stringResource(R.string.settings_duration_milliseconds, durationMs)
+    durationMs < 60000 -> stringResource(R.string.settings_duration_seconds, durationMs / 1000.0)
+    else -> stringResource(R.string.settings_duration_minutes, durationMs / 60000.0)
+}
+
+private fun SyncPerformanceRecord.timestampLabel(locale: java.util.Locale): String =
+    java.text.DateFormat.getDateTimeInstance(
+        java.text.DateFormat.MEDIUM,
+        java.text.DateFormat.MEDIUM,
+        locale
+    ).format(java.util.Date(timestamp))
+
+private fun SyncPerformanceRecord.operationLabelRes(): Int = when (operationName) {
+    SyncPerformanceOperation.ARTICLE_PAGES.key -> R.string.settings_operation_article_pages
+    SyncPerformanceOperation.OFFLINE_BACKLOG_TOP_UP.key -> R.string.settings_operation_offline_backlog_top_up
+    SyncPerformanceOperation.FULL_PAGE_PREFETCH.key -> R.string.settings_operation_full_page_prefetch
+    SyncPerformanceOperation.ARTICLE_REFRESH.key -> R.string.settings_operation_article_refresh
+    SyncPerformanceOperation.ORPHANED_CONTENT_CLEANUP.key -> R.string.settings_operation_orphaned_content_cleanup
+    SyncPerformanceOperation.ARTICLE_CONTENT_PREFETCH.key -> R.string.settings_operation_article_content_prefetch
+    SyncPerformanceOperation.ENCLOSURE_IMAGES_DOWNLOAD.key -> R.string.settings_operation_enclosure_images_download
+    SyncPerformanceOperation.BATCH_PROCESSING.key -> R.string.settings_operation_batch_processing
+    SyncPerformanceOperation.INCREMENTAL_SYNC.key -> R.string.settings_operation_incremental_sync
+    SyncPerformanceOperation.FULL_SYNC.key -> R.string.settings_operation_full_sync
+    else -> R.string.settings_operation_other
 }

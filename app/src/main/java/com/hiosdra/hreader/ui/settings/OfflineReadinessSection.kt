@@ -21,7 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.OfflineReadiness
 import com.hiosdra.hreader.worker.OfflinePreparationStage
 import com.hiosdra.hreader.worker.SyncOperationState
@@ -68,7 +71,7 @@ fun OfflineReadinessSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = "Last sync: ${readiness.lastSyncLabel()}",
+            text = stringResource(R.string.offline_last_sync, readiness.lastSyncLabel()),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -82,7 +85,7 @@ fun OfflineReadinessSection(
             if (state.isPreparing && !state.isFullOfflinePreparation) {
                 PreparationProgressContent(state)
             } else {
-                Text("Download for offline reading")
+                Text(stringResource(R.string.offline_download_reading))
             }
         }
         Button(
@@ -95,7 +98,7 @@ fun OfflineReadinessSection(
             if (state.isPreparing && state.isFullOfflinePreparation) {
                 PreparationProgressContent(state)
             } else {
-                Text("Download full pages")
+                Text(stringResource(R.string.offline_download_pages))
             }
         }
         // A real count rather than a spinner of unknown length: the reader is deciding whether
@@ -119,27 +122,31 @@ fun OfflineReadinessSection(
             }
         }
         Text(
-            text = "Offline reading stores article bodies and images. Download full pages also saves the " +
-                "original web pages, but only when you press that button.",
+            text = stringResource(R.string.offline_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
         )
         when (state.preparationStatus.state) {
             SyncOperationState.SUCCEEDED -> Text(
-                text = "Offline download complete.",
+                text = stringResource(R.string.offline_download_complete),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 4.dp)
             )
-            SyncOperationState.FAILED -> Text(
-                text = "Offline download failed: ${state.preparationStatus.errorMessage ?: "try again."}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            SyncOperationState.FAILED -> {
+                val errorMessage = state.preparationStatus.errorMessageResId?.let { stringResource(it) }
+                    ?: state.preparationStatus.errorMessage
+                    ?: stringResource(R.string.sync_try_again)
+                Text(
+                    text = stringResource(R.string.offline_download_failed, errorMessage),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
             SyncOperationState.CANCELLED -> Text(
-                text = "Offline download cancelled.",
+                text = stringResource(R.string.offline_download_cancelled),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
@@ -153,13 +160,12 @@ fun OfflineReadinessSection(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Articles to keep offline",
+            text = stringResource(R.string.offline_articles_to_keep),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium
         )
         Text(
-            text = "How many articles to keep downloaded in total. When the unread ones run out, " +
-                "recent articles you have already read fill the rest.",
+            text = stringResource(R.string.offline_articles_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -169,7 +175,7 @@ fun OfflineReadinessSection(
                 FilterChip(
                     selected = state.backlogTarget == target,
                     onClick = { onBacklogTargetChange(target) },
-                    label = { Text(if (target == 0) "Unread only" else "$target") }
+                    label = { Text(if (target == 0) stringResource(R.string.offline_unread_only) else target.toString()) }
                 )
             }
         }
@@ -185,12 +191,12 @@ fun OfflineReadinessSection(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Download images",
+                    text = stringResource(R.string.offline_download_images),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Off keeps the cache small when storage matters more than pictures",
+                    text = stringResource(R.string.offline_images_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -203,7 +209,7 @@ fun OfflineReadinessSection(
 
         if (state.imageDownloadEnabled) {
             Text(
-                text = "Image storage limit",
+                text = stringResource(R.string.offline_image_limit),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 8.dp)
@@ -214,7 +220,7 @@ fun OfflineReadinessSection(
                     FilterChip(
                         selected = state.imageCacheBudgetMegabytes == budget,
                         onClick = { onImageCacheBudgetChange(budget) },
-                        label = { Text("$budget MB") }
+                        label = { Text(stringResource(R.string.offline_image_budget, budget)) }
                     )
                 }
             }
@@ -222,30 +228,64 @@ fun OfflineReadinessSection(
     }
 }
 
+@Composable
 private fun OfflineReadiness.headline(): String = when {
-    offlineTargetCount == 0 -> "Nothing is available offline yet"
-    isComplete -> "Ready for offline reading — all $offlineTargetCount articles available offline"
-    else -> "$storedContentCount of $offlineTargetCount articles available offline"
+    offlineTargetCount == 0 -> stringResource(R.string.offline_nothing_available)
+    isComplete -> pluralStringResource(R.plurals.offline_ready, offlineTargetCount, offlineTargetCount)
+    else -> pluralStringResource(
+        R.plurals.offline_available,
+        offlineTargetCount,
+        storedContentCount,
+        offlineTargetCount
+    )
 }
 
 private fun OfflineReadiness.contentProgress(): Float =
     if (offlineTargetCount == 0) 0f else (storedContentCount.toFloat() / offlineTargetCount).coerceIn(0f, 1f)
 
+@Composable
 private fun OfflineReadiness.detailLine(): String {
     val megabytes = storedImageBytes / BYTES_PER_MEGABYTE
-    val backlog = if (backlogCount > 0) " · $backlogCount more to download" else ""
-    val images = if (expectedImageCount > 0) {
-        "$storedExpectedImageCount/$expectedImageCount images"
+    val backlog = if (backlogCount > 0) {
+        pluralStringResource(R.plurals.offline_more_to_download, backlogCount, backlogCount)
     } else {
-        "$storedImageCount images"
+        ""
+    }
+    val images = if (expectedImageCount > 0) {
+        pluralStringResource(
+            R.plurals.offline_images_fraction,
+            expectedImageCount,
+            storedExpectedImageCount,
+            expectedImageCount
+        )
+    } else {
+        pluralStringResource(R.plurals.offline_images_count, storedImageCount, storedImageCount)
     }
     val fullPages = if (offlineTargetCount > 0) {
-        "$storedFullPageCount/$offlineTargetCount original pages"
+        pluralStringResource(
+            R.plurals.offline_original_pages_fraction,
+            offlineTargetCount,
+            storedFullPageCount,
+            offlineTargetCount
+        )
     } else {
-        "0 original pages"
+        pluralStringResource(R.plurals.offline_original_pages_count, 0, 0)
     }
-    return "$unreadCount unread$backlog · $storedFullContentCount article bodies, " +
-        "$fullPages, $images (%.0f MB)".format(megabytes)
+    val unread = pluralStringResource(R.plurals.offline_unread_count, unreadCount, unreadCount)
+    val articleBodies = pluralStringResource(
+        R.plurals.offline_article_bodies,
+        storedFullContentCount,
+        storedFullContentCount
+    )
+    return stringResource(
+        R.string.offline_article_summary,
+        unread,
+        backlog,
+        articleBodies,
+        fullPages,
+        images,
+        megabytes
+    )
 }
 
 @Composable
@@ -259,32 +299,34 @@ private fun PreparationProgressContent(state: OfflineUiState) {
     Text(state.preparationLabel())
 }
 
+@Composable
 private fun OfflineUiState.preparationLabel(): String {
     val count = if (preparationTotal > 0) {
-        " $preparationDone of $preparationTotal"
+        stringResource(R.string.offline_progress_count, preparationDone, preparationTotal)
     } else {
         ""
     }
     return when (preparationStage) {
-        OfflinePreparationStage.SYNCING -> "Syncing articles…"
-        OfflinePreparationStage.DOWNLOADING_CONTENT -> "Downloading article content$count…"
-        OfflinePreparationStage.ARCHIVING_PAGES -> "Saving original pages$count…"
+        OfflinePreparationStage.SYNCING -> stringResource(R.string.offline_syncing_articles)
+        OfflinePreparationStage.DOWNLOADING_CONTENT -> stringResource(R.string.offline_downloading_content, count)
+        OfflinePreparationStage.ARCHIVING_PAGES -> stringResource(R.string.offline_saving_pages, count)
         OfflinePreparationStage.IDLE -> if (isFullOfflinePreparation) {
-            "Downloading full pages…"
+            stringResource(R.string.offline_downloading_full_pages)
         } else {
-            "Downloading for offline reading…"
+            stringResource(R.string.offline_downloading)
         }
     }
 }
 
+@Composable
 private fun OfflineReadiness.lastSyncLabel(): String {
-    val syncedAt = lastSyncAt ?: return "not synced yet"
+    val syncedAt = lastSyncAt ?: return stringResource(R.string.offline_not_synced)
     val elapsed = Duration.between(syncedAt, Instant.now())
     return when {
-        elapsed.isNegative -> "just now"
-        elapsed.toMinutes() < 1 -> "just now"
-        elapsed.toHours() < 1 -> "${elapsed.toMinutes()} min ago"
-        elapsed.toDays() < 1 -> "${elapsed.toHours()} h ago"
-        else -> "${elapsed.toDays()} days ago"
+        elapsed.isNegative -> stringResource(R.string.offline_just_now)
+        elapsed.toMinutes() < 1 -> stringResource(R.string.offline_just_now)
+        elapsed.toHours() < 1 -> stringResource(R.string.offline_minutes_ago, elapsed.toMinutes())
+        elapsed.toDays() < 1 -> stringResource(R.string.offline_hours_ago, elapsed.toHours())
+        else -> pluralStringResource(R.plurals.offline_days_ago, elapsed.toDays().toInt(), elapsed.toDays())
     }
 }

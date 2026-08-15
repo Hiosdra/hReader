@@ -19,15 +19,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import com.hiosdra.hreader.data.model.ArticleListEntry
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-
-private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")
+import java.time.format.FormatStyle
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -86,13 +88,13 @@ fun ArticleListGrouped(
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
-                ) {
+                    ) {
                     Text(
-                        text = append.error.message ?: "Could not load more articles",
+                        text = stringResource(R.string.article_more_error),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
-                    TextButton(onClick = { items.retry() }) { Text("Retry") }
+                    TextButton(onClick = { items.retry() }) { Text(stringResource(R.string.action_retry)) }
                 }
             }
 
@@ -103,6 +105,7 @@ fun ArticleListGrouped(
 
 @Composable
 private fun DayHeader(date: LocalDate) {
+    val locale = LocalLocale.current.platformLocale
     Surface(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp,
@@ -114,7 +117,9 @@ private fun DayHeader(date: LocalDate) {
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
         ) {
             Text(
-                text = date.format(DATE_FORMATTER),
+                text = date.format(
+                    DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(locale)
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterStart)

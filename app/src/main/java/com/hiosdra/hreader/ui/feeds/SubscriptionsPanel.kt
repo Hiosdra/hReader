@@ -50,9 +50,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.data.model.Feed
+import com.hiosdra.hreader.R
+import com.hiosdra.hreader.ui.text.resolve
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.util.displayUrl
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +83,8 @@ fun SubscriptionsPanel(
     val isOnline by networkMonitor.isOnline.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val opmlTitle = stringResource(R.string.feeds_opml_title)
+    val opmlFilename = stringResource(R.string.feeds_opml_filename)
 
     var feedPendingRename by remember { mutableStateOf<Feed?>(null) }
     var feedPendingDeletion by remember { mutableStateOf<Feed?>(null) }
@@ -106,7 +111,7 @@ fun SubscriptionsPanel(
         ActivityResultContracts.CreateDocument(OPML_MIME_TYPE)
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch { viewModel.exportOpmlTo { opml -> writeTo(context, uri, opml) } }
+        scope.launch { viewModel.exportOpmlTo(opmlTitle) { opml -> writeTo(context, uri, opml) } }
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -117,19 +122,19 @@ fun SubscriptionsPanel(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Subscriptions", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.feeds_title), style = MaterialTheme.typography.titleLarge)
             Row {
                 IconButton(onClick = onAddFeed, enabled = isOnline) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add subscription")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.feeds_add_subscription))
                 }
                 var menuOpen by remember { mutableStateOf(false) }
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("Import subscriptions (OPML)") },
+                            text = { Text(stringResource(R.string.feeds_import_opml)) },
                             enabled = isOnline,
                             onClick = {
                                 menuOpen = false
@@ -139,10 +144,10 @@ fun SubscriptionsPanel(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Export subscriptions (OPML)") },
+                            text = { Text(stringResource(R.string.feeds_export_opml)) },
                             onClick = {
                                 menuOpen = false
-                                exportLauncher.launch("hreader-subscriptions.opml")
+                                exportLauncher.launch(opmlFilename)
                             }
                         )
                     }
@@ -156,7 +161,7 @@ fun SubscriptionsPanel(
         // is said in place, where the list it changed is.
         uiState.message?.let { message ->
             Text(
-                text = message,
+                text = message.resolve(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier
@@ -169,7 +174,7 @@ fun SubscriptionsPanel(
         }
         if (!isOnline) {
             Text(
-                text = "Offline – subscription changes need a connection",
+                text = stringResource(R.string.feeds_offline_changes),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier
@@ -192,12 +197,12 @@ fun SubscriptionsPanel(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(horizontal = 24.dp)
                     ) {
-                        Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error)
+                        Text(text = uiState.error?.resolve().orEmpty(), color = MaterialTheme.colorScheme.error)
                         Button(onClick = { viewModel.reload() }, modifier = Modifier.padding(top = 16.dp)) {
-                            Text("Retry")
+                            Text(stringResource(R.string.action_retry))
                         }
                         OutlinedButton(onClick = onAddFeed, enabled = isOnline, modifier = Modifier.padding(top = 8.dp)) {
-                            Text("Add subscription")
+                            Text(stringResource(R.string.feeds_add_subscription))
                         }
                     }
                 }
@@ -205,15 +210,15 @@ fun SubscriptionsPanel(
             uiState.feeds.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No subscriptions yet", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.feeds_no_subscriptions), style = MaterialTheme.typography.titleMedium)
                         Button(onClick = onAddFeed, enabled = isOnline, modifier = Modifier.padding(top = 16.dp)) {
-                            Text("Subscribe to your first feed")
+                            Text(stringResource(R.string.feeds_subscribe_first))
                         }
                         OutlinedButton(
                             onClick = { importLauncher.launch(arrayOf("*/*")) },
                             enabled = isOnline,
                             modifier = Modifier.padding(top = 8.dp)
-                        ) { Text("Import subscriptions (OPML)") }
+                        ) { Text(stringResource(R.string.feeds_import_opml)) }
                     }
                 }
             }
@@ -224,12 +229,12 @@ fun SubscriptionsPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Search subscriptions…") },
+                    placeholder = { Text(stringResource(R.string.feeds_search_subscriptions)) },
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     trailingIcon = {
                         if (uiState.searchQuery.isNotEmpty()) {
                             IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+                                Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.feeds_clear_search))
                             }
                         }
                     },
@@ -239,7 +244,7 @@ fun SubscriptionsPanel(
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     item {
                         PanelRow(
-                            title = "All articles",
+                            title = stringResource(R.string.main_all_articles),
                             unreadCount = uiState.unreadCounts.values.sum(),
                             selected = selectedFeedId == null,
                             onClick = { onSelectFeed(null) },
@@ -255,13 +260,13 @@ fun SubscriptionsPanel(
                                     .padding(24.dp)
                             ) {
                                 Text(
-                                    "No matches for '${uiState.searchQuery}'",
+                                    stringResource(R.string.feeds_no_matches, uiState.searchQuery),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 OutlinedButton(
                                     onClick = { viewModel.updateSearchQuery("") },
                                     modifier = Modifier.padding(top = 12.dp)
-                                ) { Text("Clear search") }
+                                ) { Text(stringResource(R.string.feeds_clear_search)) }
                             }
                         }
                     }
@@ -287,16 +292,16 @@ fun SubscriptionsPanel(
     feedPendingDeletion?.let { feed ->
         AlertDialog(
             onDismissRequest = { feedPendingDeletion = null },
-            title = { Text("Unsubscribe from ${feed.title}?") },
-            text = { Text("The subscription and every article downloaded from it are removed.") },
+            title = { Text(stringResource(R.string.feeds_unsubscribe_title, feed.title)) },
+            text = { Text(stringResource(R.string.feeds_unsubscribe_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteFeed(feed.id)
                     feedPendingDeletion = null
-                }) { Text("Unsubscribe") }
+                }) { Text(stringResource(R.string.action_unsubscribe)) }
             },
             dismissButton = {
-                TextButton(onClick = { feedPendingDeletion = null }) { Text("Cancel") }
+                TextButton(onClick = { feedPendingDeletion = null }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -318,19 +323,19 @@ private fun RenameFeedDialog(feed: Feed, onConfirm: (String) -> Unit, onDismiss:
     var title by remember(feed.id) { mutableStateOf(feed.title) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename feed") },
+        title = { Text(stringResource(R.string.feeds_rename_title)) },
         text = {
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
                 singleLine = true,
-                label = { Text("Feed name") }
+                label = { Text(stringResource(R.string.feeds_name)) }
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(title) }, enabled = title.isNotBlank()) { Text("Save") }
+            TextButton(onClick = { onConfirm(title) }, enabled = title.isNotBlank()) { Text(stringResource(R.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )
 }
 
@@ -388,7 +393,7 @@ private fun PanelRow(
                 )
                 if (unreadCount > 0) {
                     Text(
-                        text = "  ($unreadCount)",
+                        text = stringResource(R.string.feeds_unread_count, unreadCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 4.dp),
@@ -412,7 +417,7 @@ private fun PanelRow(
                 IconButton(onClick = { menuOpen = true }) {
                     Icon(
                         Icons.Filled.MoreVert,
-                        contentDescription = "Feed actions",
+                        contentDescription = stringResource(R.string.feeds_actions),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -420,7 +425,7 @@ private fun PanelRow(
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 onDetailsClick?.let { details ->
                     DropdownMenuItem(
-                        text = { Text("Feed details") },
+                        text = { Text(stringResource(R.string.feeds_details)) },
                         leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
                         onClick = {
                             menuOpen = false
@@ -430,7 +435,7 @@ private fun PanelRow(
                 }
                 onRename?.let { rename ->
                     DropdownMenuItem(
-                        text = { Text("Rename") },
+                        text = { Text(stringResource(R.string.action_rename)) },
                         leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                         onClick = {
                             menuOpen = false
@@ -440,7 +445,7 @@ private fun PanelRow(
                 }
                 onUnsubscribe?.let { unsubscribe ->
                     DropdownMenuItem(
-                        text = { Text("Unsubscribe") },
+                        text = { Text(stringResource(R.string.action_unsubscribe)) },
                         leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
                         onClick = {
                             menuOpen = false

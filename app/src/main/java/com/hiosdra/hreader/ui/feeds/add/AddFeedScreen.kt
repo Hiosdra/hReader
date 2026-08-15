@@ -30,10 +30,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.hiosdra.hreader.R
+import com.hiosdra.hreader.ui.text.resolve
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,10 +58,10 @@ fun AddFeedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add subscription", style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(R.string.feeds_add_subscription), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 }
             )
@@ -81,7 +84,7 @@ fun AddFeedScreen(
                 OutlinedTextField(
                     value = uiState.feedUrl,
                     onValueChange = { addFeedViewModel.onFeedUrlChange(it) },
-                    label = { Text("Feed or website URL") },
+                    label = { Text(stringResource(R.string.feeds_add_url_label)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
@@ -100,12 +103,12 @@ fun AddFeedScreen(
                     isError = uiState.error != null
                 )
                 if (uiState.error != null) {
-                    Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp))
+                    Text(text = uiState.error?.resolve().orEmpty(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp))
                 } else if (uiState.feedUrl.isNotBlank() && !uiState.canSubmit) {
-                    Text(text = "Enter a valid URL like https://example.com or example.com/feed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp))
+                    Text(text = stringResource(R.string.feeds_add_url_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp))
                 }
                 if (uiState.showFeedPicker && uiState.discoveredFeeds.isNotEmpty()) {
-                    Text("Choose a feed to subscribe to:", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
+                    Text(stringResource(R.string.feeds_choose_feed), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
                     uiState.discoveredFeeds.forEach { discovered ->
                         Button(
                             onClick = {
@@ -134,7 +137,7 @@ fun AddFeedScreen(
                         if (uiState.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp))
                         } else {
-                            Text("Subscribe")
+                            Text(stringResource(R.string.action_subscribe))
                         }
                     }
                 }

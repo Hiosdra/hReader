@@ -8,17 +8,21 @@ import org.jsoup.parser.Tag
 private const val UNSUPPORTED_CONTENT_SELECTOR =
     "base, script, iframe, frame, object, embed, video, audio, form"
 
-internal fun sanitizeArticleHtml(html: String, baseUrl: String? = null): String {
+internal fun sanitizeArticleHtml(
+    html: String,
+    baseUrl: String? = null,
+    embeddedMediaLabel: String
+): String {
     if (html.isBlank()) return html
 
     val document = Jsoup.parse(html, baseUrl.orEmpty())
-    sanitizeArticleDocument(document)
+    sanitizeArticleDocument(document, embeddedMediaLabel)
     return document.body().html()
 }
 
-internal fun sanitizeArticleDocument(document: Document) {
+internal fun sanitizeArticleDocument(document: Document, embeddedMediaLabel: String) {
     document.select(UNSUPPORTED_CONTENT_SELECTOR).toList().forEach { element ->
-        val replacement = embeddedContentLink(element)
+        val replacement = embeddedContentLink(element, embeddedMediaLabel)
         if (replacement == null) element.remove() else element.replaceWith(replacement)
     }
     document.allElements.toList().forEach { element ->
@@ -28,7 +32,7 @@ internal fun sanitizeArticleDocument(document: Document) {
     }
 }
 
-private fun embeddedContentLink(element: Element): Element? {
+private fun embeddedContentLink(element: Element, label: String): Element? {
     val url = when (element.tagName()) {
         "iframe", "frame", "embed" -> firstHttpUrl(element, listOf("src", "data-src"))
         "object" -> firstHttpUrl(element, listOf("data", "data-src"))
@@ -42,7 +46,7 @@ private fun embeddedContentLink(element: Element): Element? {
     val paragraph = Element(Tag.valueOf("p"), element.baseUri())
     paragraph.appendElement("a")
         .attr("href", url)
-        .text("Open embedded media")
+        .text(label)
     return paragraph
 }
 

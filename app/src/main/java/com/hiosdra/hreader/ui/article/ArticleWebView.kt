@@ -32,11 +32,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.model.OfflinePage
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.util.BionicReadingProcessor
 import com.hiosdra.hreader.util.cleanUrl
 import com.hiosdra.hreader.util.sanitizeArticleHtml
@@ -109,8 +111,9 @@ fun ArticleWebView(
     val bionicReadingEnabled by preferencesManager.observeBionicReadingEnabled()
         .collectAsState(initial = preferencesManager.getBionicReadingEnabled())
 
-    val processedContent = remember(articleContent, baseUrl, bionicReadingEnabled) {
-        val safeContent = sanitizeArticleHtml(articleContent, baseUrl)
+    val embeddedMediaLabel = stringResource(R.string.article_open_embedded_media)
+    val processedContent = remember(articleContent, baseUrl, bionicReadingEnabled, embeddedMediaLabel) {
+        val safeContent = sanitizeArticleHtml(articleContent, baseUrl, embeddedMediaLabel)
         if (bionicReadingEnabled) {
             BionicReadingProcessor.processTextToBionic(safeContent)
         } else {
@@ -338,8 +341,8 @@ internal fun ReaderWebViewError(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Could not display this article.", textAlign = TextAlign.Center)
-            TextButton(onClick = onRetry) { Text("Try again") }
+            Text(stringResource(R.string.article_web_error), textAlign = TextAlign.Center)
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.article_try_again)) }
         }
     }
 }

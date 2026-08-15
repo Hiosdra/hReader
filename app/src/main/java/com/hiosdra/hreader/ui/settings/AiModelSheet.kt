@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.ai.AiModel
 
 private const val SHEET_HEIGHT_FRACTION = 0.9f
@@ -43,7 +45,7 @@ fun AiModelSheet(
     ) {
         Column(modifier = Modifier.fillMaxHeight(SHEET_HEIGHT_FRACTION)) {
             Text(
-                text = "AI model",
+                text = stringResource(R.string.ai_model),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
@@ -65,9 +67,9 @@ fun AiModelSheet(
                 ) {
                     Text(
                         text = if (state.models.isEmpty()) {
-                            "No models loaded from OpenRouter"
+                            stringResource(R.string.ai_no_models_openrouter)
                         } else {
-                            "Nothing matches that search"
+                            stringResource(R.string.ai_no_search_matches)
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

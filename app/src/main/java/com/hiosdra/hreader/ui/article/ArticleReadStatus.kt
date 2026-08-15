@@ -1,4 +1,8 @@
 package com.hiosdra.hreader.ui.article
 
-internal fun readStatusActionLabel(isRead: Boolean): String =
-    if (isRead) "Mark as unread" else "Mark as read"
+import androidx.annotation.StringRes
+import com.hiosdra.hreader.R
+
+@StringRes
+internal fun readStatusActionLabel(isRead: Boolean): Int =
+    if (isRead) R.string.article_mark_as_unread else R.string.article_mark_as_read

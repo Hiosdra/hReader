@@ -15,6 +15,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
 
 /** A closed set of eight short options, so a dialog is enough; the host lives here, not in settings. */
@@ -26,13 +28,13 @@ fun PaywallBypassDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Paywall bypass") },
+        title = { Text(stringResource(R.string.paywall_bypass)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 PaywallBypassMethod.entries.forEach { method ->
                     ListItem(
                         headlineContent = {
-                            Text(method.displayName, style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(method.displayNameRes), style = MaterialTheme.typography.bodyLarge)
                         },
                         supportingContent = {
                             Text(
@@ -56,7 +58,7 @@ fun PaywallBypassDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
         }
     )
 }

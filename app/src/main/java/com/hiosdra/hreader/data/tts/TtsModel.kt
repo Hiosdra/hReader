@@ -1,14 +1,17 @@
 package com.hiosdra.hreader.data.tts
 
+import androidx.annotation.StringRes
+import com.hiosdra.hreader.R
+
 enum class TtsModel(
-    val displayName: String,
-    val description: String,
+    @StringRes val displayNameRes: Int,
+    @StringRes val descriptionRes: Int,
     val bundled: Boolean
 ) {
-    SUPERTONIC("Supertonic 3", "Multilingual neural voice · 129 MB download", false),
-    KOKORO("Kokoro", "English and Chinese neural voices · 140 MB download", false),
-    GOSIA("Gosia", "Polish neural voice · 21 MB download", false),
-    ANDROID("System voice", "Built-in voice · always available", true);
+    SUPERTONIC(R.string.tts_model_supertonic_name, R.string.tts_model_supertonic_description, false),
+    KOKORO(R.string.tts_model_kokoro_name, R.string.tts_model_kokoro_description, false),
+    GOSIA(R.string.tts_model_gosia_name, R.string.tts_model_gosia_description, false),
+    ANDROID(R.string.tts_model_android_name, R.string.tts_model_android_description, true);
 
     companion object {
         fun fromName(value: String?) = entries.firstOrNull { it.name == value } ?: SUPERTONIC

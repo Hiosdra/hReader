@@ -15,7 +15,7 @@ data class OpmlFeed(
  * Subscriptions as OPML, the one interchange format every reader agrees on. Built from the cached
  * feed list rather than from the backend: it is complete, and it works offline.
  */
-fun buildOpml(feeds: List<Feed>, title: String = "hReader subscriptions"): String = buildString {
+fun buildOpml(feeds: List<Feed>, title: String): String = buildString {
     append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
     append("<opml version=\"2.0\">\n")
     append("  <head>\n    <title>${title.xmlEscaped()}</title>\n  </head>\n")

@@ -23,12 +23,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.ui.components.ErrorReportingPreferenceCard
 import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.settings.BackendServerFields
 import com.hiosdra.hreader.ui.settings.OpenRouterKeyField
 import com.hiosdra.hreader.ui.settings.SettingsViewModel
+import com.hiosdra.hreader.ui.settings.secretHintRes
+import com.hiosdra.hreader.ui.settings.secretLabelRes
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import com.hiosdra.hreader.util.ErrorReportingManager
 import org.koin.androidx.compose.koinViewModel
@@ -50,7 +54,7 @@ fun ServerSetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Connect your RSS server", style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(R.string.onboarding_connect_server), style = MaterialTheme.typography.titleMedium) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -68,9 +72,11 @@ fun ServerSetupScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "hReader syncs with your own FreshRSS or Miniflux instance. Choose the server type, " +
-                    "enter its address, and paste the ${serverSettings.backendType.secretLabel.lowercase()} " +
-                    "from ${serverSettings.backendType.secretHint}.",
+                text = stringResource(
+                    R.string.onboarding_description,
+                    stringResource(serverSettings.backendType.secretLabelRes).lowercase(),
+                    stringResource(serverSettings.backendType.secretHintRes)
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -122,7 +128,12 @@ fun ServerSetupScreen(
                 enabled = serverSettings.hasAllFields,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (serverSettings.isConnected) "Start reading" else "Continue without testing")
+                Text(
+                    stringResource(
+                        if (serverSettings.isConnected) R.string.onboarding_start_reading
+                        else R.string.onboarding_continue_without_testing
+                    )
+                )
             }
         }
     }

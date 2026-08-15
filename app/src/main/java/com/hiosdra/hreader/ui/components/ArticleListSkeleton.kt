@@ -28,6 +28,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 
 private const val PLACEHOLDER_ROWS = 6
 
@@ -37,6 +39,7 @@ private const val PLACEHOLDER_ROWS = 6
  */
 @Composable
 fun ArticleListSkeleton(modifier: Modifier = Modifier) {
+    val loadingDescription = stringResource(R.string.loading_articles)
     val transition = rememberInfiniteTransition(label = "skeleton")
     val alpha by transition.animateFloat(
         initialValue = 0.35f,
@@ -48,7 +51,7 @@ fun ArticleListSkeleton(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .semantics { contentDescription = "Loading articles" }
+            .semantics { contentDescription = loadingDescription }
     ) {
         repeat(PLACEHOLDER_ROWS) {
             Card(

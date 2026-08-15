@@ -107,6 +107,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -136,6 +138,7 @@ import com.hiosdra.hreader.navigation.openChromeCustomTab
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
 import com.hiosdra.hreader.ui.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.ui.theme.LocalCredibilityColors
+import com.hiosdra.hreader.ui.text.resolve
 import com.hiosdra.hreader.util.cleanUrl
 import com.hiosdra.hreader.util.removeDuplicateArticleTitle
 import kotlinx.coroutines.Dispatchers
@@ -346,7 +349,7 @@ fun ArticleScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = uiState.error ?: "",
+                            text = uiState.error?.resolve().orEmpty(),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.error,
                             textAlign = TextAlign.Center
@@ -389,8 +392,8 @@ fun ArticleScreen(
             uiState.overviewError?.let { error ->
                 RetryableSnackbar(
                     hostState = snackbarHostState,
-                    message = error,
-                    actionLabel = "Retry".takeIf { currentEntryId != null },
+                    message = error.resolve(),
+                    actionLabel = stringResource(R.string.action_retry).takeIf { currentEntryId != null },
                     onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
                     onDismissed = viewModel::clearOverviewError
                 )
@@ -400,7 +403,7 @@ fun ArticleScreen(
             uiState.contentError?.let { message ->
                 RetryableSnackbar(
                     hostState = snackbarHostState,
-                    message = message,
+                    message = message.resolve(),
                     actionLabel = null,
                     onAction = {},
                     onDismissed = viewModel::clearContentError
@@ -410,8 +413,8 @@ fun ArticleScreen(
             uiState.scoreError?.let { error ->
                 RetryableSnackbar(
                     hostState = snackbarHostState,
-                    message = error,
-                    actionLabel = "Retry".takeIf { currentEntryId != null },
+                    message = error.resolve(),
+                    actionLabel = stringResource(R.string.action_retry).takeIf { currentEntryId != null },
                     onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
                     onDismissed = viewModel::clearScoreError
                 )
@@ -534,6 +537,8 @@ private fun ArticlePager(
     onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val articleLinkLabel = stringResource(R.string.article_link)
+    val offlineLinkCopiedMessage = stringResource(R.string.article_offline_link_copied)
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
             state = pagerState,
@@ -557,8 +562,8 @@ private fun ArticlePager(
                         OfflinePageWebView(
                             page = offlinePage,
                             onLinkClick = { url ->
-                                copyTextToClipboard(context, "Link", url)
-                                Toast.makeText(context, "Offline — link copied", Toast.LENGTH_SHORT).show()
+                                copyTextToClipboard(context, articleLinkLabel, url)
+                                Toast.makeText(context, offlineLinkCopiedMessage, Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier
                                 .fillMaxSize()
@@ -637,7 +642,7 @@ private fun ArticlePager(
                         modifier = Modifier
                             .padding(paddingValues)
                             .padding(bottom = bottomContentPadding),
-                        articleContent = getContentForEntry(entry.id) ?: "No content available",
+                        articleContent = getContentForEntry(entry.id) ?: stringResource(R.string.article_no_content),
                         contentLoaded = entry.id in loadedContentIds,
                         readingPositionLoaded = entry.id in loadedReadingPositionIds,
                         savedReadingProgress = readingProgressForEntry(entry.id),
@@ -687,14 +692,14 @@ private fun ArticleTopBar(
             // the article below.
             Column {
                 Text(
-                    text = feedTitle ?: "hReader",
+                    text = feedTitle ?: stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (listPosition in 1..listSize) {
                     Text(
-                        text = "Article $listPosition of $listSize",
+                        text = stringResource(R.string.article_position, listPosition, listSize),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -703,7 +708,7 @@ private fun ArticleTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back))
             }
         },
         actions = {
@@ -724,7 +729,7 @@ private fun ArticleTopBar(
                 IconButton(onClick = { overflowExpanded.value = true }) {
                     Icon(
                         Icons.Filled.MoreVert,
-                        contentDescription = "More",
+                        contentDescription = stringResource(R.string.action_more),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -739,7 +744,9 @@ private fun ArticleTopBar(
                         .background(MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     DropdownMenuItem(
-                        text = { Text(if (isStarred) "Remove star" else "Star article") },
+                        text = {
+                            Text(stringResource(if (isStarred) R.string.article_remove_star else R.string.article_star))
+                        },
                         onClick = {
                             overflowExpanded.value = false
                             onToggleStar()
@@ -760,7 +767,7 @@ private fun ArticleTopBar(
                     )
                     if (entryUrl != null) {
                         DropdownMenuItem(
-                            text = { Text("Share") },
+                            text = { Text(stringResource(R.string.action_share)) },
                             onClick = {
                                 overflowExpanded.value = false
                                 onShare()
@@ -777,7 +784,7 @@ private fun ArticleTopBar(
                     if (listSize > 0) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         DropdownMenuItem(
-                            text = { Text("Decrease text size") },
+                            text = { Text(stringResource(R.string.article_decrease_text_size)) },
                             onClick = {
                                 overflowExpanded.value = false
                                 onDecreaseTextScale()
@@ -786,7 +793,9 @@ private fun ArticleTopBar(
                             leadingIcon = { Text("A−") }
                         )
                         DropdownMenuItem(
-                            text = { Text("Reset text size (${(textScale * 100).roundToInt()}%)") },
+                            text = {
+                                Text(stringResource(R.string.article_reset_text_size, (textScale * 100).roundToInt()))
+                            },
                             onClick = {
                                 overflowExpanded.value = false
                                 onResetTextScale()
@@ -794,7 +803,7 @@ private fun ArticleTopBar(
                             leadingIcon = { Text("A") }
                         )
                         DropdownMenuItem(
-                            text = { Text("Increase text size") },
+                            text = { Text(stringResource(R.string.article_increase_text_size)) },
                             onClick = {
                                 overflowExpanded.value = false
                                 onIncreaseTextScale()
@@ -817,6 +826,8 @@ private fun ReadStatusButton(
     isRead: Boolean,
     onToggleRead: () -> Unit
 ) {
+    val actionDescription = stringResource(readStatusActionLabel(isRead))
+    val stateDescription = stringResource(if (isRead) R.string.article_read else R.string.article_unread)
     val iconTint by animateColorAsState(
         targetValue = if (isRead) {
             MaterialTheme.colorScheme.primary
@@ -830,8 +841,8 @@ private fun ReadStatusButton(
     IconButton(
         onClick = onToggleRead,
         modifier = Modifier.semantics {
-            contentDescription = readStatusActionLabel(isRead)
-            stateDescription = if (isRead) "Read" else "Unread"
+            contentDescription = actionDescription
+            this.stateDescription = stateDescription
         }
     ) {
         AnimatedContent(
@@ -867,17 +878,20 @@ private fun FeedWebToggle(
     ) {
         Row(modifier = Modifier.padding(2.dp)) {
             ReaderModeOption(
-                label = "FEED",
+                label = stringResource(R.string.article_feed_tab),
                 selected = !isWebViewMode,
                 enabled = true,
-                contentDescription = "Show feed content",
+                contentDescription = stringResource(R.string.article_show_feed_content),
                 onClick = { if (isWebViewMode) onToggleWebView() }
             )
             ReaderModeOption(
-                label = "WEB",
+                label = stringResource(R.string.article_web_tab),
                 selected = isWebViewMode,
                 enabled = canUseWebView,
-                contentDescription = if (canUseWebView) "Show original web page" else "Web mode unavailable offline",
+                contentDescription = stringResource(
+                    if (canUseWebView) R.string.article_show_original_web_page
+                    else R.string.article_web_unavailable_offline
+                ),
                 onClick = { if (!isWebViewMode && canUseWebView) onToggleWebView() }
             )
         }
@@ -961,9 +975,9 @@ private fun ArticleBottomActionBar(
                             Icons.Filled.PlayArrow
                         },
                         contentDescription = if (state.articleId != null) {
-                            "Stop reading"
+                            stringResource(R.string.article_stop_reading)
                         } else {
-                            "Read aloud"
+                            stringResource(R.string.article_read_aloud)
                         }
                     )
                 }
@@ -971,7 +985,7 @@ private fun ArticleBottomActionBar(
                     IconButton(onClick = onOpenInChrome, enabled = isOnline) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_chrome_logo),
-                            contentDescription = "Open original page in Chrome",
+                            contentDescription = stringResource(R.string.article_open_original_in_chrome),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -979,7 +993,7 @@ private fun ArticleBottomActionBar(
                         IconButton(onClick = onBypassPaywall, enabled = isOnline) {
                             Icon(
                                 Icons.Filled.Lock,
-                                contentDescription = "Open through paywall bypass",
+                                contentDescription = stringResource(R.string.article_open_through_paywall_bypass),
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -1005,13 +1019,13 @@ private fun ArticleTtsDetails(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = if (state.isPreparing) "Preparing voice…" else state.title,
+                text = if (state.isPreparing) stringResource(R.string.article_preparing_voice) else state.title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = state.error ?: state.model?.displayName.orEmpty(),
+                text = state.error ?: state.model?.let { stringResource(it.displayNameRes) }.orEmpty(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1023,7 +1037,7 @@ private fun ArticleTtsDetails(
             )
         }
         TextButton(onClick = if (state.isPaused) onResume else onPause) {
-            Text(if (state.isPaused) "Resume" else "Pause")
+            Text(stringResource(if (state.isPaused) R.string.article_resume else R.string.article_pause))
         }
     }
 }
@@ -1052,6 +1066,7 @@ private fun ArticleContent(
     onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
 ) {
     val locale = LocalLocale.current.platformLocale
+    val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
     val dateText = remember(entry.publishedAt, locale) { formatArticleDate(entry.publishedAt, locale) }
     val readableArticleContent = remember(articleContent, entry.title) {
         removeDuplicateArticleTitle(articleContent, entry.title)
@@ -1066,6 +1081,13 @@ private fun ArticleContent(
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val articleLinkLabel = stringResource(R.string.article_link)
+    val offlineLinkCopiedMessage = stringResource(R.string.article_offline_link_copied)
+    val imageUrlLabel = stringResource(R.string.article_image_url)
+    val downloadingRequiresConnectionMessage = stringResource(R.string.article_downloading_requires_connection)
+    val sharingRequiresConnectionMessage = stringResource(R.string.article_sharing_requires_connection)
+    val preparingImageMessage = stringResource(R.string.article_preparing_image)
+    val imageSharingFailedMessage = stringResource(R.string.article_image_sharing_failed)
     val safeWebContentHeightPx = safeArticleWebViewHeightPx(webContentHeightPx)
     val webViewHeight = with(LocalDensity.current) { safeWebContentHeightPx.toDp() }
     val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(webContentHeightPx)
@@ -1182,16 +1204,14 @@ private fun ArticleContent(
                         .widthIn(max = 760.dp)
                         .padding(top = 12.dp)
                 ) {
-                    if (entry.feed.title.isNotBlank()) {
-                        Text(
-                            text = entry.feed.title.uppercase(locale),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
+                    Text(
+                        text = feedTitle.uppercase(locale),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     Text(
                         text = entry.title,
                         style = MaterialTheme.typography.headlineMedium.copy(
@@ -1265,8 +1285,8 @@ private fun ArticleContent(
                             if (isOnline) {
                                 openChromeCustomTab(context, url)
                             } else {
-                                copyTextToClipboard(context, "Link", url)
-                                Toast.makeText(context, "Offline — link copied", Toast.LENGTH_SHORT).show()
+                                copyTextToClipboard(context, articleLinkLabel, url)
+                                Toast.makeText(context, offlineLinkCopiedMessage, Toast.LENGTH_SHORT).show()
                             }
                         },
                         onImageLongClick = { url -> imageActionsUrl = url }
@@ -1286,14 +1306,14 @@ private fun ArticleContent(
                 imageActionsUrl = null
             },
             onCopy = {
-                copyTextToClipboard(context, "Image URL", actionsUrl)
+                copyTextToClipboard(context, imageUrlLabel, actionsUrl)
                 imageActionsUrl = null
             },
             onDownload = {
                 if (isOnline) {
                     enqueueImageDownload(context, actionsUrl)
                 } else {
-                    Toast.makeText(context, "Downloading requires a connection", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, downloadingRequiresConnectionMessage, Toast.LENGTH_SHORT).show()
                 }
                 imageActionsUrl = null
             },
@@ -1301,7 +1321,7 @@ private fun ArticleContent(
                 if (isOnline) {
                     imageShareUrl = actionsUrl
                 } else {
-                    Toast.makeText(context, "Sharing requires a connection", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, sharingRequiresConnectionMessage, Toast.LENGTH_SHORT).show()
                 }
                 imageActionsUrl = null
             }
@@ -1310,9 +1330,9 @@ private fun ArticleContent(
     val shareTarget = imageShareUrl
     if (shareTarget != null) {
         LaunchedEffect(shareTarget) {
-            Toast.makeText(context, "Preparing image…", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, preparingImageMessage, Toast.LENGTH_SHORT).show()
             val shared = shareImageFile(context, entry.title, shareTarget)
-            if (!shared) Toast.makeText(context, "Image sharing failed", Toast.LENGTH_SHORT).show()
+            if (!shared) Toast.makeText(context, imageSharingFailedMessage, Toast.LENGTH_SHORT).show()
             imageShareUrl = null
         }
     }
@@ -1348,7 +1368,9 @@ private fun ArticleMeta(
     val metadata = buildList {
         if (!author.isNullOrBlank()) add(author)
         add(dateText)
-        if (readingTimeMinutes != null && readingTimeMinutes > 0) add("$readingTimeMinutes min read")
+        if (readingTimeMinutes != null && readingTimeMinutes > 0) {
+            add(pluralStringResource(R.plurals.article_reading_time_minutes, readingTimeMinutes, readingTimeMinutes))
+        }
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1380,16 +1402,16 @@ private fun ArticleMeta(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Filled.Star,
-                                contentDescription = "AI summary",
+                                contentDescription = stringResource(R.string.article_ai_summary),
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             val chipText = when {
-                                aiOverview == null && isGeneratingOverview -> "Generating summary…"
-                                aiOverview == null -> "AI summary"
-                                isAiExpanded.value -> "Hide summary"
-                                else -> "Show summary"
+                                aiOverview == null && isGeneratingOverview -> stringResource(R.string.article_generating_summary)
+                                aiOverview == null -> stringResource(R.string.article_ai_summary)
+                                isAiExpanded.value -> stringResource(R.string.article_hide_summary)
+                                else -> stringResource(R.string.article_show_summary)
                             }
                             Text(chipText)
                         }
@@ -1445,13 +1467,13 @@ private fun ArticleMeta(
                         ) {
                             Icon(
                                 Icons.Filled.Star,
-                                contentDescription = "AI summary",
+                                contentDescription = stringResource(R.string.article_ai_summary),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "AI summary",
+                                text = stringResource(R.string.article_ai_summary),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -1468,7 +1490,7 @@ private fun ArticleMeta(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Generating summary…",
+                                    text = stringResource(R.string.article_generating_summary),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -1525,8 +1547,8 @@ private fun CredibilityChip(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 val chipText = when {
-                    isAnalyzing -> "Analyzing..."
-                    report == null -> "Check credibility"
+                    isAnalyzing -> stringResource(R.string.article_analyzing)
+                    report == null -> stringResource(R.string.article_check_credibility)
                     else -> credibilityLevelLabel(report.level)
                 }
                 Text(chipText)
@@ -1568,7 +1590,7 @@ private fun CredibilityCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (report == null) "Credibility" else credibilityLevelLabel(report.level),
+                    text = if (report == null) stringResource(R.string.article_credibility) else credibilityLevelLabel(report.level),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = accent
@@ -1582,7 +1604,7 @@ private fun CredibilityCard(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Analyzing the article...",
+                        text = stringResource(R.string.article_analyzing_article),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1601,7 +1623,7 @@ private fun CredibilityCard(
             if (report.reasons.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 CredibilityBulletList(
-                    title = "What the model saw",
+                    title = stringResource(R.string.article_model_saw),
                     items = report.reasons,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -1610,7 +1632,7 @@ private fun CredibilityCard(
             if (report.redFlags.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 CredibilityBulletList(
-                    title = "Red flags",
+                    title = stringResource(R.string.article_red_flags),
                     items = report.redFlags,
                     color = LocalCredibilityColors.current.low
                 )
@@ -1657,7 +1679,7 @@ private fun CredibilityCard(
                 onClick = onReanalyze,
                 modifier = Modifier.align(Alignment.End)
             ) {
-                Text("Re-analyze")
+                Text(stringResource(R.string.article_reanalyze))
             }
         }
     }
@@ -1680,10 +1702,11 @@ private fun CredibilityBulletList(title: String, items: List<String>, color: Col
     }
 }
 
+@Composable
 private fun credibilityLevelLabel(level: CredibilityLevel): String = when (level) {
-    CredibilityLevel.HIGH -> "Credibility: strong signals"
-    CredibilityLevel.MIXED -> "Credibility: mixed signals"
-    CredibilityLevel.LOW -> "Credibility: weak signals"
+    CredibilityLevel.HIGH -> stringResource(R.string.credibility_high)
+    CredibilityLevel.MIXED -> stringResource(R.string.credibility_mixed)
+    CredibilityLevel.LOW -> stringResource(R.string.credibility_low)
 }
 
 @Composable
@@ -1710,21 +1733,36 @@ private fun credibilityContainerColor(level: CredibilityLevel): Color {
 private fun credibilityAccent(report: CredibilityReport?): Color? =
     report?.let { credibilityColor(it.level) }
 
-private fun credibilityDisclaimer(report: CredibilityReport): String = buildString {
-    append("AI estimate from the article text only — not a fact check. ")
-    append(
-        when (report.confidence) {
-            CredibilityConfidence.HIGH -> "Model confidence: high. "
-            CredibilityConfidence.MEDIUM -> "Model confidence: medium. "
-            CredibilityConfidence.LOW -> "Model confidence: low. "
-        }
-    )
-    if (report.contentTruncated) append("Long article, only the first part was analyzed. ")
-    append("Analyzed ${formatTimestamp(report.analyzedAt)} with ${report.modelId}.")
+@Composable
+private fun credibilityDisclaimer(report: CredibilityReport): String {
+    val locale = LocalLocale.current.platformLocale
+    return buildString {
+        append(stringResource(R.string.credibility_ai_estimate))
+        append(
+            stringResource(
+                when (report.confidence) {
+                    CredibilityConfidence.HIGH -> R.string.credibility_confidence_high
+                    CredibilityConfidence.MEDIUM -> R.string.credibility_confidence_medium
+                    CredibilityConfidence.LOW -> R.string.credibility_confidence_low
+                }
+            )
+        )
+        if (report.contentTruncated) append(stringResource(R.string.credibility_long_article))
+        append(
+            stringResource(
+                R.string.credibility_analyzed,
+                formatTimestamp(report.analyzedAt, locale),
+                report.modelId
+            )
+        )
+    }
 }
 
-private fun formatTimestamp(instant: Instant): String =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault()).format(instant)
+private fun formatTimestamp(instant: Instant, locale: Locale): String =
+    DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+        .withLocale(locale)
+        .withZone(ZoneId.systemDefault())
+        .format(instant)
 
 private fun formatArticleDate(instant: Instant, locale: Locale): String =
     DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
@@ -1752,22 +1790,24 @@ private fun ImageActionsDialog(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
             ListItem(
-                headlineContent = { Text("View image") },
+                headlineContent = { Text(stringResource(R.string.article_view_image)) },
                 modifier = Modifier.clickable(onClick = onView)
             )
             ListItem(
-                headlineContent = { Text("Copy URL") },
+                headlineContent = { Text(stringResource(R.string.article_copy_image_url)) },
                 modifier = Modifier.clickable(onClick = onCopy)
             )
             ListItem(
-                headlineContent = { Text("Download image") },
+                headlineContent = { Text(stringResource(R.string.article_download_image)) },
                 modifier = Modifier.clickable(enabled = isOnline, onClick = onDownload)
             )
             ListItem(
-                headlineContent = { Text("Share image") },
+                headlineContent = { Text(stringResource(R.string.article_share_image)) },
                 modifier = Modifier.clickable(enabled = isOnline, onClick = onShare)
             )
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Close") }
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.action_close))
+            }
         }
     }
 }
@@ -1775,7 +1815,7 @@ private fun ImageActionsDialog(
 private fun copyTextToClipboard(context: Context, label: String, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
-    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, context.getString(R.string.article_copied), Toast.LENGTH_SHORT).show()
 }
 
 private fun enqueueImageDownload(context: Context, url: String) {
@@ -1788,7 +1828,7 @@ private fun enqueueImageDownload(context: Context, url: String) {
     }.isSuccess
     // Both outcomes are announced. The toast used to sit inside the runCatching, so an address
     // DownloadManager would not take left the button looking like it had done nothing at all.
-    val message = if (started) "Downloading" else "Could not start the download"
+    val message = context.getString(if (started) R.string.article_downloading else R.string.article_download_failed)
     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }
 
@@ -1854,7 +1894,7 @@ private suspend fun shareImageFile(context: Context, title: String?, url: String
             withContext(Dispatchers.Main) {
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = contentType
-                    putExtra(Intent.EXTRA_SUBJECT, title ?: "Image")
+                    putExtra(Intent.EXTRA_SUBJECT, title ?: context.getString(R.string.article_image))
                     putExtra(Intent.EXTRA_STREAM, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }

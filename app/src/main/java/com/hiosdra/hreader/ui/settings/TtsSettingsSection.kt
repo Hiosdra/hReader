@@ -28,6 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.data.tts.TtsModel
@@ -57,7 +59,7 @@ internal fun TtsSettingsSection(
     var languageMenuExpanded by remember { mutableStateOf(false) }
 
     Text(
-        text = "Read aloud",
+        text = stringResource(R.string.tts_read_aloud),
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.padding(bottom = 8.dp)
     )
@@ -80,14 +82,19 @@ internal fun TtsSettingsSection(
                         .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
-                ) {
+                    ) {
                     Column(modifier = Modifier.weight(1f)) {
+                        val modelName = stringResource(model.displayNameRes)
                         Text(
-                            text = if (selected) "✓ ${model.displayName}" else model.displayName,
+                            text = if (selected) {
+                                stringResource(R.string.tts_voice_selected, modelName)
+                            } else {
+                                modelName
+                            },
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = model.description,
+                            text = stringResource(model.descriptionRes),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -109,14 +116,14 @@ internal fun TtsSettingsSection(
                                 downloadScheduler.cancelDownload(model)
                                 scope.launch { modelManager.remove(model) }
                             }) {
-                                Text("Remove voice")
+                                Text(stringResource(R.string.tts_remove_voice))
                             }
                         }
                         TtsModelStatus.NotInstalled, is TtsModelStatus.Failed -> {
                             Button(onClick = {
                                 onRequestNotifications { downloadScheduler.enqueueDownload(model) }
                             }) {
-                                Text("Download voice")
+                                Text(stringResource(R.string.tts_download_voice))
                             }
                         }
                         is TtsModelStatus.Downloading -> {
@@ -126,7 +133,7 @@ internal fun TtsSettingsSection(
                                     modifier = Modifier.padding(8.dp)
                                 )
                                 TextButton(onClick = { downloadScheduler.cancelDownload(model) }) {
-                                    Text("Cancel")
+                                    Text(stringResource(R.string.action_cancel))
                                 }
                             }
                         }
@@ -136,7 +143,7 @@ internal fun TtsSettingsSection(
             }
             HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
             Text(
-                text = "Reading speed · ${"%.1f".format(speed)}×",
+                text = stringResource(R.string.tts_reading_speed, "%.1f".format(speed)),
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(top = 16.dp)
             )
@@ -150,7 +157,7 @@ internal fun TtsSettingsSection(
                 steps = 6
             )
             TextButton(onClick = { advancedExpanded = !advancedExpanded }) {
-                Text(if (advancedExpanded) "Hide advanced settings" else "Advanced settings")
+                Text(stringResource(if (advancedExpanded) R.string.tts_advanced_hide else R.string.tts_advanced_show))
             }
             if (advancedExpanded) {
                 AdvancedTtsSettings(
@@ -168,9 +175,9 @@ internal fun TtsSettingsSection(
                 )
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            Text("Voices by language", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.tts_voices_by_language), style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = "Choose a different voice for specific languages. Other languages use the default voice.",
+                text = stringResource(R.string.tts_language_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -191,7 +198,7 @@ internal fun TtsSettingsSection(
             }
             Box {
                 TextButton(onClick = { languageMenuExpanded = true }) {
-                    Text("Choose a voice for a language")
+                    Text(stringResource(R.string.tts_choose_voice))
                 }
                 DropdownMenu(
                     expanded = languageMenuExpanded,
@@ -219,7 +226,7 @@ internal fun TtsSettingsSection(
                 }
             }
             Text(
-                text = "If a downloaded voice is missing or cannot start, hReader uses the system voice automatically.",
+                text = stringResource(R.string.tts_missing_voice_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -251,7 +258,7 @@ private fun LanguageOverrideRow(
         )
         Box {
             TextButton(onClick = { modelMenuExpanded = true }) {
-                Text(model.displayName)
+                Text(stringResource(model.displayNameRes))
             }
             DropdownMenu(
                 expanded = modelMenuExpanded,
@@ -259,11 +266,12 @@ private fun LanguageOverrideRow(
             ) {
                 TtsLanguages.compatibleModels(language).forEach { option ->
                     val available = statuses[option] == TtsModelStatus.Available
+                    val optionName = stringResource(option.displayNameRes)
                     DropdownMenuItem(
                         text = {
                             Text(
-                                if (available) option.displayName
-                                else "${option.displayName} · not downloaded"
+                                if (available) optionName
+                                else stringResource(R.string.tts_not_downloaded, optionName)
                             )
                         },
                         enabled = available,
@@ -276,7 +284,7 @@ private fun LanguageOverrideRow(
             }
         }
         TextButton(onClick = onRemove) {
-            Text("Remove voice")
+            Text(stringResource(R.string.tts_remove_voice))
         }
     }
 }
@@ -290,7 +298,7 @@ private fun AdvancedTtsSettings(
 ) {
     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
     AdvancedSlider(
-        label = "CPU threads",
+        label = stringResource(R.string.tts_cpu_threads),
         value = settings.numThreads.toFloat(),
         displayValue = settings.numThreads.toString(),
         valueRange = 1f..4f,
@@ -298,7 +306,7 @@ private fun AdvancedTtsSettings(
         onValueChange = { onSettingsChange(settings.copy(numThreads = it.roundToInt())) }
     )
     AdvancedSlider(
-        label = "Pause between sentences",
+        label = stringResource(R.string.tts_pause_between_sentences),
         value = settings.silenceScale,
         displayValue = "%.2f".format(settings.silenceScale),
         valueRange = 0f..1f,
@@ -308,13 +316,13 @@ private fun AdvancedTtsSettings(
     when (model) {
         TtsModel.SUPERTONIC -> {
             IntegerSetting(
-                label = "Speaker ID",
+                label = stringResource(R.string.tts_speaker_id),
                 value = settings.supertonicSpeaker,
                 range = 0..9,
                 onValueChange = { onSettingsChange(settings.copy(supertonicSpeaker = it)) }
             )
             AdvancedSlider(
-                label = "Quality steps",
+                label = stringResource(R.string.tts_quality_steps),
                 value = settings.supertonicSteps.toFloat(),
                 displayValue = settings.supertonicSteps.toString(),
                 valueRange = 4f..12f,
@@ -325,14 +333,14 @@ private fun AdvancedTtsSettings(
             )
         }
         TtsModel.KOKORO -> IntegerSetting(
-            label = "Voice ID",
+            label = stringResource(R.string.tts_voice_id),
             value = settings.kokoroSpeaker,
             range = 0..102,
             onValueChange = { onSettingsChange(settings.copy(kokoroSpeaker = it)) }
         )
         TtsModel.GOSIA -> {
             AdvancedSlider(
-                label = "Voice variation",
+                label = stringResource(R.string.tts_voice_variation),
                 value = settings.gosiaNoiseScale,
                 displayValue = "%.2f".format(settings.gosiaNoiseScale),
                 valueRange = 0f..1f,
@@ -340,7 +348,7 @@ private fun AdvancedTtsSettings(
                 onValueChange = { onSettingsChange(settings.copy(gosiaNoiseScale = it)) }
             )
             AdvancedSlider(
-                label = "Duration variation",
+                label = stringResource(R.string.tts_duration_variation),
                 value = settings.gosiaDurationNoiseScale,
                 displayValue = "%.2f".format(settings.gosiaDurationNoiseScale),
                 valueRange = 0f..1f,
@@ -351,18 +359,18 @@ private fun AdvancedTtsSettings(
             )
         }
         TtsModel.ANDROID -> Text(
-            text = "Advanced voice settings do not affect the system voice.",
+            text = stringResource(R.string.tts_advanced_not_system),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
     Text(
-        text = "Changes apply the next time reading starts.",
+        text = stringResource(R.string.tts_changes_next_start),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     TextButton(onClick = onReset) {
-        Text("Reset voice settings")
+        Text(stringResource(R.string.tts_reset_settings))
     }
 }
 
@@ -376,7 +384,7 @@ private fun AdvancedSlider(
     onValueChange: (Float) -> Unit
 ) {
     Text(
-        text = "$label · $displayValue",
+        text = stringResource(R.string.tts_setting_value, label, displayValue),
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(top = 8.dp)
     )
@@ -402,19 +410,19 @@ private fun IntegerSetting(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("$label · $value", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.tts_integer_value, label, value), style = MaterialTheme.typography.bodyMedium)
         Row {
             TextButton(
                 onClick = { onValueChange(value - 1) },
                 enabled = value > range.first
             ) {
-                Text("−")
+                Text(stringResource(R.string.tts_decrease))
             }
             TextButton(
                 onClick = { onValueChange(value + 1) },
                 enabled = value < range.last
             ) {
-                Text("+")
+                Text(stringResource(R.string.tts_increase))
             }
         }
     }

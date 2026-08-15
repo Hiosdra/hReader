@@ -24,8 +24,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.worker.SyncOperationState
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /** Keeps a long list of options inside the dialog instead of pushing its buttons off screen. */
 private val CHOICE_LIST_MAX_HEIGHT = 320.dp
@@ -50,52 +57,57 @@ fun SyncSection(
 
     Column(modifier = modifier) {
         SettingRow(
-            title = "Automatic sync",
+            title = stringResource(R.string.sync_automatic),
             value = formatInterval(state.intervalMinutes),
-            supportingText = "How often articles are fetched in the background",
+            supportingText = stringResource(R.string.sync_frequency_description),
             onClick = { showIntervalDialog = true }
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         ToggleRow(
-            title = "Wi-Fi only",
-            description = "Article bodies and images use most of the data in a sync. Waiting for Wi-Fi " +
-                "helps avoid using mobile data.",
+            title = stringResource(R.string.sync_wifi_only),
+            description = stringResource(R.string.sync_wifi_description),
             checked = state.unmeteredOnly,
             onCheckedChange = onUnmeteredOnlyChange
         )
         ToggleRow(
-            title = "Sync while roaming",
-            description = "When off, background syncing pauses while you are roaming.",
+            title = stringResource(R.string.sync_roaming),
+            description = stringResource(R.string.sync_roaming_description),
             checked = state.syncWhileRoaming,
             onCheckedChange = onSyncWhileRoamingChange
         )
         ToggleRow(
-            title = "Quiet hours",
+            title = stringResource(R.string.sync_quiet_hours),
             description = if (state.quietHoursEnabled) {
-                "No background syncing between ${formatHour(state.quietHoursStart)} and " +
-                    "${formatHour(state.quietHoursEnd)}. Preparing for offline still runs."
+                stringResource(
+                    R.string.sync_quiet_hours_range,
+                    formatHour(state.quietHoursStart),
+                    formatHour(state.quietHoursEnd)
+                )
             } else {
-                "Pause background syncing overnight"
+                stringResource(R.string.sync_quiet_hours_enabled)
             },
             checked = state.quietHoursEnabled,
             onCheckedChange = onQuietHoursEnabledChange
         )
         if (state.quietHoursEnabled) {
             SettingRow(
-                title = "Quiet from",
-                value = "${formatHour(state.quietHoursStart)} – ${formatHour(state.quietHoursEnd)}",
+                title = stringResource(R.string.sync_quiet_from),
+                value = stringResource(
+                    R.string.sync_quiet_hours_range,
+                    formatHour(state.quietHoursStart),
+                    formatHour(state.quietHoursEnd)
+                ),
                 onClick = { showQuietHoursDialog = true }
             )
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         Text(
-            text = "Clear local data",
+            text = stringResource(R.string.sync_clear_local_data),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = "Deletes every downloaded article, feed and image, then fetches the account " +
-                "again from nothing. For a local copy that no longer matches the server.",
+            text = stringResource(R.string.sync_clear_local_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
@@ -106,7 +118,7 @@ fun SyncSection(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = if (state.isResyncing) "Clearing data…" else "Clear local data and sync again",
+                text = stringResource(if (state.isResyncing) R.string.sync_clearing_data else R.string.sync_clear_and_sync),
                 color = if (state.isResyncing) {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 } else {
@@ -117,17 +129,22 @@ fun SyncSection(
         if (state.showResyncStatus) {
             when (state.resyncStatus.state) {
                 SyncOperationState.SUCCEEDED -> Text(
-                    text = "Sync complete.",
+                    text = stringResource(R.string.sync_complete),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall
                 )
-                SyncOperationState.FAILED -> Text(
-                    text = "Sync failed: ${state.resyncStatus.errorMessage ?: "try again."}",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                SyncOperationState.FAILED -> {
+                    val errorMessage = state.resyncStatus.errorMessageResId?.let { stringResource(it) }
+                        ?: state.resyncStatus.errorMessage
+                        ?: stringResource(R.string.sync_try_again)
+                    Text(
+                        text = stringResource(R.string.sync_failed, errorMessage),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 SyncOperationState.CANCELLED -> Text(
-                    text = "Sync cancelled.",
+                    text = stringResource(R.string.sync_cancelled),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -139,10 +156,10 @@ fun SyncSection(
 
     if (showIntervalDialog) {
         ChoiceDialog(
-            title = "Automatic sync",
+            title = stringResource(R.string.sync_automatic),
             options = SYNC_INTERVAL_CHOICES,
             selected = state.intervalMinutes,
-            label = ::formatInterval,
+            label = { formatInterval(it) },
             onSelect = {
                 onIntervalChange(it)
                 showIntervalDialog = false
@@ -154,13 +171,10 @@ fun SyncSection(
     if (showResyncDialog) {
         AlertDialog(
             onDismissRequest = { showResyncDialog = false },
-            title = { Text("Clear local data and sync again?") },
+            title = { Text(stringResource(R.string.sync_clear_confirm_title)) },
             text = {
                 Text(
-                    "This removes every downloaded article, feed, and image from this device, including anything kept for " +
-                        "reading offline. The account is then fetched again from the server, " +
-                        "which needs a connection and can take a while on a large backlog. " +
-                        "Nothing on the server is touched."
+                    stringResource(R.string.sync_clear_confirm_message)
                 )
             },
             confirmButton = {
@@ -168,11 +182,11 @@ fun SyncSection(
                     showResyncDialog = false
                     onResyncFromScratch()
                 }) {
-                    Text("Clear data and sync", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.sync_clear_data), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showResyncDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showResyncDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -226,7 +240,7 @@ private fun <T> ChoiceDialog(
     title: String,
     options: List<T>,
     selected: T,
-    label: (T) -> String,
+    label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -249,7 +263,7 @@ private fun <T> ChoiceDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } }
     )
 }
 
@@ -266,15 +280,15 @@ private fun QuietHoursDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Quiet hours") },
+        title = { Text(stringResource(R.string.sync_quiet_hours)) },
         text = {
             Column {
-                HourPicker(label = "From", hours = hours, selected = start, onSelect = { start = it })
-                HourPicker(label = "To", hours = hours, selected = end, onSelect = { end = it })
+                HourPicker(label = stringResource(R.string.sync_from), hours = hours, selected = start, onSelect = { start = it })
+                HourPicker(label = stringResource(R.string.sync_to), hours = hours, selected = end, onSelect = { end = it })
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(start, end) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        confirmButton = { TextButton(onClick = { onConfirm(start, end) }) { Text(stringResource(R.string.action_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )
 }
 
@@ -288,10 +302,10 @@ private fun HourPicker(label: String, hours: List<Int>, selected: Int, onSelect:
     )
     if (expanded) {
         ChoiceDialog(
-            title = "Hour",
+            title = stringResource(R.string.sync_hour),
             options = hours,
             selected = selected,
-            label = ::formatHour,
+            label = { formatHour(it) },
             onSelect = {
                 onSelect(it)
                 expanded = false
@@ -301,11 +315,21 @@ private fun HourPicker(label: String, hours: List<Int>, selected: Int, onSelect:
     }
 }
 
+@Composable
 private fun formatInterval(minutes: Int): String = when {
-    minutes < 60 -> "$minutes minutes"
-    minutes == 60 -> "1 hour"
-    minutes % 60 == 0 && minutes < 1440 -> "${minutes / 60} hours"
-    else -> "1 day"
+    minutes < 60 -> pluralStringResource(R.plurals.sync_minutes, minutes, minutes)
+    minutes == 60 -> pluralStringResource(R.plurals.sync_hours, 1, 1)
+    minutes % 60 == 0 && minutes < 1440 -> {
+        val hours = minutes / 60
+        pluralStringResource(R.plurals.sync_hours, hours, hours)
+    }
+    else -> stringResource(R.string.sync_one_day)
 }
 
-private fun formatHour(hour: Int): String = "%02d:00".format(hour)
+@Composable
+private fun formatHour(hour: Int): String =
+    LocalTime.of(hour, 0)
+        .format(
+            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+                .withLocale(LocalLocale.current.platformLocale)
+        )

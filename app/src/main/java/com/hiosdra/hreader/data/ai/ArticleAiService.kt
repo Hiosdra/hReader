@@ -10,8 +10,9 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 
 private const val TAG = "ArticleAiService"
-private const val MISSING_API_KEY_MESSAGE = "Add an OpenRouter API key in Settings to use AI features."
-private const val EMPTY_CONTENT_MESSAGE = "The article text has not been downloaded yet. Open the article and try again."
+
+internal class MissingApiKeyException : Exception()
+internal class EmptyContentException : Exception()
 
 class OpenRouterException(val code: Int?, message: String) : Exception(message)
 
@@ -30,7 +31,7 @@ class ArticleAiService(
     ): Result<String> = withContext(Dispatchers.IO) {
         val plainText = stripToPlainText(content)
         if (plainText.isBlank()) {
-            return@withContext Result.failure(Exception(EMPTY_CONTENT_MESSAGE))
+            return@withContext Result.failure(EmptyContentException())
         }
         Log.d(TAG, "Generating overview with model: $modelId")
         executeChat(createSummaryRequest(title, plainText, modelId)).map { it.trim() }
@@ -41,7 +42,7 @@ class ArticleAiService(
         modelId: String
     ): Result<CredibilityReport> = withContext(Dispatchers.IO) {
         val prompt = credibilityPromptBuilder.build(source, modelId)
-            ?: return@withContext Result.failure(Exception(EMPTY_CONTENT_MESSAGE))
+            ?: return@withContext Result.failure(EmptyContentException())
 
         Log.d(TAG, "Analyzing credibility with model: $modelId")
 
@@ -70,7 +71,7 @@ class ArticleAiService(
     }
 
     private suspend fun executeChat(request: OpenRouterRequest): Result<String> {
-        val apiKey = apiKeyOrNull() ?: return Result.failure(Exception(MISSING_API_KEY_MESSAGE))
+        val apiKey = apiKeyOrNull() ?: return Result.failure(MissingApiKeyException())
         return try {
             val response = openRouterApiService.chatCompletion(
                 authorization = "Bearer $apiKey",

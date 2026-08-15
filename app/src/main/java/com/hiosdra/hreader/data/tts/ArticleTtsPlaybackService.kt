@@ -44,7 +44,7 @@ class ArticleTtsPlaybackService : Service() {
     override fun onCreate() {
         super.onCreate()
         NotificationChannels.ensure(this)
-        mediaSession = MediaSession(this, "hReader read aloud").apply {
+        mediaSession = MediaSession(this, getString(R.string.notification_tts_title)).apply {
             setFlags(
                 MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
                     MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
@@ -144,9 +144,17 @@ class ArticleTtsPlaybackService : Service() {
     private fun notification(state: ArticleTtsState): android.app.Notification {
         val text = when {
             state.error != null -> state.error
-            state.isPreparing -> "Preparing ${state.model?.displayName ?: "voice"}"
-            state.isPaused -> "Paused"
-            state.totalChunks > 0 -> "Chunk ${state.currentChunk + 1} of ${state.totalChunks}"
+            state.isPreparing -> getString(
+                R.string.tts_preparing_voice,
+                state.model?.let { getString(it.displayNameRes) }
+                    ?: getString(R.string.tts_voice_model_default)
+            )
+            state.isPaused -> getString(R.string.tts_paused)
+            state.totalChunks > 0 -> getString(
+                R.string.tts_chunk_progress,
+                state.currentChunk + 1,
+                state.totalChunks
+            )
             else -> getString(R.string.notification_tts_title)
         }
         val builder = NotificationCompat.Builder(this, NotificationChannels.TTS)
@@ -162,19 +170,19 @@ class ArticleTtsPlaybackService : Service() {
         if (state.isPaused) {
             builder.addAction(
                 R.drawable.baseline_details_24,
-                "Resume",
+                getString(R.string.tts_resume),
                 actionIntent(ACTION_RESUME, REQUEST_RESUME)
             )
         } else {
             builder.addAction(
                 R.drawable.baseline_details_24,
-                "Pause",
+                getString(R.string.tts_pause),
                 actionIntent(ACTION_PAUSE, REQUEST_PAUSE)
             )
         }
         builder.addAction(
             R.drawable.baseline_details_24,
-            "Stop",
+            getString(R.string.tts_stop),
             actionIntent(ACTION_STOP, REQUEST_STOP)
         )
         return builder.build()

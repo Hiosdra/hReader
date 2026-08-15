@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -31,15 +32,19 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.ArticleListEntry
 import com.hiosdra.hreader.data.model.isRead
 import com.hiosdra.hreader.ui.components.OfflineAwareImage
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 fun ArticleRow(
@@ -48,6 +53,17 @@ fun ArticleRow(
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
 ) {
     val checked = entry.isRead
+    val locale = LocalLocale.current.platformLocale
+    val timeFormatter = remember(locale) {
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+            .withLocale(locale)
+            .withZone(ZoneId.systemDefault())
+    }
+    val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
+    val readStateDescription = stringResource(
+        if (checked) R.string.article_read else R.string.article_unread
+    )
+    val readStatusActionDescription = stringResource(readStatusActionLabel(checked))
 
     // Read rows are dimmed, not hidden. Below this the summary drops under the 4.5:1 needed to
     // stay readable, and a read article still has to be re-findable by eye.
@@ -73,7 +89,9 @@ fun ArticleRow(
             .padding(horizontal = 12.dp, vertical = 3.dp)
             // Read state reaches a screen reader as state rather than as a colour and an opacity,
             // which is all a sighted reader was ever given.
-            .semantics { stateDescription = if (checked) "Read" else "Unread" },
+            .semantics {
+                stateDescription = readStateDescription
+            },
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = sectionCardColors()
@@ -108,7 +126,7 @@ fun ArticleRow(
                             // was measured first, and against a long name in a row narrowed by a
                             // thumbnail the time was left a single character wide, one digit per line.
                             Text(
-                                text = entry.feed.title,
+                                text = feedTitle,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 maxLines = 1,
@@ -117,7 +135,7 @@ fun ArticleRow(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = TIME_FORMATTER.format(entry.publishedAt),
+                                text = timeFormatter.format(entry.publishedAt),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -185,13 +203,10 @@ fun ArticleRow(
                     checked = checked,
                     onCheckedChange = { onCheckedChange(entry.id, it) },
                     modifier = Modifier.semantics {
-                        contentDescription = readStatusActionLabel(checked)
+                        contentDescription = readStatusActionDescription
                     }
                 )
             }
         }
     }
 }
-
-private val TIME_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())

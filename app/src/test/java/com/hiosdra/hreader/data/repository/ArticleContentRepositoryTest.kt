@@ -40,6 +40,7 @@ class ArticleContentRepositoryTest {
     private val articlePageRepository = mockk<ArticlePageRepository>(relaxed = true)
 
     private val repository = ArticleContentRepository(
+        { "Open embedded media" },
         backend,
         articleContentDao,
         articleDao,

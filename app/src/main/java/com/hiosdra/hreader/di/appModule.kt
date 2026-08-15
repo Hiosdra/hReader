@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.di
 
 import androidx.room.Room
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.local.ALL_MIGRATIONS
 import com.hiosdra.hreader.data.local.AppDatabase
 import com.hiosdra.hreader.data.local.repository.ArticleContentRepository
@@ -59,7 +60,18 @@ val appModule = module {
     single { ArticleRepository(get(), get(), get(), get(), get(), get(), get()) }
     single { ArticleImageRepository(androidApplication(), get(), get(), get(), get()) }
     single { CredibilityRepository(get(), get()) }
-    single { ArticleContentRepository(get(), get(), get(), get(), get(), get(), get()) }
+    single {
+        ArticleContentRepository(
+            { androidApplication().getString(R.string.article_open_embedded_media) },
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get()
+        )
+    }
     single { ArticlePageRepository(androidApplication(), get(), get(), get()) }
     single { ArticleReadingPositionRepository(get()) }
     single { OfflineReadinessRepository(get(), get(), get(), get(), get()) }

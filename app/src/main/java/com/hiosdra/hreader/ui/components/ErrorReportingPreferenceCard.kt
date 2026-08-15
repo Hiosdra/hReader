@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.ui.theme.sectionCardColors
 import com.hiosdra.hreader.util.ErrorReportingManager
 
@@ -45,12 +47,12 @@ fun ErrorReportingPreferenceCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Send crash reports and diagnostics",
+                        text = stringResource(R.string.error_reporting_title),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Share crash reports and technical diagnostics with Sentry. You can change this later in Settings.",
+                        text = stringResource(R.string.error_reporting_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -64,7 +66,7 @@ fun ErrorReportingPreferenceCard(
                 onClick = { uriHandler.openUri(ErrorReportingManager.SENTRY_PRIVACY_POLICY_URL) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("View privacy policy")
+                Text(stringResource(R.string.error_reporting_privacy))
             }
         }
     }

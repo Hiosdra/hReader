@@ -21,11 +21,15 @@ data class PreparedArticleImages(
  * download, what to render and which picture leads the article are three questions about the same
  * document, and parsing it once to answer all three is what keeps this off the reader's way.
  */
-fun prepareArticleImages(html: String, baseUri: String): PreparedArticleImages {
+fun prepareArticleImages(
+    html: String,
+    baseUri: String,
+    embeddedMediaLabel: String
+): PreparedArticleImages {
     if (html.isBlank()) return PreparedArticleImages(html, emptyList())
 
     val document = Jsoup.parse(html, baseUri)
-    sanitizeArticleDocument(document)
+    sanitizeArticleDocument(document, embeddedMediaLabel)
     document.select("source[srcset]").forEach { it.removeAttr("srcset") }
     val imageUrls = document.select("img").map { image ->
         image.removeAttr("srcset")

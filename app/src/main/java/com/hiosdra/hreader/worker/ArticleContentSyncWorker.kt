@@ -15,6 +15,7 @@ import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.notification.AppNotificationFactory
 import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.util.SyncPerformanceLogger
+import com.hiosdra.hreader.util.SyncPerformanceOperation
 import com.hiosdra.hreader.util.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -127,7 +128,9 @@ class ArticleContentSyncWorker(
                 Result.retry()
             } else {
                 Result.failure(
-                    workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Article content download failed."))
+                    workDataOf(
+                        KEY_ERROR_MESSAGE to applicationContext.getString(R.string.sync_article_content_failed)
+                    )
                 )
             }
         }
@@ -146,7 +149,7 @@ class ArticleContentSyncWorker(
     }
 
     private suspend fun performOrphanedContentCleanup() {
-        syncPerformanceLogger.measureSyncTime("Orphaned content cleanup") {
+            syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ORPHANED_CONTENT_CLEANUP) {
             articleContentRepository.cleanupOrphanedContent()
         }
     }
@@ -188,7 +191,7 @@ class ArticleContentSyncWorker(
             }
         }
         try {
-            syncPerformanceLogger.measureSyncTime("Article content prefetch") {
+            syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ARTICLE_CONTENT_PREFETCH) {
                 articleContentRepository.prefetchArticleContent(
                     entries = batch,
                     limit = null,
@@ -238,7 +241,7 @@ class ArticleContentSyncWorker(
 
         val deadline = System.nanoTime() + IMAGE_STAGE_BUDGET_NANOS
         var handled = 0
-        syncPerformanceLogger.measureSyncTime("Enclosure images download") {
+        syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ENCLOSURE_IMAGES_DOWNLOAD) {
             for (chunk in enclosureImageEntries.chunked(IMAGE_CHUNK)) {
                 if (System.nanoTime() > deadline) {
                     Log.i(TAG, "Image budget spent after $handled articles; the rest waits for the next run")

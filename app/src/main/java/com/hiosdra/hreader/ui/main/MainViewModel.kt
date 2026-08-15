@@ -13,6 +13,8 @@ import com.hiosdra.hreader.data.repository.LocalCacheRepository
 import com.hiosdra.hreader.data.model.ArticleListEntry
 import com.hiosdra.hreader.data.model.ArticleListQuery
 import com.hiosdra.hreader.data.model.ArticleStatus
+import com.hiosdra.hreader.R
+import com.hiosdra.hreader.ui.text.UiText
 import com.hiosdra.hreader.util.NetworkMonitor
 import com.hiosdra.hreader.worker.SyncScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,14 +61,14 @@ private val UNDO_GRACE: Duration = Duration.ofSeconds(2)
  */
 data class UndoableAction(
     val id: Long,
-    val message: String,
+    val message: UiText,
     val articleIds: List<Long>,
     val markedAt: Instant
 )
 
 data class MainUiState(
     val isRefreshing: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
     val feedTitle: String? = null,
     val searchQuery: String = "",
     val unavailableAiModelId: String? = null,
@@ -147,7 +149,7 @@ class MainViewModel(
                 cacheReady.value = true
             } catch (e: Exception) {
                 Log.e(TAG, "Could not verify the local cache owner", e)
-                _uiState.update { it.copy(error = "Could not prepare local storage. Try again.") }
+                _uiState.update { it.copy(error = UiText.Resource(R.string.error_prepare_local_storage)) }
             }
         }
     }
@@ -244,7 +246,7 @@ class MainViewModel(
 
     fun refreshFromNetwork() {
         if (!_uiState.value.isOnline) {
-            _uiState.update { it.copy(error = "You need an internet connection to refresh.") }
+            _uiState.update { it.copy(error = UiText.Resource(R.string.error_need_connection_refresh)) }
             return
         }
         viewModelScope.launch {
@@ -262,7 +264,7 @@ class MainViewModel(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Could not refresh articles. Check your connection and try again.") }
+                _uiState.update { it.copy(error = UiText.Resource(R.string.error_refresh_articles)) }
             } finally {
                 _uiState.update { it.copy(isRefreshing = false) }
             }
@@ -302,7 +304,11 @@ class MainViewModel(
                         it.copy(
                             undo = UndoableAction(
                                 id = System.currentTimeMillis(),
-                                message = "Marked ${ids.size} ${if (ids.size == 1) "article" else "articles"} as read",
+                                message = UiText.Plural(
+                                    id = R.plurals.main_marked_articles_read,
+                                    count = ids.size,
+                                    args = listOf(ids.size)
+                                ),
                                 articleIds = ids,
                                 markedAt = Instant.now()
                             )

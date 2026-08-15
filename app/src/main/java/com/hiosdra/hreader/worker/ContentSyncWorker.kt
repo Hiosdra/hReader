@@ -13,6 +13,7 @@ import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.notification.AppNotificationFactory
 import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.util.SyncPerformanceLogger
+import com.hiosdra.hreader.util.SyncPerformanceOperation
 import com.hiosdra.hreader.util.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import java.time.LocalTime
@@ -57,7 +58,7 @@ class ContentSyncWorker(
         Log.i(TAG, "Starting ContentSyncWorker (forceFullSync=$forceFullSync)")
         if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
 
-        syncPerformanceLogger.measureSyncTime("Article refresh") {
+        syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ARTICLE_REFRESH) {
             repository.refreshArticles(forceFullSync)
         }
 
@@ -79,7 +80,9 @@ class ContentSyncWorker(
             Result.retry()
         } else {
             Result.failure(
-                workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Article synchronization failed."))
+                workDataOf(
+                    KEY_ERROR_MESSAGE to applicationContext.getString(R.string.sync_content_failed)
+                )
             )
         }
     }
