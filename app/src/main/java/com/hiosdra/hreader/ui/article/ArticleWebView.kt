@@ -36,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.data.model.OfflinePage
 import com.hiosdra.hreader.R
@@ -170,7 +171,6 @@ fun ArticleWebView(
                                 currentOnScrollYChanged.value?.invoke(wv.scrollY)
                             }
                         }
-
                         allowScroll = currentScrollEnabled.value
                         settings.javaScriptEnabled = false
                         settings.defaultFontSize = 16
@@ -181,12 +181,6 @@ fun ArticleWebView(
                             View.OVER_SCROLL_IF_CONTENT_SCROLLS
                         } else {
                             View.OVER_SCROLL_NEVER
-                        }
-                        setOnTouchListener { view, _ ->
-                            if (!currentScrollEnabled.value) {
-                                view.parent?.requestDisallowInterceptTouchEvent(false)
-                            }
-                            false
                         }
                         webViewClient = object : WebViewClient() {
                             override fun onRenderProcessGone(
@@ -352,6 +346,7 @@ internal class ReaderWebView(context: Context) : WebView(context) {
     private var contentHeightUpdateRunnable: Runnable? = null
     private var initialTouchX = 0f
     private var initialTouchY = 0f
+    private var touchInProgress = false
     private var pagerGestureDirection: ReaderGestureDirection? = null
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
 
@@ -361,6 +356,7 @@ internal class ReaderWebView(context: Context) : WebView(context) {
             field = value
             if (!value) {
                 parent?.requestDisallowInterceptTouchEvent(false)
+                touchInProgress = false
                 pagerGestureDirection = null
             }
         }
@@ -419,10 +415,10 @@ internal class ReaderWebView(context: Context) : WebView(context) {
 
     private fun clearCallbacksAndClients() {
         parent?.requestDisallowInterceptTouchEvent(false)
+        touchInProgress = false
         pagerGestureDirection = null
         contentHeightUpdateRunnable?.let(::removeCallbacks)
         contentHeightUpdateRunnable = null
-        setOnTouchListener(null)
         setOnScrollChangeListener(null)
         setOnLongClickListener(null)
         webViewClient = WebViewClient()
@@ -430,37 +426,51 @@ internal class ReaderWebView(context: Context) : WebView(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (protectVerticalScrollFromPager) {
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    initialTouchX = event.x
-                    initialTouchY = event.y
-                    pagerGestureDirection = null
-                    parent?.requestDisallowInterceptTouchEvent(true)
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    if (pagerGestureDirection == null) {
-                        pagerGestureDirection = readerGestureDirection(
-                            deltaX = event.x - initialTouchX,
-                            deltaY = event.y - initialTouchY,
-                            touchSlop = touchSlop
-                        )
-                        if (pagerGestureDirection == ReaderGestureDirection.Horizontal) {
-                            parent?.requestDisallowInterceptTouchEvent(false)
-                        }
+        val clickDetected = event.actionMasked == MotionEvent.ACTION_UP &&
+            touchInProgress &&
+            abs(event.x - initialTouchX) <= touchSlop &&
+            abs(event.y - initialTouchY) <= touchSlop
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                initialTouchX = event.x
+                initialTouchY = event.y
+                touchInProgress = true
+                pagerGestureDirection = null
+                parent?.requestDisallowInterceptTouchEvent(protectVerticalScrollFromPager)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (protectVerticalScrollFromPager && pagerGestureDirection == null) {
+                    pagerGestureDirection = readerGestureDirection(
+                        deltaX = event.x - initialTouchX,
+                        deltaY = event.y - initialTouchY,
+                        touchSlop = touchSlop
+                    )
+                    if (pagerGestureDirection == ReaderGestureDirection.Horizontal) {
+                        parent?.requestDisallowInterceptTouchEvent(false)
                     }
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    parent?.requestDisallowInterceptTouchEvent(false)
-                    pagerGestureDirection = null
-                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                touchInProgress = false
+                pagerGestureDirection = null
             }
         }
-        return super.onTouchEvent(event)
+
+        val handled = super.onTouchEvent(event)
+        if (clickDetected) performClick()
+        return handled
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
     }
 
     override fun onDetachedFromWindow() {
         parent?.requestDisallowInterceptTouchEvent(false)
+        touchInProgress = false
         super.onDetachedFromWindow()
     }
 
@@ -529,7 +539,7 @@ fun OfflinePageWebView(
                             ): Boolean {
                                 val requestUri = request?.url ?: return false
                                 val url = requestUri.toString()
-                                val pageUri = Uri.parse(currentPage.value.baseUrl)
+                                val pageUri = currentPage.value.baseUrl.toUri()
                                 if (requestUri.host == pageUri.host) return false
                                 currentOnLinkClick.value?.invoke(cleanUrl(url))
                                 return currentOnLinkClick.value != null
@@ -554,7 +564,7 @@ fun OfflinePageWebView(
 
 private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse? {
     uri ?: return null
-    val baseUri = Uri.parse(page.baseUrl)
+    val baseUri = page.baseUrl.toUri()
     val basePath = baseUri.path?.trimEnd('/') ?: return null
     if (!uri.scheme.equals(baseUri.scheme, ignoreCase = true) || uri.host != baseUri.host) return null
     val assetsPrefix = "$basePath/assets/"
