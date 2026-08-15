@@ -169,7 +169,7 @@ fun MainScreen(
                 TopAppBar(
                     title = {
                         val listTitle = uiState.feedTitle
-                            ?: if (uiState.starredOnly) "Starred" else "All Items"
+                            ?: if (uiState.starredOnly) "Starred articles" else "All articles"
                         Text(
                             listTitle + if (unreadCount > 0) "  •  $unreadCount" else "",
                             style = MaterialTheme.typography.titleMedium
@@ -253,7 +253,7 @@ fun MainScreen(
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            if (uiState.starredOnly) "All articles" else "Starred only",
+                                            if (uiState.starredOnly) "Show all articles" else "Show starred articles",
                                             style = MaterialTheme.typography.labelLarge
                                         )
                                     },
@@ -362,7 +362,7 @@ fun MainScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { Icon(Icons.Filled.Done, contentDescription = null) },
-                    text = { Text(text = "Mark $unreadCount read") }
+                    text = { Text(text = "Mark $unreadCount ${if (unreadCount == 1) "article" else "articles"} as read") }
                 )
             }
         }
@@ -500,7 +500,7 @@ private fun EmptyState(
                         onClick = { if (feedId == null) onBrowseFeeds() else onBack() },
                         modifier = Modifier.padding(top = 20.dp)
                     ) {
-                        Text(if (feedId == null) "Browse subscriptions" else "Back to all items")
+                        Text(if (feedId == null) "Browse subscriptions" else "Back to all articles")
                     }
                     // Flow rather than Row: at a large font scale the two labels no longer fit
                     // side by side on a narrow screen, and a Row would clip them.
@@ -525,7 +525,7 @@ private fun OfflineBanner() {
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
-            text = "Offline — showing what was downloaded. Anything you read syncs when you are back.",
+            text = "Offline — showing downloaded articles. Anything you read syncs when you are back online.",
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             modifier = Modifier
@@ -552,7 +552,7 @@ private fun AiModelUnavailableBanner(
                 style = MaterialTheme.typography.titleSmall
             )
             Text(
-                text = "OpenRouter no longer offers $modelId. Article overviews and credibility " +
+                text = "OpenRouter no longer offers $modelId. Article summaries and credibility " +
                     "scoring will fail until you pick another model.",
                 style = MaterialTheme.typography.bodyMedium
             )

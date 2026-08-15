@@ -80,10 +80,10 @@ private fun FeedAddress(label: String, value: String?) {
         )
         if (!value.isNullOrBlank()) {
             TextButton(onClick = { copyUrl(context, value) }) {
-                Text("Copy")
+                Text("Copy URL")
             }
             TextButton(onClick = { openChromeCustomTab(context, cleanUrl(value)) }) {
-                Text("Open")
+                Text("Open URL")
             }
         }
     }

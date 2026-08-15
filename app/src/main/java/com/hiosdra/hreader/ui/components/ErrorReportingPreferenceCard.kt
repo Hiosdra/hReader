@@ -45,12 +45,12 @@ fun ErrorReportingPreferenceCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Help improve hReader",
+                        text = "Send crash reports and diagnostics",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Send crash reports and technical diagnostics to Sentry. You can change this later in Settings.",
+                        text = "Share crash reports and technical diagnostics with Sentry. You can change this later in Settings.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -64,7 +64,7 @@ fun ErrorReportingPreferenceCard(
                 onClick = { uriHandler.openUri(ErrorReportingManager.SENTRY_PRIVACY_POLICY_URL) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Sentry privacy policy")
+                Text("View privacy policy")
             }
         }
     }
