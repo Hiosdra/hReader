@@ -10,7 +10,7 @@ import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
 import org.junit.Ignore
 import org.junit.runner.RunWith
 
-@Ignore
+@Ignore("These architecture rules are staged for a future dependency-boundary cleanup.")
 @RunWith(ArchUnitRunner::class)
 @AnalyzeClasses(
     packages = ["com.hiosdra.hreader"],

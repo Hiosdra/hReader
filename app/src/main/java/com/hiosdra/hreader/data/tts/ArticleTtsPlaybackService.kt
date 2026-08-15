@@ -45,10 +45,6 @@ class ArticleTtsPlaybackService : Service() {
         super.onCreate()
         NotificationChannels.ensure(this)
         mediaSession = MediaSession(this, getString(R.string.notification_tts_title)).apply {
-            setFlags(
-                MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
-                    MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
-            )
             setCallback(object : MediaSession.Callback() {
                 override fun onPlay() = this@ArticleTtsPlaybackService.controller.resume()
 

@@ -6,7 +6,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 
 class GroupIntoDaysTest {
@@ -70,7 +69,6 @@ class GroupIntoDaysTest {
 
         assertEquals(2, days.size)
         assertTrue(days[0].date.isBefore(days[1].date))
-        assertTrue(days.map { it.date }.all { it is LocalDate })
     }
 
     private fun at(timestamp: String) = ArticleListEntry(

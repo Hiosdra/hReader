@@ -60,16 +60,14 @@ val debugStoreFile = rootProject.file(
 
 android {
     namespace = "com.hiosdra.hreader"
-    // core-ktx 1.19 and the other AndroidX bumps refuse to be consumed by an
-    // app compiled against anything older than API 37. targetSdk stays at 36
-    // until the Android 17 behaviour changes get a look on a real device.
+    // core-ktx 1.19 and the other AndroidX bumps require API 37.
     compileSdk = 37
     compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "com.hiosdra.hreader"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 2
         versionName = "1.1"
         resValue("string", "sentry_dsn", sentryDsn.get())
@@ -119,6 +117,17 @@ android {
         buildConfig = true
         resValues = true
     }
+    packaging {
+        jniLibs {
+            keepDebugSymbols += setOf(
+                "**/libandroidx.graphics.path.so",
+                "**/libonnxruntime.so",
+                "**/libsherpa-onnx-c-api.so",
+                "**/libsherpa-onnx-cxx-api.so",
+                "**/libsherpa-onnx-jni.so"
+            )
+        }
+    }
     room {
         schemaDirectory("$projectDir/schemas")
         generateKotlin = true
@@ -167,8 +176,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.11.2")
 
     // Paging: the article list is read a page at a time rather than as one list in memory.
-    implementation("androidx.paging:paging-runtime-ktx:3.3.6")
-    implementation("androidx.paging:paging-compose:3.3.6")
+    implementation("androidx.paging:paging-runtime-ktx:3.5.1")
+    implementation("androidx.paging:paging-compose:3.5.1")
     implementation("androidx.room:room-paging:${rootProject.extra["roomVersion"]}")
 
     // Installs the shipped ART profile on first run; without it the baseline profile is inert.
@@ -203,7 +212,7 @@ dependencies {
     ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
 
     // Error reporting without the optional NDK and session-replay native modules.
-    implementation("io.sentry:sentry-android-core:8.50.1")
+    implementation("io.sentry:sentry-android-core:8.53.0")
 
     // Dependency Injection (Koin)
     implementation(platform("io.insert-koin:koin-bom:4.2.2"))
@@ -219,7 +228,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     // HTML Parsing
-    implementation("org.jsoup:jsoup:1.22.2")
+    implementation("org.jsoup:jsoup:1.23.1")
     implementation("org.apache.commons:commons-compress:1.28.0")
 
     // On-device speech synthesis
@@ -237,8 +246,8 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
     // Testing - Architecture
-    testImplementation("com.tngtech.archunit:archunit:1.4.2")
-    testImplementation("com.tngtech.archunit:archunit-junit4:1.4.2")
+    testImplementation("com.tngtech.archunit:archunit:1.5.0")
+    testImplementation("com.tngtech.archunit:archunit-junit4:1.5.0")
 
     // MockK for mocking in unit tests
     testImplementation("io.mockk:mockk:1.14.11")

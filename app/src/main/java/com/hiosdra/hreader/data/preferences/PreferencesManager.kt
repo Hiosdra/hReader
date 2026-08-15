@@ -2,6 +2,7 @@ package com.hiosdra.hreader.data.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.hiosdra.hreader.data.ai.AiModel
 import com.hiosdra.hreader.data.model.BackendType
 import com.hiosdra.hreader.data.paywall.PaywallBypassMethod
@@ -43,27 +44,27 @@ class PreferencesManager(context: Context) {
     fun getBackendType(): BackendType = BackendType.fromName(sharedPreferences.getString(KEY_BACKEND_TYPE, null))
 
     fun setBackendType(backendType: BackendType) {
-        sharedPreferences.edit().putString(KEY_BACKEND_TYPE, backendType.name).apply()
+        sharedPreferences.edit { putString(KEY_BACKEND_TYPE, backendType.name) }
     }
 
     fun getServerUrl(backendType: BackendType): String =
         sharedPreferences.getString(serverUrlKeyFor(backendType), "").orEmpty()
 
     fun setServerUrl(backendType: BackendType, url: String) {
-        sharedPreferences.edit().putString(serverUrlKeyFor(backendType), url).apply()
+        sharedPreferences.edit { putString(serverUrlKeyFor(backendType), url) }
     }
 
     fun getBackendSecret(backendType: BackendType): String =
         secretPreferences.getString(secretKeyFor(backendType), "").orEmpty()
 
     fun setBackendSecret(backendType: BackendType, secret: String) {
-        secretPreferences.edit().putString(secretKeyFor(backendType), secret).apply()
+        secretPreferences.edit { putString(secretKeyFor(backendType), secret) }
     }
 
     fun getFreshRssUsername(): String = secretPreferences.getString(KEY_FRESHRSS_USERNAME, "").orEmpty()
 
     fun setFreshRssUsername(username: String) {
-        secretPreferences.edit().putString(KEY_FRESHRSS_USERNAME, username).apply()
+        secretPreferences.edit { putString(KEY_FRESHRSS_USERNAME, username) }
     }
 
     fun hasBackendCredentials(): Boolean {
@@ -85,7 +86,7 @@ class PreferencesManager(context: Context) {
     fun getOpenRouterApiKey(): String = secretPreferences.getString(KEY_OPENROUTER_API_KEY, "").orEmpty()
 
     fun setOpenRouterApiKey(apiKey: String) {
-        secretPreferences.edit().putString(KEY_OPENROUTER_API_KEY, apiKey).apply()
+        secretPreferences.edit { putString(KEY_OPENROUTER_API_KEY, apiKey) }
     }
 
     /**
@@ -110,9 +111,10 @@ class PreferencesManager(context: Context) {
         }
         if (!secretEditor.commit()) return
 
-        val editor = sharedPreferences.edit()
-        legacyKeys.forEach(editor::remove)
-        editor.putBoolean(KEY_SECRETS_MIGRATED, true).apply()
+        sharedPreferences.edit {
+            legacyKeys.forEach(::remove)
+            putBoolean(KEY_SECRETS_MIGRATED, true)
+        }
     }
 
     fun getPaywallBypassMethod(): PaywallBypassMethod {
@@ -121,21 +123,21 @@ class PreferencesManager(context: Context) {
     }
 
     fun setPaywallBypassMethod(method: PaywallBypassMethod) {
-        sharedPreferences.edit().putString(KEY_PAYWALL_BYPASS_METHOD, method.name).apply()
+        sharedPreferences.edit { putString(KEY_PAYWALL_BYPASS_METHOD, method.name) }
     }
 
     fun getBionicReadingEnabled(): Boolean =
         sharedPreferences.getBoolean(KEY_BIONIC_READING_ENABLED, false)
 
     fun setBionicReadingEnabled(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_BIONIC_READING_ENABLED, enabled).apply()
+        sharedPreferences.edit { putBoolean(KEY_BIONIC_READING_ENABLED, enabled) }
     }
 
     fun getSentryReportingEnabled(): Boolean =
         sharedPreferences.getBoolean(KEY_SENTRY_REPORTING_ENABLED, true)
 
     fun setSentryReportingEnabled(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_SENTRY_REPORTING_ENABLED, enabled).apply()
+        sharedPreferences.edit { putBoolean(KEY_SENTRY_REPORTING_ENABLED, enabled) }
     }
 
     /**
@@ -148,19 +150,19 @@ class PreferencesManager(context: Context) {
         sharedPreferences.getString(KEY_AI_MODEL, AiModel.DEFAULT_ID) ?: AiModel.DEFAULT_ID
 
     fun setAiModelId(modelId: String) {
-        sharedPreferences.edit().putString(KEY_AI_MODEL, modelId).apply()
+        sharedPreferences.edit { putString(KEY_AI_MODEL, modelId) }
     }
 
     fun getLastSyncTimestamp(): Long = sharedPreferences.getLong(KEY_LAST_SYNC_TIMESTAMP, 0L)
 
     fun setLastSyncTimestamp(timestamp: Long) {
-        sharedPreferences.edit().putLong(KEY_LAST_SYNC_TIMESTAMP, timestamp).apply()
+        sharedPreferences.edit { putLong(KEY_LAST_SYNC_TIMESTAMP, timestamp) }
     }
 
     fun getCacheOwnerKey(): String = sharedPreferences.getString(KEY_CACHE_OWNER, "").orEmpty()
 
     fun setCacheOwnerKey(ownerKey: String) {
-        sharedPreferences.edit().putString(KEY_CACHE_OWNER, ownerKey).apply()
+        sharedPreferences.edit { putString(KEY_CACHE_OWNER, ownerKey) }
     }
 
     fun observeLastSyncTimestamp(): Flow<Long> = callbackFlow {
@@ -175,7 +177,7 @@ class PreferencesManager(context: Context) {
     fun getLastFullSyncTimestamp(): Long = sharedPreferences.getLong(KEY_LAST_FULL_SYNC_TIMESTAMP, 0L)
 
     fun setLastFullSyncTimestamp(timestamp: Long) {
-        sharedPreferences.edit().putLong(KEY_LAST_FULL_SYNC_TIMESTAMP, timestamp).apply()
+        sharedPreferences.edit { putLong(KEY_LAST_FULL_SYNC_TIMESTAMP, timestamp) }
     }
 
     fun getSyncPerformanceRecords(): List<SyncPerformanceRecord> {
@@ -195,13 +197,13 @@ class PreferencesManager(context: Context) {
             currentRecords.subList(MAX_PERFORMANCE_RECORDS, currentRecords.size).clear()
         }
 
-        sharedPreferences.edit()
-            .putString(KEY_SYNC_PERFORMANCE_RECORDS, syncRecordsAdapter.toJson(currentRecords))
-            .apply()
+        sharedPreferences.edit {
+            putString(KEY_SYNC_PERFORMANCE_RECORDS, syncRecordsAdapter.toJson(currentRecords))
+        }
     }
 
     fun clearSyncPerformanceRecords() {
-        sharedPreferences.edit().remove(KEY_SYNC_PERFORMANCE_RECORDS).apply()
+        sharedPreferences.edit { remove(KEY_SYNC_PERFORMANCE_RECORDS) }
     }
 
     /**
@@ -213,14 +215,14 @@ class PreferencesManager(context: Context) {
         sharedPreferences.getInt(KEY_OFFLINE_BACKLOG_TARGET, DEFAULT_OFFLINE_BACKLOG_TARGET)
 
     fun setOfflineBacklogTarget(target: Int) {
-        sharedPreferences.edit().putInt(KEY_OFFLINE_BACKLOG_TARGET, target.coerceAtLeast(0)).apply()
+        sharedPreferences.edit { putInt(KEY_OFFLINE_BACKLOG_TARGET, target.coerceAtLeast(0)) }
     }
 
     fun getImageDownloadEnabled(): Boolean =
         sharedPreferences.getBoolean(KEY_IMAGE_DOWNLOAD_ENABLED, true)
 
     fun setImageDownloadEnabled(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_IMAGE_DOWNLOAD_ENABLED, enabled).apply()
+        sharedPreferences.edit { putBoolean(KEY_IMAGE_DOWNLOAD_ENABLED, enabled) }
     }
 
     /** Ceiling on the downloaded-image directory. Oldest images are evicted to stay under it. */
@@ -228,7 +230,7 @@ class PreferencesManager(context: Context) {
         sharedPreferences.getInt(KEY_IMAGE_CACHE_BUDGET_MB, DEFAULT_IMAGE_CACHE_BUDGET_MB)
 
     fun setImageCacheBudgetMegabytes(megabytes: Int) {
-        sharedPreferences.edit().putInt(KEY_IMAGE_CACHE_BUDGET_MB, megabytes.coerceAtLeast(0)).apply()
+        sharedPreferences.edit { putInt(KEY_IMAGE_CACHE_BUDGET_MB, megabytes.coerceAtLeast(0)) }
     }
 
     /** How often the background sync runs. WorkManager clamps anything below its own floor. */
@@ -236,9 +238,9 @@ class PreferencesManager(context: Context) {
         sharedPreferences.getInt(KEY_SYNC_INTERVAL_MINUTES, DEFAULT_SYNC_INTERVAL_MINUTES)
 
     fun setSyncIntervalMinutes(minutes: Int) {
-        sharedPreferences.edit()
-            .putInt(KEY_SYNC_INTERVAL_MINUTES, minutes.coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES))
-            .apply()
+        sharedPreferences.edit {
+            putInt(KEY_SYNC_INTERVAL_MINUTES, minutes.coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES))
+        }
     }
 
     /**
@@ -248,20 +250,20 @@ class PreferencesManager(context: Context) {
     fun getSyncOnUnmeteredOnly(): Boolean = sharedPreferences.getBoolean(KEY_SYNC_UNMETERED_ONLY, false)
 
     fun setSyncOnUnmeteredOnly(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_SYNC_UNMETERED_ONLY, enabled).apply()
+        sharedPreferences.edit { putBoolean(KEY_SYNC_UNMETERED_ONLY, enabled) }
     }
 
     /** Whether background syncing may run while the device is roaming. */
     fun getSyncWhileRoaming(): Boolean = sharedPreferences.getBoolean(KEY_SYNC_WHILE_ROAMING, true)
 
     fun setSyncWhileRoaming(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_SYNC_WHILE_ROAMING, enabled).apply()
+        sharedPreferences.edit { putBoolean(KEY_SYNC_WHILE_ROAMING, enabled) }
     }
 
     fun getQuietHoursEnabled(): Boolean = sharedPreferences.getBoolean(KEY_QUIET_HOURS_ENABLED, false)
 
     fun setQuietHoursEnabled(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_QUIET_HOURS_ENABLED, enabled).apply()
+        sharedPreferences.edit { putBoolean(KEY_QUIET_HOURS_ENABLED, enabled) }
     }
 
     fun getQuietHoursStartHour(): Int =
@@ -271,10 +273,10 @@ class PreferencesManager(context: Context) {
         sharedPreferences.getInt(KEY_QUIET_HOURS_END, DEFAULT_QUIET_HOURS_END)
 
     fun setQuietHours(startHour: Int, endHour: Int) {
-        sharedPreferences.edit()
-            .putInt(KEY_QUIET_HOURS_START, startHour.coerceIn(0, 23))
-            .putInt(KEY_QUIET_HOURS_END, endHour.coerceIn(0, 23))
-            .apply()
+        sharedPreferences.edit {
+            putInt(KEY_QUIET_HOURS_START, startHour.coerceIn(0, 23))
+            putInt(KEY_QUIET_HOURS_END, endHour.coerceIn(0, 23))
+        }
     }
 
     /** When the app last enqueued a background sync chain, so the throttle survives process death. */
@@ -282,20 +284,20 @@ class PreferencesManager(context: Context) {
         sharedPreferences.getLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, 0L)
 
     fun setLastChainedSyncTimestamp(timestamp: Long) {
-        sharedPreferences.edit().putLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, timestamp).apply()
+        sharedPreferences.edit { putLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, timestamp) }
     }
 
     fun getCredibilityScoreEnabled(): Boolean =
         sharedPreferences.getBoolean(KEY_CREDIBILITY_SCORE_ENABLED, false)
 
     fun setCredibilityScoreEnabled(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_CREDIBILITY_SCORE_ENABLED, enabled).apply()
+        sharedPreferences.edit { putBoolean(KEY_CREDIBILITY_SCORE_ENABLED, enabled) }
     }
 
     fun getTtsModel(): TtsModel = TtsModel.fromName(sharedPreferences.getString(KEY_TTS_MODEL, null))
 
     fun setTtsModel(model: TtsModel) {
-        sharedPreferences.edit().putString(KEY_TTS_MODEL, model.name).apply()
+        sharedPreferences.edit { putString(KEY_TTS_MODEL, model.name) }
     }
 
     fun getTtsModelForLanguage(language: String): TtsModel =
@@ -309,15 +311,15 @@ class PreferencesManager(context: Context) {
     fun setTtsLanguageOverride(language: String, model: TtsModel?) {
         val updated = getTtsLanguageOverrides().toMutableMap()
         if (model == null) updated.remove(language) else updated[language] = model
-        sharedPreferences.edit()
-            .putStringSet(KEY_TTS_LANGUAGE_OVERRIDES, updated.map { "${it.key}=${it.value.name}" }.toSet())
-            .apply()
+        sharedPreferences.edit {
+            putStringSet(KEY_TTS_LANGUAGE_OVERRIDES, updated.map { "${it.key}=${it.value.name}" }.toSet())
+        }
     }
 
     fun getTtsSpeed(): Float = sharedPreferences.getFloat(KEY_TTS_SPEED, 1f)
 
     fun setTtsSpeed(speed: Float) {
-        sharedPreferences.edit().putFloat(KEY_TTS_SPEED, speed.coerceIn(0.7f, 1.4f)).apply()
+        sharedPreferences.edit { putFloat(KEY_TTS_SPEED, speed.coerceIn(0.7f, 1.4f)) }
     }
 
     fun getTtsAdvancedSettings() = TtsAdvancedSettings(
@@ -333,18 +335,18 @@ class PreferencesManager(context: Context) {
     )
 
     fun setTtsAdvancedSettings(settings: TtsAdvancedSettings) {
-        sharedPreferences.edit()
-            .putInt(KEY_TTS_THREADS, settings.numThreads.coerceIn(1, 4))
-            .putFloat(KEY_TTS_SILENCE_SCALE, settings.silenceScale.coerceIn(0f, 1f))
-            .putInt(KEY_TTS_SUPERTONIC_SPEAKER, settings.supertonicSpeaker.coerceIn(0, 9))
-            .putInt(KEY_TTS_SUPERTONIC_STEPS, settings.supertonicSteps.coerceIn(4, 12))
-            .putInt(KEY_TTS_KOKORO_SPEAKER, settings.kokoroSpeaker.coerceIn(0, 102))
-            .putFloat(KEY_TTS_GOSIA_NOISE_SCALE, settings.gosiaNoiseScale.coerceIn(0f, 1f))
-            .putFloat(
+        sharedPreferences.edit {
+            putInt(KEY_TTS_THREADS, settings.numThreads.coerceIn(1, 4))
+            putFloat(KEY_TTS_SILENCE_SCALE, settings.silenceScale.coerceIn(0f, 1f))
+            putInt(KEY_TTS_SUPERTONIC_SPEAKER, settings.supertonicSpeaker.coerceIn(0, 9))
+            putInt(KEY_TTS_SUPERTONIC_STEPS, settings.supertonicSteps.coerceIn(4, 12))
+            putInt(KEY_TTS_KOKORO_SPEAKER, settings.kokoroSpeaker.coerceIn(0, 102))
+            putFloat(KEY_TTS_GOSIA_NOISE_SCALE, settings.gosiaNoiseScale.coerceIn(0f, 1f))
+            putFloat(
                 KEY_TTS_GOSIA_DURATION_NOISE_SCALE,
                 settings.gosiaDurationNoiseScale.coerceIn(0f, 1f)
             )
-            .apply()
+        }
     }
 
     private fun observeBoolean(key: String, default: Boolean): Flow<Boolean> = callbackFlow {
