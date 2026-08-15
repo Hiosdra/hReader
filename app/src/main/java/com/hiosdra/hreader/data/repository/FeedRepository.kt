@@ -72,7 +72,7 @@ class FeedRepository(
         feedDao.updateTitle(feedId, title)
     }
 
-    suspend fun exportOpml(): String = buildOpml(getCachedFeeds())
+    suspend fun exportOpml(title: String): String = buildOpml(getCachedFeeds(), title)
 
     /**
      * Subscribes to everything in the file that is not subscribed to already. One failure does not

@@ -15,8 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.model.BackendType
+import com.hiosdra.hreader.ui.text.resolve
 
 @Composable
 fun BackendServerFields(
@@ -39,15 +42,15 @@ fun BackendServerFields(
                     selected = state.backendType == backendType,
                     onClick = { onBackendTypeChange(backendType) },
                     enabled = !state.isSwitchingBackend,
-                    label = { Text(backendType.displayName) }
+                    label = { Text(stringResource(backendType.displayNameRes)) }
                 )
             }
         }
         OutlinedTextField(
             value = state.serverUrl,
             onValueChange = onServerUrlChange,
-            label = { Text("Server URL") },
-            placeholder = { Text("https://rss.example.com") },
+            label = { Text(stringResource(R.string.server_url)) },
+            placeholder = { Text(stringResource(R.string.server_url_placeholder)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             modifier = Modifier.fillMaxWidth()
@@ -56,7 +59,7 @@ fun BackendServerFields(
             OutlinedTextField(
                 value = state.username,
                 onValueChange = onUsernameChange,
-                label = { Text("Username") },
+                label = { Text(stringResource(R.string.server_username)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -64,8 +67,8 @@ fun BackendServerFields(
         OutlinedTextField(
             value = state.secret,
             onValueChange = onSecretChange,
-            label = { Text(state.backendType.secretLabel) },
-            supportingText = { Text(state.backendType.secretHint) },
+            label = { Text(stringResource(state.backendType.secretLabelRes)) },
+            supportingText = { Text(stringResource(state.backendType.secretHintRes)) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -76,7 +79,7 @@ fun BackendServerFields(
             enabled = !state.isTesting && state.hasAllFields,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (state.isTesting) "Testing…" else "Test connection")
+            Text(stringResource(if (state.isTesting) R.string.server_testing else R.string.server_test_connection))
         }
         if (onSignOut != null && state.hasAllFields) {
             TextButton(
@@ -84,12 +87,12 @@ fun BackendServerFields(
                 enabled = !state.isSwitchingBackend,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Clear downloaded data and sign out")
+                Text(stringResource(R.string.server_clear_sign_out))
             }
         }
         state.statusMessage?.let { message ->
             Text(
-                text = message,
+                text = message.resolve(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (state.isConnected) {
                     MaterialTheme.colorScheme.primary

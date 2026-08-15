@@ -74,6 +74,7 @@ enum class OfflinePreparationStage {
 data class SyncOperationStatus(
     val state: SyncOperationState = SyncOperationState.IDLE,
     val errorMessage: String? = null,
+    val errorMessageResId: Int? = null,
     val workIds: Set<UUID> = emptySet()
 ) {
     val isRunning: Boolean

@@ -8,13 +8,13 @@ class SyncPerformanceLogger(private val preferencesManager: PreferencesManager) 
         private const val TAG = "SyncPerformance"
     }
     
-    suspend fun <T> measureSyncTime(operationName: String, block: suspend () -> T): T {
+    suspend fun <T> measureSyncTime(operation: SyncPerformanceOperation, block: suspend () -> T): T {
         val startTime = System.currentTimeMillis()
         val result = block()
         val duration = System.currentTimeMillis() - startTime
         
-        addRecord(operationName = operationName, durationMs = duration)
-        Log.i(TAG, "$operationName completed in ${duration}ms")
+        addRecord(operationName = operation.key, durationMs = duration)
+        Log.i(TAG, "${operation.key} completed in ${duration}ms")
         return result
     }
     
@@ -23,7 +23,7 @@ class SyncPerformanceLogger(private val preferencesManager: PreferencesManager) 
         Log.i(TAG, "Processing $totalArticles articles in $batches batches of $batchSize each")
         
         addRecord(
-            operationName = "Batch Processing",
+            operationName = SyncPerformanceOperation.BATCH_PROCESSING.key,
             batchSize = batchSize,
             totalArticles = totalArticles
         )
@@ -34,6 +34,11 @@ class SyncPerformanceLogger(private val preferencesManager: PreferencesManager) 
             (System.currentTimeMillis() - lastSyncTime) / (60 * 60 * 1000)
         } else null
         
+        val operation = if (isIncremental) {
+            SyncPerformanceOperation.INCREMENTAL_SYNC
+        } else {
+            SyncPerformanceOperation.FULL_SYNC
+        }
         val syncType = if (isIncremental) "incremental" else "full"
         val message = if (isIncremental && lastSyncTime != null) {
             "Using $syncType sync (last sync: ${hoursAgo}h ago)"
@@ -43,7 +48,7 @@ class SyncPerformanceLogger(private val preferencesManager: PreferencesManager) 
         Log.i(TAG, message)
         
         addRecord(
-            operationName = if (isIncremental) "Incremental Sync" else "Full Sync",
+            operationName = operation.key,
             isIncremental = isIncremental,
             lastSyncHoursAgo = hoursAgo
         )

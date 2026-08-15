@@ -25,6 +25,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.core.qualifier.named
+import org.koin.android.ext.koin.androidApplication
 import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -51,8 +52,8 @@ val networkModule = module {
         }
     }
     single { GoogleReaderAuthInterceptor(get()) }
-    single { MinifluxAuthInterceptor(get()) }
-    single { BackendUrlInterceptor(get()) }
+    single { MinifluxAuthInterceptor(get(), androidApplication()) }
+    single { BackendUrlInterceptor(get(), androidApplication()) }
     single<HttpLoggingInterceptor> {
         HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE

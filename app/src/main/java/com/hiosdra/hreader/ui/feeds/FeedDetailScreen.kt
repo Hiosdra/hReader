@@ -25,10 +25,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.navigation.openChromeCustomTab
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.util.cleanUrl
 import org.koin.androidx.compose.koinViewModel
 
@@ -41,10 +43,10 @@ fun FeedDetailScreen(feedId: Long, viewModel: FeedsViewModel = koinViewModel(), 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(feed?.title ?: "Feed Detail", style = MaterialTheme.typography.titleMedium) },
+                title = { Text(feed?.title ?: stringResource(R.string.feeds_detail_title), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 }
             )
@@ -57,11 +59,11 @@ fun FeedDetailScreen(feedId: Long, viewModel: FeedsViewModel = koinViewModel(), 
                 .padding(16.dp)
         ) {
             if (feed != null) {
-                FeedAddress(label = "Site URL", value = feed.siteUrl)
+                FeedAddress(label = stringResource(R.string.feeds_site_url), value = feed.siteUrl)
                 Spacer(modifier = Modifier.height(8.dp))
-                FeedAddress(label = "Feed URL", value = feed.feedUrl)
+                FeedAddress(label = stringResource(R.string.feeds_feed_url), value = feed.feedUrl)
             } else {
-                Text(text = "Feed not found.", color = MaterialTheme.colorScheme.error)
+                Text(text = stringResource(R.string.feeds_not_found), color = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -69,10 +71,11 @@ fun FeedDetailScreen(feedId: Long, viewModel: FeedsViewModel = koinViewModel(), 
 
 @Composable
 private fun FeedAddress(label: String, value: String?) {
+    val displayedValue = value ?: stringResource(R.string.label_not_available)
     val context = LocalContext.current
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
         Text(
-            text = "$label: ${value ?: "-"}",
+            text = stringResource(R.string.feeds_label_value, label, displayedValue),
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
@@ -80,10 +83,10 @@ private fun FeedAddress(label: String, value: String?) {
         )
         if (!value.isNullOrBlank()) {
             TextButton(onClick = { copyUrl(context, value) }) {
-                Text("Copy URL")
+                Text(stringResource(R.string.action_copy_url))
             }
             TextButton(onClick = { openChromeCustomTab(context, cleanUrl(value)) }) {
-                Text("Open URL")
+                Text(stringResource(R.string.action_open_url))
             }
         }
     }
@@ -91,5 +94,5 @@ private fun FeedAddress(label: String, value: String?) {
 
 private fun copyUrl(context: Context, value: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText("URL", value))
+    clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.action_copy_url), value))
 }

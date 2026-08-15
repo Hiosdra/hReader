@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 
 @Composable
 fun OpenRouterKeyField(
@@ -18,9 +20,9 @@ fun OpenRouterKeyField(
     OutlinedTextField(
         value = apiKey,
         onValueChange = onApiKeyChange,
-        label = { Text("OpenRouter API key (optional)") },
-        placeholder = { Text("sk-or-v1-…") },
-        supportingText = { Text("Needed only for article summaries and credibility scoring") },
+        label = { Text(stringResource(R.string.openrouter_api_key)) },
+        placeholder = { Text(stringResource(R.string.openrouter_api_key_placeholder)) },
+        supportingText = { Text(stringResource(R.string.openrouter_api_key_description)) },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),

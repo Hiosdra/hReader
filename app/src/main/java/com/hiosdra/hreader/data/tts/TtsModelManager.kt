@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.data.tts
 
 import android.content.Context
+import com.hiosdra.hreader.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -86,7 +87,7 @@ class TtsModelManager(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                markDownloadFailed(model, e.message ?: "Could not install model")
+                markDownloadFailed(model, appContext.getString(R.string.tts_model_install_failed))
                 throw e
             } finally {
                 archive.delete()
@@ -167,7 +168,9 @@ class TtsModelManager(
                 },
                 onFailure = {
                     _statuses.value = _statuses.value + (
-                        model to TtsModelStatus.Failed(it.message ?: "Could not remove model")
+                        model to TtsModelStatus.Failed(
+                            appContext.getString(R.string.tts_model_remove_failed)
+                        )
                     )
                 }
             )

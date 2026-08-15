@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.data.tts.TtsModel
 import com.hiosdra.hreader.data.tts.TtsModelManager
@@ -46,14 +47,15 @@ class TtsModelDownloadWorker(
         AppNotificationFactory.modelDownloadForegroundInfo(
             context = applicationContext,
             workerId = id,
-            modelName = model?.displayName ?: "Voice model",
+            modelName = model?.let { applicationContext.getString(it.displayNameRes) }
+                ?: applicationContext.getString(R.string.tts_voice_model_default),
             progress = modelProgress()
         )
 
     override suspend fun doWork(): Result = coroutineScope {
         val selectedModel = model
         if (selectedModel == null) {
-            val message = "Unknown voice model."
+            val message = applicationContext.getString(R.string.tts_voice_download_unknown)
             errorReportingManager.captureMessage(message, "tts_model_download")
             return@coroutineScope Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
         }
@@ -74,7 +76,7 @@ class TtsModelDownloadWorker(
             if (modelManager.statuses.value[selectedModel] == TtsModelStatus.Available) {
                 Result.success()
             } else {
-                val message = "Could not download this voice."
+                val message = applicationContext.getString(R.string.tts_voice_download_failed)
                 errorReportingManager.captureMessage(message, "tts_model_download")
                 Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
             }
@@ -84,7 +86,7 @@ class TtsModelDownloadWorker(
         } catch (e: Exception) {
             modelManager.markDownloadFailed(
                 selectedModel,
-                "Voice download failed."
+                applicationContext.getString(R.string.tts_voice_download_failed)
             )
             val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
             if (!shouldRetry) errorReportingManager.captureException(e, "tts_model_download")
@@ -93,7 +95,9 @@ class TtsModelDownloadWorker(
                 Result.retry()
             } else {
                 Result.failure(
-                    workDataOf(KEY_ERROR_MESSAGE to "Voice download failed.")
+                    workDataOf(
+                        KEY_ERROR_MESSAGE to applicationContext.getString(R.string.tts_voice_download_failed)
+                    )
                 )
             }
         } finally {

@@ -1,5 +1,8 @@
 package com.hiosdra.hreader.data.paywall
 
+import androidx.annotation.StringRes
+import com.hiosdra.hreader.R
+
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -11,19 +14,19 @@ import java.nio.charset.StandardCharsets
  * or passes it as the [queryParam] query parameter.
  */
 enum class PaywallBypassMethod(
-    val displayName: String,
+    @StringRes val displayNameRes: Int,
     val host: String,
     private val path: String,
     val queryParam: String? = null
 ) {
-    SMRY_AI("Smry.ai", "smry.ai", ""),
-    REMOVE_PAYWALL("RemovePaywall.com", "www.removepaywall.com", "/search", "url"),
-    REMOVE_PAYWALLS("RemovePaywalls.com", "removepaywalls.com", ""),
-    PAYWALL_BUSTER("PaywallBuster", "paywallbuster.com", "/articles", "article"),
-    ARCHIVE_PH("Archive.ph", "archive.ph", "/newest"),
-    WAYBACK_MACHINE("Wayback Machine", "web.archive.org", "/web/2"),
-    ARCHIVE_BUTTONS("Archive Buttons", "www.archivebuttons.com", "/articles", "article"),
-    BYPASS_PAYWALL_READER("Bypass Paywall Reader", "www.bypasspaywallreader.com", "/", "url");
+    SMRY_AI(R.string.paywall_smry_ai, "smry.ai", ""),
+    REMOVE_PAYWALL(R.string.paywall_remove_paywall, "www.removepaywall.com", "/search", "url"),
+    REMOVE_PAYWALLS(R.string.paywall_remove_paywalls, "removepaywalls.com", ""),
+    PAYWALL_BUSTER(R.string.paywall_paywall_buster, "paywallbuster.com", "/articles", "article"),
+    ARCHIVE_PH(R.string.paywall_archive_ph, "archive.ph", "/newest"),
+    WAYBACK_MACHINE(R.string.paywall_wayback_machine, "web.archive.org", "/web/2"),
+    ARCHIVE_BUTTONS(R.string.paywall_archive_buttons, "www.archivebuttons.com", "/articles", "article"),
+    BYPASS_PAYWALL_READER(R.string.paywall_bypass_reader, "www.bypasspaywallreader.com", "/", "url");
 
     val baseUrl: String get() = "https://$host$path"
 }

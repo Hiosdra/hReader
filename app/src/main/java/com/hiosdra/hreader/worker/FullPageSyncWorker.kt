@@ -14,6 +14,7 @@ import com.hiosdra.hreader.data.remote.isRetryable
 import com.hiosdra.hreader.notification.AppNotificationFactory
 import com.hiosdra.hreader.util.ErrorReportingManager
 import com.hiosdra.hreader.util.SyncPerformanceLogger
+import com.hiosdra.hreader.util.SyncPerformanceOperation
 import com.hiosdra.hreader.util.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -84,7 +85,7 @@ class FullPageSyncWorker(
             }
             publishProgress()
             try {
-                syncPerformanceLogger.measureSyncTime("Full page prefetch") {
+                syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.FULL_PAGE_PREFETCH) {
                     articlePageRepository.prefetchPages(
                         entries = batch,
                         limit = null,
@@ -104,7 +105,11 @@ class FullPageSyncWorker(
                 remaining == 0 -> Result.success()
                 shouldRetryFullPageSync(remaining, outstanding.size, runAttemptCount) -> Result.retry()
                 else -> {
-                    val message = "$remaining original pages could not be saved offline."
+                    val message = applicationContext.resources.getQuantityString(
+                        R.plurals.offline_original_pages_failed_count,
+                        remaining,
+                        remaining
+                    )
                     errorReportingManager.captureMessage(message, "full_page_sync")
                     Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
                 }
@@ -117,7 +122,13 @@ class FullPageSyncWorker(
             if (shouldRetry) {
                 Result.retry()
             } else {
-                Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Downloading original pages failed."))
+                Result.failure(
+                    workDataOf(
+                        KEY_ERROR_MESSAGE to applicationContext.getString(
+                            R.string.offline_original_pages_download_failed
+                        )
+                    )
+                )
             }
         }
     }

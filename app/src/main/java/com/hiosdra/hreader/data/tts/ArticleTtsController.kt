@@ -12,6 +12,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.preferences.PreferencesManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -82,12 +83,12 @@ class ArticleTtsController(
         stopPlayback()
         val chunks = TtsTextProcessor.fromHtml(title, html)
         if (chunks.isEmpty()) {
-            _state.value = ArticleTtsState(error = "There is no article text to read.")
+            _state.value = ArticleTtsState(error = appContext.getString(R.string.tts_no_article_text))
             scheduleWarmRelease()
             return
         }
         if (!requestAudioFocus()) {
-            _state.value = ArticleTtsState(error = "Audio focus is unavailable.")
+            _state.value = ArticleTtsState(error = appContext.getString(R.string.tts_audio_focus_unavailable))
             scheduleWarmRelease()
             return
         }
@@ -103,7 +104,9 @@ class ArticleTtsController(
         )
         if (!startPlaybackService()) {
             abandonAudioFocus()
-            _state.value = ArticleTtsState(error = "Could not start background audio playback.")
+            _state.value = ArticleTtsState(
+                error = appContext.getString(R.string.tts_background_playback_failed)
+            )
             scheduleWarmRelease()
             return
         }
@@ -149,18 +152,24 @@ class ArticleTtsController(
                                 if (version == playbackVersion && androidFailure !is CancellationException) {
                                     finishPlaybackWithError(
                                         version,
-                                        androidFailure.message ?: "System voice playback failed."
+                                        appContext.getString(R.string.tts_system_voice_failed)
                                     )
                                 }
                             }
                     } else if (it !is CancellationException) {
-                        finishPlaybackWithError(version, it.message ?: "Speech playback failed.")
+                        finishPlaybackWithError(
+                            version,
+                            appContext.getString(R.string.tts_speech_playback_failed)
+                        )
                     }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                finishPlaybackWithError(version, e.message ?: "Speech playback failed.")
+                finishPlaybackWithError(
+                    version,
+                    appContext.getString(R.string.tts_speech_playback_failed)
+                )
             }
             if (version == playbackVersion) scheduleWarmRelease()
         }
@@ -184,7 +193,7 @@ class ArticleTtsController(
     fun resume() {
         if (!_state.value.isPaused) return
         if (!requestAudioFocus()) {
-            _state.value = _state.value.copy(error = "Audio focus is unavailable.")
+            _state.value = _state.value.copy(error = appContext.getString(R.string.tts_audio_focus_unavailable))
             return
         }
         resumeSignal.complete(Unit)
@@ -348,7 +357,7 @@ class ArticleTtsController(
                 check(
                     fallbackResult != TextToSpeech.LANG_MISSING_DATA &&
                         fallbackResult != TextToSpeech.LANG_NOT_SUPPORTED
-                ) { "The system voice does not support this language." }
+                ) { appContext.getString(R.string.tts_system_voice_language_missing) }
             }
             chunks.forEachIndexed { index, chunk ->
                 resumeSignal.await()
@@ -384,14 +393,16 @@ class ArticleTtsController(
             @Deprecated("Deprecated by Android")
             override fun onError(id: String?) {
                 if (id == utteranceId && continuation.isActive) {
-                    continuation.resumeWithException(IllegalStateException("System voice playback failed."))
+                    continuation.resumeWithException(
+                        IllegalStateException(appContext.getString(R.string.tts_system_voice_failed))
+                    )
                 }
             }
 
             override fun onError(id: String?, errorCode: Int) {
                 if (id == utteranceId && continuation.isActive) {
                     continuation.resumeWithException(
-                        IllegalStateException("System voice playback failed ($errorCode).")
+                        IllegalStateException(appContext.getString(R.string.tts_system_voice_failed))
                     )
                 }
             }
@@ -399,7 +410,9 @@ class ArticleTtsController(
         continuation.invokeOnCancellation { tts.stop() }
         val result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
         if (result != TextToSpeech.SUCCESS && continuation.isActive) {
-            continuation.resumeWithException(IllegalStateException("System voice could not start."))
+            continuation.resumeWithException(
+                IllegalStateException(appContext.getString(R.string.tts_system_voice_start_failed))
+            )
         }
         }
 
@@ -418,7 +431,9 @@ class ArticleTtsController(
                     instance.shutdown()
                     if (continuation.isActive) {
                         continuation.resumeWithException(
-                            IllegalStateException("The system voice is unavailable.")
+                            IllegalStateException(
+                                appContext.getString(R.string.tts_system_voice_unavailable)
+                            )
                         )
                     }
                 }
@@ -432,10 +447,11 @@ class ArticleTtsController(
 
     private fun neuralFallbackMessage(model: TtsModel, error: Throwable): String {
         val reason = error.message?.trim()?.take(120)?.takeIf { it.isNotEmpty() }
+        val modelName = appContext.getString(model.displayNameRes)
         return if (reason == null) {
-            "${model.displayName} failed; using the system voice."
+            appContext.getString(R.string.tts_neural_voice_fallback, modelName)
         } else {
-            "${model.displayName} failed: $reason. Using the system voice."
+            appContext.getString(R.string.tts_neural_voice_fallback_reason, modelName, reason)
         }
     }
 

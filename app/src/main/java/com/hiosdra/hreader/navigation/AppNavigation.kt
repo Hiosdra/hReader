@@ -28,6 +28,8 @@ import com.hiosdra.hreader.data.preferences.PreferencesManager
 import com.hiosdra.hreader.ui.main.MainScreen
 import com.hiosdra.hreader.ui.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.ui.settings.SettingsScreen
+import com.hiosdra.hreader.R
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -123,7 +125,7 @@ fun AppNavigation(
             if (feedId != null) {
                 FeedDetailScreen(feedId = feedId, navController = navController)
             } else {
-                Text(text = "Feed not found.")
+                Text(text = stringResource(R.string.feeds_not_found))
             }
         }
         composable(Routes.SETTINGS) { _ ->

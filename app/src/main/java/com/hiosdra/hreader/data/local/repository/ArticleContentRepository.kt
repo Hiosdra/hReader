@@ -21,6 +21,7 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
 class ArticleContentRepository(
+    private val embeddedMediaLabel: () -> String,
     private val backend: FeedBackend,
     private val articleContentDao: ArticleContentDao,
     private val articleDao: ArticleDao,
@@ -148,7 +149,11 @@ class ArticleContentRepository(
     private suspend fun prepare(entryId: Long, content: String, baseUri: String): PreparedArticle {
         val article = articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull()
         return withContext(Dispatchers.Default) {
-            val images = prepareArticleImages(content, baseUri)
+            val images = prepareArticleImages(
+                content,
+                baseUri,
+                embeddedMediaLabel()
+            )
             PreparedArticle(
                 html = images.html,
                 imageUrls = images.imageUrls,

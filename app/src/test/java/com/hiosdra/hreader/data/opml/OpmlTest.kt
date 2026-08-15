@@ -64,7 +64,7 @@ class OpmlTest {
             Feed(2, "Quote \"Unquote\"", null, "https://q.example/rss")
         )
 
-        val parsed = parseOpml(buildOpml(feeds))
+        val parsed = parseOpml(buildOpml(feeds, "hReader subscriptions"))
 
         assertEquals(listOf("Ampersand & Co", "Quote \"Unquote\""), parsed.map { it.title })
         assertEquals(feeds.map { it.feedUrl }, parsed.map { it.feedUrl })

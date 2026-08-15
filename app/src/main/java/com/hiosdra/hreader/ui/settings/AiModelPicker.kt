@@ -23,8 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.data.ai.AiModel
+import com.hiosdra.hreader.ui.text.resolve
 
 @Composable
 fun AiModelSearchBar(
@@ -41,7 +45,7 @@ fun AiModelSearchBar(
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = onSearchQueryChange,
-            label = { Text("Search models") },
+            label = { Text(stringResource(R.string.ai_search_models)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -53,7 +57,7 @@ fun AiModelSearchBar(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Free models only",
+                    text = stringResource(R.string.ai_free_models_only),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -67,21 +71,21 @@ fun AiModelSearchBar(
                 CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.padding(end = 8.dp))
             } else {
                 IconButton(onClick = onReload) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Reload models")
+                    Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.ai_reload_models))
                 }
             }
             Switch(checked = state.freeOnly, onCheckedChange = onFreeOnlyChange)
         }
         state.error?.let { message ->
             Text(
-                text = message,
+                text = message.resolve(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error
             )
         }
         if (state.selectedModelIsMissing) {
             Text(
-                text = "The selected model ${state.selectedModelId} is no longer offered by OpenRouter. Pick another one.",
+                text = stringResource(R.string.ai_model_missing, state.selectedModelId),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error
             )
@@ -124,7 +128,7 @@ fun AiModelRow(
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Selected",
+                    contentDescription = stringResource(R.string.ai_selected),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -142,11 +146,18 @@ fun AiModelRow(
     )
 }
 
+@Composable
 private fun modelCountLabel(state: AiModelsUiState): String = when {
-    state.isLoading && state.models.isEmpty() -> "Loading the list from OpenRouter…"
-    state.models.isEmpty() -> "No models loaded"
-    else -> "${state.visibleModels.size} of ${state.models.size} models"
+    state.isLoading && state.models.isEmpty() -> stringResource(R.string.ai_model_loading)
+    state.models.isEmpty() -> stringResource(R.string.ai_no_models_loaded)
+    else -> pluralStringResource(
+        R.plurals.ai_models_count,
+        state.models.size,
+        state.visibleModels.size,
+        state.models.size
+    )
 }
 
+@Composable
 private fun contextSuffix(model: AiModel): String =
-    if (model.contextLength > 0) "  •  ${model.contextLength / 1000}k context" else ""
+    if (model.contextLength > 0) stringResource(R.string.ai_context_length, model.contextLength / 1000) else ""
