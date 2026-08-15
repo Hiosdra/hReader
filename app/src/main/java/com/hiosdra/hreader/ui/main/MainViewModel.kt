@@ -147,7 +147,7 @@ class MainViewModel(
                 cacheReady.value = true
             } catch (e: Exception) {
                 Log.e(TAG, "Could not verify the local cache owner", e)
-                _uiState.update { it.copy(error = "Could not prepare the local cache: ${e.message}") }
+                _uiState.update { it.copy(error = "Could not prepare local storage. Try again.") }
             }
         }
     }
@@ -244,7 +244,7 @@ class MainViewModel(
 
     fun refreshFromNetwork() {
         if (!_uiState.value.isOnline) {
-            _uiState.update { it.copy(error = "Refresh needs a connection") }
+            _uiState.update { it.copy(error = "You need an internet connection to refresh.") }
             return
         }
         viewModelScope.launch {
@@ -262,7 +262,7 @@ class MainViewModel(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Network refresh failed: ${e.message}") }
+                _uiState.update { it.copy(error = "Could not refresh articles. Check your connection and try again.") }
             } finally {
                 _uiState.update { it.copy(isRefreshing = false) }
             }
@@ -302,7 +302,7 @@ class MainViewModel(
                         it.copy(
                             undo = UndoableAction(
                                 id = System.currentTimeMillis(),
-                                message = "Marked ${ids.size} as read",
+                                message = "Marked ${ids.size} ${if (ids.size == 1) "article" else "articles"} as read",
                                 articleIds = ids,
                                 markedAt = Instant.now()
                             )

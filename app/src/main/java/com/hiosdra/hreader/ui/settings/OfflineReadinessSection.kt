@@ -82,7 +82,7 @@ fun OfflineReadinessSection(
             if (state.isPreparing && !state.isFullOfflinePreparation) {
                 PreparationProgressContent(state)
             } else {
-                Text("Prepare for offline")
+                Text("Download for offline reading")
             }
         }
         Button(
@@ -95,7 +95,7 @@ fun OfflineReadinessSection(
             if (state.isPreparing && state.isFullOfflinePreparation) {
                 PreparationProgressContent(state)
             } else {
-                Text("Full offline sync")
+                Text("Download full pages")
             }
         }
         // A real count rather than a spinner of unknown length: the reader is deciding whether
@@ -119,27 +119,27 @@ fun OfflineReadinessSection(
             }
         }
         Text(
-            text = "Prepare for offline downloads article bodies and images. Full offline sync also " +
-                "archives the original web pages, but only when you press its button.",
+            text = "Offline reading stores article bodies and images. Download full pages also saves the " +
+                "original web pages, but only when you press that button.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
         )
         when (state.preparationStatus.state) {
             SyncOperationState.SUCCEEDED -> Text(
-                text = "Offline preparation complete.",
+                text = "Offline download complete.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 4.dp)
             )
             SyncOperationState.FAILED -> Text(
-                text = "Offline preparation failed: ${state.preparationStatus.errorMessage ?: "try again."}",
+                text = "Offline download failed: ${state.preparationStatus.errorMessage ?: "try again."}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 4.dp)
             )
             SyncOperationState.CANCELLED -> Text(
-                text = "Offline preparation cancelled.",
+                text = "Offline download cancelled.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
@@ -153,7 +153,7 @@ fun OfflineReadinessSection(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Offline backlog",
+            text = "Articles to keep offline",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium
         )
@@ -203,7 +203,7 @@ fun OfflineReadinessSection(
 
         if (state.imageDownloadEnabled) {
             Text(
-                text = "Image cache limit",
+                text = "Image storage limit",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 8.dp)
@@ -223,9 +223,9 @@ fun OfflineReadinessSection(
 }
 
 private fun OfflineReadiness.headline(): String = when {
-    offlineTargetCount == 0 -> "Nothing in the offline scope yet"
-    isComplete -> "Ready — all $offlineTargetCount articles readable offline"
-    else -> "$storedContentCount of $offlineTargetCount articles readable offline"
+    offlineTargetCount == 0 -> "Nothing is available offline yet"
+    isComplete -> "Ready for offline reading — all $offlineTargetCount articles available offline"
+    else -> "$storedContentCount of $offlineTargetCount articles available offline"
 }
 
 private fun OfflineReadiness.contentProgress(): Float =
@@ -233,18 +233,18 @@ private fun OfflineReadiness.contentProgress(): Float =
 
 private fun OfflineReadiness.detailLine(): String {
     val megabytes = storedImageBytes / BYTES_PER_MEGABYTE
-    val backlog = if (backlogCount > 0) " · backlog $backlogCount" else ""
+    val backlog = if (backlogCount > 0) " · $backlogCount more to download" else ""
     val images = if (expectedImageCount > 0) {
         "$storedExpectedImageCount/$expectedImageCount images"
     } else {
         "$storedImageCount images"
     }
     val fullPages = if (offlineTargetCount > 0) {
-        "$storedFullPageCount/$offlineTargetCount full pages"
+        "$storedFullPageCount/$offlineTargetCount original pages"
     } else {
-        "0 full pages"
+        "0 original pages"
     }
-    return "$unreadCount unread$backlog · $storedFullContentCount full text, " +
+    return "$unreadCount unread$backlog · $storedFullContentCount article bodies, " +
         "$fullPages, $images (%.0f MB)".format(megabytes)
 }
 
@@ -268,17 +268,17 @@ private fun OfflineUiState.preparationLabel(): String {
     return when (preparationStage) {
         OfflinePreparationStage.SYNCING -> "Syncing articles…"
         OfflinePreparationStage.DOWNLOADING_CONTENT -> "Downloading article content$count…"
-        OfflinePreparationStage.ARCHIVING_PAGES -> "Archiving full pages$count…"
+        OfflinePreparationStage.ARCHIVING_PAGES -> "Saving original pages$count…"
         OfflinePreparationStage.IDLE -> if (isFullOfflinePreparation) {
-            "Preparing full offline…"
+            "Downloading full pages…"
         } else {
-            "Preparing offline…"
+            "Downloading for offline reading…"
         }
     }
 }
 
 private fun OfflineReadiness.lastSyncLabel(): String {
-    val syncedAt = lastSyncAt ?: return "never"
+    val syncedAt = lastSyncAt ?: return "not synced yet"
     val elapsed = Duration.between(syncedAt, Instant.now())
     return when {
         elapsed.isNegative -> "just now"

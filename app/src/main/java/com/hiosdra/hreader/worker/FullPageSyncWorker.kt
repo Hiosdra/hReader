@@ -104,7 +104,7 @@ class FullPageSyncWorker(
                 remaining == 0 -> Result.success()
                 shouldRetryFullPageSync(remaining, outstanding.size, runAttemptCount) -> Result.retry()
                 else -> {
-                    val message = "$remaining full pages could not be archived."
+                    val message = "$remaining original pages could not be saved offline."
                     errorReportingManager.captureMessage(message, "full_page_sync")
                     Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
                 }
@@ -117,7 +117,7 @@ class FullPageSyncWorker(
             if (shouldRetry) {
                 Result.retry()
             } else {
-                Result.failure(workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Full offline sync failed.")))
+                Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Downloading original pages failed."))
             }
         }
     }

@@ -127,7 +127,7 @@ fun SettingsScreen(
             // FreshRSS Server Card
             item {
                 Text(
-                    text = "Feed server",
+                    text = "RSS server",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -156,7 +156,7 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    text = "Synchronisation",
+                    text = "Sync",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -183,7 +183,7 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    text = "Offline readiness",
+                    text = "Offline reading",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -212,7 +212,7 @@ fun SettingsScreen(
             // Reading Experience Card
             item {
                 Text(
-                    text = "Reading Experience",
+                    text = "Reading experience",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -327,7 +327,7 @@ fun SettingsScreen(
             // Paywall Bypass Method Section
             item {
                 Text(
-                    text = "Paywall Bypass Method",
+                    text = "Paywall bypass service",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -349,7 +349,7 @@ fun SettingsScreen(
             // OpenRouter Key Section
             item {
                 Text(
-                    text = "OpenRouter",
+                    text = "AI provider",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -370,7 +370,7 @@ fun SettingsScreen(
             // AI Model Selection Section
             item {
                 Text(
-                    text = "AI Model for Article Overview",
+                    text = "AI model for summaries",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -429,7 +429,7 @@ fun SettingsScreen(
                             onClick = { showPerformanceDialog = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Show Performance Info")
+                            Text("Show performance info")
                         }
                     }
                 }
@@ -477,8 +477,8 @@ fun SettingsScreen(
         if (showSignOutDialog) {
             AlertDialog(
                 onDismissRequest = { showSignOutDialog = false },
-                title = { Text("Sign out and clear downloaded articles") },
-                text = { Text("Your server credentials and downloaded articles will be removed from this device.") },
+                title = { Text("Clear downloaded data and sign out") },
+                text = { Text("Your server credentials and downloaded data will be removed from this device.") },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -506,7 +506,7 @@ private fun PerformanceInfoDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                "Sync Performance Info",
+                "Sync performance info",
                 style = MaterialTheme.typography.titleLarge
             )
         },
@@ -531,7 +531,7 @@ private fun PerformanceInfoDialog(
             Row {
                 if (performanceRecords.isNotEmpty()) {
                     TextButton(onClick = onClearRecords) {
-                        Text("Clear All")
+                        Text("Clear all")
                     }
                 }
                 TextButton(onClick = onDismiss) {

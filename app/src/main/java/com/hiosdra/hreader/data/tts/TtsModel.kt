@@ -8,7 +8,7 @@ enum class TtsModel(
     SUPERTONIC("Supertonic 3", "Multilingual neural voice · 129 MB download", false),
     KOKORO("Kokoro", "English and Chinese neural voices · 140 MB download", false),
     GOSIA("Gosia", "Polish neural voice · 21 MB download", false),
-    ANDROID("Android TTS", "System voice · always available", true);
+    ANDROID("System voice", "Built-in voice · always available", true);
 
     companion object {
         fun fromName(value: String?) = entries.firstOrNull { it.name == value } ?: SUPERTONIC

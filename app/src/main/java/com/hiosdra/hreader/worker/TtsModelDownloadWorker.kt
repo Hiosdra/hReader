@@ -74,7 +74,7 @@ class TtsModelDownloadWorker(
             if (modelManager.statuses.value[selectedModel] == TtsModelStatus.Available) {
                 Result.success()
             } else {
-                val message = "Could not install the voice model."
+                val message = "Could not download this voice."
                 errorReportingManager.captureMessage(message, "tts_model_download")
                 Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
             }
@@ -84,7 +84,7 @@ class TtsModelDownloadWorker(
         } catch (e: Exception) {
             modelManager.markDownloadFailed(
                 selectedModel,
-                e.message ?: "Voice model download failed."
+                "Voice download failed."
             )
             val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
             if (!shouldRetry) errorReportingManager.captureException(e, "tts_model_download")
@@ -93,7 +93,7 @@ class TtsModelDownloadWorker(
                 Result.retry()
             } else {
                 Result.failure(
-                    workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Voice model download failed."))
+                    workDataOf(KEY_ERROR_MESSAGE to "Voice download failed.")
                 )
             }
         } finally {

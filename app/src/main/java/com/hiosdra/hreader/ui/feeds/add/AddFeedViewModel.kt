@@ -57,11 +57,11 @@ class AddFeedViewModel(
                     if (msg.isNotBlank()) return msg
                 } catch (_: Exception) {}
             }
-            return e.message ?: "HTTP error"
+            return "Could not add this subscription. Try again."
         }
         if (e is UnknownHostException || e is ConnectException) return "Cannot reach server. Check backend availability and network connection."
         if (e is SocketTimeoutException) return "Connection timed out. Try again."
-        return e.message ?: "Unknown error"
+        return "Could not add this subscription. Try again."
     }
 
     fun onFeedUrlChange(newUrl: String) {
@@ -72,19 +72,19 @@ class AddFeedViewModel(
     fun onAddFeed(onFeedAdded: () -> Unit, onNavigateBack: () -> Unit) {
         if (_uiState.value.isLoading) return
         if (!networkMonitor.isOnline.value) {
-            _uiState.value = _uiState.value.copy(error = "Adding a subscription needs a connection")
+            _uiState.value = _uiState.value.copy(error = "You need an internet connection to subscribe.")
             return
         }
         val feedUrl = _uiState.value.feedUrl.trim()
         if (!_uiState.value.canSubmit) {
-            _uiState.value = _uiState.value.copy(error = "Enter a valid feed or site URL.")
+            _uiState.value = _uiState.value.copy(error = "Enter a valid feed or website URL.")
             return
         }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val alreadyExists = feedsViewModel.uiState.value.feeds.any { it.feedUrl == feedUrl || it.siteUrl == feedUrl }
             if (alreadyExists) {
-                _uiState.value = _uiState.value.copy(error = "Feed already exists.", isLoading = false)
+                _uiState.value = _uiState.value.copy(error = "You are already subscribed to this feed.", isLoading = false)
                 return@launch
             }
             val normalizedUrl = normalizeUrl(feedUrl)
@@ -111,7 +111,7 @@ class AddFeedViewModel(
     fun onSelectDiscoveredFeed(discovered: DiscoveredFeed, onFeedAdded: () -> Unit, onNavigateBack: () -> Unit) {
         if (_uiState.value.isLoading) return
         if (!networkMonitor.isOnline.value) {
-            _uiState.value = _uiState.value.copy(error = "Adding a subscription needs a connection")
+            _uiState.value = _uiState.value.copy(error = "You need an internet connection to subscribe.")
             return
         }
         viewModelScope.launch {

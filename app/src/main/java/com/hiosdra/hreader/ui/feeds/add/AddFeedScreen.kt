@@ -55,7 +55,7 @@ fun AddFeedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Feed", style = MaterialTheme.typography.titleMedium) },
+                title = { Text("Add subscription", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -81,7 +81,7 @@ fun AddFeedScreen(
                 OutlinedTextField(
                     value = uiState.feedUrl,
                     onValueChange = { addFeedViewModel.onFeedUrlChange(it) },
-                    label = { Text("Feed URL or Site URL") },
+                    label = { Text("Feed or website URL") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
@@ -105,7 +105,7 @@ fun AddFeedScreen(
                     Text(text = "Enter a valid URL like https://example.com or example.com/feed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp))
                 }
                 if (uiState.showFeedPicker && uiState.discoveredFeeds.isNotEmpty()) {
-                    Text("Select a feed to add:", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
+                    Text("Choose a feed to subscribe to:", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
                     uiState.discoveredFeeds.forEach { discovered ->
                         Button(
                             onClick = {
@@ -134,7 +134,7 @@ fun AddFeedScreen(
                         if (uiState.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp))
                         } else {
-                            Text("Add Feed")
+                            Text("Subscribe")
                         }
                     }
                 }

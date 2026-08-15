@@ -25,7 +25,7 @@ fun BackendSwitchDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Switch and clear") }
+            TextButton(onClick = onConfirm) { Text("Switch and clear data") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

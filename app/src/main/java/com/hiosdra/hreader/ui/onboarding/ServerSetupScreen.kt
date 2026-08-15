@@ -50,7 +50,7 @@ fun ServerSetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Connect your feed server", style = MaterialTheme.typography.titleMedium) },
+                title = { Text("Connect your RSS server", style = MaterialTheme.typography.titleMedium) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -68,7 +68,7 @@ fun ServerSetupScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "hReader syncs with your own FreshRSS or Miniflux instance. Pick the backend, " +
+                text = "hReader syncs with your own FreshRSS or Miniflux instance. Choose the server type, " +
                     "enter its address, and paste the ${serverSettings.backendType.secretLabel.lowercase()} " +
                     "from ${serverSettings.backendType.secretHint}.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -122,7 +122,7 @@ fun ServerSetupScreen(
                 enabled = serverSettings.hasAllFields,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (serverSettings.isConnected) "Start reading" else "Continue anyway")
+                Text(if (serverSettings.isConnected) "Start reading" else "Continue without testing")
             }
         }
     }

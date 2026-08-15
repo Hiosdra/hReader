@@ -109,7 +109,7 @@ class FeedsViewModel(
                     Log.w("FeedsViewModel", "Falling back to the cached subscriptions", failure)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "Error loading feeds: ${failure.message}".takeIf { cachedFeeds.isEmpty() }
+                        error = "Could not load subscriptions. Check your connection and try again.".takeIf { cachedFeeds.isEmpty() }
                     )
                 }
             )
@@ -124,7 +124,7 @@ class FeedsViewModel(
         val title = _uiState.value.feeds.find { it.id == feedId }?.title ?: "Feed"
         runFeedAction(
             success = { "Unsubscribed from $title" },
-            failure = { "Could not unsubscribe: ${it.message}" }
+            failure = { _ -> "Could not unsubscribe. Try again." }
         ) { feedRepository.deleteFeed(feedId) }
     }
 
@@ -132,14 +132,14 @@ class FeedsViewModel(
         val trimmed = title.trim()
         if (trimmed.isBlank()) return
         runFeedAction(
-            failure = { "Could not rename: ${it.message}" }
+            failure = { _ -> "Could not rename the subscription. Try again." }
         ) { feedRepository.renameFeed(feedId, trimmed) }
     }
 
     fun importOpml(xml: String) {
         runFeedAction(
             success = { "Imported: ${it.added} added, ${it.skipped} already subscribed, ${it.failed.size} failed" },
-            failure = { "Import failed: ${it.message}" }
+            failure = { _ -> "Could not import subscriptions. Check the file and try again." }
         ) { feedRepository.importOpml(xml) }
     }
 
@@ -181,7 +181,7 @@ class FeedsViewModel(
         action: suspend () -> T
     ) {
         if (!networkMonitor.isOnline.value) {
-            _uiState.value = _uiState.value.copy(message = "This action needs a connection")
+            _uiState.value = _uiState.value.copy(message = "You need an internet connection for this action.")
             return
         }
         viewModelScope.launch {

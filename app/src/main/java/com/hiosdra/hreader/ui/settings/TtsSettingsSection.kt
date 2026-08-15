@@ -109,14 +109,14 @@ internal fun TtsSettingsSection(
                                 downloadScheduler.cancelDownload(model)
                                 scope.launch { modelManager.remove(model) }
                             }) {
-                                Text("Remove")
+                                Text("Remove voice")
                             }
                         }
                         TtsModelStatus.NotInstalled, is TtsModelStatus.Failed -> {
                             Button(onClick = {
                                 onRequestNotifications { downloadScheduler.enqueueDownload(model) }
                             }) {
-                                Text("Download")
+                                Text("Download voice")
                             }
                         }
                         is TtsModelStatus.Downloading -> {
@@ -136,7 +136,7 @@ internal fun TtsSettingsSection(
             }
             HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
             Text(
-                text = "Speed · ${"%.1f".format(speed)}×",
+                text = "Reading speed · ${"%.1f".format(speed)}×",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(top = 16.dp)
             )
@@ -168,9 +168,9 @@ internal fun TtsSettingsSection(
                 )
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            Text("Voice by language", style = MaterialTheme.typography.bodyLarge)
+            Text("Voices by language", style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = "Overrides use the selected default voice when no language rule matches.",
+                text = "Choose a different voice for specific languages. Other languages use the default voice.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -191,7 +191,7 @@ internal fun TtsSettingsSection(
             }
             Box {
                 TextButton(onClick = { languageMenuExpanded = true }) {
-                    Text("Add language override")
+                    Text("Choose a voice for a language")
                 }
                 DropdownMenu(
                     expanded = languageMenuExpanded,
@@ -219,7 +219,7 @@ internal fun TtsSettingsSection(
                 }
             }
             Text(
-                text = "If a neural model is missing or cannot start, hReader uses Android TTS automatically.",
+                text = "If a downloaded voice is missing or cannot start, hReader uses the system voice automatically.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -263,7 +263,7 @@ private fun LanguageOverrideRow(
                         text = {
                             Text(
                                 if (available) option.displayName
-                                else "${option.displayName} · not installed"
+                                else "${option.displayName} · not downloaded"
                             )
                         },
                         enabled = available,
@@ -276,7 +276,7 @@ private fun LanguageOverrideRow(
             }
         }
         TextButton(onClick = onRemove) {
-            Text("Remove")
+            Text("Remove voice")
         }
     }
 }
@@ -351,7 +351,7 @@ private fun AdvancedTtsSettings(
             )
         }
         TtsModel.ANDROID -> Text(
-            text = "Advanced neural settings do not affect Android TTS.",
+            text = "Advanced voice settings do not affect the system voice.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -362,7 +362,7 @@ private fun AdvancedTtsSettings(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     TextButton(onClick = onReset) {
-        Text("Reset advanced settings")
+        Text("Reset voice settings")
     }
 }
 

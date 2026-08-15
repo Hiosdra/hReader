@@ -149,7 +149,7 @@ class ArticleTtsController(
                                 if (version == playbackVersion && androidFailure !is CancellationException) {
                                     finishPlaybackWithError(
                                         version,
-                                        androidFailure.message ?: "Android TTS playback failed."
+                                        androidFailure.message ?: "System voice playback failed."
                                     )
                                 }
                             }
@@ -348,7 +348,7 @@ class ArticleTtsController(
                 check(
                     fallbackResult != TextToSpeech.LANG_MISSING_DATA &&
                         fallbackResult != TextToSpeech.LANG_NOT_SUPPORTED
-                ) { "Android TTS does not support this language." }
+                ) { "The system voice does not support this language." }
             }
             chunks.forEachIndexed { index, chunk ->
                 resumeSignal.await()
@@ -384,14 +384,14 @@ class ArticleTtsController(
             @Deprecated("Deprecated by Android")
             override fun onError(id: String?) {
                 if (id == utteranceId && continuation.isActive) {
-                    continuation.resumeWithException(IllegalStateException("Android TTS playback failed."))
+                    continuation.resumeWithException(IllegalStateException("System voice playback failed."))
                 }
             }
 
             override fun onError(id: String?, errorCode: Int) {
                 if (id == utteranceId && continuation.isActive) {
                     continuation.resumeWithException(
-                        IllegalStateException("Android TTS playback failed ($errorCode).")
+                        IllegalStateException("System voice playback failed ($errorCode).")
                     )
                 }
             }
@@ -399,7 +399,7 @@ class ArticleTtsController(
         continuation.invokeOnCancellation { tts.stop() }
         val result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
         if (result != TextToSpeech.SUCCESS && continuation.isActive) {
-            continuation.resumeWithException(IllegalStateException("Android TTS could not start."))
+            continuation.resumeWithException(IllegalStateException("System voice could not start."))
         }
         }
 
@@ -418,7 +418,7 @@ class ArticleTtsController(
                     instance.shutdown()
                     if (continuation.isActive) {
                         continuation.resumeWithException(
-                            IllegalStateException("Android TTS is unavailable.")
+                            IllegalStateException("The system voice is unavailable.")
                         )
                     }
                 }
@@ -433,9 +433,9 @@ class ArticleTtsController(
     private fun neuralFallbackMessage(model: TtsModel, error: Throwable): String {
         val reason = error.message?.trim()?.take(120)?.takeIf { it.isNotEmpty() }
         return if (reason == null) {
-            "${model.displayName} failed; using Android TTS."
+            "${model.displayName} failed; using the system voice."
         } else {
-            "${model.displayName} failed: $reason. Using Android TTS."
+            "${model.displayName} failed: $reason. Using the system voice."
         }
     }
 

@@ -414,7 +414,7 @@ class ArticleViewModel(
                 }
                 observeArticles(ids)
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Unknown error") }
+                _uiState.update { it.copy(isLoading = false, error = "Could not load articles. Try again.") }
             }
         }
     }
@@ -543,7 +543,7 @@ class ArticleViewModel(
                         onFailure = { state.aiOverviews }
                     ),
                     overviewError = result.exceptionOrNull()
-                        ?.let { it.message ?: "Failed to generate overview" }
+                        ?.let { "Couldn't generate summary. Try again." }
                         ?: state.overviewError
                 )
             }

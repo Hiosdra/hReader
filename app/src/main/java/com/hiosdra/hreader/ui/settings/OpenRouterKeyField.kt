@@ -20,7 +20,7 @@ fun OpenRouterKeyField(
         onValueChange = onApiKeyChange,
         label = { Text("OpenRouter API key (optional)") },
         placeholder = { Text("sk-or-v1-…") },
-        supportingText = { Text("Needed only for article overviews and credibility scoring") },
+        supportingText = { Text("Needed only for article summaries and credibility scoring") },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),

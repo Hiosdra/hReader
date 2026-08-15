@@ -129,7 +129,7 @@ fun SubscriptionsPanel(
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("Import OPML") },
+                            text = { Text("Import subscriptions (OPML)") },
                             enabled = isOnline,
                             onClick = {
                                 menuOpen = false
@@ -139,7 +139,7 @@ fun SubscriptionsPanel(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Export OPML") },
+                            text = { Text("Export subscriptions (OPML)") },
                             onClick = {
                                 menuOpen = false
                                 exportLauncher.launch("hreader-subscriptions.opml")
@@ -207,13 +207,13 @@ fun SubscriptionsPanel(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("No subscriptions yet", style = MaterialTheme.typography.titleMedium)
                         Button(onClick = onAddFeed, enabled = isOnline, modifier = Modifier.padding(top = 16.dp)) {
-                            Text("Add your first feed")
+                            Text("Subscribe to your first feed")
                         }
                         OutlinedButton(
                             onClick = { importLauncher.launch(arrayOf("*/*")) },
                             enabled = isOnline,
                             modifier = Modifier.padding(top = 8.dp)
-                        ) { Text("Import from OPML") }
+                        ) { Text("Import subscriptions (OPML)") }
                     }
                 }
             }
@@ -224,7 +224,7 @@ fun SubscriptionsPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Search subscriptions...") },
+                    placeholder = { Text("Search subscriptions…") },
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     trailingIcon = {
                         if (uiState.searchQuery.isNotEmpty()) {
@@ -239,7 +239,7 @@ fun SubscriptionsPanel(
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     item {
                         PanelRow(
-                            title = "All items",
+                            title = "All articles",
                             unreadCount = uiState.unreadCounts.values.sum(),
                             selected = selectedFeedId == null,
                             onClick = { onSelectFeed(null) },
@@ -324,7 +324,7 @@ private fun RenameFeedDialog(feed: Feed, onConfirm: (String) -> Unit, onDismiss:
                 value = title,
                 onValueChange = { title = it },
                 singleLine = true,
-                label = { Text("Title") }
+                label = { Text("Feed name") }
             )
         },
         confirmButton = {

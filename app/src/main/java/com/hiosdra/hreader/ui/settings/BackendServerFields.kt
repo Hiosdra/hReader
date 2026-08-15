@@ -46,7 +46,7 @@ fun BackendServerFields(
         OutlinedTextField(
             value = state.serverUrl,
             onValueChange = onServerUrlChange,
-            label = { Text("Server address") },
+            label = { Text("Server URL") },
             placeholder = { Text("https://rss.example.com") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -84,7 +84,7 @@ fun BackendServerFields(
                 enabled = !state.isSwitchingBackend,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Sign out and clear downloaded articles")
+                Text("Clear downloaded data and sign out")
             }
         }
         state.statusMessage?.let { message ->

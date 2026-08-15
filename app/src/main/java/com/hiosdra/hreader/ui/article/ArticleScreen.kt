@@ -694,7 +694,7 @@ private fun ArticleTopBar(
                 )
                 if (listPosition in 1..listSize) {
                     Text(
-                        text = "$listPosition / $listSize",
+                        text = "Article $listPosition of $listSize",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -786,7 +786,7 @@ private fun ArticleTopBar(
                             leadingIcon = { Text("A−") }
                         )
                         DropdownMenuItem(
-                            text = { Text("Text size: ${(textScale * 100).roundToInt()}%") },
+                            text = { Text("Reset text size (${(textScale * 100).roundToInt()}%)") },
                             onClick = {
                                 overflowExpanded.value = false
                                 onResetTextScale()
@@ -1293,7 +1293,7 @@ private fun ArticleContent(
                 if (isOnline) {
                     enqueueImageDownload(context, actionsUrl)
                 } else {
-                    Toast.makeText(context, "Downloading needs a connection", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Downloading requires a connection", Toast.LENGTH_SHORT).show()
                 }
                 imageActionsUrl = null
             },
@@ -1301,7 +1301,7 @@ private fun ArticleContent(
                 if (isOnline) {
                     imageShareUrl = actionsUrl
                 } else {
-                    Toast.makeText(context, "Sharing needs a connection", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Sharing requires a connection", Toast.LENGTH_SHORT).show()
                 }
                 imageActionsUrl = null
             }
@@ -1310,9 +1310,9 @@ private fun ArticleContent(
     val shareTarget = imageShareUrl
     if (shareTarget != null) {
         LaunchedEffect(shareTarget) {
-            Toast.makeText(context, "Preparing image...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Preparing image…", Toast.LENGTH_SHORT).show()
             val shared = shareImageFile(context, entry.title, shareTarget)
-            if (!shared) Toast.makeText(context, "Image share failed", Toast.LENGTH_SHORT).show()
+            if (!shared) Toast.makeText(context, "Image sharing failed", Toast.LENGTH_SHORT).show()
             imageShareUrl = null
         }
     }
@@ -1380,16 +1380,16 @@ private fun ArticleMeta(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Filled.Star,
-                                contentDescription = "AI Overview",
+                                contentDescription = "AI summary",
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             val chipText = when {
-                                aiOverview == null && isGeneratingOverview -> "Generating..."
-                                aiOverview == null -> "AI Overview"
-                                isAiExpanded.value -> "Hide Overview"
-                                else -> "Show Overview"
+                                aiOverview == null && isGeneratingOverview -> "Generating summary…"
+                                aiOverview == null -> "AI summary"
+                                isAiExpanded.value -> "Hide summary"
+                                else -> "Show summary"
                             }
                             Text(chipText)
                         }
@@ -1421,7 +1421,7 @@ private fun ArticleMeta(
             }
         }
 
-        // AI Overview Content with Animation
+        // AI summary Content with Animation
         if (entryId != null && (aiOverview != null || isGeneratingOverview) && isAiExpanded.value) {
             AnimatedVisibility(
                 visible = isAiExpanded.value,
@@ -1445,13 +1445,13 @@ private fun ArticleMeta(
                         ) {
                             Icon(
                                 Icons.Filled.Star,
-                                contentDescription = "AI Overview",
+                                contentDescription = "AI summary",
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "AI Overview",
+                                text = "AI summary",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -1468,7 +1468,7 @@ private fun ArticleMeta(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Generating overview...",
+                                    text = "Generating summary…",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -1752,7 +1752,7 @@ private fun ImageActionsDialog(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
             ListItem(
-                headlineContent = { Text("View") },
+                headlineContent = { Text("View image") },
                 modifier = Modifier.clickable(onClick = onView)
             )
             ListItem(
@@ -1760,7 +1760,7 @@ private fun ImageActionsDialog(
                 modifier = Modifier.clickable(onClick = onCopy)
             )
             ListItem(
-                headlineContent = { Text("Download") },
+                headlineContent = { Text("Download image") },
                 modifier = Modifier.clickable(enabled = isOnline, onClick = onDownload)
             )
             ListItem(

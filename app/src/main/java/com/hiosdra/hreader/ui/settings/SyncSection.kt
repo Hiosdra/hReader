@@ -50,7 +50,7 @@ fun SyncSection(
 
     Column(modifier = modifier) {
         SettingRow(
-            title = "Sync every",
+            title = "Automatic sync",
             value = formatInterval(state.intervalMinutes),
             supportingText = "How often articles are fetched in the background",
             onClick = { showIntervalDialog = true }
@@ -58,15 +58,14 @@ fun SyncSection(
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         ToggleRow(
             title = "Wi-Fi only",
-            description = "Article bodies and images are the bulk of a sync. Holding them for " +
-                "Wi-Fi keeps a large backlog off the mobile bill.",
+            description = "Article bodies and images use most of the data in a sync. Waiting for Wi-Fi " +
+                "helps avoid using mobile data.",
             checked = state.unmeteredOnly,
             onCheckedChange = onUnmeteredOnlyChange
         )
         ToggleRow(
             title = "Sync while roaming",
-            description = "Off keeps background syncing paused until the device is back on its " +
-                "own network.",
+            description = "When off, background syncing pauses while you are roaming.",
             checked = state.syncWhileRoaming,
             onCheckedChange = onSyncWhileRoamingChange
         )
@@ -90,7 +89,7 @@ fun SyncSection(
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         Text(
-            text = "Rebuild from the server",
+            text = "Clear local data",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -107,7 +106,7 @@ fun SyncSection(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = if (state.isResyncing) "Rebuilding…" else "Delete local data and resync",
+                text = if (state.isResyncing) "Clearing data…" else "Clear local data and sync again",
                 color = if (state.isResyncing) {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 } else {
@@ -118,17 +117,17 @@ fun SyncSection(
         if (state.showResyncStatus) {
             when (state.resyncStatus.state) {
                 SyncOperationState.SUCCEEDED -> Text(
-                    text = "Resync complete.",
+                    text = "Sync complete.",
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall
                 )
                 SyncOperationState.FAILED -> Text(
-                    text = "Resync failed: ${state.resyncStatus.errorMessage ?: "try again."}",
+                    text = "Sync failed: ${state.resyncStatus.errorMessage ?: "try again."}",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
                 )
                 SyncOperationState.CANCELLED -> Text(
-                    text = "Resync cancelled.",
+                    text = "Sync cancelled.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -140,7 +139,7 @@ fun SyncSection(
 
     if (showIntervalDialog) {
         ChoiceDialog(
-            title = "Sync every",
+            title = "Automatic sync",
             options = SYNC_INTERVAL_CHOICES,
             selected = state.intervalMinutes,
             label = ::formatInterval,
@@ -155,10 +154,10 @@ fun SyncSection(
     if (showResyncDialog) {
         AlertDialog(
             onDismissRequest = { showResyncDialog = false },
-            title = { Text("Delete local data and resync?") },
+            title = { Text("Clear local data and sync again?") },
             text = {
                 Text(
-                    "Every downloaded article, feed and image goes, including anything kept for " +
+                    "This removes every downloaded article, feed, and image from this device, including anything kept for " +
                         "reading offline. The account is then fetched again from the server, " +
                         "which needs a connection and can take a while on a large backlog. " +
                         "Nothing on the server is touched."
@@ -169,7 +168,7 @@ fun SyncSection(
                     showResyncDialog = false
                     onResyncFromScratch()
                 }) {
-                    Text("Delete and resync", color = MaterialTheme.colorScheme.error)
+                    Text("Clear data and sync", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
