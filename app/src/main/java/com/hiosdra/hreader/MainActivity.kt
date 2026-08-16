@@ -12,10 +12,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.net.toUri
-import com.hiosdra.hreader.navigation.AppNavigation
-import com.hiosdra.hreader.navigation.EntryPoint
-import com.hiosdra.hreader.ui.theme.HReaderTheme
-import com.hiosdra.hreader.worker.SyncScheduler
+import com.hiosdra.hreader.presentation.navigation.AppNavigation
+import com.hiosdra.hreader.presentation.navigation.EntryPoint
+import com.hiosdra.hreader.presentation.theme.HReaderTheme
+import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 
-    private val syncScheduler: SyncScheduler by inject()
+    private val syncScheduler: SyncRequester by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
