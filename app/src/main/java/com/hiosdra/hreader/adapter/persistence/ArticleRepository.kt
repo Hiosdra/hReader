@@ -280,9 +280,9 @@ class ArticleRepository(
         val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
         db.withTransaction {
             if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
-            if (staleIds.isNotEmpty()) {
-                articleDao.deleteByFeedIds(staleIds)
-                feedDao.deleteByIds(staleIds)
+            staleIds.chunked(DELETE_CHUNK).forEach { feedIds ->
+                articleDao.deleteByFeedIds(feedIds)
+                feedDao.deleteByIds(feedIds)
             }
         }
     }
