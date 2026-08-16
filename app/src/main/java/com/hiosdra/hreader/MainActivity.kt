@@ -2,7 +2,6 @@ package com.hiosdra.hreader
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -15,16 +14,8 @@ import androidx.core.net.toUri
 import com.hiosdra.hreader.presentation.navigation.AppNavigation
 import com.hiosdra.hreader.presentation.navigation.EntryPoint
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
-import com.hiosdra.hreader.core.application.port.out.SyncRequester
-import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
-    companion object {
-        private const val TAG = "MainActivity"
-    }
-
-    private val syncScheduler: SyncRequester by inject()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val entryPoint = intent?.entryPoint() ?: EntryPoint.ArticleList
@@ -42,11 +33,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        Log.i(TAG, "Scheduling chained content sync")
-        syncScheduler.enqueueBackgroundSyncChain()
-    }
 }
 
 /**

@@ -57,6 +57,7 @@ import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.text.resolve
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
+import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.service.displayUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -99,7 +100,7 @@ fun SubscriptionsPanel(
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val xml = withContext(Dispatchers.IO) {
-                runCatching {
+                runCatchingCancellable {
                     context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                 }.getOrNull()
             }
@@ -341,7 +342,7 @@ private fun RenameFeedDialog(feed: Feed, onConfirm: (String) -> Unit, onDismiss:
 
 private suspend fun writeTo(context: android.content.Context, uri: Uri, opml: String): Boolean =
     withContext(Dispatchers.IO) {
-        runCatching {
+        runCatchingCancellable {
             context.contentResolver.openOutputStream(uri)?.use { it.write(opml.toByteArray()) }
         }.isSuccess
     }

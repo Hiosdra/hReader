@@ -1,10 +1,13 @@
 package com.hiosdra.hreader.entrypoint.worker
 
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
+import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import android.content.Context
+import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkContinuation
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.hiosdra.hreader.adapter.preferences.PreferencesManager
 import com.hiosdra.hreader.adapter.system.NetworkMonitor
@@ -19,6 +22,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
+import java.util.UUID
 
 @RunWith(JUnit4::class)
 class SyncSchedulerTest {
@@ -162,4 +166,45 @@ class SyncSchedulerTest {
         )
         assertEquals(OfflinePreparationStage.IDLE, offlinePreparationStage(emptySet()))
     }
+
+    @Test
+    fun operationStatus_prefersFailureOverCompletedWork() {
+        val status = operationStatus(
+            listOf(
+                workInfo(WorkInfo.State.SUCCEEDED),
+                workInfo(WorkInfo.State.FAILED, "network")
+            )
+        )
+
+        assertEquals(SyncOperationState.FAILED, status.state)
+        assertEquals("network", status.errorMessage)
+    }
+
+    @Test
+    fun operationStatus_reportsRunningWhenAnyStageIsActive() {
+        val status = operationStatus(
+            listOf(
+                workInfo(WorkInfo.State.SUCCEEDED),
+                workInfo(WorkInfo.State.ENQUEUED)
+            )
+        )
+
+        assertEquals(SyncOperationState.RUNNING, status.state)
+    }
+
+    @Test
+    fun operationStatus_reportsCancellationWhenNoStageIsActive() {
+        val status = operationStatus(listOf(workInfo(WorkInfo.State.CANCELLED)))
+
+        assertEquals(SyncOperationState.CANCELLED, status.state)
+    }
+
+    private fun workInfo(workState: WorkInfo.State, errorMessage: String? = null): WorkInfo =
+        mockk<WorkInfo> {
+            every { id } returns UUID.randomUUID()
+            every { state } returns workState
+            every { outputData } returns Data.Builder()
+                .putString(KEY_ERROR_MESSAGE, errorMessage)
+                .build()
+        }
 }

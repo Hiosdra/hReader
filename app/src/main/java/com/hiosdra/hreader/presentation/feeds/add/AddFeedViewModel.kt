@@ -8,6 +8,7 @@ import com.hiosdra.hreader.core.application.exception.FeedOperationFailureReason
 import com.hiosdra.hreader.core.application.usecase.feeds.FeedUseCase
 import com.hiosdra.hreader.core.domain.model.DiscoveredFeed
 import com.hiosdra.hreader.presentation.text.UiText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -88,6 +89,8 @@ class AddFeedViewModel(
                 _uiState.value = _uiState.value.copy(isLoading = false)
                 onFeedAdded()
                 onNavigateBack()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 try {
                     val discovered = feeds.discoverFeeds(normalizedUrl)
@@ -96,6 +99,8 @@ class AddFeedViewModel(
                     } else {
                         _uiState.value = _uiState.value.copy(error = extractErrorMessage(e), isLoading = false)
                     }
+                } catch (e2: CancellationException) {
+                    throw e2
                 } catch (e2: Exception) {
                     _uiState.value = _uiState.value.copy(error = extractErrorMessage(e2), isLoading = false)
                 }
@@ -117,6 +122,8 @@ class AddFeedViewModel(
                 _uiState.value = _uiState.value.copy(isLoading = false)
                 onFeedAdded()
                 onNavigateBack()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = extractErrorMessage(e), isLoading = false)
             }
