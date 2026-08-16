@@ -6,6 +6,6 @@ suspend inline fun <T> runCatchingCancellable(crossinline block: suspend () -> T
     Result.success(block())
 } catch (e: CancellationException) {
     throw e
-} catch (e: Throwable) {
+} catch (e: Exception) {
     Result.failure(e)
 }
