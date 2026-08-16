@@ -195,6 +195,251 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
     }
 }
 
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_BEFORE_DELETE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_AFTER_UPDATE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_AFTER_INSERT")
+        db.execSQL("DROP TABLE IF EXISTS `articles_fts`")
+
+        ARTICLE_CHILD_TABLES.forEach { table ->
+            db.execSQL("ALTER TABLE `$table` RENAME TO `${table}_old`")
+        }
+        db.execSQL("ALTER TABLE `articles` RENAME TO `articles_old`")
+
+        db.execSQL(
+            """
+            CREATE TABLE `articles` (
+                `id` INTEGER NOT NULL,
+                `title` TEXT NOT NULL,
+                `author` TEXT,
+                `url` TEXT NOT NULL,
+                `publishedAt` INTEGER NOT NULL,
+                `content` TEXT,
+                `fullContent` TEXT,
+                `preview` TEXT,
+                `feedId` INTEGER NOT NULL,
+                `readingTime` INTEGER,
+                `enclosures` TEXT NOT NULL,
+                `status` TEXT,
+                `starred` INTEGER NOT NULL,
+                `starredPendingSync` INTEGER NOT NULL,
+                `pendingSync` INTEGER NOT NULL,
+                `readAt` INTEGER,
+                `backlogFetchedAt` INTEGER,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX `index_articles_feedId` ON `articles` (`feedId`)")
+        db.execSQL("CREATE INDEX `index_articles_status` ON `articles` (`status`)")
+        db.execSQL("CREATE INDEX `index_articles_publishedAt` ON `articles` (`publishedAt`)")
+        db.execSQL("CREATE INDEX `index_articles_pendingSync` ON `articles` (`pendingSync`)")
+        db.execSQL("CREATE INDEX `index_articles_starredPendingSync` ON `articles` (`starredPendingSync`)")
+
+        db.execSQL(
+            "CREATE TEMP TABLE `article_id_migration` (" +
+                "`oldId` TEXT NOT NULL PRIMARY KEY, `id` INTEGER NOT NULL UNIQUE)"
+        )
+        db.execSQL(
+            "INSERT INTO `article_id_migration`(`oldId`, `id`) " +
+                "SELECT `id`, CAST(`id` AS INTEGER) FROM `articles_old` " +
+                "WHERE `id` != '' AND `id` = CAST(CAST(`id` AS INTEGER) AS TEXT)"
+        )
+        db.execSQL(
+            "INSERT INTO `articles`(" +
+                "`id`, `title`, `author`, `url`, `publishedAt`, `content`, `fullContent`, " +
+                "`preview`, `feedId`, `readingTime`, `enclosures`, `status`, `starred`, " +
+                "`starredPendingSync`, `pendingSync`, `readAt`, `backlogFetchedAt`) " +
+                "SELECT m.`id`, a.`title`, a.`author`, a.`url`, a.`publishedAt`, a.`content`, " +
+                "a.`fullContent`, a.`preview`, a.`feedId`, a.`readingTime`, a.`enclosures`, " +
+                "a.`status`, a.`starred`, a.`starredPendingSync`, a.`pendingSync`, a.`readAt`, " +
+                "a.`backlogFetchedAt` FROM `articles_old` a " +
+                "INNER JOIN `article_id_migration` m ON m.`oldId` = a.`id`"
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_contents` (
+                `entryId` INTEGER NOT NULL,
+                `content` TEXT NOT NULL,
+                `fetchedAt` INTEGER NOT NULL,
+                `url` TEXT NOT NULL,
+                `source` TEXT NOT NULL,
+                `isPrepared` INTEGER NOT NULL,
+                `leadImageUrl` TEXT,
+                `imageUrls` TEXT NOT NULL,
+                PRIMARY KEY(`entryId`),
+                FOREIGN KEY(`entryId`) REFERENCES `articles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `article_contents`
+            SELECT c.* FROM `article_contents_old` c
+            INNER JOIN `articles` a ON a.`id` = c.`entryId`
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_images` (
+                `id` TEXT NOT NULL,
+                `entryId` INTEGER NOT NULL,
+                `originalUrl` TEXT NOT NULL,
+                `localFilePath` TEXT NOT NULL,
+                `mimeType` TEXT,
+                `downloadedAt` INTEGER NOT NULL,
+                `fileSize` INTEGER,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`entryId`) REFERENCES `articles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX `index_article_images_entryId` ON `article_images` (`entryId`)")
+        db.execSQL(
+            """
+            INSERT INTO `article_images`
+            SELECT i.* FROM `article_images_old` i
+            INNER JOIN `articles` a ON a.`id` = i.`entryId`
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_image_manifest` (
+                `entryId` INTEGER NOT NULL,
+                `originalUrl` TEXT NOT NULL,
+                PRIMARY KEY(`entryId`, `originalUrl`),
+                FOREIGN KEY(`entryId`) REFERENCES `articles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `article_image_manifest`
+            SELECT m.* FROM `article_image_manifest_old` m
+            INNER JOIN `articles` a ON a.`id` = m.`entryId`
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_credibility` (
+                `entryId` INTEGER NOT NULL,
+                `score` REAL NOT NULL,
+                `confidence` TEXT NOT NULL,
+                `summary` TEXT NOT NULL,
+                `reasons` TEXT NOT NULL,
+                `redFlags` TEXT NOT NULL,
+                `factors` TEXT NOT NULL,
+                `modelId` TEXT NOT NULL,
+                `analyzedAt` INTEGER NOT NULL,
+                `contentTruncated` INTEGER NOT NULL,
+                PRIMARY KEY(`entryId`),
+                FOREIGN KEY(`entryId`) REFERENCES `articles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `article_credibility`
+            SELECT c.* FROM `article_credibility_old` c
+            INNER JOIN `articles` a ON a.`id` = c.`entryId`
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_ai_overviews` (
+                `entryId` INTEGER NOT NULL,
+                `overview` TEXT NOT NULL,
+                `modelId` TEXT NOT NULL,
+                `contentHash` TEXT NOT NULL,
+                `generatedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`entryId`),
+                FOREIGN KEY(`entryId`) REFERENCES `articles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `article_ai_overviews`
+            SELECT o.* FROM `article_ai_overviews_old` o
+            INNER JOIN `articles` a ON a.`id` = o.`entryId`
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_page_snapshots` (
+                `entryId` INTEGER NOT NULL,
+                `originalUrl` TEXT NOT NULL,
+                `finalUrl` TEXT NOT NULL,
+                `directoryPath` TEXT NOT NULL,
+                `fetchedAt` INTEGER NOT NULL,
+                `byteSize` INTEGER NOT NULL,
+                `isComplete` INTEGER NOT NULL,
+                PRIMARY KEY(`entryId`),
+                FOREIGN KEY(`entryId`) REFERENCES `articles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `article_page_snapshots`
+            SELECT p.* FROM `article_page_snapshots_old` p
+            INNER JOIN `articles` a ON a.`id` = p.`entryId`
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_reading_positions` (
+                `articleId` INTEGER NOT NULL,
+                `progress` REAL NOT NULL,
+                PRIMARY KEY(`articleId`),
+                FOREIGN KEY(`articleId`) REFERENCES `articles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `article_reading_positions`(`articleId`, `progress`)
+            SELECT m.`id`, p.`progress` FROM `article_reading_positions_old` p
+            INNER JOIN `article_id_migration` m ON m.`oldId` = p.`articleId`
+            INNER JOIN `articles` a ON a.`id` = m.`id`
+            """.trimIndent()
+        )
+
+        ARTICLE_CHILD_TABLES.forEach { table ->
+            db.execSQL("DROP TABLE `${table}_old`")
+        }
+        db.execSQL("DROP TABLE `articles_old`")
+        db.execSQL("DROP TABLE `article_id_migration`")
+
+        db.execSQL(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS `articles_fts` USING FTS4(" +
+                "`title` TEXT NOT NULL, `author` TEXT, `content` TEXT, `fullContent` TEXT, " +
+                "content=`articles`)"
+        )
+        FTS_CONTENT_SYNC_TRIGGERS_WITH_FULL_CONTENT.forEach(db::execSQL)
+        db.execSQL("INSERT INTO `articles_fts`(`articles_fts`) VALUES('rebuild')")
+    }
+}
+
+private val ARTICLE_CHILD_TABLES = listOf(
+    "article_contents",
+    "article_images",
+    "article_image_manifest",
+    "article_credibility",
+    "article_ai_overviews",
+    "article_page_snapshots",
+    "article_reading_positions"
+)
+
 private val FTS_CONTENT_SYNC_TRIGGERS_WITH_FULL_CONTENT = listOf(
     "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE " +
         "BEFORE UPDATE ON `articles` BEGIN DELETE FROM `articles_fts` WHERE `docid`=OLD.`rowid`; END",
@@ -221,5 +466,6 @@ val ALL_MIGRATIONS = arrayOf(
     MIGRATION_11_12,
     MIGRATION_12_13,
     MIGRATION_13_14,
-    MIGRATION_14_15
+    MIGRATION_14_15,
+    MIGRATION_15_16
 )

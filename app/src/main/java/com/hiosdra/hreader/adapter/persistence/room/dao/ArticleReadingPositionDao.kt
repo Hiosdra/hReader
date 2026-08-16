@@ -9,13 +9,13 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleReadingPositio
 @Dao
 interface ArticleReadingPositionDao {
     @Query("SELECT * FROM article_reading_positions WHERE articleId IN (:articleIds)")
-    suspend fun getForArticles(articleIds: List<String>): List<ArticleReadingPosition>
+    suspend fun getForArticles(articleIds: List<Long>): List<ArticleReadingPosition>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(position: ArticleReadingPosition)
 
     @Query("DELETE FROM article_reading_positions WHERE articleId = :articleId")
-    suspend fun deleteForArticle(articleId: String)
+    suspend fun deleteForArticle(articleId: Long)
 
     @Query("DELETE FROM article_reading_positions")
     suspend fun clearAll()

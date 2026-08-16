@@ -26,7 +26,7 @@ interface ArticlePageSnapshotDao {
 
     @Query(
         "SELECT COUNT(*) FROM article_page_snapshots s INNER JOIN articles a " +
-            "ON a.id = CAST(s.entryId AS TEXT) AND s.originalUrl = a.url " +
+            "ON a.id = s.entryId AND s.originalUrl = a.url " +
             "WHERE s.isComplete = 1 AND " +
             "((a.status IS NULL OR a.status != 'READ') OR " +
             "a.backlogFetchedAt IS NOT NULL OR a.starred = 1)"

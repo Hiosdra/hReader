@@ -13,7 +13,7 @@ import java.time.Instant
  * elsewhere used to abort the whole list with "Feed not found".
  */
 data class ArticleListItem(
-    val id: String,
+    val id: Long,
     val title: String,
     val author: String?,
     val url: String,
@@ -32,7 +32,7 @@ data class ArticleListItem(
 
 /** The reader metadata plus its feed. The body is loaded only for the nearby pages. */
 data class ArticleReaderItem(
-    val id: String,
+    val id: Long,
     val title: String,
     val author: String?,
     val url: String,
@@ -50,13 +50,13 @@ data class ArticleReaderItem(
 
 /** Just enough of an article to derive its stored preview from the body. */
 data class ArticleBody(
-    val id: String,
+    val id: Long,
     val content: String?
 )
 
 /** Stars queued for the backend, the starred counterpart of [PendingStatus]. */
 data class PendingStar(
-    val id: String,
+    val id: Long,
     val starred: Boolean
 )
 
@@ -65,7 +65,7 @@ data class PendingStar(
  * into memory just to read two columns.
  */
 data class PendingStatus(
-    val id: String,
+    val id: Long,
     val status: ArticleStatus?
 )
 
@@ -75,7 +75,7 @@ data class PendingStatus(
  * full would load the very bodies it is about to replace, plus a feed lookup per row.
  */
 data class PrefetchTarget(
-    val id: String,
+    val id: Long,
     val url: String,
     val enclosures: List<Enclosure>
 )

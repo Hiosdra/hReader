@@ -77,7 +77,7 @@ class ArticleContentRepository(
             }
         }
 
-        val feedContent = articleDao.getArticlesImmediate(listOf(entryId.toString()))
+        val feedContent = articleDao.getArticlesImmediate(listOf(entryId))
             .firstOrNull()
             ?.content
             ?.takeIf { it.isNotBlank() }
@@ -142,7 +142,7 @@ class ArticleContentRepository(
                 imageUrls = prepared.imageUrls.toImageManifest()
             )
         )
-        if (source == ArticleContentSource.FULL) articleDao.setFullContent(entryId.toString(), sourceContent)
+        if (source == ArticleContentSource.FULL) articleDao.setFullContent(entryId, sourceContent)
         return ArticleText(prepared.html, prepared.leadImageUrl, source)
     }
 
@@ -152,7 +152,7 @@ class ArticleContentRepository(
      * the article. One reading of the document answers all three.
      */
     private suspend fun prepare(entryId: Long, content: String, baseUri: String): PreparedArticle {
-        val article = articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull()
+        val article = articleDao.getArticlesImmediate(listOf(entryId)).firstOrNull()
         return withContext(Dispatchers.Default) {
             val images = prepareArticleImages(
                 content,
@@ -237,7 +237,7 @@ class ArticleContentRepository(
         // No early return on an empty article set: retention and full-sync reconciliation both
         // delete articles now, so "no articles left" is precisely when everything stored here has
         // become an orphan.
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
+        val currentEntryIds = articleDao.getAllIds().toHashSet()
         credibilityStore.cleanupOrphanedReports(currentEntryIds)
         articleAiOverviewStore.cleanupOrphaned(currentEntryIds)
 

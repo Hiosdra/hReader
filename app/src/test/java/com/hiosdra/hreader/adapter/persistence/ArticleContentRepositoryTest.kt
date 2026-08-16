@@ -54,7 +54,7 @@ class ArticleContentRepositoryTest {
         content: String? = "<p>What the feed carried</p>",
         enclosures: List<Enclosure> = emptyList()
     ) = ArticleEntity(
-        id = entryId.toString(),
+        id = entryId,
         title = "An article",
         author = null,
         url = articleUrl,

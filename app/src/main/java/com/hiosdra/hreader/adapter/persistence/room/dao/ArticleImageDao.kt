@@ -53,7 +53,7 @@ interface ArticleImageDao {
 
     @Query(
         "SELECT COUNT(*) FROM article_image_manifest m INNER JOIN articles a " +
-            "ON a.id = CAST(m.entryId AS TEXT) WHERE (a.status IS NULL OR a.status != 'READ') " +
+            "ON a.id = m.entryId WHERE (a.status IS NULL OR a.status != 'READ') " +
             "OR a.backlogFetchedAt IS NOT NULL OR a.starred = 1"
     )
     fun observeOfflineExpectedImageCount(): Flow<Int>
@@ -61,7 +61,7 @@ interface ArticleImageDao {
     @Query(
         "SELECT COUNT(*) FROM article_image_manifest m INNER JOIN article_images i " +
             "ON i.entryId = m.entryId AND i.originalUrl = m.originalUrl " +
-            "INNER JOIN articles a ON a.id = CAST(m.entryId AS TEXT) " +
+            "INNER JOIN articles a ON a.id = m.entryId " +
             "WHERE (a.status IS NULL OR a.status != 'READ') " +
             "OR a.backlogFetchedAt IS NOT NULL OR a.starred = 1"
     )

@@ -19,9 +19,9 @@ class ArticleReadingPositionRepositoryTest {
 
     @Test
     fun `positions are returned by numeric article id`() = runBlocking {
-        coEvery { dao.getForArticles(listOf("7", "9")) } returns listOf(
-            ArticleReadingPosition("7", 0.25f),
-            ArticleReadingPosition("9", 0.75f)
+        coEvery { dao.getForArticles(listOf(7L, 9L)) } returns listOf(
+            ArticleReadingPosition(7L, 0.25f),
+            ArticleReadingPosition(9L, 0.75f)
         )
 
         assertEquals(

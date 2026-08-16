@@ -1,11 +1,22 @@
 package com.hiosdra.hreader.adapter.persistence.room.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import java.time.Instant
 
-@Entity(tableName = "article_contents")
+@Entity(
+    tableName = "article_contents",
+    foreignKeys = [
+        ForeignKey(
+            entity = ArticleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["entryId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
 data class ArticleContent(
     @PrimaryKey
     val entryId: Long,

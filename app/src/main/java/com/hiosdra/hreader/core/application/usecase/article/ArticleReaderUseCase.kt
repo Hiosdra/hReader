@@ -75,7 +75,7 @@ class ArticleReaderUseCase(
     suspend fun getCachedCredibility(ids: List<Long>): Map<Long, CredibilityReport> = credibility.getCached(ids)
 
     suspend fun updateReadStatus(entryId: Long, status: ArticleStatus) {
-        articles.updateReadStatus(entryId.toString(), status)
+        articles.updateReadStatus(entryId, status)
     }
 
     suspend fun updateStarred(entryId: Long, starred: Boolean) = articles.updateStarred(entryId, starred)

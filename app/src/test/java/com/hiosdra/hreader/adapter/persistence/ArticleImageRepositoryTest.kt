@@ -79,7 +79,7 @@ class ArticleImageRepositoryTest {
     fun cleanupOrphanedImages_keepsImagesOfArticlesStillCached() = runBlocking {
         coEvery { articleImageDao.getAllImageEntryIds() } returns listOf(7L)
         coEvery { articleImageDao.getAllExpectedImageEntryIds() } returns emptyList()
-        coEvery { articleDao.getAllIds() } returns listOf("7")
+        coEvery { articleDao.getAllIds() } returns listOf(7L)
 
         repo.cleanupOrphanedImages()
 

@@ -18,8 +18,8 @@ interface ArticleStore {
     fun observeReadCount(feedId: Long?, starredOnly: Boolean): Flow<Int>
     fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>>
     suspend fun refreshArticles(forceFullSync: Boolean = false)
-    suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus)
-    suspend fun updateReadStatus(articleId: String, newStatus: ArticleStatus)
+    suspend fun updateReadStatus(articleIds: List<Long>, newStatus: ArticleStatus)
+    suspend fun updateReadStatus(articleId: Long, newStatus: ArticleStatus)
     suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long>
     suspend fun updateStarred(articleId: Long, starred: Boolean)
     suspend fun backfillMissingPreviews(limit: Int = 500): Int

@@ -131,10 +131,10 @@ class ArticleRepository(
             starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
-        ).toArticleIds("the reader's list")
+        )
 
     override suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
-        articleDao.getUnreadIds(feedId, starredOnly).toArticleIds("the unread set")
+        articleDao.getUnreadIds(feedId, starredOnly)
 
     override fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
         articleDao.observeUnreadCountFor(feedId, starredOnly)
@@ -143,7 +143,7 @@ class ArticleRepository(
         articleDao.observeReadCountFor(feedId, starredOnly)
 
     override fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
-        articleDao.getArticlesWithFeedByIds(ids.map { it.toString() }).map { rows ->
+        articleDao.getArticlesWithFeedByIds(ids).map { rows ->
             rows.map { it.toEntry() }
         }
 
@@ -158,7 +158,7 @@ class ArticleRepository(
         val useIncrementalSync = !forceFullSync && shouldUseIncrementalSync(syncStartTime)
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
 
-        val fetchedIds = mutableSetOf<String>()
+        val fetchedIds = mutableSetOf<Long>()
         // Whether the backend ran out of pages, as opposed to [MAX_SYNC_PAGES] cutting the walk
         // short. Only the first case leaves [fetchedIds] holding the server's whole answer, which
         // is the one thing the reconciliation below assumes about it.
@@ -172,7 +172,7 @@ class ArticleRepository(
                     // Persisting per page keeps memory flat regardless of backlog size and leaves
                     // partial progress behind if the sync is interrupted.
                     persistPage(page.entries)
-                    fetchedIds += page.entries.map { it.id.toString() }
+                    fetchedIds += page.entries.map { it.id }
                 }
                 cursor = page.cursor
                 pages++
@@ -229,11 +229,11 @@ class ArticleRepository(
                     if (page.entries.isEmpty()) break
 
                     val missing = page.entries
-                        .filterNot { it.id.toString() in storedIds }
+                        .filterNot { it.id in storedIds }
                         .take(target - storedIds.size)
                     if (missing.isNotEmpty()) {
                         persistBacklogPage(missing)
-                        storedIds += missing.map { it.id.toString() }
+                        storedIds += missing.map { it.id }
                     }
 
                     pages++
@@ -320,8 +320,7 @@ class ArticleRepository(
         val now = Instant.now()
         fetchedArticles.mapNotNull { fetched ->
             val local = existingArticles[fetched.id] ?: return@mapNotNull null
-            fetched.id.toLongOrNull()
-                ?.takeIf { local.url != fetched.url || local.content != fetched.content }
+            fetched.id.takeIf { local.url != fetched.url || local.content != fetched.content }
         }.chunked(DELETE_CHUNK).forEach { changedEntryIds ->
             articleContentDao.deleteArticlesContent(changedEntryIds)
         }
@@ -332,7 +331,7 @@ class ArticleRepository(
      * A full sync only asks for unread entries, so anything read or deleted elsewhere simply stops
      * being returned. Without this it would sit in the cache as unread forever.
      */
-    private suspend fun dropUnreadArticlesMissingFrom(fetchedIds: Set<String>) {
+    private suspend fun dropUnreadArticlesMissingFrom(fetchedIds: Set<Long>) {
         val stale = articleDao.getSyncedUnreadIds().filterNot { it in fetchedIds }
         if (stale.isEmpty()) return
         Log.d(TAG, "Dropping ${stale.size} locally unread articles the backend no longer returns")
@@ -366,11 +365,11 @@ class ArticleRepository(
      * A failed push is not an error the caller has to handle: the change stays queued and the next
      * sync tries again. Cancellation is not a failure and has to keep propagating.
      */
-    private suspend fun pushStatusOrLeaveQueued(articleIds: List<String>, status: ArticleStatus) {
+    private suspend fun pushStatusOrLeaveQueued(articleIds: List<Long>, status: ArticleStatus) {
         try {
             // Cleared chunk by chunk so a failure halfway through does not requeue what got through.
             articleIds.chunked(STATUS_UPDATE_CHUNK).forEach { chunk ->
-                api.updateEntriesStatus(chunk.map { it.toLong() }, status)
+                api.updateEntriesStatus(chunk, status)
                 articleDao.clearPendingSync(chunk, status)
             }
         } catch (e: CancellationException) {
@@ -380,10 +379,10 @@ class ArticleRepository(
         }
     }
 
-    private suspend fun pushStarOrLeaveQueued(articleIds: List<String>, starred: Boolean) {
+    private suspend fun pushStarOrLeaveQueued(articleIds: List<Long>, starred: Boolean) {
         try {
             articleIds.chunked(STATUS_UPDATE_CHUNK).forEach { chunk ->
-                api.updateEntriesStarred(chunk.map { it.toLong() }, starred)
+                api.updateEntriesStarred(chunk, starred)
                 articleDao.clearStarredPendingSync(chunk, starred)
             }
         } catch (e: CancellationException) {
@@ -393,7 +392,7 @@ class ArticleRepository(
         }
     }
 
-    override suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus) {
+    override suspend fun updateReadStatus(articleIds: List<Long>, newStatus: ArticleStatus) {
         if (articleIds.isEmpty()) return
         // Queued first: if the push fails (offline, server down) the next sync picks it up.
         val readAt = Instant.now().takeIf { newStatus == ArticleStatus.READ }
@@ -402,7 +401,7 @@ class ArticleRepository(
         }
     }
 
-    override suspend fun updateReadStatus(articleId: String, newStatus: ArticleStatus) {
+    override suspend fun updateReadStatus(articleId: Long, newStatus: ArticleStatus) {
         updateReadStatus(listOf(articleId), newStatus)
     }
 
@@ -412,14 +411,12 @@ class ArticleRepository(
      * reverting that one too would undo something they did on purpose.
      */
     override suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long> =
-        articleIds.map { it.toString() }
+        articleIds
             .chunked(LOCAL_UPDATE_CHUNK)
             .flatMap { articleDao.getIdsReadNoLaterThan(it, readBefore) }
-            .toArticleIds("an undo")
 
     override suspend fun updateStarred(articleId: Long, starred: Boolean) {
-        val ids = listOf(articleId.toString())
-        articleDao.updateStarredForIds(ids, starred)
+        articleDao.updateStarredForIds(listOf(articleId), starred)
     }
 
     /**
@@ -448,10 +445,8 @@ class ArticleRepository(
      * never touches.
      */
     override suspend fun getPrefetchTargets(): List<PrefetchTarget> = articleDao.getPrefetchTargets()
-        .mapNotNull { target ->
-            target.id.toLongOrNull()?.let { id ->
-                PrefetchTarget(id = id, url = target.url, enclosures = target.enclosures)
-            }
+        .map { target ->
+            PrefetchTarget(id = target.id, url = target.url, enclosures = target.enclosures)
         }
 
     override suspend fun getFeed(feedId: Long): Feed? = feedDao.getFeedById(feedId)?.toFeed()
@@ -471,12 +466,6 @@ class ArticleRepository(
  * that will not parse is a broken invariant rather than an article to be quietly left out of the
  * list — which is what dropping it silently looked like from the outside.
  */
-private fun List<String>.toArticleIds(what: String): List<Long> {
-    val ids = mapNotNull { it.toLongOrNull() }
-    if (ids.size != size) Log.w(TAG, "Ignored ${size - ids.size} unreadable article ids in $what")
-    return ids
-}
-
 /**
  * Merges a freshly fetched article with what is already cached. The backend owns the read state —
  * that is what makes a status change from another client land here. The one thing it cannot know
@@ -505,7 +494,7 @@ internal fun ArticleEntity.reconciledWith(local: ArticleEntity?, now: Instant): 
 }
 
 private fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
-    id = id.toLong(),
+    id = id,
     title = title,
     preview = preview,
     author = author,
@@ -522,7 +511,7 @@ private fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
 )
 
 private fun ArticleReaderItem.toEntry(): Entry = Entry(
-    id = id.toLong(),
+    id = id,
     title = title,
     author = author,
     url = url,
@@ -549,7 +538,7 @@ private fun FeedEntity.toFeed(): Feed = Feed(
 )
 
 private fun Entry.toEntity(): ArticleEntity = ArticleEntity(
-    id = id.toString(),
+    id = id,
     title = title,
     author = author,
     url = url,

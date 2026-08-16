@@ -142,7 +142,7 @@ class ArticlePageRepository(
     }
 
     override suspend fun cleanupOrphanedPages() = withContext(Dispatchers.IO) {
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
+        val currentEntryIds = articleDao.getAllIds().toHashSet()
         val snapshots = snapshotDao.getAll()
         val invalidSnapshots = snapshots.filterNot { snapshot ->
             pageDirectory(snapshot.entryId, snapshot.directoryPath)

@@ -101,7 +101,7 @@ interface ArticleDao {
         includeRead: Boolean,
         sessionStart: Instant,
         readStatus: ArticleStatus = ArticleStatus.READ
-    ): List<String>
+    ): List<Long>
 
     @Query(
         "SELECT a.id $FROM_ARTICLES_WITH_FEED " +
@@ -113,7 +113,7 @@ interface ArticleDao {
         feedId: Long?,
         starredOnly: Boolean,
         readStatus: ArticleStatus = ArticleStatus.READ
-    ): List<String>
+    ): List<Long>
 
     /**
      * Counted in SQLite rather than over the loaded page: the list no longer holds every article,
@@ -151,7 +151,7 @@ interface ArticleDao {
             "$FROM_ARTICLES_WITH_FEED " +
             "WHERE a.id IN (:ids) ORDER BY a.publishedAt ASC"
     )
-    fun getArticlesWithFeedByIds(ids: List<String>): Flow<List<ArticleReaderItem>>
+    fun getArticlesWithFeedByIds(ids: List<Long>): Flow<List<ArticleReaderItem>>
 
     @Query(
         "SELECT id, content FROM articles WHERE preview IS NULL AND content IS NOT NULL LIMIT :limit"
@@ -159,10 +159,10 @@ interface ArticleDao {
     suspend fun getArticlesMissingPreview(limit: Int): List<ArticleBody>
 
     @Query("UPDATE articles SET preview = :preview WHERE id = :id")
-    suspend fun setPreview(id: String, preview: String)
+    suspend fun setPreview(id: Long, preview: String)
 
     @Query("UPDATE articles SET fullContent = :content WHERE id = :id")
-    suspend fun setFullContent(id: String, content: String)
+    suspend fun setFullContent(id: Long, content: String)
 
     /**
      * Upsert rather than insert-or-replace. REPLACE resolves a conflict by deleting the old row and
@@ -189,14 +189,14 @@ interface ArticleDao {
             "readAt = CASE WHEN :readAt IS NULL THEN NULL ELSE COALESCE(readAt, :readAt) END " +
             "WHERE id IN (:ids)"
     )
-    suspend fun updateStatusForIds(ids: List<String>, status: ArticleStatus, readAt: Instant?)
+    suspend fun updateStatusForIds(ids: List<Long>, status: ArticleStatus, readAt: Instant?)
 
     /**
      * Dequeues only rows still holding the status that was pushed. If the user flipped the status
      * again while the request was in flight, the newer value stays queued instead of being lost.
      */
     @Query("UPDATE articles SET pendingSync = 0 WHERE id IN (:ids) AND status = :pushedStatus")
-    suspend fun clearPendingSync(ids: List<String>, pushedStatus: ArticleStatus)
+    suspend fun clearPendingSync(ids: List<Long>, pushedStatus: ArticleStatus)
 
     @Query("SELECT id, status FROM articles WHERE pendingSync = 1")
     suspend fun getPendingStatuses(): List<PendingStatus>
@@ -211,16 +211,16 @@ interface ArticleDao {
             "AND readAt IS NOT NULL AND readAt <= :readBefore"
     )
     suspend fun getIdsReadNoLaterThan(
-        ids: List<String>,
+        ids: List<Long>,
         readBefore: Instant,
         readStatus: ArticleStatus = ArticleStatus.READ
-    ): List<String>
+    ): List<Long>
 
     @Query("UPDATE articles SET starred = :starred, starredPendingSync = 1 WHERE id IN (:ids)")
-    suspend fun updateStarredForIds(ids: List<String>, starred: Boolean)
+    suspend fun updateStarredForIds(ids: List<Long>, starred: Boolean)
 
     @Query("UPDATE articles SET starredPendingSync = 0 WHERE id IN (:ids) AND starred = :pushedStarred")
-    suspend fun clearStarredPendingSync(ids: List<String>, pushedStarred: Boolean)
+    suspend fun clearStarredPendingSync(ids: List<Long>, pushedStarred: Boolean)
 
     @Query("SELECT id, starred FROM articles WHERE starredPendingSync = 1")
     suspend fun getPendingStars(): List<PendingStar>
@@ -236,10 +236,10 @@ interface ArticleDao {
             "AND pendingSync = 0 AND starredPendingSync = 0 " +
             "AND backlogFetchedAt IS NULL AND starred = 0"
     )
-    suspend fun getSyncedUnreadIds(readStatus: ArticleStatus = ArticleStatus.READ): List<String>
+    suspend fun getSyncedUnreadIds(readStatus: ArticleStatus = ArticleStatus.READ): List<Long>
 
     @Query("DELETE FROM articles WHERE id IN (:ids)")
-    suspend fun deleteByIds(ids: List<String>)
+    suspend fun deleteByIds(ids: List<Long>)
 
     @Query("DELETE FROM articles WHERE feedId = :feedId")
     suspend fun deleteByFeedId(feedId: Long)
@@ -270,10 +270,10 @@ interface ArticleDao {
     suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
 
     @Query("SELECT * FROM articles WHERE id IN (:ids)")
-    suspend fun getArticlesImmediate(ids: List<String>): List<ArticleEntity>
+    suspend fun getArticlesImmediate(ids: List<Long>): List<ArticleEntity>
 
     @Query("SELECT id FROM articles")
-    suspend fun getAllIds(): List<String>
+    suspend fun getAllIds(): List<Long>
 
     @Query("SELECT COUNT(*) FROM articles")
     fun observeArticleCount(): Flow<Int>

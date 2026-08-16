@@ -44,7 +44,7 @@ interface ArticleContentDao {
 
     @Query(
         "SELECT COUNT(*) FROM article_contents c INNER JOIN articles a " +
-            "ON a.id = CAST(c.entryId AS TEXT) WHERE c.source = :source AND " +
+            "ON a.id = c.entryId WHERE c.source = :source AND " +
             "((a.status IS NULL OR a.status != 'READ') OR " +
             "a.backlogFetchedAt IS NOT NULL OR a.starred = 1)"
     )

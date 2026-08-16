@@ -16,6 +16,6 @@ import androidx.room.PrimaryKey
     ]
 )
 data class ArticleReadingPosition(
-    @PrimaryKey val articleId: String,
+    @PrimaryKey val articleId: Long,
     val progress: Float
 )

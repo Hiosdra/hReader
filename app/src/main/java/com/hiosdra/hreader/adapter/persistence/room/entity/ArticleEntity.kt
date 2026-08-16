@@ -18,7 +18,7 @@ import java.time.Instant
     ]
 )
 data class ArticleEntity(
-    @PrimaryKey val id: String,
+    @PrimaryKey val id: Long,
     val title: String,
     val author: String?,
     val url: String,

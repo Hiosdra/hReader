@@ -231,7 +231,7 @@ class ArticleImageRepository(
             ).distinct()
         if (storedEntryIds.isEmpty()) return
 
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
+        val currentEntryIds = articleDao.getAllIds().toHashSet()
         val orphaned = storedEntryIds.filterNot { currentEntryIds.contains(it) }
         if (orphaned.isEmpty()) return
 

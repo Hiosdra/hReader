@@ -132,7 +132,7 @@ class ArticleReconciliationTest {
         readAt: Instant? = null,
         backlogFetchedAt: Instant? = null
     ) = ArticleEntity(
-        id = "1",
+        id = 1L,
         title = title,
         author = null,
         url = "https://example.com/1",

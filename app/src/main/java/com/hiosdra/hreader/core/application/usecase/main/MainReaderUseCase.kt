@@ -44,7 +44,7 @@ class MainReaderUseCase(
         articles.unreadIds(feedId, starredOnly)
 
     suspend fun updateReadStatus(articleIds: List<Long>, read: Boolean) = articles.updateReadStatus(
-        articleIds.map(Long::toString),
+        articleIds,
         if (read) ArticleStatus.READ else ArticleStatus.UNREAD
     )
 

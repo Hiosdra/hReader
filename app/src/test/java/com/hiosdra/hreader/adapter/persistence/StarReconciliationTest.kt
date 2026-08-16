@@ -56,7 +56,7 @@ class StarReconciliationTest {
         starred: Boolean,
         starredPendingSync: Boolean = false
     ) = ArticleEntity(
-        id = "1",
+        id = 1L,
         title = "Article",
         author = null,
         url = "https://example.com/1",
