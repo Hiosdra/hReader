@@ -58,6 +58,7 @@ class ArticleImageRepository(
             }
             chain.proceed(chain.request())
         }
+        .dns(remoteResourcePolicy.dns())
         .build()
 
     override suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): Unit =

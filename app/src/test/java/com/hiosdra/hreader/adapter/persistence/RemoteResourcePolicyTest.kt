@@ -1,8 +1,11 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import java.net.InetAddress
+import java.net.UnknownHostException
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class RemoteResourcePolicyTest {
@@ -11,6 +14,7 @@ class RemoteResourcePolicyTest {
         val policy = policyFor("10.0.0.4", allowedHosts = setOf("reader.local"))
 
         assertTrue(policy.allows("http://reader.local/article"))
+        assertEquals("10.0.0.4", policy.dns().lookup("reader.local").single().hostAddress)
     }
 
     @Test
@@ -18,6 +22,11 @@ class RemoteResourcePolicyTest {
         val policy = policyFor("10.0.0.4")
 
         assertFalse(policy.allows("http://reader.local/article"))
+        try {
+            policy.dns().lookup("reader.local")
+            fail("Expected private remote resource host to be blocked")
+        } catch (_: UnknownHostException) {
+        }
     }
 
     @Test

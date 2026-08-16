@@ -601,7 +601,9 @@ private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse
 
 internal fun isAllowedArticleLink(url: String): Boolean = runCatching {
     val uri = URI(url)
-    uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrBlank()
+    uri.scheme?.lowercase() in setOf("http", "https") &&
+        uri.userInfo == null &&
+        !uri.host.isNullOrBlank()
 }.getOrDefault(false)
 
 @Suppress("DEPRECATION")

@@ -11,6 +11,7 @@ class ArticleWebViewSecurityTest {
     fun `allows only web links`() {
         assertTrue(isAllowedArticleLink("https://example.com/article"))
         assertTrue(isAllowedArticleLink("http://example.com/article"))
+        assertFalse(isAllowedArticleLink("https://user:password@example.com/article"))
         assertFalse(isAllowedArticleLink("mailto:user@example.com"))
         assertFalse(isAllowedArticleLink("javascript:alert(1)"))
     }

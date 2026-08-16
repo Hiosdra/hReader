@@ -67,6 +67,7 @@ class ArticlePageRepository(
             }
             chain.proceed(chain.request())
         }
+        .dns(remoteResourcePolicy.dns())
         .build()
 
     override suspend fun getOfflinePage(entryId: Long, originalUrl: String): OfflinePage? =
