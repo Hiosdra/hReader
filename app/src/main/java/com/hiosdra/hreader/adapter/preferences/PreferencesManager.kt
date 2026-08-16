@@ -42,7 +42,6 @@ class PreferencesManager(context: Context) : AppPreferences {
     private val legacyPreferences = applicationContext.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
     private val legacySecretPreferences = applicationContext.getSharedPreferences(SECRETS_FILE, Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -84,11 +83,13 @@ class PreferencesManager(context: Context) : AppPreferences {
     private val secretState: AtomicReference<SecretState>
 
     init {
-        migrateLegacySecrets()
-        preferenceState = AtomicReference(readLegacyPreferences())
-        secretState = AtomicReference(readLegacySecrets())
+        preferenceState = AtomicReference(PreferenceState())
+        secretState = AtomicReference(SecretState())
 
         runBlocking(Dispatchers.IO) {
+            migrateLegacySecrets()
+            preferenceState.set(readLegacyPreferences())
+            secretState.set(readLegacySecrets())
             preferenceState.set(preferencesDataStore.data.first().toPreferenceState())
             secretState.set(secretDataStore.data.first().toSecretState())
         }
@@ -362,11 +363,11 @@ class PreferencesManager(context: Context) : AppPreferences {
     }
 
     private fun writePreferences(transform: suspend MutablePreferences.() -> Unit) {
-        writeScope.launch { preferencesDataStore.edit(transform) }
+        scope.launch { preferencesDataStore.edit(transform) }
     }
 
     private fun writeSecrets(transform: suspend MutablePreferences.() -> Unit) {
-        writeScope.launch { secretDataStore.edit(transform) }
+        scope.launch { secretDataStore.edit(transform) }
     }
 
     private fun migrateLegacySecrets() {
