@@ -21,13 +21,13 @@ import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.Feed
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.ENTRIES_PAGE_LIMIT
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.content.extractArticlePreview
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -89,7 +89,7 @@ class ArticleRepository(
     private val feedDao: FeedDao,
     private val api: FeedBackend,
     private val db: AppDatabase,
-    private val preferencesManager: AppPreferences,
+    private val preferencesManager: SyncPreferences,
     private val syncPerformanceLogger: SyncPerformanceTracker
 ) : ArticleStore {
     /**

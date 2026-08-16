@@ -9,8 +9,9 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkContinuation
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.hiosdra.hreader.adapter.preferences.PreferencesManager
 import com.hiosdra.hreader.adapter.system.NetworkMonitor
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -27,20 +28,22 @@ import java.util.UUID
 @RunWith(JUnit4::class)
 class SyncSchedulerTest {
     private val context = mockk<Context>(relaxed = true)
-    private val preferencesManager = mockk<PreferencesManager>(relaxed = true)
+    private val backendPreferences = mockk<BackendPreferences>(relaxed = true)
+    private val syncPreferences = mockk<SyncPreferences>(relaxed = true)
     private val networkMonitor = mockk<NetworkMonitor>(relaxed = true)
     private val workManager = mockk<WorkManager>(relaxed = true)
     private val workContinuation = mockk<WorkContinuation>(relaxed = true)
     private val scheduler = SyncScheduler(
         context = context,
-        preferencesManager = preferencesManager,
+        backendPreferences = backendPreferences,
+        syncPreferences = syncPreferences,
         networkMonitor = networkMonitor,
         workManagerProvider = { workManager }
     )
 
     init {
-        every { preferencesManager.hasBackendCredentials() } returns true
-        every { preferencesManager.getSyncWhileRoaming() } returns true
+        every { backendPreferences.hasBackendCredentials() } returns true
+        every { syncPreferences.getSyncWhileRoaming() } returns true
         every { context.getString(any()) } returns "Sync"
         every {
             workManager.beginUniqueWork(

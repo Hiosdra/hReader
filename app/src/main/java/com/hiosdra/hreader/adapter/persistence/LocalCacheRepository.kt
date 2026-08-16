@@ -10,9 +10,9 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleReadingPositionDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiOverviewDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.CacheStore
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -29,7 +29,7 @@ class LocalCacheRepository(
     private val articleAiOverviewDao: ArticleAiOverviewDao,
     private val articlePageSnapshotDao: ArticlePageSnapshotDao,
     private val articleReadingPositionDao: ArticleReadingPositionDao,
-    private val preferencesManager: AppPreferences,
+    private val preferencesManager: SyncPreferences,
     private val imagesDir: File,
     private val pagesDir: File,
     private val backendIdentity: BackendIdentity

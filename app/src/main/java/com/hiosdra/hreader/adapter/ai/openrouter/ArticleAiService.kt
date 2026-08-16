@@ -1,7 +1,7 @@
 package com.hiosdra.hreader.adapter.ai.openrouter
 
 import android.util.Log
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
@@ -18,7 +18,7 @@ class OpenRouterException(val code: Int?, message: String) : Exception(message)
 
 class ArticleAiService(
     private val openRouterApiService: OpenRouterApiService,
-    private val preferencesManager: AppPreferences,
+    private val preferencesManager: AiPreferences,
     private val credibilityPromptBuilder: CredibilityPromptBuilder,
     private val credibilityResponseParser: CredibilityResponseParser
 ) : ArticleAiGateway {

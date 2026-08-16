@@ -9,11 +9,11 @@ import androidx.work.workDataOf
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.entrypoint.notification.AppNotificationFactory
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import java.time.LocalTime
@@ -26,7 +26,7 @@ class ContentSyncWorker(
     private val repository: ArticleStore,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val syncScheduler: SyncRequester,
-    private val preferencesManager: AppPreferences,
+    private val preferencesManager: SyncPreferences,
     private val errorReportingManager: ErrorReporter
 ) : CoroutineWorker(appContext, params) {
 

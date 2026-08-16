@@ -3,7 +3,7 @@ package com.hiosdra.hreader.adapter.ai.openrouter
 import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -18,7 +18,7 @@ private const val CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L
 
 class AiModelRepository(
     private val apiService: OpenRouterApiService,
-    private val preferencesManager: AppPreferences
+    private val preferencesManager: AiPreferences
 ) : AiModelCatalog {
     private val mutex = Mutex()
     private var cachedModels: List<AiModel>? = null

@@ -7,7 +7,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import com.hiosdra.hreader.core.domain.model.OfflineReadiness
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -18,7 +18,7 @@ class OfflineReadinessRepository(
     private val articleContentDao: ArticleContentDao,
     private val articleImageDao: ArticleImageDao,
     private val articlePageSnapshotDao: ArticlePageSnapshotDao,
-    private val preferencesManager: AppPreferences
+    private val preferencesManager: SyncPreferences
 ) : OfflineReadinessStore {
     private val articleReadiness = combine(
         articleDao.observeArticleCount(),
