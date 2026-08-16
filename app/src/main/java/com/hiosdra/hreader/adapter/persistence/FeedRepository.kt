@@ -34,12 +34,13 @@ class FeedRepository(
     override suspend fun refreshFeeds(): List<Feed> {
         val feeds = backend.getFeeds()
         val incoming = feeds.map { it.toFeedEntity() }
-        val staleIds = feedDao.getAllIds().filterNot { id -> incoming.any { it.id == id } }
+        val incomingIds = incoming.mapTo(hashSetOf()) { it.id }
+        val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
         db.withTransaction {
             if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
-            staleIds.forEach { feedId ->
-                articleDao.deleteByFeedId(feedId)
-                feedDao.deleteById(feedId)
+            if (staleIds.isNotEmpty()) {
+                articleDao.deleteByFeedIds(staleIds)
+                feedDao.deleteByIds(staleIds)
             }
         }
         return feeds
@@ -96,7 +97,10 @@ class FeedRepository(
                 failed += feed.feedUrl
             }
         }
-        if (added > 0) runCatching { refreshFeeds() }
+        if (added > 0) {
+            runCatching { refreshFeeds() }
+                .onFailure { if (it is CancellationException) throw it }
+        }
         return OpmlImportResult(added = added, skipped = skipped, failed = failed)
     }
 }

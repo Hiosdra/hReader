@@ -244,6 +244,9 @@ interface ArticleDao {
     @Query("DELETE FROM articles WHERE feedId = :feedId")
     suspend fun deleteByFeedId(feedId: Long)
 
+    @Query("DELETE FROM articles WHERE feedId IN (:feedIds)")
+    suspend fun deleteByFeedIds(feedIds: List<Long>)
+
     /** A starred article is kept past its retention window: the star is what asks for that. */
     @Query(
         "DELETE FROM articles WHERE status = :readStatus AND pendingSync = 0 " +

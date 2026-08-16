@@ -17,9 +17,6 @@ interface ArticleImageDao {
     @Query("SELECT * FROM article_images WHERE entryId = :entryId")
     suspend fun getImagesForArticle(entryId: Long): List<ArticleImage>
 
-    @Query("SELECT * FROM article_images WHERE originalUrl = :originalUrl LIMIT 1")
-    suspend fun getImageByUrl(originalUrl: String): ArticleImage?
-
     @Query("SELECT * FROM article_images WHERE entryId = :entryId AND originalUrl = :originalUrl LIMIT 1")
     suspend fun getImageForArticleByUrl(entryId: Long, originalUrl: String): ArticleImage?
 
@@ -41,9 +38,6 @@ interface ArticleImageDao {
 
     @Delete
     suspend fun deleteArticleImage(articleImage: ArticleImage)
-
-    @Query("DELETE FROM article_images WHERE entryId = :entryId")
-    suspend fun deleteImagesForArticle(entryId: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExpectedImages(images: List<ArticleImageManifest>)

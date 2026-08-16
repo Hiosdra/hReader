@@ -19,6 +19,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 import java.time.Instant
@@ -45,6 +46,23 @@ class ArticleImageRepository(
 
         /** Below SQLite's 999 bound-variable ceiling on Android. */
         private const val DELETE_CHUNK = 500
+
+        private val MIME_TYPE_EXTENSIONS = mapOf(
+            "image/gif" to ".gif",
+            "image/jpeg" to ".jpg",
+            "image/png" to ".png",
+            "image/svg+xml" to ".svg",
+            "image/webp" to ".webp"
+        )
+
+        private val URL_EXTENSIONS = mapOf(
+            "gif" to ".gif",
+            "jpeg" to ".jpg",
+            "jpg" to ".jpg",
+            "png" to ".png",
+            "svg" to ".svg",
+            "webp" to ".webp"
+        )
     }
 
     private val imagesDir = File(context.filesDir, "article_images")
@@ -232,25 +250,15 @@ class ArticleImageRepository(
     }
 
     private fun getFileExtension(contentType: String?, imageUrl: String): String {
-        val extensionMap = mapOf(
-            "png" to ".png",
-            "webp" to ".webp", 
-            "gif" to ".gif",
-            "svg" to ".svg",
-            "jpeg" to ".jpg",
-            "jpg" to ".jpg"
-        )
-        
-        // Check content type first
-        extensionMap.forEach { (key, ext) ->
-            if (contentType?.contains(key, ignoreCase = true) == true) return ext
-        }
-        
-        // Fallback to URL extension
-        extensionMap.forEach { (key, ext) ->
-            if (imageUrl.contains(".$key", ignoreCase = true)) return ext
-        }
-        
-        return ".img"
+        val mimeType = contentType
+            ?.substringBefore(';')
+            ?.trim()
+            ?.lowercase()
+        MIME_TYPE_EXTENSIONS[mimeType]?.let { return it }
+
+        val urlExtension = runCatching { URI(imageUrl).path.orEmpty().substringAfterLast('.', "") }
+            .getOrDefault("")
+            .lowercase()
+        return URL_EXTENSIONS[urlExtension] ?: ".img"
     }
 }

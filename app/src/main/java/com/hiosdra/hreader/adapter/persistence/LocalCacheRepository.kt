@@ -58,7 +58,7 @@ class LocalCacheRepository(
 
     private suspend fun clearBackendDataLocked() {
         withContext(Dispatchers.IO) {
-            imagesDir.listFiles()?.forEach { it.delete() }
+            imagesDir.listFiles()?.forEach { it.deleteRecursively() }
             pagesDir.listFiles()?.forEach { it.deleteRecursively() }
         }
         db.withTransaction {

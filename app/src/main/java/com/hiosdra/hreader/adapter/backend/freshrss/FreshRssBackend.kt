@@ -74,7 +74,7 @@ class FreshRssBackend(
 
     override suspend fun getFeeds(): List<Feed> = withRetries { fetchFeeds() }
 
-    override suspend fun verifyConnection(): Int = fetchFeeds().size
+    override suspend fun verifyConnection(): Int = withRetries { fetchFeeds().size }
 
     override suspend fun getUnreadCounts(): Map<Long, Int> = withRetries {
         apiService.getUnreadCounts(JSON_OUTPUT).unreadCounts
