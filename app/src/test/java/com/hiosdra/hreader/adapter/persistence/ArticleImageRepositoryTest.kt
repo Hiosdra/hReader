@@ -27,14 +27,15 @@ class ArticleImageRepositoryTest {
     }
     private val articleImageDao = mockk<ArticleImageDao>(relaxed = true)
     private val articleDao = mockk<ArticleDao>()
-    private val okHttpClient = mockk<OkHttpClient>()
+    private val okHttpClient = OkHttpClient()
     private val preferencesManager = mockk<AppPreferences>(relaxed = true)
     private val repo: ArticleImageRepository = ArticleImageRepository(
         context,
         articleImageDao,
         articleDao,
         okHttpClient,
-        preferencesManager
+        preferencesManager,
+        RemoteResourcePolicy(allowedHosts = { setOf("example.com") })
     ) { path ->
         println("fileExists called with: $path")
         path == "/tmp/image.jpg" || path == "/tmp/orphan.jpg"

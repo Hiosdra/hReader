@@ -11,6 +11,7 @@ import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import com.hiosdra.hreader.R
@@ -46,6 +47,7 @@ import com.hiosdra.hreader.core.application.content.sanitizeArticleHtml
 import org.koin.compose.koinInject
 import java.io.File
 import java.io.FileInputStream
+import java.net.URI
 import java.net.URLConnection
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -110,7 +112,7 @@ fun ArticleWebView(
 
     // Watched rather than read once, so turning the setting on redraws the article already open.
     val bionicReadingEnabled by preferencesManager.observeBionicReadingEnabled()
-        .collectAsState(initial = preferencesManager.getBionicReadingEnabled())
+        .collectAsStateWithLifecycle(initialValue = preferencesManager.getBionicReadingEnabled())
 
     val embeddedMediaLabel = stringResource(R.string.article_open_embedded_media)
     val processedContent = remember(articleContent, baseUrl, bionicReadingEnabled, embeddedMediaLabel) {
@@ -172,7 +174,7 @@ fun ArticleWebView(
                             }
                         }
                         allowScroll = currentScrollEnabled.value
-                        settings.javaScriptEnabled = false
+                        settings.hardenArticleContent()
                         settings.defaultFontSize = 16
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         isVerticalScrollBarEnabled = allowScroll
@@ -205,8 +207,10 @@ fun ArticleWebView(
                             ): WebResourceResponse? {
                                 val url = request?.url?.toString() ?: return null
                                 val localPath = currentLocalImagePaths.value[url] ?: return null
-                                val file = File(localPath)
-                                if (!file.exists()) return null
+                                val filesDir = view?.context?.filesDir ?: return null
+                                val imageDirectory = File(filesDir, "article_images")
+                                if (!isFileWithinDirectory(localPath, imageDirectory)) return null
+                                val file = File(localPath).canonicalFile
                                 return runCatching {
                                     WebResourceResponse(
                                         URLConnection.guessContentTypeFromName(file.name) ?: "image/*",
@@ -221,7 +225,10 @@ fun ArticleWebView(
                                 request: WebResourceRequest?
                             ): Boolean {
                                 val url = request?.url?.toString() ?: return false
-                                currentOnLinkClick.value?.invoke(cleanUrl(url))
+                                val cleanedUrl = cleanUrl(url)
+                                if (isAllowedArticleLink(cleanedUrl)) {
+                                    currentOnLinkClick.value?.invoke(cleanedUrl)
+                                }
                                 return true
                             }
 
@@ -512,10 +519,8 @@ fun OfflinePageWebView(
                 factory = { context ->
                     ReaderWebView(context).apply {
                         protectVerticalScrollFromPager = true
-                        settings.javaScriptEnabled = false
+                        settings.hardenArticleContent()
                         settings.blockNetworkLoads = true
-                        settings.allowFileAccess = false
-                        settings.allowContentAccess = false
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         webViewClient = object : WebViewClient() {
                             override fun onRenderProcessGone(
@@ -540,8 +545,13 @@ fun OfflinePageWebView(
                                 val requestUri = request?.url ?: return false
                                 val url = requestUri.toString()
                                 val pageUri = currentPage.value.baseUrl.toUri()
-                                if (requestUri.host == pageUri.host) return false
-                                currentOnLinkClick.value?.invoke(cleanUrl(url))
+                                if (
+                                    requestUri.scheme.equals(pageUri.scheme, ignoreCase = true) &&
+                                    requestUri.host == pageUri.host
+                                ) return false
+                                val cleanedUrl = cleanUrl(url)
+                                if (!isAllowedArticleLink(cleanedUrl)) return true
+                                currentOnLinkClick.value?.invoke(cleanedUrl)
                                 return currentOnLinkClick.value != null
                             }
                         }
@@ -587,6 +597,27 @@ private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse
             FileInputStream(file)
         )
     }.getOrNull()
+}
+
+internal fun isAllowedArticleLink(url: String): Boolean = runCatching {
+    val uri = URI(url)
+    uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrBlank()
+}.getOrDefault(false)
+
+@Suppress("DEPRECATION")
+private fun WebSettings.hardenArticleContent() {
+    javaScriptEnabled = false
+    allowFileAccess = false
+    allowContentAccess = false
+    allowUniversalAccessFromFileURLs = false
+    allowFileAccessFromFileURLs = false
+    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+}
+
+internal fun isFileWithinDirectory(path: String, directory: File): Boolean {
+    val root = runCatching { directory.canonicalFile }.getOrNull() ?: return false
+    val file = runCatching { File(path).canonicalFile }.getOrNull() ?: return false
+    return file.isFile && file.path.startsWith(root.path + File.separator)
 }
 
 private fun offlineMimeType(fileName: String): String = when (fileName.substringAfterLast('.', "").lowercase()) {

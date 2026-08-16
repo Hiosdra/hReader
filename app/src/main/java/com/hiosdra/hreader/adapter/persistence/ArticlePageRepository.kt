@@ -22,6 +22,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
@@ -33,7 +34,8 @@ class ArticlePageRepository(
     context: Context,
     private val snapshotDao: ArticlePageSnapshotDao,
     private val articleDao: ArticleDao,
-    private val httpClient: OkHttpClient
+    httpClient: OkHttpClient,
+    private val remoteResourcePolicy: RemoteResourcePolicy
 ) : ArticlePageStore {
     companion object {
         const val OFFLINE_PAGE_HOST = "offline.hreader.local"
@@ -58,6 +60,14 @@ class ArticlePageRepository(
 
     private val pagesDirectory = File(context.filesDir, "article_pages").apply { mkdirs() }
     private val pageLimiter = Semaphore(4)
+    private val safeHttpClient = httpClient.newBuilder()
+        .addNetworkInterceptor { chain ->
+            if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
+                throw IOException("Blocked remote resource URL")
+            }
+            chain.proceed(chain.request())
+        }
+        .build()
 
     override suspend fun getOfflinePage(entryId: Long, originalUrl: String): OfflinePage? =
         withContext(Dispatchers.IO) {
@@ -192,6 +202,7 @@ class ArticlePageRepository(
 
             try {
                 val main = fetch(originalUrl, MAX_HTML_BYTES) ?: return@withContext null
+                if (!isHtmlContentType(main.contentType)) return@withContext null
                 val document = Jsoup.parse(main.bytes.toString(UTF_8), main.finalUrl)
                 sanitize(document)
                 val store = ResourceStore(entryId, assetsDirectory, main.bytes.size.toLong())
@@ -204,10 +215,7 @@ class ArticlePageRepository(
                 }
                 File(stagingDirectory, INDEX_FILE).writeBytes(htmlBytes)
                 val finalDirectory = File(pagesDirectory, entryId.toString())
-                finalDirectory.deleteRecursively()
-                if (!stagingDirectory.renameTo(finalDirectory)) {
-                    throw IllegalStateException("Could not commit offline page $entryId")
-                }
+                replaceDirectory(entryId, stagingDirectory, finalDirectory)
 
                 val snapshot = ArticlePageSnapshot(
                     entryId = entryId,
@@ -308,6 +316,10 @@ class ArticlePageRepository(
             }
             val isCss = cssHint || response.contentType?.startsWith("text/css", ignoreCase = true) == true ||
                 response.finalUrl.substringBefore('?').endsWith(".css", ignoreCase = true)
+            if (!isSupportedResourceType(response.contentType, response.finalUrl, isCss)) {
+                isComplete = false
+                return null
+            }
             val fileName = resourceFileName(normalized, response.contentType, isCss)
             val resource = CachedResource(
                 offlineUrl = baseUrl(entryId) + ASSETS_DIRECTORY + "/" + fileName,
@@ -381,13 +393,17 @@ class ArticlePageRepository(
 
     private suspend fun fetch(url: String, maximumBytes: Long): FetchedResource? =
         withContext(Dispatchers.IO) {
+            if (!remoteResourcePolicy.allows(url)) return@withContext null
             try {
                 val request = Request.Builder()
                     .url(url)
                     .header("User-Agent", USER_AGENT)
                     .build()
-                httpClient.newCall(request).execute().use { response ->
+                safeHttpClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext null
+                    if (!remoteResourcePolicy.allows(response.request.url.toString())) {
+                        return@withContext null
+                    }
                     val body = response.body
                     if (body.contentLength() > maximumBytes) return@withContext null
                     val bytes = readAtMost(body.byteStream(), maximumBytes) ?: return@withContext null
@@ -403,6 +419,33 @@ class ArticlePageRepository(
                 null
             }
         }
+
+    private fun replaceDirectory(entryId: Long, stagingDirectory: File, finalDirectory: File) {
+        val backupDirectory = File(pagesDirectory, ".backup-$entryId-${UUID.randomUUID()}")
+        var movedExistingDirectory = false
+        try {
+            if (finalDirectory.exists()) {
+                check(finalDirectory.renameTo(backupDirectory)) {
+                    "Could not preserve existing offline page $entryId"
+                }
+                movedExistingDirectory = true
+            }
+            check(stagingDirectory.renameTo(finalDirectory)) {
+                "Could not commit offline page $entryId"
+            }
+            if (movedExistingDirectory) backupDirectory.deleteRecursively()
+        } catch (failure: Throwable) {
+            if (movedExistingDirectory) {
+                finalDirectory.deleteRecursively()
+                if (backupDirectory.exists()) {
+                    check(backupDirectory.renameTo(finalDirectory)) {
+                        "Could not restore existing offline page $entryId"
+                    }
+                }
+            }
+            throw failure
+        }
+    }
 
     private fun readAtMost(input: java.io.InputStream, maximumBytes: Long): ByteArray? {
         val output = ByteArrayOutputStream()
@@ -441,6 +484,29 @@ class ArticlePageRepository(
         return sha256(url).take(32) + extension
     }
 
+    private fun isHtmlContentType(contentType: String?): Boolean {
+        val type = contentType?.substringBefore(';')?.trim()?.lowercase() ?: return true
+        return type == "text/html" || type == "application/xhtml+xml"
+    }
+
+    private fun isSupportedResourceType(contentType: String?, url: String, css: Boolean): Boolean {
+        val type = contentType?.substringBefore(';')?.trim()?.lowercase()
+        if (css) return type == null || type == "text/css"
+        if (type == null) {
+            val extension = url.substringBefore('?').substringAfterLast('.', "").lowercase()
+            return extension in setOf("png", "jpg", "jpeg", "gif", "webp", "svg", "woff", "woff2", "ttf", "otf")
+        }
+        return type.startsWith("image/") ||
+            type.startsWith("font/") ||
+            type in setOf(
+                "application/font-sfnt",
+                "application/vnd.ms-fontobject",
+                "application/x-font-opentype",
+                "application/x-font-ttf",
+                "application/x-font-woff"
+            )
+    }
+
     private fun sha256(value: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         return digest.digest(value.toByteArray(UTF_8)).joinToString("") { "%02x".format(it) }
@@ -458,7 +524,7 @@ class ArticlePageRepository(
     }
 
     private fun isHttpUrl(url: String): Boolean =
-        url.startsWith("https://", ignoreCase = true) || url.startsWith("http://", ignoreCase = true)
+        remoteResourcePolicy.allows(url)
 
     private fun isEmbeddedReference(value: String): Boolean =
         value.trim().startsWith("data:", ignoreCase = true) || value.trim().startsWith("#")

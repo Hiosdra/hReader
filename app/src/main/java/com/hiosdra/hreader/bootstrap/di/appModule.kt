@@ -8,6 +8,7 @@ import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
 import com.hiosdra.hreader.adapter.persistence.ArticlePageRepository
+import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicy
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleRepository
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
@@ -87,10 +88,11 @@ val appModule = module {
     single { get<AppDatabase>().articleCredibilityDao() }
     single { get<AppDatabase>().articleAiOverviewDao() }
     single { get<AppDatabase>().articlePageSnapshotDao() }
+    single { RemoteResourcePolicy(get<AppPreferences>()) }
     single { get<AppDatabase>().articleReadingPositionDao() }
     single { ArticleRepository(get(), get(), get(), get(), get(), get(), get()) }
     single<ArticleStore> { get<ArticleRepository>() }
-    single { ArticleImageRepository(androidApplication(), get(), get(), get(), get()) }
+    single { ArticleImageRepository(androidApplication(), get(), get(), get(), get(), get()) }
     single<ArticleImageStore> { get<ArticleImageRepository>() }
     single { CredibilityRepository(get(), get()) }
     single<CredibilityStore> { get<CredibilityRepository>() }
@@ -107,7 +109,7 @@ val appModule = module {
         )
     }
     single<ArticleContentStore> { get<ArticleContentRepository>() }
-    single { ArticlePageRepository(androidApplication(), get(), get(), get()) }
+    single { ArticlePageRepository(androidApplication(), get(), get(), get(), get()) }
     single<ArticlePageStore> { get<ArticlePageRepository>() }
     single { ArticleReadingPositionRepository(get()) }
     single<ArticleReadingPositionStore> { get<ArticleReadingPositionRepository>() }
