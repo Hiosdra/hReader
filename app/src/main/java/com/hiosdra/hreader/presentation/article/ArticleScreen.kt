@@ -84,7 +84,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -121,6 +120,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
@@ -192,7 +192,7 @@ fun ArticleScreen(
     sessionStartMillis: Long = 0L,
     viewModel: ArticleViewModel = koinViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(initialPage = 0) { uiState.entries.size }
     var isWebViewMode by remember { mutableStateOf(false) }
     var textScale by rememberSaveable { mutableFloatStateOf(1f) }
@@ -204,7 +204,7 @@ fun ArticleScreen(
     val preferencesManager: AppPreferences = koinInject()
     val paywallBypassService: PaywallBypass = koinInject()
     val ttsController: ArticleTtsPlayer = koinInject()
-    val ttsState by ttsController.state.collectAsState()
+    val ttsState by ttsController.state.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
     LaunchedEffect(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis) {

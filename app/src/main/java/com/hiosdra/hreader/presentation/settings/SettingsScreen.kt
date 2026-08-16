@@ -30,7 +30,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +41,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
@@ -68,11 +68,11 @@ fun SettingsScreen(
     ttsModelDownloadScheduler: TtsModelDownloadRequester = koinInject(),
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
-    val serverSettings by settingsViewModel.uiState.collectAsState()
-    val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsState()
-    val aiModels by settingsViewModel.aiModels.collectAsState()
-    val offline by settingsViewModel.offline.collectAsState()
-    val sync by settingsViewModel.sync.collectAsState()
+    val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsStateWithLifecycle()
+    val aiModels by settingsViewModel.aiModels.collectAsStateWithLifecycle()
+    val offline by settingsViewModel.offline.collectAsStateWithLifecycle()
+    val sync by settingsViewModel.sync.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
     var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
     var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
