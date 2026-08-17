@@ -17,12 +17,10 @@ import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -30,7 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger
 private const val MAX_RUN_ATTEMPTS = 5
 
 /** How often stored progress is published. Per article it would be a write per download. */
-private const val PROGRESS_REPORT_INTERVAL_MILLIS = 500L
+private const val PROGRESS_REPORT_INTERVAL_MILLIS = 1000L
 
 /**
  * How many article bodies one run downloads.
@@ -77,17 +75,17 @@ class ArticleContentSyncWorker(
             total = total.get()
         )
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+    override suspend fun doWork(): Result {
         // Downloading bodies and images is where the bandwidth and the radio time actually go, so
         // quiet hours have to cover it. Silencing only the article sync still left the prefetch
         // chained behind it running through the night.
         if (isSilenced()) {
             Log.i(TAG, "Inside quiet hours; skipping the prefetch")
-            return@withContext Result.success()
+            return Result.success()
         }
 
         Log.i(TAG, "Starting ArticleContentSyncWorker")
-        try {
+        return try {
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
             performOrphanedContentCleanup()
             backfillPreviews()
@@ -97,7 +95,7 @@ class ArticleContentSyncWorker(
 
             if (targets.isEmpty()) {
                 Log.i(TAG, "No articles to prefetch")
-                return@withContext Result.success()
+                return Result.success()
             }
 
             // Images first. They are what the list and the opened article show, they are small, and
@@ -111,7 +109,7 @@ class ArticleContentSyncWorker(
             // where this one stopped.
             if (remaining > 0 && shouldDrainRemaining() && runAttemptCount < MAX_RUN_ATTEMPTS) {
                 Log.i(TAG, "$remaining articles still without text; asking for another run")
-                return@withContext Result.retry()
+                return Result.retry()
             }
             if (remaining > 0) Log.i(TAG, "$remaining articles still without text; left to the next sync")
 
@@ -216,7 +214,7 @@ class ArticleContentSyncWorker(
 
     private suspend fun updateForeground() {
         if (foregroundUnavailable) return
-        if (!setForegroundIfAllowed { setForeground(getForegroundInfo()) }) {
+        if (!setForegroundIfAllowed({ getForegroundInfo() }, { setForeground(it) })) {
             foregroundUnavailable = true
             Log.w(TAG, "Foreground notification unavailable; continuing without it")
         }

@@ -6,6 +6,9 @@ import com.hiosdra.hreader.bootstrap.di.networkModule
 import com.hiosdra.hreader.entrypoint.notification.NotificationChannels
 import com.hiosdra.hreader.adapter.observability.ErrorReportingManager
 import com.hiosdra.hreader.entrypoint.worker.SyncScheduler
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.androidx.workmanager.koin.workManagerFactory
@@ -24,8 +27,14 @@ class MyApplication : Application() {
             modules(appModule, networkModule)
         }.koin
         koin.get<ErrorReportingManager>().initialize()
+        val syncScheduler = koin.get<SyncScheduler>()
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStop(owner: LifecycleOwner) {
+                syncScheduler.enqueueBackgroundSyncChain()
+            }
+        })
         // Content prefetching is chained off each successful sync, not scheduled separately.
-        koin.get<SyncScheduler>().schedulePeriodicSync()
-        koin.get<SyncScheduler>().start()
+        syncScheduler.schedulePeriodicSync()
+        syncScheduler.start()
     }
 }

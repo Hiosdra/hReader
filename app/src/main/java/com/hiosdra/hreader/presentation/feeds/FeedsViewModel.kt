@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.core.application.usecase.feeds.FeedUseCase
+import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.presentation.text.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -88,8 +89,8 @@ class FeedsViewModel(
 
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
-            val cachedFeeds = runCatching { feeds.getCachedFeeds() }.getOrDefault(emptyList())
-            val cachedCounts = runCatching { feeds.getCachedUnreadCounts() }.getOrDefault(emptyMap())
+            val cachedFeeds = runCatchingCancellable { feeds.getCachedFeeds() }.getOrDefault(emptyList())
+            val cachedCounts = runCatchingCancellable { feeds.getCachedUnreadCounts() }.getOrDefault(emptyMap())
             if (cachedFeeds.isNotEmpty()) {
                 publish(cachedFeeds, cachedCounts)
             }
@@ -99,10 +100,10 @@ class FeedsViewModel(
                 return@launch
             }
 
-            val refreshed = runCatching { feeds.refreshFeeds() }
+            val refreshed = runCatchingCancellable { feeds.refreshFeeds() }
             refreshed.fold(
                 onSuccess = { freshFeeds ->
-                    val counts = runCatching { feeds.getUnreadCounts() }.getOrDefault(cachedCounts)
+                    val counts = runCatchingCancellable { feeds.getUnreadCounts() }.getOrDefault(cachedCounts)
                     publish(freshFeeds, counts)
                 },
                 onFailure = { failure ->
@@ -171,7 +172,7 @@ class FeedsViewModel(
      * storage picker returned; the view model owns what to say about the outcome.
      */
     suspend fun exportOpmlTo(title: String, write: suspend (String) -> Boolean) {
-        val opml = runCatching { feeds.exportOpml(title) }
+        val opml = runCatchingCancellable { feeds.exportOpml(title) }
             .onFailure { Log.w("FeedsViewModel", "OPML export failed", it) }
             .getOrNull()
         val written = opml != null && write(opml)
@@ -209,7 +210,7 @@ class FeedsViewModel(
         }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isBusy = true, message = null)
-            val result = runCatching { action() }
+            val result = runCatchingCancellable { action() }
             _uiState.value = _uiState.value.copy(
                 isBusy = false,
                 message = feedActionUiText(result, success, failure)

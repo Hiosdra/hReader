@@ -6,6 +6,7 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.sync.SyncDefaults
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
+import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.BackendType
 import com.hiosdra.hreader.core.domain.model.OfflineReadiness
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
@@ -292,7 +293,7 @@ class SettingsViewModel(
                 showResyncStatus = true
             )
             settings.cancelAllSync()
-            val cleared = runCatching { settings.clearBackendData() }
+            val cleared = runCatchingCancellable { settings.clearBackendData() }
             // Rescheduled even when clearing failed: leaving the periodic worker deregistered
             // would turn a failed wipe into an app that never syncs again.
             settings.schedulePeriodicSync()
@@ -373,7 +374,7 @@ class SettingsViewModel(
     fun loadAiModels(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _aiModels.value = _aiModels.value.copy(isLoading = true, error = null)
-            val result = runCatching { settings.getModels(forceRefresh) }
+            val result = runCatchingCancellable { settings.getModels(forceRefresh) }
             _aiModels.value = result.fold(
                 onSuccess = { _aiModels.value.copy(isLoading = false, models = it) },
                 onFailure = {
@@ -422,7 +423,7 @@ class SettingsViewModel(
             // In flight work belongs to the backend being left, and would write its articles back
             // into the cache that was just emptied.
             settings.cancelAllSync()
-            val cleared = runCatching { settings.clearBackendData() }
+            val cleared = runCatchingCancellable { settings.clearBackendData() }
             if (cleared.isSuccess) {
                 settings.setBackendType(backendType)
             }
@@ -441,7 +442,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, signOutCompleted = false)
             settings.cancelAllSync()
-            val cleared = runCatching { settings.clearBackendData() }
+            val cleared = runCatchingCancellable { settings.clearBackendData() }
             settings.setBackendSecret(backendType, "")
             if (backendType.requiresUsername) {
                 settings.setFreshRssUsername("")
@@ -477,7 +478,7 @@ class SettingsViewModel(
         cacheOwnerCheckJob?.cancel()
         cacheOwnerCheckJob = viewModelScope.launch {
             delay(500)
-            val result = runCatching { settings.ensureCacheOwnerWhenConfigured() }
+            val result = runCatchingCancellable { settings.ensureCacheOwnerWhenConfigured() }
             if (result.getOrDefault(false)) {
                 settings.cancelAllSync()
                 _uiState.value = _uiState.value.copy(
@@ -499,7 +500,7 @@ class SettingsViewModel(
      */
     fun onSetupFinished() {
         viewModelScope.launch {
-            val ownerCheck = runCatching { settings.ensureCacheOwner() }
+            val ownerCheck = runCatchingCancellable { settings.ensureCacheOwner() }
             if (ownerCheck.isFailure) {
                 _uiState.value = _uiState.value.copy(
                     statusMessage = UiText.Resource(R.string.settings_prepare_cache_failed)
@@ -514,9 +515,9 @@ class SettingsViewModel(
     fun testConnection() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isTesting = true, statusMessage = null)
-            val result = runCatching { settings.verifyConnection() }
+            val result = runCatchingCancellable { settings.verifyConnection() }
             val ownerCheck = if (result.isSuccess) {
-                runCatching { settings.ensureCacheOwner() }
+                runCatchingCancellable { settings.ensureCacheOwner() }
             } else {
                 Result.success(false)
             }

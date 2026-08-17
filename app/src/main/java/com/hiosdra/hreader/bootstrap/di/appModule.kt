@@ -67,11 +67,16 @@ import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadScheduler
 import org.koin.android.ext.koin.androidApplication
 import org.koin.androidx.workmanager.dsl.worker
+import org.koin.core.qualifier.named
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.io.File
 
 val appModule = module {
+    single(named("applicationScope")) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
     single {
         Room.databaseBuilder(
                 androidApplication(),
@@ -157,7 +162,7 @@ val appModule = module {
     single<ArticleImageSharer> { ArticleImageShareService(androidApplication()) }
     single { NetworkMonitor(androidApplication()) }
     single<NetworkStatus> { get<NetworkMonitor>() }
-    single { SyncScheduler(androidApplication(), get(), get()) }
+    single { SyncScheduler(androidApplication(), get(), get(), scope = get(named("applicationScope"))) }
     single<SyncRequester> { get<SyncScheduler>() }
     single {
         ArticleReaderUseCase(

@@ -6,6 +6,7 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
+import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
@@ -118,6 +119,7 @@ class ArticleViewModel(
 
     /** The list is resolved once; a configuration change must not rebuild it under the pager. */
     private var listResolved = false
+    private var listResolutionJob: Job? = null
 
     /**
      * Articles whose text has already been asked for. The pager observes its articles, so every
@@ -361,12 +363,11 @@ class ArticleViewModel(
         includeRead: Boolean,
         sessionStartMillis: Long
     ) {
-        if (listResolved) return
-        listResolved = true
+        if (listResolved || listResolutionJob?.isActive == true) return
         _uiState.update {
             it.copy(isLoading = true, credibilityEnabled = reader.credibilityEnabled())
         }
-        viewModelScope.launch {
+        listResolutionJob = viewModelScope.launch {
             try {
                 // The same visibility rule the list used, resolved to ids in one statement rather
                 // than by loading the articles and filtering them here.
@@ -392,8 +393,12 @@ class ArticleViewModel(
                         listWindowStartIndex = listWindowStartIndex
                     )
                 }
+                listResolved = true
                 observeArticles(ids)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                listResolved = false
                 _uiState.update { it.copy(isLoading = false, error = UiText.Resource(R.string.article_load_error)) }
             }
         }
@@ -428,7 +433,7 @@ class ArticleViewModel(
             state.copy(entries = state.entries.map { if (it.id == entryId) it.copy(starred = starred) else it })
         }
         viewModelScope.launch {
-            runCatching { reader.updateStarred(entryId, starred) }
+            runCatchingCancellable { reader.updateStarred(entryId, starred) }
         }
     }
 
@@ -587,7 +592,7 @@ class ArticleViewModel(
             .filter { checkedCredibilityIds.add(it) }
         if (missing.isEmpty()) return
         viewModelScope.launch {
-            val cached = runCatching { reader.getCachedCredibility(missing) }.getOrElse { emptyMap() }
+            val cached = runCatchingCancellable { reader.getCachedCredibility(missing) }.getOrElse { emptyMap() }
             if (cached.isEmpty()) return@launch
             _uiState.update { state ->
                 val retainedIds = state.readerWindowIds()

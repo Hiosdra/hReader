@@ -89,7 +89,7 @@ class ContentSyncWorker(
 
     private suspend fun updateForeground() {
         if (foregroundUnavailable) return
-        if (!setForegroundIfAllowed { setForeground(getForegroundInfo()) }) {
+        if (!setForegroundIfAllowed({ getForegroundInfo() }, { setForeground(it) })) {
             foregroundUnavailable = true
             Log.w(TAG, "Foreground notification unavailable; continuing without it")
         }
