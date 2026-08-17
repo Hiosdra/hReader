@@ -22,6 +22,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.net.InetAddress
 import java.nio.file.Files
 
 class ArticlePageRepositoryTest {
@@ -34,7 +35,7 @@ class ArticlePageRepositoryTest {
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
             val articleDao = mockk<ArticleDao>(relaxed = true)
             val snapshot = slot<ArticlePageSnapshot>()
-            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient())
+            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
 
             repository.prefetchPages(listOf(42L to ARTICLE_URL))
 
@@ -76,7 +77,7 @@ class ArticlePageRepositoryTest {
                 byteSize = 0,
                 isComplete = true
             )
-            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient())
+            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
 
             assertTrue(repository.getOfflinePage(42L, ARTICLE_URL) == null)
             coVerify { snapshotDao.deleteForEntries(listOf(42L)) }
@@ -106,7 +107,7 @@ class ArticlePageRepositoryTest {
                     isComplete = true
                 )
             )
-            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient())
+            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
 
             assertEquals(
                 listOf(42L to ARTICLE_URL),
@@ -136,7 +137,7 @@ class ArticlePageRepositoryTest {
                 byteSize = 5L * 1024 * 1024 + 1,
                 isComplete = true
             )
-            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient())
+            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
 
             assertTrue(repository.getOfflinePage(42L, ARTICLE_URL) == null)
             coVerify { snapshotDao.deleteForEntries(listOf(42L)) }
@@ -170,6 +171,11 @@ class ArticlePageRepositoryTest {
             }
         })
         .build()
+
+    private fun policy() = RemoteResourcePolicy(
+        allowedHosts = { setOf("example.com") },
+        resolveHost = { listOf(InetAddress.getByName("93.184.216.34")) }
+    )
 
     private companion object {
         const val ARTICLE_URL = "https://example.com/articles/story"

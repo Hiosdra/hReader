@@ -17,6 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
@@ -28,6 +29,7 @@ class ArticleImageRepository(
     private val articleDao: ArticleDao,
     private val okHttpClient: OkHttpClient,
     private val preferencesManager: AppPreferences,
+    private val remoteResourcePolicy: RemoteResourcePolicy,
     private val fileExists: (String) -> Boolean = { path -> File(path).exists() }
 ) : ArticleImageStore {
     companion object {
@@ -49,6 +51,15 @@ class ArticleImageRepository(
         .apply { mkdirs() }
 
     private val cacheBudgetMutex = Mutex()
+    private val safeHttpClient = okHttpClient.newBuilder()
+        .addNetworkInterceptor { chain ->
+            if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
+                throw IOException("Blocked remote resource URL")
+            }
+            chain.proceed(chain.request())
+        }
+        .dns(remoteResourcePolicy.dns())
+        .build()
 
     override suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): Unit =
         withContext(Dispatchers.IO) {
@@ -56,6 +67,7 @@ class ArticleImageRepository(
             var stored = false
             try {
                 if (!preferencesManager.getImageDownloadEnabled()) return@withContext
+                if (!remoteResourcePolicy.allows(imageUrl)) return@withContext
 
                 val existingImage = articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
                 if (existingImage != null && fileExists(existingImage.localFilePath)) {
@@ -64,11 +76,13 @@ class ArticleImageRepository(
 
                 // Download image
                 val request = Request.Builder().url(imageUrl).build()
-                okHttpClient.newCall(request).execute().use { response ->
+                safeHttpClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext
+                    if (!remoteResourcePolicy.allows(response.request.url.toString())) return@withContext
 
                     val body = response.body
                     val contentType = body.contentType()?.toString()
+                    if (contentType?.startsWith("image/", ignoreCase = true) != true) return@withContext
 
                     // A declared length settles it without spending any bandwidth at all. Most
                     // CDNs send the image chunked and declare nothing, which is what the streaming
