@@ -8,6 +8,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
+import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.R
@@ -138,6 +139,8 @@ class MainViewModel(
             try {
                 reader.ensureCacheOwner()
                 cacheReady.value = true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Could not verify the local cache owner", e)
                 _uiState.update { it.copy(error = UiText.Resource(R.string.error_prepare_local_storage)) }
@@ -189,7 +192,7 @@ class MainViewModel(
             .map { it.feedId }
             .distinctUntilChanged()
             .onEach { feedId ->
-                val title = feedId?.let { runCatching { reader.getFeed(it)?.title }.getOrNull() }
+                val title = feedId?.let { runCatchingCancellable { reader.getFeed(it)?.title }.getOrNull() }
                 _uiState.update { it.copy(feedTitle = title) }
             }
             .launchIn(viewModelScope)
@@ -215,7 +218,7 @@ class MainViewModel(
 
     private fun checkSelectedAiModel() {
         viewModelScope.launch {
-            val status = runCatching { reader.checkSelectedAiModel() }.getOrNull()
+            val status = runCatchingCancellable { reader.checkSelectedAiModel() }.getOrNull()
             if (status is SelectedModelStatus.Unavailable) {
                 _uiState.update { it.copy(unavailableAiModelId = status.modelId) }
             }
@@ -242,12 +245,9 @@ class MainViewModel(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
-            // Before the network rather than after it: the read articles clear out the moment the
-            // reader pulls, and a sync that fails leaves the list looking the same as one that
-            // worked. Nothing is lost either way — the read filter brings them all back.
-            query.update { it.withSessionRestarted(Instant.now()) }
             try {
                 reader.refreshArticles()
+                query.update { it.withSessionRestarted(Instant.now()) }
                 // The refresh brings down the article list; the bodies and images that make those
                 // articles readable offline are what this queues. Without it a pull-to-refresh
                 // right before losing signal left a list of titles and nothing behind them.
@@ -280,7 +280,7 @@ class MainViewModel(
         viewModelScope.launch {
             // Only what this actually changes. Sweeping in the already-read ones would push a
             // no-op update for every article the cache holds.
-            val ids = runCatching { reader.unreadIds(current.feedId, current.starredOnly) }
+            val ids = runCatchingCancellable { reader.unreadIds(current.feedId, current.starredOnly) }
                 .getOrElse {
                     Log.w(TAG, "Could not read the unread set", it)
                     return@launch
@@ -317,7 +317,7 @@ class MainViewModel(
         viewModelScope.launch {
             // Only what the action itself marked. Reading an article while the snackbar is up
             // stamps it later than the action did, and used to be swept back to unread with it.
-            val revertible = runCatching {
+            val revertible = runCatchingCancellable {
                 reader.idsStillReadSince(action.articleIds, action.markedAt.plus(UNDO_GRACE))
             }.getOrElse {
                 Log.w(TAG, "Could not work out what the undo covers", it)
@@ -338,7 +338,7 @@ class MainViewModel(
      */
     private fun applyReadStatus(entryIds: List<Long>, read: Boolean, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
-            runCatching { reader.updateReadStatus(entryIds, read) }
+            runCatchingCancellable { reader.updateReadStatus(entryIds, read) }
                 .onFailure { Log.w(TAG, "Could not store read state for ${entryIds.size} articles", it) }
                 .onSuccess { onSuccess() }
         }

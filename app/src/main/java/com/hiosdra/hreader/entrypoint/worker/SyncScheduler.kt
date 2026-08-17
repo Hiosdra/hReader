@@ -77,11 +77,11 @@ class SyncScheduler(
     private val context: Context,
     private val preferencesManager: AppPreferences,
     private val networkMonitor: NetworkStatus,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val workManagerProvider: (Context) -> WorkManager = { appContext ->
         WorkManager.getInstance(appContext)
     }
 ) : SyncRequester {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var connectivityObservationStarted = false
 
     private val workManager: WorkManager
@@ -473,7 +473,7 @@ class SyncScheduler(
         .build()
 }
 
-private fun operationStatus(infos: List<WorkInfo>): SyncOperationStatus {
+internal fun operationStatus(infos: List<WorkInfo>): SyncOperationStatus {
     val workIds = infos.map { it.id }.toSet()
     if (infos.isEmpty()) return SyncOperationStatus(workIds = workIds)
     val failed = infos.firstOrNull { it.state == WorkInfo.State.FAILED }

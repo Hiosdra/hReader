@@ -15,6 +15,7 @@ import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
+import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.application.tts.TtsLanguages
@@ -122,7 +123,7 @@ class ArticleTtsController(
                     isPreparing = true,
                     error = null
                 )
-                runCatching {
+                runCatchingCancellable {
                     if (model == TtsModel.ANDROID) {
                         speakWithAndroid(chunks, language)
                     } else {
@@ -137,7 +138,7 @@ class ArticleTtsController(
                             isPreparing = true,
                             error = neuralFallbackMessage(model, it)
                         )
-                        runCatching { speakWithAndroid(chunks, language) }
+                        runCatchingCancellable { speakWithAndroid(chunks, language) }
                             .onFailure { androidFailure ->
                                 if (version == playbackVersion && androidFailure !is CancellationException) {
                                     finishPlaybackWithError(

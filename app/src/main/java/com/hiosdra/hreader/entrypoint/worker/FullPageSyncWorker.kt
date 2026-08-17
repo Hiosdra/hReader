@@ -16,17 +16,16 @@ import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.LocalTime
 import java.util.concurrent.atomic.AtomicInteger
 
 private const val MAX_RUN_ATTEMPTS = 5
 private const val MAX_PAGES_PER_RUN = 100
-private const val PROGRESS_REPORT_INTERVAL_MILLIS = 500L
+private const val PROGRESS_REPORT_INTERVAL_MILLIS = 1000L
 private const val TAG = "FullPageSyncWorker"
 
 internal fun shouldRetryFullPageSync(
@@ -60,10 +59,10 @@ class FullPageSyncWorker(
             total = total.get()
         )
 
-    override suspend fun doWork() = withContext(Dispatchers.IO) {
-        if (isSilenced()) return@withContext Result.success()
+    override suspend fun doWork(): Result {
+        if (isSilenced()) return Result.success()
 
-        try {
+        return try {
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
             articlePageRepository.cleanupOrphanedPages()
             val targets = articleRepository.getPrefetchTargets()
@@ -71,28 +70,30 @@ class FullPageSyncWorker(
                 targets.map { it.id to it.url }
             )
             val batch = outstanding.take(MAX_PAGES_PER_RUN)
-            if (batch.isEmpty()) return@withContext Result.success()
+            if (batch.isEmpty()) return Result.success()
 
             val completedBeforeRun = (targets.size - outstanding.size).coerceAtLeast(0)
             total.set(targets.size)
             done.set(completedBeforeRun)
-            val reporter = launch {
-                while (isActive) {
-                    publishProgress()
-                    delay(PROGRESS_REPORT_INTERVAL_MILLIS)
+            coroutineScope {
+                val reporter = launch {
+                    while (isActive) {
+                        publishProgress()
+                        delay(PROGRESS_REPORT_INTERVAL_MILLIS)
+                    }
                 }
-            }
-            publishProgress()
-            try {
-                syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.FULL_PAGE_PREFETCH) {
-                    articlePageRepository.prefetchPages(
-                        entries = batch,
-                        limit = null,
-                        onProgress = { completed, _ -> done.set(completedBeforeRun + completed) }
-                    )
+                publishProgress()
+                try {
+                    syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.FULL_PAGE_PREFETCH) {
+                        articlePageRepository.prefetchPages(
+                            entries = batch,
+                            limit = null,
+                            onProgress = { completed, _ -> done.set(completedBeforeRun + completed) }
+                        )
+                    }
+                } finally {
+                    reporter.cancel()
                 }
-            } finally {
-                reporter.cancel()
             }
 
             val remaining = articlePageRepository.entriesMissingPages(
@@ -144,7 +145,7 @@ class FullPageSyncWorker(
 
     private suspend fun updateForeground() {
         if (foregroundUnavailable) return
-        if (!setForegroundIfAllowed { setForeground(getForegroundInfo()) }) {
+        if (!setForegroundIfAllowed({ getForegroundInfo() }, { setForeground(it) })) {
             foregroundUnavailable = true
             Log.w(TAG, "Foreground notification unavailable; continuing without it")
         }
