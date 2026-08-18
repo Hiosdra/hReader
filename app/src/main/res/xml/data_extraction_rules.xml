@@ -8,6 +8,7 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="hreader_secrets.xml" />
+        <exclude domain="file" path="datastore/hreader_secrets.preferences_pb" />
         <exclude domain="database" path="hreader-db" />
         <exclude domain="file" path="article_images" />
         <exclude domain="file" path="article_pages" />
@@ -15,6 +16,7 @@
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="hreader_secrets.xml" />
+        <exclude domain="file" path="datastore/hreader_secrets.preferences_pb" />
         <exclude domain="database" path="hreader-db" />
         <exclude domain="file" path="article_images" />
         <exclude domain="file" path="article_pages" />
