@@ -1,37 +1,14 @@
 package com.hiosdra.hreader.adapter.persistence
 
-import androidx.room.withTransaction
-import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleCredibilityDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleReadingPositionDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiOverviewDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.io.File
 
-class LocalCacheRepository(
-    private val db: AppDatabase,
-    private val articleDao: ArticleDao,
-    private val feedDao: FeedDao,
-    private val articleContentDao: ArticleContentDao,
-    private val articleImageDao: ArticleImageDao,
-    private val articleCredibilityDao: ArticleCredibilityDao,
-    private val articleAiOverviewDao: ArticleAiOverviewDao,
-    private val articlePageSnapshotDao: ArticlePageSnapshotDao,
-    private val articleReadingPositionDao: ArticleReadingPositionDao,
+internal class LocalCacheRepository(
+    private val dataCleaner: CacheDataCleaner,
     private val preferencesManager: SyncPreferences,
-    private val imagesDir: File,
-    private val pagesDir: File,
     private val backendIdentity: BackendIdentity
 ) : CacheStore {
     private val ownerMutex = Mutex()
@@ -57,21 +34,7 @@ class LocalCacheRepository(
     }
 
     private suspend fun clearBackendDataLocked() {
-        withContext(Dispatchers.IO) {
-            imagesDir.listFiles()?.forEach { it.deleteRecursively() }
-            pagesDir.listFiles()?.forEach { it.deleteRecursively() }
-        }
-        db.withTransaction {
-            articleCredibilityDao.clearAll()
-            articleAiOverviewDao.clearAll()
-            articleContentDao.clearAll()
-            articleImageDao.clearAll()
-            articleImageDao.clearExpectedImages()
-            articlePageSnapshotDao.clearAll()
-            articleReadingPositionDao.clearAll()
-            articleDao.clearAll()
-            feedDao.clearAll()
-        }
+        dataCleaner.clearAll()
         preferencesManager.setCacheOwnerKey("")
         // Both timestamps, or the next sync against a different backend would still consider the
         // cache recently reconciled against a full server state that was never this backend's.
