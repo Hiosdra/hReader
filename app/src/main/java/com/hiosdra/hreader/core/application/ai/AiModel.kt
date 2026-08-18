@@ -5,7 +5,8 @@ data class AiModel(
     val displayName: String,
     val description: String,
     val contextLength: Int,
-    val isFree: Boolean
+    val isFree: Boolean,
+    val provider: AiProvider = AiProvider.OPENROUTER
 ) {
     fun matches(query: String): Boolean {
         val normalized = query.trim().lowercase()
@@ -15,12 +16,15 @@ data class AiModel(
 
     companion object {
         const val DEFAULT_ID = "openrouter/free"
+        const val GEMMA_4_E2B_ID = "local/gemma-4-e2b"
     }
 }
 
 class MissingAiApiKeyException : Exception()
 
 class EmptyAiContentException : Exception()
+
+class GemmaModelNotInstalledException : Exception()
 
 sealed interface SelectedModelStatus {
     data object Available : SelectedModelStatus

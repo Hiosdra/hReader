@@ -3,6 +3,7 @@ package com.hiosdra.hreader.bootstrap.di
 import androidx.room.Room
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
+import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_15_16
 import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
@@ -49,6 +50,8 @@ import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.FeedStore
+import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
+import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
@@ -68,6 +71,8 @@ import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
 import com.hiosdra.hreader.entrypoint.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.ContentSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.FullPageSyncWorker
+import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadScheduler
+import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.SyncScheduler
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadScheduler
@@ -88,7 +93,8 @@ val appModule = module {
                 androidApplication(),
                 AppDatabase::class.java,
                 "hreader-db"
-            ).fallbackToDestructiveMigration(false)
+            ).addMigrations(MIGRATION_15_16)
+            .fallbackToDestructiveMigration(false)
             .build()
     }
     single { get<AppDatabase>().articleDao() }
@@ -165,6 +171,8 @@ val appModule = module {
     single<ArticleTtsPlaybackServiceControl> { ArticleTtsPlaybackServiceLauncher(androidApplication()) }
     single { TtsModelDownloadScheduler(androidApplication(), get()) }
     single<TtsModelDownloadRequester> { get<TtsModelDownloadScheduler>() }
+    single { GemmaModelDownloadScheduler(androidApplication(), get<GemmaModelGateway>()) }
+    single<GemmaModelDownloadRequester> { get<GemmaModelDownloadScheduler>() }
     single { ArticleTtsController(androidApplication(), get(), get(), get()) }
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }
     single { SyncPerformanceLogger(get()) }
@@ -225,6 +233,7 @@ val appModule = module {
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
     worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
+    worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get()) }

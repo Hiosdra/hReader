@@ -1,10 +1,15 @@
 package com.hiosdra.hreader.bootstrap.di
 
 import com.hiosdra.hreader.BuildConfig
+import com.hiosdra.hreader.adapter.ai.ArticleAiGatewayRouter
+import com.hiosdra.hreader.adapter.ai.CompositeAiModelCatalog
+import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
+import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
+import com.hiosdra.hreader.adapter.ai.gemma.GemmaArticleAiService
+import com.hiosdra.hreader.adapter.ai.gemma.GemmaInferenceEngine
+import com.hiosdra.hreader.adapter.ai.gemma.GemmaModelManager
 import com.hiosdra.hreader.adapter.ai.openrouter.ArticleAiService
 import com.hiosdra.hreader.adapter.ai.openrouter.AiModelRepository
-import com.hiosdra.hreader.adapter.ai.openrouter.CredibilityPromptBuilder
-import com.hiosdra.hreader.adapter.ai.openrouter.CredibilityResponseParser
 import com.hiosdra.hreader.adapter.ai.openrouter.OpenRouterApiService
 import com.hiosdra.hreader.adapter.backend.common.BackendUrlInterceptor
 import com.hiosdra.hreader.adapter.backend.common.DelegatingFeedBackend
@@ -21,6 +26,8 @@ import com.hiosdra.hreader.adapter.backend.miniflux.MinifluxAuthInterceptor
 import com.hiosdra.hreader.adapter.backend.miniflux.MinifluxBackend
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
+import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
+import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.squareup.moshi.Moshi
@@ -110,9 +117,16 @@ val networkModule = module {
     single { CredibilityPromptBuilder(get()) }
     single { CredibilityResponseParser(get()) }
     single<ArticleAiService> { ArticleAiService(get(), get(), get(), get()) }
-    single<ArticleAiGateway> { get<ArticleAiService>() }
+    single { GemmaModelManager(androidApplication(), get()) }
+    single<GemmaModelGateway> { get<GemmaModelManager>() }
+    single { GemmaInferenceEngine(androidApplication(), get(), get()) }
+    single<GemmaModelLifecycle> { get<GemmaInferenceEngine>() }
+    single { GemmaArticleAiService(get(), get(), get(), get()) }
+    single<ArticleAiGateway> { ArticleAiGatewayRouter(get(), get()) }
     single { AiModelRepository(get(), get()) }
-    single<AiModelCatalog> { get<AiModelRepository>() }
+    single<AiModelCatalog> {
+        CompositeAiModelCatalog(androidApplication(), get<AiModelRepository>(), get(), get())
+    }
 }
 
 private fun retrofitFor(baseUrl: String, client: OkHttpClient, moshi: Moshi): Retrofit =

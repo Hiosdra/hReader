@@ -1,9 +1,11 @@
 package com.hiosdra.hreader.adapter.ai.openrouter
 
+import com.hiosdra.hreader.adapter.ai.common.CONTENT_END
+import com.hiosdra.hreader.adapter.ai.common.CONTENT_START
+import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,7 +32,7 @@ class CredibilityPromptBuilderTest {
     )
 
     private fun userMessageOf(source: CredibilitySource): String =
-        builder.build(source, "test/model")!!.request.messages.last().content
+        builder.buildText(source)!!.userMessage
 
     @Test
     fun includesTheUsersCurrentDateInTheTrustedPromptInstructions() {
@@ -41,7 +43,7 @@ class CredibilityPromptBuilderTest {
             )
         )
 
-        val message = builder.build(sourceWith(), "test/model")!!.request.messages.last().content
+        val message = builder.buildText(sourceWith())!!.userMessage
         val instructions = message.substringBefore(CONTENT_START)
         val article = message.substringAfter(CONTENT_START).substringBefore(CONTENT_END)
 
@@ -123,18 +125,18 @@ class CredibilityPromptBuilderTest {
 
     @Test
     fun truncatesLongArticlesAndSaysSo() {
-        val prompt = builder.build(sourceWith(content = "word ".repeat(5_000)), "test/model")!!
+        val prompt = builder.buildText(sourceWith(content = "word ".repeat(5_000)))!!
 
         assertTrue(prompt.contentTruncated)
-        assertTrue(prompt.request.messages.last().content.contains("truncated"))
+        assertTrue(prompt.userMessage.contains("truncated"))
     }
 
     @Test
     fun shortArticlesAreNotMarkedTruncated() {
-        val prompt = builder.build(sourceWith(), "test/model")!!
+        val prompt = builder.buildText(sourceWith())!!
 
         assertFalse(prompt.contentTruncated)
-        assertFalse(prompt.request.messages.last().content.contains("truncated"))
+        assertFalse(prompt.userMessage.contains("truncated"))
     }
 
     @Test
@@ -148,17 +150,7 @@ class CredibilityPromptBuilderTest {
 
     @Test
     fun returnsNullWhenTheArticleHasNoReadableText() {
-        assertNull(builder.build(sourceWith(content = "<div>   </div>"), "test/model"))
+        assertNull(builder.buildText(sourceWith(content = "<div>   </div>")))
     }
 
-    @Test
-    fun asksForJsonAndKeepsTheRequestBounded() {
-        val request = builder.build(sourceWith(), "test/model")!!.request
-
-        assertEquals("test/model", request.model)
-        assertEquals(ResponseFormat.JsonObject, request.responseFormat)
-        assertNotNull(request.messages.firstOrNull { it.role == "system" })
-        assertTrue(request.maxTokens in 1..2000)
-        assertTrue(request.temperature <= 0.3)
-    }
 }

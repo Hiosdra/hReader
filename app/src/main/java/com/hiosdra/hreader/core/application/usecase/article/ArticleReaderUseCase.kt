@@ -37,6 +37,10 @@ class ArticleReaderUseCase(
 
     fun credibilityEnabled(): Boolean = preferences.getCredibilityScoreEnabled()
 
+    fun getAiModelId(): String = aiPreferences.getAiModelId()
+
+    fun observeAiModelId(): Flow<String> = aiPreferences.observeAiModelId()
+
     suspend fun getArticleIds(query: ArticleListQuery): List<Long> = articles.listIds(query)
 
     fun observeArticles(ids: List<Long>): Flow<List<Entry>> = articles.getArticlesByIds(ids)
@@ -50,11 +54,15 @@ class ArticleReaderUseCase(
 
     suspend fun getLocalImagePaths(entryId: Long): Map<String, String> = images.getLocalImagePaths(entryId)
 
-    suspend fun getCachedOverview(entryId: Long, body: String): String? =
-        overviews.get(entryId, body, aiPreferences.getAiModelId())
+    suspend fun getCachedOverview(entryId: Long, body: String, modelId: String = getAiModelId()): String? =
+        overviews.get(entryId, body, modelId)
 
-    suspend fun generateOverview(entryId: Long, title: String, body: String): Result<String> {
-        val modelId = aiPreferences.getAiModelId()
+    suspend fun generateOverview(
+        entryId: Long,
+        title: String,
+        body: String,
+        modelId: String = getAiModelId()
+    ): Result<String> {
         overviews.get(entryId, body, modelId)?.let { return Result.success(it) }
         return ai.generateArticleOverview(title, body, modelId).onSuccess { overview ->
             overviews.save(entryId, body, modelId, overview)
@@ -64,15 +72,19 @@ class ArticleReaderUseCase(
     suspend fun analyzeCredibility(
         entryId: Long,
         source: CredibilitySource,
-        forceRefresh: Boolean
+        forceRefresh: Boolean,
+        modelId: String = getAiModelId()
     ): Result<CredibilityReport> = credibility.analyze(
         entryId = entryId,
         source = source,
-        modelId = aiPreferences.getAiModelId(),
+        modelId = modelId,
         forceRefresh = forceRefresh
     )
 
-    suspend fun getCachedCredibility(ids: List<Long>): Map<Long, CredibilityReport> = credibility.getCached(ids)
+    suspend fun getCachedCredibility(
+        ids: List<Long>,
+        modelId: String = getAiModelId()
+    ): Map<Long, CredibilityReport> = credibility.getCached(ids, modelId)
 
     suspend fun updateReadStatus(entryId: Long, status: ArticleStatus) {
         articles.updateReadStatus(entryId.toString(), status)

@@ -1,6 +1,9 @@
 package com.hiosdra.hreader.adapter.ai.openrouter
 
 import android.util.Log
+import com.hiosdra.hreader.adapter.ai.common.CredibilityParseException
+import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
+import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.core.domain.model.CredibilityConfidence
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
 import com.hiosdra.hreader.adapter.preferences.PreferencesManager
@@ -68,12 +71,17 @@ class ArticleAiServiceCredibilityTest {
 
     @Test
     fun buildsAReportFromTheModelVerdict() = runBlocking {
-        coEvery { api.chatCompletion(any(), any(), any(), any()) } returns answer(
+        val request = slot<OpenRouterRequest>()
+        coEvery { api.chatCompletion(any(), any(), any(), capture(request)) } returns answer(
             """{"score": 0.8, "confidence": "high", "summary": "Solid.", "reasons": ["Named sources"]}"""
         )
 
         val report = service.analyzeCredibility(source, "test/model").getOrThrow()
 
+        assertEquals("test/model", request.captured.model)
+        assertEquals(ResponseFormat.JsonObject, request.captured.responseFormat)
+        assertEquals(1500, request.captured.maxTokens)
+        assertEquals(0.2, request.captured.temperature, 0.0)
         assertEquals(0.8f, report.score, 0.0001f)
         assertEquals(CredibilityConfidence.HIGH, report.confidence)
         assertEquals(listOf("Named sources"), report.reasons)

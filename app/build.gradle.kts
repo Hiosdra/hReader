@@ -124,7 +124,8 @@ android {
                 "**/libonnxruntime.so",
                 "**/libsherpa-onnx-c-api.so",
                 "**/libsherpa-onnx-cxx-api.so",
-                "**/libsherpa-onnx-jni.so"
+                "**/libsherpa-onnx-jni.so",
+                "**/liblitertlm_jni.so"
             )
         }
     }
@@ -230,6 +231,9 @@ dependencies {
 
     // On-device speech synthesis
     implementation(files("libs/sherpa-onnx-1.13.4-arm64.aar"))
+
+    // On-device Gemma inference
+    implementation(libs.litert.lm.android)
 
     // Testing - JUnit
     testImplementation(libs.junit)

@@ -47,6 +47,9 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
+import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
+import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
+import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.presentation.components.ErrorReportingPreferenceCard
@@ -66,6 +69,9 @@ fun SettingsScreen(
     errorReportingManager: ErrorReporter = koinInject(),
     ttsModelManager: TtsModelGateway = koinInject(),
     ttsModelDownloadScheduler: TtsModelDownloadRequester = koinInject(),
+    gemmaModelManager: GemmaModelGateway = koinInject(),
+    gemmaModelDownloadScheduler: GemmaModelDownloadRequester = koinInject(),
+    gemmaModelLifecycle: GemmaModelLifecycle = koinInject(),
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -262,6 +268,16 @@ fun SettingsScreen(
                     preferences = preferencesManager,
                     modelManager = ttsModelManager,
                     downloadScheduler = ttsModelDownloadScheduler,
+                    onRequestNotifications = requestNotificationPermission
+                )
+            }
+
+            item {
+                GemmaSettingsSection(
+                    preferences = preferencesManager,
+                    modelManager = gemmaModelManager,
+                    downloadScheduler = gemmaModelDownloadScheduler,
+                    modelLifecycle = gemmaModelLifecycle,
                     onRequestNotifications = requestNotificationPermission
                 )
             }

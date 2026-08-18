@@ -1,0 +1,21 @@
+<resources>
+    <string name="notification_channel_ai_model_download">Téléchargements de modèles d’IA</string>
+    <string name="notification_ai_model_download_title">Téléchargement du modèle d’IA</string>
+    <string name="settings_local_ai">IA locale</string>
+    <string name="ai_gemma_model_name">Gemma 4 E2B</string>
+    <string name="ai_gemma_model_description">S’exécute sur cet appareil avec LiteRT-LM. Le texte de l’article n’est pas envoyé à un fournisseur cloud.</string>
+    <string name="ai_model_size">Taille du téléchargement : %.1f Go</string>
+    <string name="ai_model_not_downloaded">Le modèle local n’est pas téléchargé.</string>
+    <string name="ai_model_downloading">Téléchargement du modèle local…</string>
+    <string name="ai_model_ready">Le modèle local est prêt.</string>
+    <string name="ai_download_model">Télécharger le modèle</string>
+    <string name="ai_remove_model">Supprimer le modèle</string>
+    <string name="ai_model_install_failed">Impossible d’installer le modèle d’IA local. Vérifiez la connexion et l’espace disponible.</string>
+    <string name="article_ai_model_missing">Installez le modèle d’IA local dans les réglages avant d’utiliser cette fonction.</string>
+    <string name="ai_backend">Backend local préféré</string>
+    <string name="ai_backend_auto">Automatique (GPU puis CPU)</string>
+    <string name="ai_backend_cpu">CPU</string>
+    <string name="ai_backend_gpu">GPU</string>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_backend_fallback">Si le backend préféré est indisponible, hReader utilise un autre backend local. Il ne bascule jamais discrètement vers OpenRouter.</string>
+</resources>

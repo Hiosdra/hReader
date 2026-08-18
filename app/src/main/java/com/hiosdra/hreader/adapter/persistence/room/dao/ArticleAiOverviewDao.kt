@@ -24,7 +24,7 @@ interface ArticleAiOverviewDao {
     @Query("DELETE FROM article_ai_overviews")
     suspend fun clearAll()
 
-    @Query("SELECT entryId FROM article_ai_overviews")
+    @Query("SELECT DISTINCT entryId FROM article_ai_overviews")
     suspend fun getAllEntryIds(): List<Long>
 
     @Query("DELETE FROM article_ai_overviews WHERE entryId IN (:entryIds)")

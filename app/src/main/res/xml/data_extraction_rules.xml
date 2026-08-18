@@ -13,6 +13,7 @@
         <exclude domain="file" path="article_images" />
         <exclude domain="file" path="article_pages" />
         <exclude domain="file" path="tts_models" />
+        <exclude domain="file" path="ai_models" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="hreader_secrets.xml" />
@@ -21,5 +22,6 @@
         <exclude domain="file" path="article_images" />
         <exclude domain="file" path="article_pages" />
         <exclude domain="file" path="tts_models" />
+        <exclude domain="file" path="ai_models" />
     </device-transfer>
 </data-extraction-rules>
