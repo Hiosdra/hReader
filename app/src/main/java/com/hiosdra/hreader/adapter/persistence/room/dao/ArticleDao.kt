@@ -144,7 +144,7 @@ interface ArticleDao {
 
     @Query(
         "SELECT a.id AS id, a.title AS title, a.author AS author, a.url AS url, " +
-            "a.publishedAt AS publishedAt, a.readingTime AS readingTime, " +
+            "a.publishedAt AS publishedAt, a.preview AS preview, a.readingTime AS readingTime, " +
             "a.enclosures AS enclosures, a.status AS status, a.starred AS starred, " +
             "a.backlogFetchedAt AS backlogFetchedAt, a.feedId AS feedId, " +
             "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl " +

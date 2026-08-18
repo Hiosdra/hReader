@@ -53,4 +53,17 @@ class ArticlePreviewTest {
 
         assertTrue((preview?.length ?: 0) <= 400)
     }
+
+    @Test
+    fun `turns a preview into escaped article html`() {
+        assertEquals(
+            "<p>2 &lt; 3 &amp; 4</p>",
+            articlePreviewHtml("2 < 3 & 4")
+        )
+    }
+
+    @Test
+    fun `returns no html for an empty preview`() {
+        assertNull(articlePreviewHtml("  "))
+    }
 }

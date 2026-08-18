@@ -19,6 +19,12 @@ fun extractArticlePreview(html: String?): String? {
     return text.take(PREVIEW_MAX_LENGTH)
 }
 
+fun articlePreviewHtml(preview: String?): String? {
+    if (preview.isNullOrBlank()) return null
+    val escaped = Jsoup.parseBodyFragment("").body().appendText(preview).html()
+    return "<p>$escaped</p>"
+}
+
 private fun plainText(html: String): String {
     val document = runCatching { Jsoup.parse(html) }.getOrNull() ?: return ""
     document.select("script, style, svg, figure, figcaption, video, audio, source, picture, img")
