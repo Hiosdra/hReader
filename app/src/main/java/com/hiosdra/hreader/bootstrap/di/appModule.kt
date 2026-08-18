@@ -8,6 +8,7 @@ import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
 import com.hiosdra.hreader.adapter.persistence.ArticlePageRepository
+import com.hiosdra.hreader.adapter.persistence.CacheDataCleaner
 import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicy
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleRepository
@@ -134,20 +135,17 @@ val appModule = module {
     single<FeedRepository> { FeedRepository(get(), get(), get(), get()) }
     single<FeedStore> { get<FeedRepository>() }
     single {
+        CacheDataCleaner(
+            db = get(),
+            imagesDir = File(androidApplication().filesDir, "article_images"),
+            pagesDir = File(androidApplication().filesDir, "article_pages")
+        )
+    }
+    single {
         LocalCacheRepository(
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            File(androidApplication().filesDir, "article_images"),
-            File(androidApplication().filesDir, "article_pages"),
-            get()
+            dataCleaner = get(),
+            preferencesManager = get(),
+            backendIdentity = get()
         )
     }
     single<CacheStore> { get<LocalCacheRepository>() }
