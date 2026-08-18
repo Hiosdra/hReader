@@ -52,6 +52,8 @@ class ArticleContentRepositoryTest {
 
     private fun article(
         content: String? = "<p>What the feed carried</p>",
+        fullContent: String? = null,
+        preview: String? = null,
         enclosures: List<Enclosure> = emptyList()
     ) = ArticleEntity(
         id = entryId.toString(),
@@ -60,6 +62,8 @@ class ArticleContentRepositoryTest {
         url = articleUrl,
         publishedAt = Instant.EPOCH,
         content = content,
+        fullContent = fullContent,
+        preview = preview,
         feedId = 1L,
         readingTime = null,
         enclosures = enclosures
@@ -194,6 +198,47 @@ class ArticleContentRepositoryTest {
     }
 
     @Test
+    fun `a cached full body is used when the prepared content row is missing`() = runBlocking {
+        coEvery { articleContentDao.getArticleContent(entryId) } returns null
+        coEvery { backend.fetchFullContent(entryId, articleUrl) } returns null
+        coEvery {
+            articleDao.getArticlesImmediate(any())
+        } returns listOf(article(content = null, fullContent = "<p>Cached full body</p>"))
+
+        val text = repository.getArticleContent(entryId, articleUrl)
+
+        assertTrue(text.html.contains("Cached full body"))
+        assertEquals(ArticleContentSource.FULL, text.source)
+    }
+
+    @Test
+    fun `the stored preview is used when article bodies are unavailable`() = runBlocking {
+        coEvery { articleContentDao.getArticleContent(entryId) } returns null
+        coEvery { backend.fetchFullContent(entryId, articleUrl) } returns null
+        coEvery {
+            articleDao.getArticlesImmediate(any())
+        } returns listOf(article(content = null, preview = "Only the downloaded preview"))
+
+        val text = repository.getArticleContent(entryId, articleUrl)
+
+        assertTrue(text.html.contains("Only the downloaded preview"))
+        assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
+    }
+
+    @Test
+    fun `a blank prepared row does not hide the feed fallback`() = runBlocking {
+        coEvery { articleContentDao.getArticleContent(entryId) } returns
+            storedContent("  ", isPrepared = true)
+        coEvery { backend.fetchFullContent(entryId, articleUrl) } returns null
+        coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
+
+        val text = repository.getArticleContent(entryId, articleUrl)
+
+        assertTrue(text.html.contains("What the feed carried"))
+        assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
+    }
+
+    @Test
     fun `a cached feed fallback upgrades when the backend later serves the full text`() = runBlocking {
         coEvery { articleContentDao.getArticleContent(entryId) } returns
             storedContent("<p>Summary</p>", isPrepared = true, source = ArticleContentSource.FEED_FALLBACK)
@@ -213,6 +258,20 @@ class ArticleContentRepositoryTest {
 
         val text = repository.getArticleContent(entryId, articleUrl, allowNetwork = false)
 
+        assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
+        coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
+    }
+
+    @Test
+    fun `offline content lookup uses the preview when the feed body is absent`() = runBlocking {
+        coEvery { articleContentDao.getArticleContent(entryId) } returns null
+        coEvery {
+            articleDao.getArticlesImmediate(any())
+        } returns listOf(article(content = null, preview = "Downloaded before going offline"))
+
+        val text = repository.getArticleContent(entryId, articleUrl, allowNetwork = false)
+
+        assertTrue(text.html.contains("Downloaded before going offline"))
         assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
         coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
     }

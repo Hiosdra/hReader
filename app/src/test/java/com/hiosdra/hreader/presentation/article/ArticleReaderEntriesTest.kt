@@ -34,6 +34,13 @@ class ArticleReaderEntriesTest {
     }
 
     @Test
+    fun `reader can show the downloaded preview before full content arrives`() {
+        val entry = entry(1).copy(content = null, preview = "Downloaded preview")
+
+        assertEquals("<p>Downloaded preview</p>", readerFallbackContent(entry))
+    }
+
+    @Test
     fun `reader state keeps article payloads around the current page only`() {
         val entries = (1L..5L).map(::entry)
         val state = ArticleUiState(

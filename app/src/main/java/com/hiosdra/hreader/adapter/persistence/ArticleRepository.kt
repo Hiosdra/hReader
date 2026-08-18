@@ -528,6 +528,7 @@ private fun ArticleReaderItem.toEntry(): Entry = Entry(
     url = url,
     publishedAt = publishedAt,
     content = null,
+    preview = preview,
     feed = Feed(
         id = feedId,
         title = feedTitle.orEmpty(),
