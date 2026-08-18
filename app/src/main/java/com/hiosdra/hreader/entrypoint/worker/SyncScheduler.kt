@@ -37,11 +37,6 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 private const val CONTENT_SYNC_WORK = "ContentSyncWorker"
-private const val ARTICLE_CONTENT_SYNC_WORK = "ArticleContentSync"
-private const val LEGACY_ARTICLE_CONTENT_SYNC_WORK = "ArticleContentSyncWorker"
-private const val CHAINED_SYNC_WORK = "OnExitChainedSync"
-private const val OFFLINE_PREPARATION_WORK = "PrepareForOffline"
-private const val REQUESTED_SYNC_WORK = "RequestedSync"
 private const val SYNC_PIPELINE_WORK = "SyncPipeline"
 private const val OFFLINE_PREPARATION_TAG = "OfflinePreparation"
 private const val FULL_OFFLINE_PREPARATION_TAG = "FullOfflinePreparation"
@@ -145,8 +140,6 @@ class SyncScheduler(
      * configuring an account again brings it back without waiting for the next launch.
      */
     override fun schedulePeriodicSync() {
-        workManager.cancelUniqueWork(LEGACY_ARTICLE_CONTENT_SYNC_WORK)
-
         if (!backendPreferences.hasBackendCredentials()) {
             workManager.cancelUniqueWork(CONTENT_SYNC_WORK)
             return
@@ -191,7 +184,6 @@ class SyncScheduler(
         operationTitle: String?
     ): UUID? {
         if (!backendPreferences.hasBackendCredentials()) return null
-        cancelLegacyOneTimeSyncWork()
         val resolvedOperationTitle = operationTitle ?: context.getString(R.string.notification_sync_title)
         val syncWork = syncRequest(
             forceFullSync = forceFullSync,
@@ -232,10 +224,6 @@ class SyncScheduler(
     override fun cancelAllSync() {
         listOf(
             CONTENT_SYNC_WORK,
-            ARTICLE_CONTENT_SYNC_WORK,
-            CHAINED_SYNC_WORK,
-            OFFLINE_PREPARATION_WORK,
-            REQUESTED_SYNC_WORK,
             SYNC_PIPELINE_WORK
         ).forEach(workManager::cancelUniqueWork)
     }
@@ -270,7 +258,6 @@ class SyncScheduler(
      */
     override fun prepareForOffline(): UUID? {
         if (!backendPreferences.hasBackendCredentials()) return null
-        cancelLegacyOneTimeSyncWork()
         val syncWork = syncRequest(
             forceFullSync = true,
             expedited = true,
@@ -301,7 +288,6 @@ class SyncScheduler(
 
     override fun prepareFullOffline(): UUID? {
         if (!backendPreferences.hasBackendCredentials()) return null
-        cancelLegacyOneTimeSyncWork()
         val syncWork = syncRequest(
             forceFullSync = true,
             expedited = true,
@@ -371,15 +357,6 @@ class SyncScheduler(
                 stage = offlinePreparationStage(activeWork?.tags.orEmpty())
             )
         }
-
-    private fun cancelLegacyOneTimeSyncWork() {
-        listOf(
-            ARTICLE_CONTENT_SYNC_WORK,
-            CHAINED_SYNC_WORK,
-            OFFLINE_PREPARATION_WORK,
-            REQUESTED_SYNC_WORK
-        ).forEach(workManager::cancelUniqueWork)
-    }
 
     private fun syncRequest(
         forceFullSync: Boolean,
