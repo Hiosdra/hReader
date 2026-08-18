@@ -11,7 +11,6 @@ class ArticleReadingPositionRepository(
         if (articleIds.isEmpty()) return emptyMap()
         return dao.getForArticles(articleIds.toList())
             .associate { position -> position.articleId to position.progress }
-            .toMap()
     }
 
     override suspend fun saveProgress(articleId: Long, progress: Float) {

@@ -203,6 +203,10 @@ val MIGRATION_15_16 = object : Migration(15, 16) {
         db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_AFTER_INSERT")
         db.execSQL("DROP TABLE IF EXISTS `articles_fts`")
 
+        ARTICLE_INDEXES.forEach { index ->
+            db.execSQL("DROP INDEX IF EXISTS `$index`")
+        }
+
         ARTICLE_CHILD_TABLES.forEach { table ->
             db.execSQL("ALTER TABLE `$table` RENAME TO `${table}_old`")
         }
@@ -438,6 +442,14 @@ private val ARTICLE_CHILD_TABLES = listOf(
     "article_ai_overviews",
     "article_page_snapshots",
     "article_reading_positions"
+)
+
+private val ARTICLE_INDEXES = listOf(
+    "index_articles_feedId",
+    "index_articles_status",
+    "index_articles_publishedAt",
+    "index_articles_pendingSync",
+    "index_articles_starredPendingSync"
 )
 
 private val FTS_CONTENT_SYNC_TRIGGERS_WITH_FULL_CONTENT = listOf(

@@ -461,12 +461,6 @@ class ArticleRepository(
 }
 
 /**
- * The stored ids as the rest of the app uses them. The column is text because that is what both
- * backends hand over, but every value written to it is the decimal form of a [Long], so a token
- * that will not parse is a broken invariant rather than an article to be quietly left out of the
- * list — which is what dropping it silently looked like from the outside.
- */
-/**
  * Merges a freshly fetched article with what is already cached. The backend owns the read state —
  * that is what makes a status change from another client land here. The one thing it cannot know
  * about is a local change that has not been pushed yet, so that one wins and stays queued.
