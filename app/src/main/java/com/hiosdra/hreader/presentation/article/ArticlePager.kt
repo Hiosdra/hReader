@@ -116,7 +116,7 @@ internal fun ArticlePager(
                                     factory = { context ->
                                         ReaderWebView(context).apply {
                                             protectVerticalScrollFromPager = true
-                                            settings.javaScriptEnabled = false
+                                            settings.hardenArticleContent()
                                             webViewClient = object : WebViewClient() {
                                                 override fun onRenderProcessGone(
                                                     view: WebView,

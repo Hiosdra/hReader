@@ -23,9 +23,12 @@ class ArticleWebViewSecurityTest {
             val images = File(root, "article_images").apply { mkdirs() }
             val image = File(images, "image.jpg").apply { writeText("image") }
             val outside = File(root, "outside.jpg").apply { writeText("outside") }
+            val sibling = File(root, "article_images_backup").apply { mkdirs() }
+            val siblingImage = File(sibling, "image.jpg").apply { writeText("sibling") }
 
             assertTrue(isFileWithinDirectory(image.path, images))
             assertFalse(isFileWithinDirectory(outside.path, images))
+            assertFalse(isFileWithinDirectory(siblingImage.path, images))
         } finally {
             root.deleteRecursively()
         }

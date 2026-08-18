@@ -1,26 +1,14 @@
 package com.hiosdra.hreader.presentation.article
 
-import android.content.Context
-import android.net.Uri
 import android.os.SystemClock
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
-import android.view.ViewGroup
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -29,53 +17,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
-import com.hiosdra.hreader.core.domain.model.OfflinePage
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.presentation.article.BionicReadingProcessor
-import com.hiosdra.hreader.core.domain.service.cleanUrl
 import com.hiosdra.hreader.core.application.content.sanitizeArticleHtml
+import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.domain.service.cleanUrl
 import org.koin.compose.koinInject
-import java.io.File
-import java.io.FileInputStream
-import java.net.URI
-import java.net.URLConnection
 import kotlin.math.abs
 import kotlin.math.roundToInt
-
-private const val CONTENT_HEIGHT_UPDATE_ATTEMPTS = 12
-private const val CONTENT_HEIGHT_UPDATE_DELAY_MS = 100L
-
-internal enum class ReaderGestureDirection {
-    Horizontal,
-    Vertical
-}
-
-internal fun readerGestureDirection(
-    deltaX: Float,
-    deltaY: Float,
-    touchSlop: Float
-): ReaderGestureDirection? {
-    val absoluteX = abs(deltaX)
-    val absoluteY = abs(deltaY)
-    if (maxOf(absoluteX, absoluteY) <= touchSlop) return null
-
-    val directionalBias = 1.25f
-    return when {
-        absoluteX > absoluteY * directionalBias -> ReaderGestureDirection.Horizontal
-        absoluteY > absoluteX * directionalBias -> ReaderGestureDirection.Vertical
-        else -> null
-    }
-}
 
 @Composable
 fun ArticleWebView(
@@ -207,17 +160,7 @@ fun ArticleWebView(
                             ): WebResourceResponse? {
                                 val url = request?.url?.toString() ?: return null
                                 val localPath = currentLocalImagePaths.value[url] ?: return null
-                                val filesDir = view?.context?.filesDir ?: return null
-                                val imageDirectory = File(filesDir, "article_images")
-                                if (!isFileWithinDirectory(localPath, imageDirectory)) return null
-                                val file = File(localPath).canonicalFile
-                                return runCatching {
-                                    WebResourceResponse(
-                                        URLConnection.guessContentTypeFromName(file.name) ?: "image/*",
-                                        null,
-                                        FileInputStream(file)
-                                    )
-                                }.getOrNull()
+                                return serveLocalArticleImage(localPath, view?.context?.filesDir)
                             }
 
                             override fun shouldOverrideUrlLoading(
@@ -329,311 +272,6 @@ fun ArticleWebView(
             )
         }
     }
-}
-
-@Composable
-internal fun ReaderWebViewError(
-    modifier: Modifier = Modifier,
-    onRetry: () -> Unit
-) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(stringResource(R.string.article_web_error), textAlign = TextAlign.Center)
-            TextButton(onClick = onRetry) { Text(stringResource(R.string.article_try_again)) }
-        }
-    }
-}
-
-internal class ReaderWebView(context: Context) : WebView(context) {
-    private var released = false
-    private var contentHeightUpdateRunnable: Runnable? = null
-    private var initialTouchX = 0f
-    private var initialTouchY = 0f
-    private var touchInProgress = false
-    private var pagerGestureDirection: ReaderGestureDirection? = null
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-
-    var allowScroll: Boolean = true
-    var protectVerticalScrollFromPager: Boolean = false
-        set(value) {
-            field = value
-            if (!value) {
-                parent?.requestDisallowInterceptTouchEvent(false)
-                touchInProgress = false
-                pagerGestureDirection = null
-            }
-        }
-
-    val isReleased: Boolean
-        get() = released
-
-    fun postIfActive(action: () -> Unit) {
-        if (released) return
-        post {
-            if (!released) action()
-        }
-    }
-
-    fun scheduleContentHeightUpdates(onHeightChanged: (Int) -> Unit) {
-        if (contentHeightUpdateRunnable != null) return
-        val update = object : Runnable {
-            private var attempts = 0
-            private var lastHeight = 0
-
-            override fun run() {
-                if (released) return
-                val height = (contentHeight * resources.displayMetrics.density).roundToInt()
-                if (height > 0 && height != lastHeight) {
-                    lastHeight = height
-                    onHeightChanged(height)
-                }
-                if (attempts < CONTENT_HEIGHT_UPDATE_ATTEMPTS) {
-                    attempts += 1
-                    postDelayed(this, CONTENT_HEIGHT_UPDATE_DELAY_MS)
-                } else {
-                    contentHeightUpdateRunnable = null
-                }
-            }
-        }
-        contentHeightUpdateRunnable = update
-        post(update)
-    }
-
-    fun releaseResources() {
-        if (released) return
-        released = true
-        clearCallbacksAndClients()
-        stopLoading()
-        removeAllViews()
-        destroy()
-    }
-
-    internal fun destroyAfterRenderProcessGone() {
-        if (released) return
-        released = true
-        clearCallbacksAndClients()
-        (parent as? ViewGroup)?.removeView(this)
-        destroy()
-    }
-
-    private fun clearCallbacksAndClients() {
-        parent?.requestDisallowInterceptTouchEvent(false)
-        touchInProgress = false
-        pagerGestureDirection = null
-        contentHeightUpdateRunnable?.let(::removeCallbacks)
-        contentHeightUpdateRunnable = null
-        setOnScrollChangeListener(null)
-        setOnLongClickListener(null)
-        webViewClient = WebViewClient()
-        webChromeClient = null
-    }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        val clickDetected = event.actionMasked == MotionEvent.ACTION_UP &&
-            touchInProgress &&
-            abs(event.x - initialTouchX) <= touchSlop &&
-            abs(event.y - initialTouchY) <= touchSlop
-
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                initialTouchX = event.x
-                initialTouchY = event.y
-                touchInProgress = true
-                pagerGestureDirection = null
-                parent?.requestDisallowInterceptTouchEvent(protectVerticalScrollFromPager)
-            }
-            MotionEvent.ACTION_MOVE -> {
-                if (protectVerticalScrollFromPager && pagerGestureDirection == null) {
-                    pagerGestureDirection = readerGestureDirection(
-                        deltaX = event.x - initialTouchX,
-                        deltaY = event.y - initialTouchY,
-                        touchSlop = touchSlop
-                    )
-                    if (pagerGestureDirection == ReaderGestureDirection.Horizontal) {
-                        parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                parent?.requestDisallowInterceptTouchEvent(false)
-                touchInProgress = false
-                pagerGestureDirection = null
-            }
-        }
-
-        val handled = super.onTouchEvent(event)
-        if (clickDetected) performClick()
-        return handled
-    }
-
-    override fun performClick(): Boolean {
-        super.performClick()
-        return true
-    }
-
-    override fun onDetachedFromWindow() {
-        parent?.requestDisallowInterceptTouchEvent(false)
-        touchInProgress = false
-        super.onDetachedFromWindow()
-    }
-
-    override fun scrollTo(x: Int, y: Int) {
-        if (isReleased) return
-        super.scrollTo(x, if (allowScroll) y else 0)
-    }
-
-    override fun scrollBy(x: Int, y: Int) {
-        if (isReleased) return
-        super.scrollBy(x, if (allowScroll) y else 0)
-    }
-}
-
-@Composable
-fun OfflinePageWebView(
-    page: OfflinePage,
-    modifier: Modifier = Modifier,
-    onLinkClick: ((String) -> Unit)? = null
-) {
-    val currentPage = androidx.compose.runtime.rememberUpdatedState(page)
-    val currentOnLinkClick = androidx.compose.runtime.rememberUpdatedState(onLinkClick)
-    val loadedPageKey = remember { mutableStateOf<Triple<Long, String, String>?>(null) }
-    val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
-    var renderProcessError by remember(page.entryId, page.html, page.baseUrl) { mutableStateOf(false) }
-    var renderAttempt by remember(page.entryId, page.html, page.baseUrl) { mutableIntStateOf(0) }
-
-    if (renderProcessError) {
-        ReaderWebViewError(
-            modifier = modifier,
-            onRetry = {
-                renderProcessError = false
-                renderAttempt += 1
-            }
-        )
-    } else {
-        key(renderAttempt) {
-            AndroidView(
-                factory = { context ->
-                    ReaderWebView(context).apply {
-                        protectVerticalScrollFromPager = true
-                        settings.hardenArticleContent()
-                        settings.blockNetworkLoads = true
-                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                        webViewClient = object : WebViewClient() {
-                            override fun onRenderProcessGone(
-                                view: WebView,
-                                detail: RenderProcessGoneDetail
-                            ): Boolean {
-                                loadedWebView.value = null
-                                (view as? ReaderWebView)?.destroyAfterRenderProcessGone()
-                                renderProcessError = true
-                                return true
-                            }
-
-                            override fun shouldInterceptRequest(
-                                view: WebView?,
-                                request: WebResourceRequest?
-                            ): WebResourceResponse? = serveOfflineAsset(currentPage.value, request?.url)
-
-                            override fun shouldOverrideUrlLoading(
-                                view: WebView?,
-                                request: WebResourceRequest?
-                            ): Boolean {
-                                val requestUri = request?.url ?: return false
-                                val url = requestUri.toString()
-                                val pageUri = currentPage.value.baseUrl.toUri()
-                                if (
-                                    requestUri.scheme.equals(pageUri.scheme, ignoreCase = true) &&
-                                    requestUri.host == pageUri.host
-                                ) return false
-                                val cleanedUrl = cleanUrl(url)
-                                if (!isAllowedArticleLink(cleanedUrl)) return true
-                                currentOnLinkClick.value?.invoke(cleanedUrl)
-                                return currentOnLinkClick.value != null
-                            }
-                        }
-                    }
-                },
-                update = { webView ->
-                    val key = Triple(page.entryId, page.html, page.baseUrl)
-                    if (loadedWebView.value !== webView || loadedPageKey.value != key) {
-                        loadedWebView.value = webView
-                        loadedPageKey.value = key
-                        webView.loadDataWithBaseURL(page.baseUrl, page.html, "text/html", "UTF-8", null)
-                    }
-                },
-                onRelease = { webView -> webView.releaseResources() },
-                modifier = modifier
-            )
-        }
-    }
-}
-
-private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse? {
-    uri ?: return null
-    val baseUri = page.baseUrl.toUri()
-    val basePath = baseUri.path?.trimEnd('/') ?: return null
-    if (!uri.scheme.equals(baseUri.scheme, ignoreCase = true) || uri.host != baseUri.host) return null
-    val assetsPrefix = "$basePath/assets/"
-    val relativePath = uri.path?.removePrefix(assetsPrefix)
-        ?.takeIf { uri.path?.startsWith(assetsPrefix) == true && it.isNotBlank() }
-        ?: return null
-    if (relativePath.split('/').any { it == ".." || it.isBlank() }) return null
-
-    val assetsDirectory = runCatching { File(page.resourceDirectory, "assets").canonicalFile }.getOrNull()
-        ?: return null
-    val file = runCatching { File(assetsDirectory, relativePath).canonicalFile }.getOrNull()
-        ?: return null
-    val assetsPath = assetsDirectory.path + File.separator
-    if (!file.path.startsWith(assetsPath) || !file.isFile) return null
-
-    return runCatching {
-        WebResourceResponse(
-            offlineMimeType(file.name),
-            null,
-            FileInputStream(file)
-        )
-    }.getOrNull()
-}
-
-internal fun isAllowedArticleLink(url: String): Boolean = runCatching {
-    val uri = URI(url)
-    uri.scheme?.lowercase() in setOf("http", "https") &&
-        uri.userInfo == null &&
-        !uri.host.isNullOrBlank()
-}.getOrDefault(false)
-
-@Suppress("DEPRECATION")
-private fun WebSettings.hardenArticleContent() {
-    javaScriptEnabled = false
-    allowFileAccess = false
-    allowContentAccess = false
-    allowUniversalAccessFromFileURLs = false
-    allowFileAccessFromFileURLs = false
-    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-}
-
-internal fun isFileWithinDirectory(path: String, directory: File): Boolean {
-    val root = runCatching { directory.canonicalFile }.getOrNull() ?: return false
-    val file = runCatching { File(path).canonicalFile }.getOrNull() ?: return false
-    return file.isFile && file.path.startsWith(root.path + File.separator)
-}
-
-private fun offlineMimeType(fileName: String): String = when (fileName.substringAfterLast('.', "").lowercase()) {
-    "css" -> "text/css"
-    "svg" -> "image/svg+xml"
-    "png" -> "image/png"
-    "jpg", "jpeg" -> "image/jpeg"
-    "gif" -> "image/gif"
-    "webp" -> "image/webp"
-    "woff" -> "font/woff"
-    "woff2" -> "font/woff2"
-    "ttf" -> "font/ttf"
-    "otf" -> "font/otf"
-    else -> URLConnection.guessContentTypeFromName(fileName) ?: "application/octet-stream"
 }
 
 private fun articleHtml(
