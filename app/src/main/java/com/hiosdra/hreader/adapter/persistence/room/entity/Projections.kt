@@ -37,6 +37,7 @@ data class ArticleReaderItem(
     val author: String?,
     val url: String,
     val publishedAt: Instant,
+    val preview: String?,
     val readingTime: Int?,
     val enclosures: List<Enclosure>,
     val status: ArticleStatus?,

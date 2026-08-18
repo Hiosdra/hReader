@@ -4,16 +4,17 @@ import android.util.Log
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
-import com.hiosdra.hreader.core.domain.model.ArticleContentSource
-import com.hiosdra.hreader.core.domain.model.ArticleText
+import com.hiosdra.hreader.core.application.content.articlePreviewHtml
+import com.hiosdra.hreader.core.application.content.leadImageUrl
+import com.hiosdra.hreader.core.application.content.prepareArticleImages
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
-import com.hiosdra.hreader.core.application.content.leadImageUrl
-import com.hiosdra.hreader.core.application.content.prepareArticleImages
+import com.hiosdra.hreader.core.domain.model.ArticleContentSource
+import com.hiosdra.hreader.core.domain.model.ArticleText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -58,14 +59,21 @@ class ArticleContentRepository(
         allowNetwork: Boolean
     ): ArticleText {
         val localContent = articleContentDao.getArticleContent(entryId)
-        if (localContent != null && localContent.url == url) {
-            if (localContent.source == ArticleContentSource.FULL || !allowNetwork) {
+        if (localContent != null && localContent.url == url && localContent.content.isNotBlank()) {
+            if (localContent.source == ArticleContentSource.FULL) {
                 return prepareStoredContent(entryId, localContent, allowNetwork)
             }
 
-            val fullContent = fetchFullContent(entryId, url)
-            if (fullContent != null) {
-                return storeContent(entryId, url, fullContent, ArticleContentSource.FULL, allowNetwork)
+            if (allowNetwork) {
+                val fullContent = fetchFullContent(entryId, url)
+                if (fullContent != null) {
+                    return storeContent(entryId, url, fullContent, ArticleContentSource.FULL, true)
+                }
+            }
+
+            val cachedContent = getCachedArticleContent(entryId)
+            if (cachedContent?.source == ArticleContentSource.FULL) {
+                return storeContent(entryId, url, cachedContent.content, cachedContent.source, allowNetwork)
             }
             return prepareStoredContent(entryId, localContent, allowNetwork)
         }
@@ -77,12 +85,9 @@ class ArticleContentRepository(
             }
         }
 
-        val feedContent = articleDao.getArticlesImmediate(listOf(entryId.toString()))
-            .firstOrNull()
-            ?.content
-            ?.takeIf { it.isNotBlank() }
+        val cachedContent = getCachedArticleContent(entryId)
             ?: throw IllegalStateException("No content available for entry $entryId")
-        return storeContent(entryId, url, feedContent, ArticleContentSource.FEED_FALLBACK, allowNetwork)
+        return storeContent(entryId, url, cachedContent.content, cachedContent.source, allowNetwork)
     }
 
     private suspend fun fetchFullContent(entryId: Long, url: String): String? {
@@ -177,6 +182,25 @@ class ArticleContentRepository(
         val imageUrls: List<String>,
         val leadImageUrl: String?
     )
+
+    private data class CachedArticleContent(
+        val content: String,
+        val source: ArticleContentSource
+    )
+
+    private suspend fun getCachedArticleContent(entryId: Long): CachedArticleContent? {
+        val article = articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull() ?: return null
+        article.fullContent?.takeIf { it.isNotBlank() }?.let {
+            return CachedArticleContent(it, ArticleContentSource.FULL)
+        }
+        article.content?.takeIf { it.isNotBlank() }?.let {
+            return CachedArticleContent(it, ArticleContentSource.FEED_FALLBACK)
+        }
+        articlePreviewHtml(article.preview)?.let {
+            return CachedArticleContent(it, ArticleContentSource.FEED_FALLBACK)
+        }
+        return null
+    }
 
     /**
      * The entries whose text is not stored yet, in the order given. Prefetching a bounded slice of

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
+import com.hiosdra.hreader.core.application.content.articlePreviewHtml
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
@@ -47,6 +48,9 @@ internal fun mergeReaderEntries(
     val previousById = previousEntries.associateBy { it.id }
     return ids.mapNotNull { id -> latestById[id] ?: previousById[id] }
 }
+
+internal fun readerFallbackContent(entry: Entry): String? =
+    entry.content?.takeIf { it.isNotBlank() } ?: articlePreviewHtml(entry.preview)
 
 data class ArticleUiState(
     val entries: List<Entry> = emptyList(),
@@ -439,7 +443,7 @@ class ArticleViewModel(
 
     fun getContentForEntry(entryId: Long): String? =
         _uiState.value.content[entryId]
-            ?: _uiState.value.entries.find { it.id == entryId }?.content
+            ?: _uiState.value.entries.find { it.id == entryId }?.let(::readerFallbackContent)
 
     fun getLeadImageForEntry(entryId: Long): String? = _uiState.value.leadImages[entryId]
 

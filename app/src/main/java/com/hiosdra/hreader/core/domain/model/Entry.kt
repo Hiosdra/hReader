@@ -9,6 +9,7 @@ data class Entry(
     val url: String,
     val publishedAt: Instant,
     val content: String?,
+    val preview: String? = null,
     val feed: Feed,
     val readingTime: Int?,
     val enclosures: List<Enclosure> = emptyList(),
