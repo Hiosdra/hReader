@@ -18,7 +18,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
@@ -49,7 +49,7 @@ internal fun TtsSettingsSection(
     downloadScheduler: TtsModelDownloadRequester,
     onRequestNotifications: (() -> Unit) -> Unit
 ) {
-    val statuses by modelManager.statuses.collectAsState()
+    val statuses by modelManager.statuses.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var speed by remember { mutableFloatStateOf(preferences.getTtsSpeed()) }
     var selectedModel by remember { mutableStateOf(preferences.getTtsModel()) }
