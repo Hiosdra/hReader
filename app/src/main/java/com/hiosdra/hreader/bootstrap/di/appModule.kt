@@ -31,6 +31,7 @@ import com.hiosdra.hreader.adapter.image.ImageLoader
 import com.hiosdra.hreader.adapter.system.NetworkMonitor
 import com.hiosdra.hreader.adapter.observability.SyncPerformanceLogger
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
@@ -44,6 +45,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
@@ -51,8 +53,13 @@ import com.hiosdra.hreader.core.application.port.out.FeedStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
+import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.port.out.SentryPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
+import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
@@ -146,6 +153,13 @@ val appModule = module {
     single<PaywallBypass> { get<PaywallBypassService>() }
     single { PreferencesManager(androidApplication()) }
     single<AppPreferences> { get<PreferencesManager>() }
+    single<BackendPreferences> { get<PreferencesManager>() }
+    single<AiPreferences> { get<PreferencesManager>() }
+    single<ReaderPreferences> { get<PreferencesManager>() }
+    single<SentryPreferences> { get<PreferencesManager>() }
+    single<PerformancePreferences> { get<PreferencesManager>() }
+    single<SyncPreferences> { get<PreferencesManager>() }
+    single<TtsPreferences> { get<PreferencesManager>() }
     single { ErrorReportingManager(androidApplication(), get()) }
     single<ErrorReporter> { get<ErrorReportingManager>() }
     single { TtsModelManager(androidApplication(), get()) }
@@ -162,7 +176,15 @@ val appModule = module {
     single<ArticleImageSharer> { ArticleImageShareService(androidApplication()) }
     single { NetworkMonitor(androidApplication()) }
     single<NetworkStatus> { get<NetworkMonitor>() }
-    single { SyncScheduler(androidApplication(), get(), get(), scope = get(named("applicationScope"))) }
+    single {
+        SyncScheduler(
+            context = androidApplication(),
+            backendPreferences = get(),
+            syncPreferences = get(),
+            networkMonitor = get(),
+            scope = get(named("applicationScope"))
+        )
+    }
     single<SyncRequester> { get<SyncScheduler>() }
     single {
         ArticleReaderUseCase(
@@ -173,7 +195,8 @@ val appModule = module {
             ai = get<ArticleAiGateway>(),
             overviews = get<ArticleAiOverviewStore>(),
             credibility = get<CredibilityStore>(),
-            preferences = get<AppPreferences>(),
+            preferences = get<ReaderPreferences>(),
+            aiPreferences = get<AiPreferences>(),
             images = get<ArticleImageLoader>(),
             network = get<NetworkStatus>()
         )
@@ -190,7 +213,9 @@ val appModule = module {
     single { FeedUseCase(get<FeedStore>(), get<NetworkStatus>()) }
     single {
         SettingsUseCase(
-            preferences = get<AppPreferences>(),
+            backendPreferences = get<BackendPreferences>(),
+            aiPreferences = get<AiPreferences>(),
+            syncPreferences = get<SyncPreferences>(),
             feeds = get<FeedStore>(),
             aiModels = get<AiModelCatalog>(),
             cache = get<CacheStore>(),

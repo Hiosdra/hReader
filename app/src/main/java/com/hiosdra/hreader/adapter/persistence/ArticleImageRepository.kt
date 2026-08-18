@@ -6,8 +6,8 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageManifest
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
@@ -29,7 +29,7 @@ class ArticleImageRepository(
     private val articleImageDao: ArticleImageDao,
     private val articleDao: ArticleDao,
     private val okHttpClient: OkHttpClient,
-    private val preferencesManager: AppPreferences,
+    private val preferencesManager: SyncPreferences,
     private val remoteResourcePolicy: RemoteResourcePolicy,
     private val fileExists: (String) -> Boolean = { path -> File(path).exists() }
 ) : ArticleImageStore {

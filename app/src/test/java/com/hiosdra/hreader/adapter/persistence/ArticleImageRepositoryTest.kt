@@ -5,7 +5,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -28,7 +28,7 @@ class ArticleImageRepositoryTest {
     private val articleImageDao = mockk<ArticleImageDao>(relaxed = true)
     private val articleDao = mockk<ArticleDao>()
     private val okHttpClient = OkHttpClient()
-    private val preferencesManager = mockk<AppPreferences>(relaxed = true)
+    private val preferencesManager = mockk<SyncPreferences>(relaxed = true)
     private val repo: ArticleImageRepository = ArticleImageRepository(
         context,
         articleImageDao,

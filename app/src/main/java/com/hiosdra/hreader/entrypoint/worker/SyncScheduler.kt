@@ -16,8 +16,9 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
@@ -75,7 +76,8 @@ internal fun offlinePreparationStage(tags: Set<String>): OfflinePreparationStage
  */
 class SyncScheduler(
     private val context: Context,
-    private val preferencesManager: AppPreferences,
+    private val backendPreferences: BackendPreferences,
+    private val syncPreferences: SyncPreferences,
     private val networkMonitor: NetworkStatus,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val workManagerProvider: (Context) -> WorkManager = { appContext ->
@@ -94,7 +96,7 @@ class SyncScheduler(
             .drop(1)
             .distinctUntilChanged()
             .filter { it }
-            .onEach { if (preferencesManager.hasBackendCredentials()) syncNow() }
+            .onEach { if (backendPreferences.hasBackendCredentials()) syncNow() }
             .launchIn(scope)
     }
 
@@ -109,11 +111,11 @@ class SyncScheduler(
         avoidLowStorage: Boolean = false,
         avoidLowBattery: Boolean = false
     ): Constraints {
-        val unmeteredOnly = preferencesManager.getSyncOnUnmeteredOnly()
+        val unmeteredOnly = syncPreferences.getSyncOnUnmeteredOnly()
         val networkType = if (unmeteredOnly) NetworkType.UNMETERED else NetworkType.CONNECTED
         val builder = Constraints.Builder()
 
-        if (preferencesManager.getSyncWhileRoaming()) {
+        if (syncPreferences.getSyncWhileRoaming()) {
             builder.setRequiredNetworkType(networkType)
         } else {
             val request = NetworkRequest.Builder()
@@ -145,13 +147,13 @@ class SyncScheduler(
     override fun schedulePeriodicSync() {
         workManager.cancelUniqueWork(LEGACY_ARTICLE_CONTENT_SYNC_WORK)
 
-        if (!preferencesManager.hasBackendCredentials()) {
+        if (!backendPreferences.hasBackendCredentials()) {
             workManager.cancelUniqueWork(CONTENT_SYNC_WORK)
             return
         }
 
         val workRequest = PeriodicWorkRequestBuilder<ContentSyncWorker>(
-            preferencesManager.getSyncIntervalMinutes().toLong(),
+            syncPreferences.getSyncIntervalMinutes().toLong(),
             TimeUnit.MINUTES
         )
             .setConstraints(networkConstraints())
@@ -188,7 +190,7 @@ class SyncScheduler(
         userVisible: Boolean,
         operationTitle: String?
     ): UUID? {
-        if (!preferencesManager.hasBackendCredentials()) return null
+        if (!backendPreferences.hasBackendCredentials()) return null
         cancelLegacyOneTimeSyncWork()
         val resolvedOperationTitle = operationTitle ?: context.getString(R.string.notification_sync_title)
         val syncWork = syncRequest(
@@ -240,12 +242,12 @@ class SyncScheduler(
 
     /** Sync then prefetch when the app goes to the background, at most once every two minutes. */
     override fun enqueueBackgroundSyncChain() {
-        if (!preferencesManager.hasBackendCredentials()) return
+        if (!backendPreferences.hasBackendCredentials()) return
         val now = System.currentTimeMillis()
         // Held in preferences rather than in memory: the throttle used to live in a static field,
         // which reset on every process death and let the chain run far more often than intended.
-        if (now - preferencesManager.getLastChainedSyncTimestamp() < CHAINED_SYNC_THROTTLE_MILLIS) return
-        preferencesManager.setLastChainedSyncTimestamp(now)
+        if (now - syncPreferences.getLastChainedSyncTimestamp() < CHAINED_SYNC_THROTTLE_MILLIS) return
+        syncPreferences.setLastChainedSyncTimestamp(now)
 
         workManager
             .beginUniqueWork(SYNC_PIPELINE_WORK, ExistingWorkPolicy.KEEP, syncRequest(forceFullSync = false))
@@ -267,7 +269,7 @@ class SyncScheduler(
      * another run rather than the next hour's.
      */
     override fun prepareForOffline(): UUID? {
-        if (!preferencesManager.hasBackendCredentials()) return null
+        if (!backendPreferences.hasBackendCredentials()) return null
         cancelLegacyOneTimeSyncWork()
         val syncWork = syncRequest(
             forceFullSync = true,
@@ -298,7 +300,7 @@ class SyncScheduler(
     }
 
     override fun prepareFullOffline(): UUID? {
-        if (!preferencesManager.hasBackendCredentials()) return null
+        if (!backendPreferences.hasBackendCredentials()) return null
         cancelLegacyOneTimeSyncWork()
         val syncWork = syncRequest(
             forceFullSync = true,

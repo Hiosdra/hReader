@@ -3,10 +3,10 @@ package com.hiosdra.hreader.adapter.observability
 import android.util.Log
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 
-class SyncPerformanceLogger(private val preferencesManager: AppPreferences) : SyncPerformanceTracker {
+class SyncPerformanceLogger(private val preferencesManager: PerformancePreferences) : SyncPerformanceTracker {
     companion object {
         private const val TAG = "SyncPerformance"
     }

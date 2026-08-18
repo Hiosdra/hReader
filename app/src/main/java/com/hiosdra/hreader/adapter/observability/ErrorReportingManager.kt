@@ -3,15 +3,15 @@ package com.hiosdra.hreader.adapter.observability
 import android.content.Context
 import android.util.Log
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
+import com.hiosdra.hreader.core.application.port.out.SentryPreferences
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import io.sentry.android.core.SentryAndroid
 
 class ErrorReportingManager(
     private val context: Context,
-    private val preferencesManager: AppPreferences
+    private val preferencesManager: SentryPreferences
 ) : ErrorReporter {
     private val lock = Any()
     private var initialized = false

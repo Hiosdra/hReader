@@ -1,6 +1,6 @@
 package com.hiosdra.hreader.core.application.usecase.article
 
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
@@ -10,6 +10,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
@@ -18,7 +19,6 @@ import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import java.time.Instant
 
 class ArticleReaderUseCase(
     private val articles: ArticleStore,
@@ -28,7 +28,8 @@ class ArticleReaderUseCase(
     private val ai: ArticleAiGateway,
     private val overviews: ArticleAiOverviewStore,
     private val credibility: CredibilityStore,
-    private val preferences: AppPreferences,
+    private val preferences: ReaderPreferences,
+    private val aiPreferences: AiPreferences,
     private val images: ArticleImageLoader,
     network: NetworkStatus
 ) {
@@ -50,10 +51,10 @@ class ArticleReaderUseCase(
     suspend fun getLocalImagePaths(entryId: Long): Map<String, String> = images.getLocalImagePaths(entryId)
 
     suspend fun getCachedOverview(entryId: Long, body: String): String? =
-        overviews.get(entryId, body, preferences.getAiModelId())
+        overviews.get(entryId, body, aiPreferences.getAiModelId())
 
     suspend fun generateOverview(entryId: Long, title: String, body: String): Result<String> {
-        val modelId = preferences.getAiModelId()
+        val modelId = aiPreferences.getAiModelId()
         overviews.get(entryId, body, modelId)?.let { return Result.success(it) }
         return ai.generateArticleOverview(title, body, modelId).onSuccess { overview ->
             overviews.save(entryId, body, modelId, overview)
@@ -67,7 +68,7 @@ class ArticleReaderUseCase(
     ): Result<CredibilityReport> = credibility.analyze(
         entryId = entryId,
         source = source,
-        modelId = preferences.getAiModelId(),
+        modelId = aiPreferences.getAiModelId(),
         forceRefresh = forceRefresh
     )
 
@@ -77,16 +78,10 @@ class ArticleReaderUseCase(
         articles.updateReadStatus(entryId.toString(), status)
     }
 
-    suspend fun updateReadStatus(entryIds: List<Long>, status: ArticleStatus) {
-        articles.updateReadStatus(entryIds.map(Long::toString), status)
-    }
-
     suspend fun updateStarred(entryId: Long, starred: Boolean) = articles.updateStarred(entryId, starred)
 
     suspend fun saveReadingProgress(entryId: Long, progress: Float) = positions.saveProgress(entryId, progress)
 
     suspend fun clearReadingProgress(entryId: Long) = positions.deleteProgress(entryId)
 
-    suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long> =
-        articles.idsStillReadSince(articleIds, readBefore)
 }

@@ -1,56 +1,60 @@
 package com.hiosdra.hreader.core.application.usecase.settings
 
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.FeedStore
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.domain.model.BackendType
 
 class SettingsUseCase(
-    private val preferences: AppPreferences,
+    private val backendPreferences: BackendPreferences,
+    private val aiPreferences: AiPreferences,
+    private val syncPreferences: SyncPreferences,
     private val feeds: FeedStore,
     private val aiModels: AiModelCatalog,
     private val cache: CacheStore,
     private val offlineReadiness: OfflineReadinessStore,
     private val sync: SyncRequester
 ) {
-    fun getOpenRouterApiKey() = preferences.getOpenRouterApiKey()
-    fun setOpenRouterApiKey(apiKey: String) = preferences.setOpenRouterApiKey(apiKey)
-    fun getAiModelId() = preferences.getAiModelId()
-    fun setAiModelId(modelId: String) = preferences.setAiModelId(modelId)
-    fun getBackendType() = preferences.getBackendType()
+    fun getOpenRouterApiKey() = aiPreferences.getOpenRouterApiKey()
+    fun setOpenRouterApiKey(apiKey: String) = aiPreferences.setOpenRouterApiKey(apiKey)
+    fun getAiModelId() = aiPreferences.getAiModelId()
+    fun setAiModelId(modelId: String) = aiPreferences.setAiModelId(modelId)
+    fun getBackendType() = backendPreferences.getBackendType()
     fun setBackendType(backendType: BackendType) =
-        preferences.setBackendType(backendType)
+        backendPreferences.setBackendType(backendType)
     fun getServerUrl(backendType: BackendType) =
-        preferences.getServerUrl(backendType)
+        backendPreferences.getServerUrl(backendType)
     fun setServerUrl(backendType: BackendType, url: String) =
-        preferences.setServerUrl(backendType, url)
-    fun getFreshRssUsername() = preferences.getFreshRssUsername()
-    fun setFreshRssUsername(username: String) = preferences.setFreshRssUsername(username)
+        backendPreferences.setServerUrl(backendType, url)
+    fun getFreshRssUsername() = backendPreferences.getFreshRssUsername()
+    fun setFreshRssUsername(username: String) = backendPreferences.setFreshRssUsername(username)
     fun getBackendSecret(backendType: BackendType) =
-        preferences.getBackendSecret(backendType)
+        backendPreferences.getBackendSecret(backendType)
     fun setBackendSecret(backendType: BackendType, secret: String) =
-        preferences.setBackendSecret(backendType, secret)
-    fun getLastSyncTimestamp() = preferences.getLastSyncTimestamp()
-    fun getSyncIntervalMinutes() = preferences.getSyncIntervalMinutes()
-    fun setSyncIntervalMinutes(minutes: Int) = preferences.setSyncIntervalMinutes(minutes)
-    fun getSyncOnUnmeteredOnly() = preferences.getSyncOnUnmeteredOnly()
-    fun setSyncOnUnmeteredOnly(enabled: Boolean) = preferences.setSyncOnUnmeteredOnly(enabled)
-    fun getSyncWhileRoaming() = preferences.getSyncWhileRoaming()
-    fun setSyncWhileRoaming(enabled: Boolean) = preferences.setSyncWhileRoaming(enabled)
-    fun getQuietHoursEnabled() = preferences.getQuietHoursEnabled()
-    fun setQuietHoursEnabled(enabled: Boolean) = preferences.setQuietHoursEnabled(enabled)
-    fun getQuietHoursStartHour() = preferences.getQuietHoursStartHour()
-    fun getQuietHoursEndHour() = preferences.getQuietHoursEndHour()
-    fun setQuietHours(startHour: Int, endHour: Int) = preferences.setQuietHours(startHour, endHour)
-    fun getOfflineBacklogTarget() = preferences.getOfflineBacklogTarget()
-    fun setOfflineBacklogTarget(target: Int) = preferences.setOfflineBacklogTarget(target)
-    fun getImageDownloadEnabled() = preferences.getImageDownloadEnabled()
-    fun setImageDownloadEnabled(enabled: Boolean) = preferences.setImageDownloadEnabled(enabled)
-    fun getImageCacheBudgetMegabytes() = preferences.getImageCacheBudgetMegabytes()
-    fun setImageCacheBudgetMegabytes(megabytes: Int) = preferences.setImageCacheBudgetMegabytes(megabytes)
+        backendPreferences.setBackendSecret(backendType, secret)
+    fun getLastSyncTimestamp() = syncPreferences.getLastSyncTimestamp()
+    fun getSyncIntervalMinutes() = syncPreferences.getSyncIntervalMinutes()
+    fun setSyncIntervalMinutes(minutes: Int) = syncPreferences.setSyncIntervalMinutes(minutes)
+    fun getSyncOnUnmeteredOnly() = syncPreferences.getSyncOnUnmeteredOnly()
+    fun setSyncOnUnmeteredOnly(enabled: Boolean) = syncPreferences.setSyncOnUnmeteredOnly(enabled)
+    fun getSyncWhileRoaming() = syncPreferences.getSyncWhileRoaming()
+    fun setSyncWhileRoaming(enabled: Boolean) = syncPreferences.setSyncWhileRoaming(enabled)
+    fun getQuietHoursEnabled() = syncPreferences.getQuietHoursEnabled()
+    fun setQuietHoursEnabled(enabled: Boolean) = syncPreferences.setQuietHoursEnabled(enabled)
+    fun getQuietHoursStartHour() = syncPreferences.getQuietHoursStartHour()
+    fun getQuietHoursEndHour() = syncPreferences.getQuietHoursEndHour()
+    fun setQuietHours(startHour: Int, endHour: Int) = syncPreferences.setQuietHours(startHour, endHour)
+    fun getOfflineBacklogTarget() = syncPreferences.getOfflineBacklogTarget()
+    fun setOfflineBacklogTarget(target: Int) = syncPreferences.setOfflineBacklogTarget(target)
+    fun getImageDownloadEnabled() = syncPreferences.getImageDownloadEnabled()
+    fun setImageDownloadEnabled(enabled: Boolean) = syncPreferences.setImageDownloadEnabled(enabled)
+    fun getImageCacheBudgetMegabytes() = syncPreferences.getImageCacheBudgetMegabytes()
+    fun setImageCacheBudgetMegabytes(megabytes: Int) = syncPreferences.setImageCacheBudgetMegabytes(megabytes)
 
     fun observeOfflineReadiness() = offlineReadiness.observe()
     fun observeOfflinePreparation() = sync.observeOfflinePreparation()

@@ -1,7 +1,7 @@
 package com.hiosdra.hreader.adapter.backend.common
 
 import com.hiosdra.hreader.core.domain.model.BackendType
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -10,7 +10,7 @@ import java.security.MessageDigest
 
 private const val GOOGLE_READER_ENDPOINT = "api/greader.php"
 
-class ServerConfig(private val preferencesManager: AppPreferences) : BackendIdentity {
+class ServerConfig(private val preferencesManager: BackendPreferences) : BackendIdentity {
 
     fun backendType(): BackendType = preferencesManager.getBackendType()
 

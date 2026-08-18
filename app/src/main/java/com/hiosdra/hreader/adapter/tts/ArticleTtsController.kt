@@ -11,11 +11,11 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
+import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.application.tts.TtsLanguages
@@ -41,7 +41,7 @@ import kotlin.coroutines.resumeWithException
 
 class ArticleTtsController(
     context: Context,
-    private val preferences: AppPreferences,
+    private val preferences: TtsPreferences,
     private val modelManager: TtsModelManager,
     private val playbackService: ArticleTtsPlaybackServiceControl
 ) : ArticleTtsPlayer {
