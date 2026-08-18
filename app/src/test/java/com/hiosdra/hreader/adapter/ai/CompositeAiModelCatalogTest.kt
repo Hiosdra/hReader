@@ -3,14 +3,17 @@ package com.hiosdra.hreader.adapter.ai
 import android.content.Context
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.adapter.ai.gemma.Gemma4E2bModel
-import com.hiosdra.hreader.adapter.ai.gemma.GemmaModelManager
 import com.hiosdra.hreader.core.application.ai.AiModel
+import com.hiosdra.hreader.core.application.ai.GemmaModelStatus
+import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
+import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.IOException
@@ -18,7 +21,7 @@ import java.io.IOException
 class CompositeAiModelCatalogTest {
     private val context = mockk<Context>()
     private val openRouter = mockk<AiModelCatalog>()
-    private val gemma = mockk<GemmaModelManager>()
+    private val gemma = mockk<GemmaModelGateway>()
     private val preferences = mockk<AiPreferences>()
     private val catalog = CompositeAiModelCatalog(context, openRouter, gemma, preferences)
 
@@ -50,6 +53,17 @@ class CompositeAiModelCatalogTest {
         assertEquals(
             listOf(Gemma4E2bModel.MODEL_ID),
             catalog.getModels().map(AiModel::id)
+        )
+    }
+
+    @Test
+    fun localModelIsUnavailableUntilDownloaded() = runBlocking {
+        every { preferences.getAiModelId() } returns Gemma4E2bModel.MODEL_ID
+        every { gemma.status } returns MutableStateFlow(GemmaModelStatus.NotInstalled)
+
+        assertEquals(
+            SelectedModelStatus.Unavailable(Gemma4E2bModel.MODEL_ID),
+            catalog.checkSelectedModel()
         )
     }
 

@@ -1,8 +1,6 @@
 package com.hiosdra.hreader.adapter.preferences
 
 import android.content.Context
-import androidx.core.content.edit
-import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -40,8 +38,6 @@ import kotlinx.coroutines.runBlocking
 
 class PreferencesManager(context: Context) : AppPreferences {
     private val applicationContext = context.applicationContext
-    private val legacyPreferences = applicationContext.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-    private val legacySecretPreferences = applicationContext.getSharedPreferences(SECRETS_FILE, Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val moshi = Moshi.Builder()
@@ -54,13 +50,6 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     private val preferencesDataStore by lazy {
         PreferenceDataStoreFactory.create(
-            migrations = listOf(
-                SharedPreferencesMigration(
-                    context = applicationContext,
-                    sharedPreferencesName = PREFS_FILE,
-                    keysToMigrate = NON_SECRET_KEYS
-                )
-            ),
             scope = scope,
             produceFile = { applicationContext.preferencesDataStoreFile(PREFS_FILE) }
         )
@@ -68,13 +57,6 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     private val secretDataStore by lazy {
         PreferenceDataStoreFactory.create(
-            migrations = listOf(
-                SharedPreferencesMigration(
-                    context = applicationContext,
-                    sharedPreferencesName = SECRETS_FILE,
-                    keysToMigrate = SECRET_KEYS
-                )
-            ),
             scope = scope,
             produceFile = { applicationContext.preferencesDataStoreFile(SECRETS_FILE) }
         )
@@ -88,9 +70,6 @@ class PreferencesManager(context: Context) : AppPreferences {
         secretState = AtomicReference(SecretState())
 
         runBlocking(Dispatchers.IO) {
-            migrateLegacySecrets()
-            preferenceState.set(readLegacyPreferences())
-            secretState.set(readLegacySecrets())
             preferenceState.set(preferencesDataStore.data.first().toPreferenceState())
             secretState.set(secretDataStore.data.first().toSecretState())
         }
@@ -382,91 +361,6 @@ class PreferencesManager(context: Context) : AppPreferences {
         scope.launch { secretDataStore.edit(transform) }
     }
 
-    private fun migrateLegacySecrets() {
-        val keysToMigrate = SECRET_KEYS.filter(legacyPreferences::contains)
-        if (keysToMigrate.isEmpty()) return
-
-        val editor = legacySecretPreferences.edit()
-        keysToMigrate.forEach { key ->
-            val value = legacyPreferences.getString(key, null)
-            if (!value.isNullOrBlank() && legacySecretPreferences.getString(key, null).isNullOrBlank()) {
-                editor.putString(key, value)
-            }
-        }
-        if (!editor.commit()) return
-
-        legacyPreferences.edit {
-            keysToMigrate.forEach(::remove)
-            remove(KEY_SECRETS_MIGRATED)
-        }
-    }
-
-    private fun readLegacyPreferences() = PreferenceState(
-        backendType = BackendType.fromName(legacyPreferences.getString(KEY_BACKEND_TYPE, null)),
-        freshRssServerUrl = legacyPreferences.getString(KEY_FRESHRSS_SERVER_URL, "").orEmpty(),
-        minifluxServerUrl = legacyPreferences.getString(KEY_MINIFLUX_SERVER_URL, "").orEmpty(),
-        paywallBypassMethod = legacyPreferences.getString(
-            KEY_PAYWALL_BYPASS_METHOD,
-            PaywallBypassMethod.SMRY_AI.name
-        ).toPaywallBypassMethod(),
-        bionicReadingEnabled = legacyPreferences.getBoolean(KEY_BIONIC_READING_ENABLED, false),
-        sentryReportingEnabled = legacyPreferences.getBoolean(KEY_SENTRY_REPORTING_ENABLED, true),
-        aiModelId = legacyPreferences.getString(KEY_AI_MODEL, AiModel.DEFAULT_ID) ?: AiModel.DEFAULT_ID,
-        gemmaBackend = GemmaBackend.fromName(legacyPreferences.getString(KEY_GEMMA_BACKEND, null)),
-        lastSyncTimestamp = legacyPreferences.getLong(KEY_LAST_SYNC_TIMESTAMP, 0L),
-        cacheOwnerKey = legacyPreferences.getString(KEY_CACHE_OWNER, "").orEmpty(),
-        lastFullSyncTimestamp = legacyPreferences.getLong(KEY_LAST_FULL_SYNC_TIMESTAMP, 0L),
-        syncPerformanceRecords = decodeSyncPerformanceRecords(
-            legacyPreferences.getString(KEY_SYNC_PERFORMANCE_RECORDS, null)
-        ),
-        offlineBacklogTarget = legacyPreferences
-            .getInt(KEY_OFFLINE_BACKLOG_TARGET, DEFAULT_OFFLINE_BACKLOG_TARGET)
-            .coerceAtLeast(0),
-        imageDownloadEnabled = legacyPreferences.getBoolean(KEY_IMAGE_DOWNLOAD_ENABLED, true),
-        imageCacheBudgetMegabytes = legacyPreferences
-            .getInt(KEY_IMAGE_CACHE_BUDGET_MB, DEFAULT_IMAGE_CACHE_BUDGET_MB)
-            .coerceAtLeast(0),
-        lastChainedSyncTimestamp = legacyPreferences.getLong(KEY_LAST_CHAINED_SYNC_TIMESTAMP, 0L),
-        syncIntervalMinutes = legacyPreferences
-            .getInt(KEY_SYNC_INTERVAL_MINUTES, SyncDefaults.INTERVAL_MINUTES)
-            .coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES),
-        syncOnUnmeteredOnly = legacyPreferences.getBoolean(KEY_SYNC_UNMETERED_ONLY, false),
-        syncWhileRoaming = legacyPreferences.getBoolean(KEY_SYNC_WHILE_ROAMING, true),
-        quietHoursEnabled = legacyPreferences.getBoolean(KEY_QUIET_HOURS_ENABLED, false),
-        quietHoursStartHour = legacyPreferences
-            .getInt(KEY_QUIET_HOURS_START, SyncDefaults.QUIET_HOURS_START)
-            .coerceIn(0, 23),
-        quietHoursEndHour = legacyPreferences
-            .getInt(KEY_QUIET_HOURS_END, SyncDefaults.QUIET_HOURS_END)
-            .coerceIn(0, 23),
-        credibilityScoreEnabled = legacyPreferences.getBoolean(KEY_CREDIBILITY_SCORE_ENABLED, false),
-        ttsModel = TtsModel.fromName(legacyPreferences.getString(KEY_TTS_MODEL, null)),
-        ttsLanguageOverrides = parseTtsLanguageOverrides(
-            legacyPreferences.getStringSet(KEY_TTS_LANGUAGE_OVERRIDES, emptySet()).orEmpty()
-        ),
-        ttsSpeed = legacyPreferences.getFloat(KEY_TTS_SPEED, 1f).coerceIn(0.7f, 1.4f),
-        ttsAdvancedSettings = readLegacyTtsAdvancedSettings()
-    )
-
-    private fun readLegacySecrets() = SecretState(
-        freshRssUsername = legacySecretPreferences.getString(KEY_FRESHRSS_USERNAME, "").orEmpty(),
-        freshRssApiPassword = legacySecretPreferences.getString(KEY_FRESHRSS_API_PASSWORD, "").orEmpty(),
-        minifluxApiToken = legacySecretPreferences.getString(KEY_MINIFLUX_API_TOKEN, "").orEmpty(),
-        openRouterApiKey = legacySecretPreferences.getString(KEY_OPENROUTER_API_KEY, "").orEmpty()
-    )
-
-    private fun readLegacyTtsAdvancedSettings() = TtsAdvancedSettings(
-        numThreads = legacyPreferences.getInt(KEY_TTS_THREADS, 4).coerceIn(1, 4),
-        silenceScale = legacyPreferences.getFloat(KEY_TTS_SILENCE_SCALE, 0.2f).coerceIn(0f, 1f),
-        supertonicSpeaker = legacyPreferences.getInt(KEY_TTS_SUPERTONIC_SPEAKER, 0).coerceIn(0, 9),
-        supertonicSteps = legacyPreferences.getInt(KEY_TTS_SUPERTONIC_STEPS, 8).coerceIn(4, 12),
-        kokoroSpeaker = legacyPreferences.getInt(KEY_TTS_KOKORO_SPEAKER, 0).coerceIn(0, 102),
-        gosiaNoiseScale = legacyPreferences.getFloat(KEY_TTS_GOSIA_NOISE_SCALE, 0.667f).coerceIn(0f, 1f),
-        gosiaDurationNoiseScale = legacyPreferences
-            .getFloat(KEY_TTS_GOSIA_DURATION_NOISE_SCALE, 0.8f)
-            .coerceIn(0f, 1f)
-    )
-
     private fun Preferences.toPreferenceState() = PreferenceState(
         backendType = BackendType.fromName(this[backendTypeKey]),
         freshRssServerUrl = this[freshRssServerUrlKey].orEmpty(),
@@ -589,7 +483,6 @@ class PreferencesManager(context: Context) : AppPreferences {
         private const val KEY_MINIFLUX_SERVER_URL = "miniflux_server_url"
         private const val KEY_MINIFLUX_API_TOKEN = "miniflux_api_token"
         private const val KEY_OPENROUTER_API_KEY = "openrouter_api_key"
-        private const val KEY_SECRETS_MIGRATED = "secrets_migrated"
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_SENTRY_REPORTING_ENABLED = "sentry_reporting_enabled"
@@ -620,50 +513,6 @@ class PreferencesManager(context: Context) : AppPreferences {
         private const val KEY_QUIET_HOURS_ENABLED = "quiet_hours_enabled"
         private const val KEY_QUIET_HOURS_START = "quiet_hours_start"
         private const val KEY_QUIET_HOURS_END = "quiet_hours_end"
-
-        private val SECRET_KEYS = setOf(
-            KEY_FRESHRSS_USERNAME,
-            KEY_FRESHRSS_API_PASSWORD,
-            KEY_MINIFLUX_API_TOKEN,
-            KEY_OPENROUTER_API_KEY
-        )
-
-        private val NON_SECRET_KEYS = setOf(
-            KEY_BACKEND_TYPE,
-            KEY_FRESHRSS_SERVER_URL,
-            KEY_MINIFLUX_SERVER_URL,
-            KEY_SECRETS_MIGRATED,
-            KEY_PAYWALL_BYPASS_METHOD,
-            KEY_BIONIC_READING_ENABLED,
-            KEY_SENTRY_REPORTING_ENABLED,
-            KEY_AI_MODEL,
-            KEY_GEMMA_BACKEND,
-            KEY_LAST_SYNC_TIMESTAMP,
-            KEY_CACHE_OWNER,
-            KEY_LAST_FULL_SYNC_TIMESTAMP,
-            KEY_SYNC_PERFORMANCE_RECORDS,
-            KEY_CREDIBILITY_SCORE_ENABLED,
-            KEY_TTS_MODEL,
-            KEY_TTS_SPEED,
-            KEY_TTS_LANGUAGE_OVERRIDES,
-            KEY_TTS_THREADS,
-            KEY_TTS_SILENCE_SCALE,
-            KEY_TTS_SUPERTONIC_SPEAKER,
-            KEY_TTS_SUPERTONIC_STEPS,
-            KEY_TTS_KOKORO_SPEAKER,
-            KEY_TTS_GOSIA_NOISE_SCALE,
-            KEY_TTS_GOSIA_DURATION_NOISE_SCALE,
-            KEY_OFFLINE_BACKLOG_TARGET,
-            KEY_IMAGE_DOWNLOAD_ENABLED,
-            KEY_IMAGE_CACHE_BUDGET_MB,
-            KEY_LAST_CHAINED_SYNC_TIMESTAMP,
-            KEY_SYNC_INTERVAL_MINUTES,
-            KEY_SYNC_UNMETERED_ONLY,
-            KEY_SYNC_WHILE_ROAMING,
-            KEY_QUIET_HOURS_ENABLED,
-            KEY_QUIET_HOURS_START,
-            KEY_QUIET_HOURS_END
-        )
 
         private val backendTypeKey = stringPreferencesKey(KEY_BACKEND_TYPE)
         private val freshRssServerUrlKey = stringPreferencesKey(KEY_FRESHRSS_SERVER_URL)
