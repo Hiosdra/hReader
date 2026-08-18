@@ -33,4 +33,15 @@ class ArticleWebViewSecurityTest {
             root.deleteRecursively()
         }
     }
+
+    @Test
+    fun `requires the same web origin`() {
+        val baseUrl = "https://offline.hreader/article/42/"
+
+        assertTrue(isSameWebOrigin("https://offline.hreader/article/42/assets/image.jpg", baseUrl))
+        assertTrue(isSameWebOrigin("https://offline.hreader:443/article/42/assets/image.jpg", baseUrl))
+        assertFalse(isSameWebOrigin("https://offline.hreader:8443/article/42/assets/image.jpg", baseUrl))
+        assertFalse(isSameWebOrigin("http://offline.hreader/article/42/assets/image.jpg", baseUrl))
+        assertFalse(isSameWebOrigin("https://user:password@offline.hreader/article/42/assets/image.jpg", baseUrl))
+    }
 }

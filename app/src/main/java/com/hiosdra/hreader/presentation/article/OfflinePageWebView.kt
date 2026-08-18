@@ -75,11 +75,7 @@ fun OfflinePageWebView(
                             ): Boolean {
                                 val requestUri = request?.url ?: return false
                                 val url = requestUri.toString()
-                                val pageUri = currentPage.value.baseUrl.toUri()
-                                if (
-                                    requestUri.scheme.equals(pageUri.scheme, ignoreCase = true) &&
-                                    requestUri.host == pageUri.host
-                                ) return false
+                                if (isSameWebOrigin(url, currentPage.value.baseUrl)) return false
                                 val cleanedUrl = cleanUrl(url)
                                 if (!isAllowedArticleLink(cleanedUrl)) return true
                                 currentOnLinkClick.value?.invoke(cleanedUrl)
@@ -107,7 +103,7 @@ private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse
     uri ?: return null
     val baseUri = page.baseUrl.toUri()
     val basePath = baseUri.path?.trimEnd('/') ?: return null
-    if (!uri.scheme.equals(baseUri.scheme, ignoreCase = true) || uri.host != baseUri.host) return null
+    if (!isSameWebOrigin(uri.toString(), page.baseUrl)) return null
     val assetsPrefix = "$basePath/assets/"
     val relativePath = uri.path?.removePrefix(assetsPrefix)
         ?.takeIf { uri.path?.startsWith(assetsPrefix) == true && it.isNotBlank() }
@@ -118,8 +114,7 @@ private fun serveOfflineAsset(page: OfflinePage, uri: Uri?): WebResourceResponse
         ?: return null
     val file = runCatching { File(assetsDirectory, relativePath).canonicalFile }.getOrNull()
         ?: return null
-    val assetsPath = assetsDirectory.path + File.separator
-    if (!file.path.startsWith(assetsPath) || !file.isFile) return null
+    if (!isFileWithinDirectory(file.path, assetsDirectory)) return null
 
     return runCatching {
         WebResourceResponse(
