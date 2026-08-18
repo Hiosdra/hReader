@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
+import com.hiosdra.hreader.core.application.ai.GemmaModelNotInstalledException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
@@ -20,6 +21,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -131,6 +133,8 @@ class ArticleViewModel(
 
     /** Articles whose stored credibility report has already been looked up, for the same reason. */
     private val checkedCredibilityIds = mutableSetOf<Long>()
+    private var activeAiModelId = reader.getAiModelId()
+    private var aiModelGeneration = 0
 
     private val requestedReadingPositionIds = mutableSetOf<Long>()
     private val readingPositionWriteJobs = mutableMapOf<Long, Job>()
@@ -141,6 +145,27 @@ class ArticleViewModel(
                 val wasOnline = _uiState.value.isOnline
                 _uiState.update { it.copy(isOnline = online) }
                 if (online && !wasOnline) retryPartialContent()
+            }
+        }
+        viewModelScope.launch {
+            reader.observeAiModelId().collect { modelId ->
+                if (modelId == activeAiModelId) return@collect
+                activeAiModelId = modelId
+                aiModelGeneration++
+                checkedCredibilityIds.clear()
+                val generation = aiModelGeneration
+                val nearbyIds = _uiState.value.readerWindowIds()
+                _uiState.update {
+                    it.copy(
+                        aiOverviews = emptyMap(),
+                        credibilityReports = emptyMap(),
+                        generatingOverviewIds = emptySet(),
+                        analyzingCredibilityIds = emptySet(),
+                        overviewError = null,
+                        scoreError = null
+                    )
+                }
+                reloadAiCaches(nearbyIds, modelId, generation)
             }
         }
     }
@@ -303,6 +328,8 @@ class ArticleViewModel(
     )
 
     private suspend fun store(entryId: Long, html: String, leadImage: String?, isFullText: Boolean) {
+        val modelId = activeAiModelId
+        val generation = aiModelGeneration
         val localPaths = reader.getLocalImagePaths(entryId)
         _uiState.update {
             val stored = it.trimReaderState()
@@ -323,10 +350,10 @@ class ArticleViewModel(
                 withContent.withPartialContent(entryId)
             }
         }
-        val cachedOverview = reader.getCachedOverview(entryId, html)
+        val cachedOverview = reader.getCachedOverview(entryId, html, modelId)
         if (cachedOverview != null) {
             _uiState.update { state ->
-                if (entryId !in state.readerWindowIds()) {
+                if (generation != aiModelGeneration || entryId !in state.readerWindowIds()) {
                     state
                 } else {
                     state.copy(aiOverviews = state.aiOverviews + (entryId to cachedOverview))
@@ -487,6 +514,8 @@ class ArticleViewModel(
     fun generateAiOverview(entryId: Long) {
         val entry = _uiState.value.entries.find { it.id == entryId } ?: return
         if (_uiState.value.generatingOverviewIds.contains(entryId)) return
+        val modelId = activeAiModelId
+        val generation = aiModelGeneration
 
         _uiState.update {
             it.copy(generatingOverviewIds = it.generatingOverviewIds + entryId, overviewError = null)
@@ -496,32 +525,36 @@ class ArticleViewModel(
             val content = getContentForEntry(entryId).orEmpty()
             if (content.isBlank()) {
                 _uiState.update { state ->
-                    state.copy(
+                    if (generation != aiModelGeneration) state else state.copy(
                         generatingOverviewIds = state.generatingOverviewIds - entryId,
                         overviewError = MISSING_CONTENT_MESSAGE
                     )
                 }
                 return@launch
             }
-            val result = reader.generateOverview(entryId, entry.title, content)
+            val result = reader.generateOverview(entryId, entry.title, content, modelId)
 
             _uiState.update { state ->
-                state.copy(
-                    generatingOverviewIds = state.generatingOverviewIds - entryId,
-                    aiOverviews = result.fold(
-                        onSuccess = { overview ->
-                            if (entryId in state.readerWindowIds()) {
-                                state.aiOverviews + (entryId to overview)
-                            } else {
-                                state.aiOverviews
-                            }
-                        },
-                        onFailure = { state.aiOverviews }
-                    ),
-                    overviewError = result.exceptionOrNull()
-                        ?.let { aiErrorText(it, R.string.article_summary_error) }
-                        ?: state.overviewError
-                )
+                if (generation != aiModelGeneration) {
+                    state
+                } else {
+                    state.copy(
+                        generatingOverviewIds = state.generatingOverviewIds - entryId,
+                        aiOverviews = result.fold(
+                            onSuccess = { overview ->
+                                if (entryId in state.readerWindowIds()) {
+                                    state.aiOverviews + (entryId to overview)
+                                } else {
+                                    state.aiOverviews
+                                }
+                            },
+                            onFailure = { state.aiOverviews }
+                        ),
+                        overviewError = result.exceptionOrNull()
+                            ?.let { aiErrorText(it, R.string.article_summary_error) }
+                            ?: state.overviewError
+                    )
+                }
             }
         }
     }
@@ -531,6 +564,8 @@ class ArticleViewModel(
         if (!_uiState.value.credibilityEnabled) return
         if (_uiState.value.analyzingCredibilityIds.contains(entryId)) return
         if (!forceRefresh && _uiState.value.credibilityReports.containsKey(entryId)) return
+        val modelId = activeAiModelId
+        val generation = aiModelGeneration
 
         val content = getContentForEntry(entryId).orEmpty()
         if (content.isBlank()) {
@@ -553,38 +588,46 @@ class ArticleViewModel(
                     url = entry.url,
                     publishedAt = entry.publishedAt
                 ),
-                forceRefresh = forceRefresh
+                forceRefresh = forceRefresh,
+                modelId = modelId
             )
 
             _uiState.update { state ->
-                state.copy(
-                    analyzingCredibilityIds = state.analyzingCredibilityIds - entryId,
-                    credibilityReports = result.fold(
-                        onSuccess = { report ->
-                            if (entryId in state.readerWindowIds()) {
-                                state.credibilityReports + (entryId to report)
-                            } else {
-                                state.credibilityReports
-                            }
-                        },
-                        onFailure = { state.credibilityReports }
-                    ),
-                    scoreError = result.exceptionOrNull()
-                        ?.let { aiErrorText(it, R.string.article_credibility_error) }
-                        ?: state.scoreError
-                )
+                if (generation != aiModelGeneration) {
+                    state
+                } else {
+                    state.copy(
+                        analyzingCredibilityIds = state.analyzingCredibilityIds - entryId,
+                        credibilityReports = result.fold(
+                            onSuccess = { report ->
+                                if (entryId in state.readerWindowIds()) {
+                                    state.credibilityReports + (entryId to report)
+                                } else {
+                                    state.credibilityReports
+                                }
+                            },
+                            onFailure = { state.credibilityReports }
+                        ),
+                        scoreError = result.exceptionOrNull()
+                            ?.let { aiErrorText(it, R.string.article_credibility_error) }
+                            ?: state.scoreError
+                    )
+                }
             }
         }
     }
 
     private fun aiErrorText(error: Throwable, fallbackResId: Int): UiText = when (error) {
         is MissingAiApiKeyException -> UiText.Resource(R.string.article_ai_api_key_missing)
+        is GemmaModelNotInstalledException -> UiText.Resource(R.string.article_ai_model_missing)
         is EmptyAiContentException -> MISSING_CONTENT_MESSAGE
         else -> UiText.Resource(fallbackResId)
     }
 
     private fun loadCachedCredibility(entryIds: List<Long>) {
         if (!_uiState.value.credibilityEnabled) return
+        val modelId = activeAiModelId
+        val generation = aiModelGeneration
         // Looked up once per article. The pager re-emits its whole window every time a read state
         // changes, and articles with no stored report would be queried again on each of them.
         val missing = entryIds
@@ -592,7 +635,10 @@ class ArticleViewModel(
             .filter { checkedCredibilityIds.add(it) }
         if (missing.isEmpty()) return
         viewModelScope.launch {
-            val cached = runCatchingCancellable { reader.getCachedCredibility(missing) }.getOrElse { emptyMap() }
+            val cached = runCatchingCancellable {
+                reader.getCachedCredibility(missing, modelId)
+            }.getOrElse { emptyMap() }
+            if (generation != aiModelGeneration) return@launch
             if (cached.isEmpty()) return@launch
             _uiState.update { state ->
                 val retainedIds = state.readerWindowIds()
@@ -602,6 +648,28 @@ class ArticleViewModel(
                 )
             }
         }
+    }
+
+    private fun reloadAiCaches(entryIds: Set<Long>, modelId: String, generation: Int) {
+        val overviewsToLoad = entryIds.mapNotNull { entryId ->
+            _uiState.value.content[entryId]?.let { body -> entryId to body }
+        }
+        if (overviewsToLoad.isNotEmpty()) {
+            viewModelScope.launch {
+                val cachedOverviews = overviewsToLoad.mapNotNull { (entryId, body) ->
+                    runCatchingCancellable {
+                        reader.getCachedOverview(entryId, body, modelId)
+                    }.getOrNull()?.let { entryId to it }
+                }.toMap()
+                if (generation != aiModelGeneration) return@launch
+                _uiState.update { state ->
+                    state.copy(
+                        aiOverviews = cachedOverviews.filterKeys { it in state.readerWindowIds() }
+                    )
+                }
+            }
+        }
+        loadCachedCredibility(entryIds.toList())
     }
 
     fun clearOverviewError() {

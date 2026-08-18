@@ -12,4 +12,5 @@
     <exclude domain="file" path="article_images" />
     <exclude domain="file" path="article_pages" />
     <exclude domain="file" path="tts_models" />
+    <exclude domain="file" path="ai_models" />
 </full-backup-content>

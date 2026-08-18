@@ -69,7 +69,7 @@
     <string name="main_refresh_now">今すぐ更新</string>
     <string name="main_offline_banner">オフラインです。ダウンロード済みの記事を表示しています。オンラインに戻ると読んだ内容が同期されます。</string>
     <string name="main_ai_model_unavailable_title">AIモデルを利用できません</string>
-    <string name="main_ai_model_unavailable_message">OpenRouterでは %1$s を提供しなくなりました。別のモデルを選ぶまで、記事の要約と信頼性評価は失敗します。</string>
+    <string name="main_ai_model_unavailable_message">選択したAIモデル %1$s は利用できません。ダウンロードするか、設定で別のモデルを選択してください。</string>
     <string name="error_prepare_local_storage">ローカルストレージを準備できませんでした。もう一度お試しください。</string>
     <string name="error_need_connection_refresh">更新するにはインターネット接続が必要です。</string>
     <string name="error_refresh_articles">記事を更新できませんでした。接続を確認してもう一度お試しください。</string>
@@ -141,7 +141,7 @@
     <string name="article_partial_content">この記事の全文はダウンロードされていないため、フィードに含まれていた内容だけを表示しています。</string>
     <string name="article_missing_content">記事本文をまだダウンロード中です。少し待ってからもう一度お試しください。</string>
     <string name="article_summary_error">要約を生成できませんでした。もう一度お試しください。</string>
-    <string name="article_ai_api_key_missing">AI機能を使うには、設定でOpenRouter APIキーを追加してください。</string>
+    <string name="article_ai_api_key_missing">設定でOpenRouterキーを追加するか、ローカルAIモデルをインストールしてください。</string>
     <string name="article_credibility_error">信頼性を分析できませんでした</string>
     <string name="article_unknown_feed">不明なフィード</string>
     <string name="feeds_title">購読</string>
@@ -216,13 +216,13 @@
     <string name="settings_credibility_description">各記事に、出典・語調・バランスを評価するチップを追加します</string>
     <string name="settings_rating_meaning">評価の意味：</string>
     <string name="settings_rating_values">• 強い兆候：出典があり、根拠があり、バランスが取れている\n• 判断が分かれる兆候：利用する前に確認\n• 弱い兆候：扇情的または根拠のない主張</string>
-    <string name="settings_credibility_disclaimer">これは記事本文に対するAIの印象であり、ファクトチェックではありません。モデルはウェブを閲覧したり主張を検証したりできません。分析するたびに記事がOpenRouterへ送信され、再分析するまでキャッシュされます。</string>
+    <string name="settings_credibility_disclaimer">これは記事本文に対するAIの印象であり、ファクトチェックではありません。モデルはウェブを閲覧したり主張を検証したりできません。ローカルモデルは記事を端末内に保持し、OpenRouterは選択したプロバイダーへ送信して再分析まで結果をキャッシュします。</string>
     <string name="settings_paywall_service">ペイウォール回避サービス</string>
     <string name="settings_bypass_service">回避サービス</string>
     <string name="settings_ai_provider">AIプロバイダー</string>
     <string name="settings_ai_model_summaries">要約に使うAIモデル</string>
     <string name="settings_model">モデル</string>
-    <string name="settings_model_missing">OpenRouterではこのモデルを提供しなくなりました。別のモデルを選んでください。</string>
+    <string name="settings_model_missing">このモデルは利用できません。ダウンロードするか、別のモデルを選択してください。</string>
     <string name="settings_privacy_diagnostics">プライバシーと診断</string>
     <string name="settings_performance">パフォーマンス</string>
     <string name="settings_show_performance">パフォーマンス情報を表示</string>
@@ -382,7 +382,7 @@
     <string name="ai_selected">選択済み</string>
     <string name="ai_model_loading">OpenRouterから一覧を読み込み中…</string>
     <string name="ai_no_models_loaded">モデルが読み込まれていません</string>
-    <string name="ai_no_models_openrouter">OpenRouterからモデルを読み込めませんでした</string>
+    <string name="ai_no_models_openrouter">AIモデルを読み込めませんでした</string>
     <string name="ai_no_search_matches">一致する結果はありません</string>
     <plurals name="ai_models_count"><item quantity="other">%2$d 件中 %1$d 件のモデル</item></plurals>
     <string name="ai_context_length">  •  %1$dkコンテキスト</string>

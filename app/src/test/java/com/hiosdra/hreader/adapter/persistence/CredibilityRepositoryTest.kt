@@ -26,6 +26,7 @@ import java.time.Instant
 
 @RunWith(JUnit4::class)
 class CredibilityRepositoryTest {
+    private val modelId = "test/model"
     private val dao = mockk<ArticleCredibilityDao>()
     private val aiService = mockk<ArticleAiGateway>()
     private val repo = CredibilityRepository(dao, aiService)
@@ -59,23 +60,23 @@ class CredibilityRepositoryTest {
 
     @Test
     fun analyze_storesReportAndReadsItBackUnchanged() = runBlocking {
-        coEvery { dao.getForEntry(7L) } returns null
-        coEvery { aiService.analyzeCredibility(source, "test/model") } returns Result.success(report)
+        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(report)
         val stored = slot<ArticleCredibility>()
         coEvery { dao.upsert(capture(stored)) } returns Unit
 
-        val analyzed = repo.analyze(7L, source, "test/model")
+        val analyzed = repo.analyze(7L, source, modelId)
         assertEquals(report, analyzed.getOrNull())
 
-        coEvery { dao.getForEntry(7L) } returns stored.captured
-        assertEquals(report, repo.getCached(7L))
+        coEvery { dao.getForEntry(7L, modelId) } returns stored.captured
+        assertEquals(report, repo.getCached(7L, modelId))
     }
 
     @Test
     fun analyze_servesCacheWithoutCallingTheModel() = runBlocking {
-        coEvery { dao.getForEntry(7L) } returns entityFor(7L)
+        coEvery { dao.getForEntry(7L, modelId) } returns entityFor(7L)
 
-        val result = repo.analyze(7L, source, "test/model")
+        val result = repo.analyze(7L, source, modelId)
 
         assertEquals(0.62f, result.getOrNull()?.score)
         coVerify(exactly = 0) { aiService.analyzeCredibility(any(), any()) }
@@ -83,46 +84,46 @@ class CredibilityRepositoryTest {
 
     @Test
     fun analyze_bypassesCacheWhenForced() = runBlocking {
-        coEvery { aiService.analyzeCredibility(source, "test/model") } returns Result.success(report)
+        coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(report)
         coEvery { dao.upsert(any()) } returns Unit
 
-        repo.analyze(7L, source, "test/model", forceRefresh = true)
+        repo.analyze(7L, source, modelId, forceRefresh = true)
 
-        coVerify(exactly = 0) { dao.getForEntry(any()) }
-        coVerify(exactly = 1) { aiService.analyzeCredibility(source, "test/model") }
+        coVerify(exactly = 0) { dao.getForEntry(any(), any()) }
+        coVerify(exactly = 1) { aiService.analyzeCredibility(source, modelId) }
     }
 
     @Test
     fun analyze_stillReturnsTheReportWhenCachingFails() = runBlocking {
-        coEvery { dao.getForEntry(7L) } returns null
-        coEvery { aiService.analyzeCredibility(source, "test/model") } returns Result.success(report)
+        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(report)
         coEvery { dao.upsert(any()) } throws IllegalStateException("disk full")
 
-        assertEquals(report, repo.analyze(7L, source, "test/model").getOrNull())
+        assertEquals(report, repo.analyze(7L, source, modelId).getOrNull())
     }
 
     @Test
     fun analyze_doesNotCacheFailures() = runBlocking {
-        coEvery { dao.getForEntry(7L) } returns null
-        coEvery { aiService.analyzeCredibility(source, "test/model") } returns
+        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { aiService.analyzeCredibility(source, modelId) } returns
             Result.failure(IllegalStateException("no verdict"))
 
-        assertTrue(repo.analyze(7L, source, "test/model").isFailure)
+        assertTrue(repo.analyze(7L, source, modelId).isFailure)
         coVerify(exactly = 0) { dao.upsert(any()) }
     }
 
     @Test
     fun multilineTextSurvivesTheRoundTripAsOneItem() = runBlocking {
         val noisy = report.copy(reasons = listOf("First line\nsecond line", "  padded  "))
-        coEvery { dao.getForEntry(7L) } returns null
-        coEvery { aiService.analyzeCredibility(source, "test/model") } returns Result.success(noisy)
+        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(noisy)
         val stored = slot<ArticleCredibility>()
         coEvery { dao.upsert(capture(stored)) } returns Unit
 
-        repo.analyze(7L, source, "test/model")
-        coEvery { dao.getForEntry(7L) } returns stored.captured
+        repo.analyze(7L, source, modelId)
+        coEvery { dao.getForEntry(7L, modelId) } returns stored.captured
 
-        assertEquals(listOf("First line second line", "padded"), repo.getCached(7L)?.reasons)
+        assertEquals(listOf("First line second line", "padded"), repo.getCached(7L, modelId)?.reasons)
     }
 
     @Test

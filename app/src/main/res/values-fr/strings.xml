@@ -69,7 +69,7 @@
     <string name="main_refresh_now">Actualiser maintenant</string>
     <string name="main_offline_banner">Hors connexion — affichage des articles téléchargés. Votre lecture sera synchronisée à votre retour en ligne.</string>
     <string name="main_ai_model_unavailable_title">Modèle d’IA indisponible</string>
-    <string name="main_ai_model_unavailable_message">OpenRouter ne propose plus %1$s. Les résumés et l’évaluation de crédibilité échoueront jusqu’à la sélection d’un autre modèle.</string>
+    <string name="main_ai_model_unavailable_message">Le modèle d’IA sélectionné %1$s n’est pas disponible. Téléchargez-le ou choisissez-en un autre dans les réglages.</string>
     <string name="error_prepare_local_storage">Impossible de préparer le stockage local. Réessayez.</string>
     <string name="error_need_connection_refresh">Une connexion Internet est nécessaire pour actualiser.</string>
     <string name="error_refresh_articles">Impossible d’actualiser les articles. Vérifiez votre connexion et réessayez.</string>
@@ -141,7 +141,7 @@
     <string name="article_partial_content">Le texte complet de cet article n’a jamais été téléchargé ; voici donc uniquement le contenu fourni par le flux.</string>
     <string name="article_missing_content">Le texte de l’article est encore en cours de téléchargement. Réessayez dans un instant.</string>
     <string name="article_summary_error">Impossible de générer le résumé. Réessayez.</string>
-    <string name="article_ai_api_key_missing">Ajoutez une clé API OpenRouter dans les réglages pour utiliser les fonctions d’IA.</string>
+    <string name="article_ai_api_key_missing">Ajoutez une clé OpenRouter ou installez le modèle d’IA local dans les réglages.</string>
     <string name="article_credibility_error">Échec de l’analyse de crédibilité</string>
     <string name="article_unknown_feed">Flux inconnu</string>
     <string name="feeds_title">Abonnements</string>
@@ -216,13 +216,13 @@
     <string name="settings_credibility_description">Ajoute à chaque article un indicateur qui évalue les sources, le ton et l’équilibre du texte</string>
     <string name="settings_rating_meaning">Signification de l’évaluation :</string>
     <string name="settings_rating_values">• Signaux forts : sourcés, étayés, équilibrés\n• Signaux mitigés : vérifiez avant de vous y fier\n• Signaux faibles : affirmations sensationnelles ou non étayées</string>
-    <string name="settings_credibility_disclaimer">Il s’agit d’une impression de l’IA sur le texte de l’article, pas d’une vérification des faits — le modèle ne peut pas parcourir le Web ni vérifier les affirmations. Chaque analyse envoie l’article à OpenRouter et est mise en cache jusqu’à une nouvelle analyse.</string>
+    <string name="settings_credibility_disclaimer">Il s’agit d’une impression de l’IA sur le texte de l’article, pas d’une vérification des faits — le modèle ne peut pas parcourir le Web ni vérifier les affirmations. Les modèles locaux gardent l’article sur l’appareil ; OpenRouter l’envoie au fournisseur choisi et met le résultat en cache jusqu’à une nouvelle analyse.</string>
     <string name="settings_paywall_service">Service de contournement des paywalls</string>
     <string name="settings_bypass_service">Service de contournement</string>
     <string name="settings_ai_provider">Fournisseur d’IA</string>
     <string name="settings_ai_model_summaries">Modèle d’IA pour les résumés</string>
     <string name="settings_model">Modèle</string>
-    <string name="settings_model_missing">OpenRouter ne propose plus ce modèle. Choisissez-en un autre.</string>
+    <string name="settings_model_missing">Ce modèle n’est pas disponible. Téléchargez-le ou choisissez-en un autre.</string>
     <string name="settings_privacy_diagnostics">Confidentialité et diagnostics</string>
     <string name="settings_performance">Performances</string>
     <string name="settings_show_performance">Afficher les informations de performance</string>
@@ -382,7 +382,7 @@
     <string name="ai_selected">Sélectionné</string>
     <string name="ai_model_loading">Chargement de la liste depuis OpenRouter…</string>
     <string name="ai_no_models_loaded">Aucun modèle chargé</string>
-    <string name="ai_no_models_openrouter">Aucun modèle chargé depuis OpenRouter</string>
+    <string name="ai_no_models_openrouter">Aucun modèle d’IA chargé</string>
     <string name="ai_no_search_matches">Aucun résultat correspondant</string>
     <plurals name="ai_models_count"><item quantity="one">%1$d modèle sur %2$d</item><item quantity="many">%1$d modèles sur %2$d</item><item quantity="other">%1$d modèles sur %2$d</item></plurals>
     <string name="ai_context_length">  •  contexte de %1$dk</string>

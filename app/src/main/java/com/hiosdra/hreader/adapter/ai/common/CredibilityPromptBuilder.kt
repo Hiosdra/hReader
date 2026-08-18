@@ -1,4 +1,4 @@
-package com.hiosdra.hreader.adapter.ai.openrouter
+package com.hiosdra.hreader.adapter.ai.common
 
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
 import org.jsoup.Jsoup
@@ -13,8 +13,6 @@ const val CONTENT_END = "<<<ARTICLE_END>>>"
 
 private const val MAX_CONTENT_CHARS = 12_000
 private const val MAX_METADATA_CHARS = 200
-private const val MAX_TOKENS = 1500
-private const val TEMPERATURE = 0.2
 
 private val DATE_FORMATTER: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault())
@@ -56,45 +54,38 @@ under 20 words and citing something concrete from the article. Use the language 
 article for all text fields.
 """.trimIndent()
 
-data class CredibilityPrompt(
-    val request: OpenRouterRequest,
+data class CredibilityPromptText(
+    val systemMessage: String,
+    val userMessage: String,
     val contentTruncated: Boolean
 )
 
 class CredibilityPromptBuilder(
     private val clock: Clock
 ) {
-    fun build(source: CredibilitySource, modelId: String): CredibilityPrompt? {
+    fun buildText(source: CredibilitySource): CredibilityPromptText? {
         val content = cleanContent(source.content)
         if (content.text.isBlank()) return null
 
-        val userMessage = ChatMessage(
-            role = "user",
-            content = buildString {
-                append("Assess the article delimited below.")
-                append("\nCurrent date for the user: ${LocalDate.now(clock)}.")
-                if (content.truncated) {
-                    append("\nThe article text was truncated to fit; lower your confidence accordingly.")
-                }
-                append("\n\n")
-                append(CONTENT_START)
-                append("\n")
-                append(metadataOf(source))
-                append("\n\n")
-                append(content.text)
-                append("\n")
-                append(CONTENT_END)
+        val userMessage = buildString {
+            append("Assess the article delimited below.")
+            append("\nCurrent date for the user: ${LocalDate.now(clock)}.")
+            if (content.truncated) {
+                append("\nThe article text was truncated to fit; lower your confidence accordingly.")
             }
-        )
+            append("\n\n")
+            append(CONTENT_START)
+            append("\n")
+            append(metadataOf(source))
+            append("\n\n")
+            append(content.text)
+            append("\n")
+            append(CONTENT_END)
+        }
 
-        return CredibilityPrompt(
-            request = OpenRouterRequest(
-                model = modelId,
-                messages = listOf(ChatMessage(role = "system", content = SYSTEM_PROMPT), userMessage),
-                maxTokens = MAX_TOKENS,
-                temperature = TEMPERATURE,
-                responseFormat = ResponseFormat.JsonObject
-            ),
+        return CredibilityPromptText(
+            systemMessage = SYSTEM_PROMPT,
+            userMessage = userMessage,
             contentTruncated = content.truncated
         )
     }

@@ -9,6 +9,7 @@ object NotificationChannels {
     const val SYNC = "sync"
     const val TTS = "tts"
     const val MODEL_DOWNLOAD = "model_download"
+    const val AI_MODEL_DOWNLOAD = "ai_model_download"
 
     fun ensure(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -27,6 +28,11 @@ object NotificationChannels {
                 NotificationChannel(
                     MODEL_DOWNLOAD,
                     context.getString(R.string.notification_channel_model_download),
+                    NotificationManager.IMPORTANCE_LOW
+                ),
+                NotificationChannel(
+                    AI_MODEL_DOWNLOAD,
+                    context.getString(R.string.notification_channel_ai_model_download),
                     NotificationManager.IMPORTANCE_LOW
                 )
             )

@@ -1,0 +1,21 @@
+<resources>
+    <string name="notification_channel_ai_model_download">AI 모델 다운로드</string>
+    <string name="notification_ai_model_download_title">AI 모델 다운로드 중</string>
+    <string name="settings_local_ai">로컬 AI</string>
+    <string name="ai_gemma_model_name">Gemma 4 E2B</string>
+    <string name="ai_gemma_model_description">LiteRT-LM을 통해 이 기기에서 실행됩니다. 기사 내용은 클라우드 제공업체로 전송되지 않습니다.</string>
+    <string name="ai_model_size">다운로드 크기: %.1fGB</string>
+    <string name="ai_model_not_downloaded">로컬 모델을 다운로드하지 않았습니다.</string>
+    <string name="ai_model_downloading">로컬 모델 다운로드 중…</string>
+    <string name="ai_model_ready">로컬 모델을 사용할 수 있습니다.</string>
+    <string name="ai_download_model">모델 다운로드</string>
+    <string name="ai_remove_model">모델 삭제</string>
+    <string name="ai_model_install_failed">로컬 AI 모델을 설치할 수 없습니다. 연결과 저장 공간을 확인하세요.</string>
+    <string name="article_ai_model_missing">이 기능을 사용하기 전에 설정에서 로컬 AI 모델을 설치하세요.</string>
+    <string name="ai_backend">선호하는 로컬 백엔드</string>
+    <string name="ai_backend_auto">자동 (GPU, 이후 CPU)</string>
+    <string name="ai_backend_cpu">CPU</string>
+    <string name="ai_backend_gpu">GPU</string>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_backend_fallback">선호하는 백엔드를 사용할 수 없으면 hReader가 다른 로컬 백엔드를 사용합니다. OpenRouter로 조용히 전환하지 않습니다.</string>
+</resources>

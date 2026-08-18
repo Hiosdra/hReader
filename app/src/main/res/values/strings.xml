@@ -7,6 +7,7 @@
     <string name="notification_channel_sync">Sync</string>
     <string name="notification_channel_tts">Read aloud</string>
     <string name="notification_channel_model_download">Voice downloads</string>
+    <string name="notification_channel_ai_model_download">AI model downloads</string>
     <string name="notification_sync_title">Syncing articles</string>
     <string name="notification_offline_title">Preparing for offline reading</string>
     <string name="notification_full_offline_title">Downloading full pages</string>
@@ -15,6 +16,7 @@
     <string name="notification_prefetch_text">Downloading article content</string>
     <string name="notification_full_offline_text">Downloading full pages</string>
     <string name="notification_model_download_title">Downloading voice</string>
+    <string name="notification_ai_model_download_title">Downloading AI model</string>
     <string name="notification_cancel">Cancel</string>
     <string name="notification_tts_title">Read aloud</string>
     <string name="tts_voice_model_default">Voice model</string>
@@ -76,7 +78,7 @@
     <string name="main_refresh_now">Refresh now</string>
     <string name="main_offline_banner">Offline — showing downloaded articles. Anything you read syncs when you are back online.</string>
     <string name="main_ai_model_unavailable_title">AI model unavailable</string>
-    <string name="main_ai_model_unavailable_message">OpenRouter no longer offers %1$s. Article summaries and credibility scoring will fail until you pick another model.</string>
+    <string name="main_ai_model_unavailable_message">The selected AI model %1$s is unavailable. Download it or pick another model in Settings.</string>
     <string name="error_prepare_local_storage">Could not prepare local storage. Try again.</string>
     <string name="error_need_connection_refresh">You need an internet connection to refresh.</string>
     <string name="error_refresh_articles">Could not refresh articles. Check your connection and try again.</string>
@@ -155,7 +157,8 @@
     <string name="article_partial_content">The full text of this article was never downloaded, so this is only what the feed itself carried.</string>
     <string name="article_missing_content">The article text is still downloading. Try again in a moment.</string>
     <string name="article_summary_error">Couldn’t generate summary. Try again.</string>
-    <string name="article_ai_api_key_missing">Add an OpenRouter API key in Settings to use AI features.</string>
+    <string name="article_ai_api_key_missing">Add an OpenRouter API key or install the local AI model in Settings.</string>
+    <string name="article_ai_model_missing">Install the local AI model in Settings before using this feature.</string>
     <string name="article_credibility_error">Failed to analyze credibility</string>
     <string name="article_unknown_feed">Unknown feed</string>
 
@@ -242,13 +245,29 @@
     <string name="settings_credibility_description">Adds a chip to every article that rates the text for sourcing, tone and balance</string>
     <string name="settings_rating_meaning">What the rating means:</string>
     <string name="settings_rating_values">• Strong signals: sourced, evidenced, balanced\n• Mixed signals: verify before relying on it\n• Weak signals: sensational or unsupported claims</string>
-    <string name="settings_credibility_disclaimer">This is an AI impression of the article text, not a fact check — the model cannot browse the web or verify claims. Each analysis sends the article to OpenRouter and is cached until you re-analyze it.</string>
+    <string name="settings_credibility_disclaimer">This is an AI impression of the article text, not a fact check — the model cannot browse the web or verify claims. Local models keep the article on this device; OpenRouter sends it to the selected provider and caches the result until you re-analyze it.</string>
+    <string name="settings_local_ai">Local AI</string>
+    <string name="ai_gemma_model_name">Gemma 4 E2B</string>
+    <string name="ai_gemma_model_description">Runs on this device through LiteRT-LM. The article text is not sent to a cloud provider.</string>
+    <string name="ai_model_size">Download size: %.1f GB</string>
+    <string name="ai_model_not_downloaded">The local model is not downloaded.</string>
+    <string name="ai_model_downloading">Downloading local model…</string>
+    <string name="ai_model_ready">Local model is ready.</string>
+    <string name="ai_download_model">Download model</string>
+    <string name="ai_remove_model">Remove model</string>
+    <string name="ai_model_install_failed">Could not install the local AI model. Check your connection and free storage.</string>
+    <string name="ai_backend">Preferred local backend</string>
+    <string name="ai_backend_auto">Automatic (GPU, then CPU)</string>
+    <string name="ai_backend_cpu">CPU</string>
+    <string name="ai_backend_gpu">GPU</string>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_backend_fallback">If the preferred backend is unavailable, hReader falls back to another local backend. It never silently switches to OpenRouter.</string>
     <string name="settings_paywall_service">Paywall bypass service</string>
     <string name="settings_bypass_service">Bypass service</string>
     <string name="settings_ai_provider">AI provider</string>
     <string name="settings_ai_model_summaries">AI model for summaries</string>
     <string name="settings_model">Model</string>
-    <string name="settings_model_missing">OpenRouter no longer offers this model. Pick another one.</string>
+    <string name="settings_model_missing">The selected model is unavailable. Download it or pick another one.</string>
     <string name="settings_privacy_diagnostics">Privacy &amp; diagnostics</string>
     <string name="settings_performance">Performance</string>
     <string name="settings_show_performance">Show performance info</string>
@@ -455,7 +474,7 @@
     <string name="ai_selected">Selected</string>
     <string name="ai_model_loading">Loading the list from OpenRouter…</string>
     <string name="ai_no_models_loaded">No models loaded</string>
-    <string name="ai_no_models_openrouter">No models loaded from OpenRouter</string>
+    <string name="ai_no_models_openrouter">No AI models loaded</string>
     <string name="ai_no_search_matches">Nothing matches that search</string>
     <plurals name="ai_models_count">
         <item quantity="one">%1$d of %2$d model</item>

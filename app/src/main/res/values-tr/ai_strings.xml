@@ -1,0 +1,21 @@
+<resources>
+    <string name="notification_channel_ai_model_download">Yapay zeka modeli indirmeleri</string>
+    <string name="notification_ai_model_download_title">Yapay zeka modeli indiriliyor</string>
+    <string name="settings_local_ai">Yerel yapay zeka</string>
+    <string name="ai_gemma_model_name">Gemma 4 E2B</string>
+    <string name="ai_gemma_model_description">LiteRT-LM ile bu cihazda çalışır. Makale metni bir bulut sağlayıcısına gönderilmez.</string>
+    <string name="ai_model_size">İndirme boyutu: %.1f GB</string>
+    <string name="ai_model_not_downloaded">Yerel model indirilmedi.</string>
+    <string name="ai_model_downloading">Yerel model indiriliyor…</string>
+    <string name="ai_model_ready">Yerel model hazır.</string>
+    <string name="ai_download_model">Modeli indir</string>
+    <string name="ai_remove_model">Modeli kaldır</string>
+    <string name="ai_model_install_failed">Yerel yapay zeka modeli yüklenemedi. Bağlantınızı ve boş depolama alanını kontrol edin.</string>
+    <string name="article_ai_model_missing">Bu özelliği kullanmadan önce Ayarlar’dan yerel AI modelini yükleyin.</string>
+    <string name="ai_backend">Tercih edilen yerel arka uç</string>
+    <string name="ai_backend_auto">Otomatik (GPU, ardından CPU)</string>
+    <string name="ai_backend_cpu">CPU</string>
+    <string name="ai_backend_gpu">GPU</string>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_backend_fallback">Tercih edilen arka uç kullanılamazsa hReader başka bir yerel arka uç kullanır. OpenRouter’a sessizce geçmez.</string>
+</resources>

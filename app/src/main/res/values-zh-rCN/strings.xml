@@ -69,7 +69,7 @@
     <string name="main_refresh_now">立即刷新</string>
     <string name="main_offline_banner">当前处于离线状态，正在显示已下载的文章。恢复联网后，阅读内容会自动同步。</string>
     <string name="main_ai_model_unavailable_title">AI 模型不可用</string>
-    <string name="main_ai_model_unavailable_message">OpenRouter 已不再提供 %1$s。在选择其他模型前，文章摘要和可信度评分将无法使用。</string>
+    <string name="main_ai_model_unavailable_message">所选 AI 模型 %1$s 不可用。请下载它，或在设置中选择其他模型。</string>
     <string name="error_prepare_local_storage">无法准备本地存储空间。请重试。</string>
     <string name="error_need_connection_refresh">刷新需要互联网连接。</string>
     <string name="error_refresh_articles">无法刷新文章。请检查网络连接后重试。</string>
@@ -141,7 +141,7 @@
     <string name="article_partial_content">这篇文章的全文从未下载，因此这里只显示订阅源提供的内容。</string>
     <string name="article_missing_content">文章正文仍在下载中。请稍后重试。</string>
     <string name="article_summary_error">无法生成摘要。请重试。</string>
-    <string name="article_ai_api_key_missing">要使用 AI 功能，请在设置中添加 OpenRouter API 密钥。</string>
+    <string name="article_ai_api_key_missing">请在设置中添加 OpenRouter 密钥，或安装本地 AI 模型。</string>
     <string name="article_credibility_error">可信度分析失败</string>
     <string name="article_unknown_feed">未知订阅源</string>
     <string name="feeds_title">订阅</string>
@@ -216,13 +216,13 @@
     <string name="settings_credibility_description">为每篇文章添加标签，评估文本的来源、语气和平衡性</string>
     <string name="settings_rating_meaning">评分含义：</string>
     <string name="settings_rating_values">• 强信号：有来源、有证据、平衡\n• 混合信号：依赖前请先核实\n• 弱信号：耸人听闻或缺乏依据的说法</string>
-    <string name="settings_credibility_disclaimer">这是 AI 对文章文本的印象，不是事实核查；模型无法浏览网页或验证声明。每次分析都会将文章发送到 OpenRouter，并缓存到你再次分析为止。</string>
+    <string name="settings_credibility_disclaimer">这是 AI 对文章文本的印象，不是事实核查；模型无法浏览网页或验证声明。本地模型会将文章保留在设备上；OpenRouter 会将文章发送给所选提供商，并缓存结果直到再次分析。</string>
     <string name="settings_paywall_service">付费墙绕过服务</string>
     <string name="settings_bypass_service">绕过服务</string>
     <string name="settings_ai_provider">AI 提供商</string>
     <string name="settings_ai_model_summaries">用于摘要的 AI 模型</string>
     <string name="settings_model">模型</string>
-    <string name="settings_model_missing">OpenRouter 已不再提供此模型。请选择其他模型。</string>
+    <string name="settings_model_missing">此模型不可用。请下载它，或选择其他模型。</string>
     <string name="settings_privacy_diagnostics">隐私与诊断</string>
     <string name="settings_performance">性能</string>
     <string name="settings_show_performance">显示性能信息</string>
@@ -382,7 +382,7 @@
     <string name="ai_selected">已选择</string>
     <string name="ai_model_loading">正在从 OpenRouter 加载列表…</string>
     <string name="ai_no_models_loaded">没有加载模型</string>
-    <string name="ai_no_models_openrouter">没有从 OpenRouter 加载模型</string>
+    <string name="ai_no_models_openrouter">未加载 AI 模型</string>
     <string name="ai_no_search_matches">没有匹配结果</string>
     <plurals name="ai_models_count"><item quantity="other">%2$d 个模型中的 %1$d 个</item></plurals>
     <string name="ai_context_length">  •  %1$dk 上下文</string>

@@ -69,7 +69,7 @@
     <string name="main_refresh_now">Şimdi yenile</string>
     <string name="main_offline_banner">Çevrimdışısınız — indirilen makaleler gösteriliyor. Okuduklarınız tekrar çevrimiçi olduğunuzda senkronize edilir.</string>
     <string name="main_ai_model_unavailable_title">Yapay zekâ modeli kullanılamıyor</string>
-    <string name="main_ai_model_unavailable_message">OpenRouter artık %1$s modelini sunmuyor. Başka bir model seçene kadar makale özetleri ve güvenilirlik puanlaması başarısız olur.</string>
+    <string name="main_ai_model_unavailable_message">Seçilen AI modeli %1$s kullanılamıyor. İndirin veya Ayarlar’dan başka bir model seçin.</string>
     <string name="error_prepare_local_storage">Yerel depolama hazırlanamadı. Tekrar deneyin.</string>
     <string name="error_need_connection_refresh">Yenilemek için internet bağlantısı gerekir.</string>
     <string name="error_refresh_articles">Makaleler yenilenemedi. Bağlantınızı kontrol edip tekrar deneyin.</string>
@@ -141,7 +141,7 @@
     <string name="article_partial_content">Bu makalenin tam metni hiç indirilmedi; burada yalnızca akışın taşıdığı içerik gösteriliyor.</string>
     <string name="article_missing_content">Makale metni hâlâ indiriliyor. Biraz sonra tekrar deneyin.</string>
     <string name="article_summary_error">Özet oluşturulamadı. Tekrar deneyin.</string>
-    <string name="article_ai_api_key_missing">Yapay zeka özelliklerini kullanmak için Ayarlar’da bir OpenRouter API anahtarı ekleyin.</string>
+    <string name="article_ai_api_key_missing">Ayarlar’dan bir OpenRouter anahtarı ekleyin veya yerel AI modelini yükleyin.</string>
     <string name="article_credibility_error">Güvenilirlik analiz edilemedi</string>
     <string name="article_unknown_feed">Bilinmeyen akış</string>
     <string name="feeds_title">Abonelikler</string>
@@ -216,13 +216,13 @@
     <string name="settings_credibility_description">Her makaleye kaynak, ton ve dengeyi değerlendiren bir etiket ekler</string>
     <string name="settings_rating_meaning">Puanın anlamı:</string>
     <string name="settings_rating_values">• Güçlü işaretler: kaynaklı, kanıtlı, dengeli\n• Karışık işaretler: güvenmeden önce doğrula\n• Zayıf işaretler: sansasyonel veya desteksiz iddialar</string>
-    <string name="settings_credibility_disclaimer">Bu, makale metnine dair yapay zekâ izlenimidir; doğrulama değildir. Model web’de gezemez veya iddiaları doğrulayamaz. Her analiz makaleyi OpenRouter’a gönderir ve yeniden analiz edene kadar önbelleğe alınır.</string>
+    <string name="settings_credibility_disclaimer">Bu, makale metnine dair yapay zekâ izlenimidir; doğrulama değildir. Model web’de gezemez veya iddiaları doğrulayamaz. Yerel modeller makaleyi cihazda tutar; OpenRouter seçilen sağlayıcıya gönderir ve sonucu yeniden analize kadar önbelleğe alır.</string>
     <string name="settings_paywall_service">Paywall atlama hizmeti</string>
     <string name="settings_bypass_service">Atlama hizmeti</string>
     <string name="settings_ai_provider">Yapay zekâ sağlayıcısı</string>
     <string name="settings_ai_model_summaries">Özetler için yapay zekâ modeli</string>
     <string name="settings_model">Model</string>
-    <string name="settings_model_missing">OpenRouter artık bu modeli sunmuyor. Başka bir model seçin.</string>
+    <string name="settings_model_missing">Bu model kullanılamıyor. İndirin veya başka bir model seçin.</string>
     <string name="settings_privacy_diagnostics">Gizlilik ve tanılama</string>
     <string name="settings_performance">Performans</string>
     <string name="settings_show_performance">Performans bilgilerini göster</string>
@@ -382,7 +382,7 @@
     <string name="ai_selected">Seçildi</string>
     <string name="ai_model_loading">Liste OpenRouter’dan yükleniyor…</string>
     <string name="ai_no_models_loaded">Yüklenmiş model yok</string>
-    <string name="ai_no_models_openrouter">OpenRouter’dan model yüklenmedi</string>
+    <string name="ai_no_models_openrouter">Hiçbir AI modeli yüklenmedi</string>
     <string name="ai_no_search_matches">Eşleşen sonuç yok</string>
     <plurals name="ai_models_count"><item quantity="one">%2$d modelden %1$d tanesi</item><item quantity="other">%2$d modelden %1$d tanesi</item></plurals>
     <string name="ai_context_length">  •  %1$dk bağlam</string>

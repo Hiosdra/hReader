@@ -1,0 +1,21 @@
+<resources>
+    <string name="notification_channel_ai_model_download">AIモデルのダウンロード</string>
+    <string name="notification_ai_model_download_title">AIモデルをダウンロード中</string>
+    <string name="settings_local_ai">ローカルAI</string>
+    <string name="ai_gemma_model_name">Gemma 4 E2B</string>
+    <string name="ai_gemma_model_description">LiteRT-LMを使って端末上で実行します。記事本文はクラウドプロバイダーに送信されません。</string>
+    <string name="ai_model_size">ダウンロードサイズ: %.1f GB</string>
+    <string name="ai_model_not_downloaded">ローカルモデルはダウンロードされていません。</string>
+    <string name="ai_model_downloading">ローカルモデルをダウンロード中…</string>
+    <string name="ai_model_ready">ローカルモデルを使用できます。</string>
+    <string name="ai_download_model">モデルをダウンロード</string>
+    <string name="ai_remove_model">モデルを削除</string>
+    <string name="ai_model_install_failed">ローカルAIモデルをインストールできませんでした。接続と空き容量を確認してください。</string>
+    <string name="article_ai_model_missing">この機能を使う前に、設定からローカルAIモデルをインストールしてください。</string>
+    <string name="ai_backend">優先するローカルバックエンド</string>
+    <string name="ai_backend_auto">自動（GPU、その後CPU）</string>
+    <string name="ai_backend_cpu">CPU</string>
+    <string name="ai_backend_gpu">GPU</string>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_backend_fallback">優先したバックエンドが利用できない場合、hReaderは別のローカルバックエンドを使います。OpenRouterへ密かに切り替えることはありません。</string>
+</resources>

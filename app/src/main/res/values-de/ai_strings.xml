@@ -1,0 +1,21 @@
+<resources>
+    <string name="notification_channel_ai_model_download">KI-Modell-Downloads</string>
+    <string name="notification_ai_model_download_title">KI-Modell wird heruntergeladen</string>
+    <string name="settings_local_ai">Lokale KI</string>
+    <string name="ai_gemma_model_name">Gemma 4 E2B</string>
+    <string name="ai_gemma_model_description">Wird auf diesem Gerät über LiteRT-LM ausgeführt. Der Artikeltext wird nicht an einen Cloud-Anbieter gesendet.</string>
+    <string name="ai_model_size">Downloadgröße: %.1f GB</string>
+    <string name="ai_model_not_downloaded">Das lokale Modell wurde nicht heruntergeladen.</string>
+    <string name="ai_model_downloading">Lokales Modell wird heruntergeladen…</string>
+    <string name="ai_model_ready">Lokales Modell ist bereit.</string>
+    <string name="ai_download_model">Modell herunterladen</string>
+    <string name="ai_remove_model">Modell entfernen</string>
+    <string name="ai_model_install_failed">Das lokale KI-Modell konnte nicht installiert werden. Prüfe Verbindung und freien Speicher.</string>
+    <string name="article_ai_model_missing">Installiere das lokale KI-Modell in den Einstellungen, bevor du diese Funktion verwendest.</string>
+    <string name="ai_backend">Bevorzugtes lokales Backend</string>
+    <string name="ai_backend_auto">Automatisch (GPU, dann CPU)</string>
+    <string name="ai_backend_cpu">CPU</string>
+    <string name="ai_backend_gpu">GPU</string>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_backend_fallback">Wenn das bevorzugte Backend nicht verfügbar ist, verwendet hReader ein anderes lokales Backend. Es wechselt niemals still zu OpenRouter.</string>
+</resources>

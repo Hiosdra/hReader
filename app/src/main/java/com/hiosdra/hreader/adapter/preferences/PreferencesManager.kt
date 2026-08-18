@@ -15,6 +15,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.hiosdra.hreader.core.application.ai.AiModel
+import com.hiosdra.hreader.core.application.ai.GemmaBackend
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
@@ -182,6 +183,17 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun setAiModelId(modelId: String) {
         preferenceState.updateAndGet { it.copy(aiModelId = modelId) }
         writePreferences { this[aiModelIdKey] = modelId }
+    }
+
+    override fun observeAiModelId(): Flow<String> = preferencesDataStore.data
+        .map { it[aiModelIdKey] ?: AiModel.DEFAULT_ID }
+        .distinctUntilChanged()
+
+    override fun getGemmaBackend(): GemmaBackend = preferenceState.get().gemmaBackend
+
+    override fun setGemmaBackend(backend: GemmaBackend) {
+        preferenceState.updateAndGet { it.copy(gemmaBackend = backend) }
+        writePreferences { this[gemmaBackendKey] = backend.name }
     }
 
     override fun getLastSyncTimestamp(): Long = preferenceState.get().lastSyncTimestamp
@@ -400,6 +412,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         bionicReadingEnabled = legacyPreferences.getBoolean(KEY_BIONIC_READING_ENABLED, false),
         sentryReportingEnabled = legacyPreferences.getBoolean(KEY_SENTRY_REPORTING_ENABLED, true),
         aiModelId = legacyPreferences.getString(KEY_AI_MODEL, AiModel.DEFAULT_ID) ?: AiModel.DEFAULT_ID,
+        gemmaBackend = GemmaBackend.fromName(legacyPreferences.getString(KEY_GEMMA_BACKEND, null)),
         lastSyncTimestamp = legacyPreferences.getLong(KEY_LAST_SYNC_TIMESTAMP, 0L),
         cacheOwnerKey = legacyPreferences.getString(KEY_CACHE_OWNER, "").orEmpty(),
         lastFullSyncTimestamp = legacyPreferences.getLong(KEY_LAST_FULL_SYNC_TIMESTAMP, 0L),
@@ -462,6 +475,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         bionicReadingEnabled = this[bionicReadingEnabledKey] ?: false,
         sentryReportingEnabled = this[sentryReportingEnabledKey] ?: true,
         aiModelId = this[aiModelIdKey] ?: AiModel.DEFAULT_ID,
+        gemmaBackend = GemmaBackend.fromName(this[gemmaBackendKey]),
         lastSyncTimestamp = this[lastSyncTimestampKey] ?: 0L,
         cacheOwnerKey = this[cacheOwnerKey].orEmpty(),
         lastFullSyncTimestamp = this[lastFullSyncTimestampKey] ?: 0L,
@@ -536,6 +550,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         val bionicReadingEnabled: Boolean = false,
         val sentryReportingEnabled: Boolean = true,
         val aiModelId: String = AiModel.DEFAULT_ID,
+        val gemmaBackend: GemmaBackend = GemmaBackend.AUTO,
         val lastSyncTimestamp: Long = 0L,
         val cacheOwnerKey: String = "",
         val lastFullSyncTimestamp: Long = 0L,
@@ -579,6 +594,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_SENTRY_REPORTING_ENABLED = "sentry_reporting_enabled"
         private const val KEY_AI_MODEL = "ai_model"
+        private const val KEY_GEMMA_BACKEND = "gemma_backend"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
         private const val KEY_CACHE_OWNER = "cache_owner"
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
@@ -621,6 +637,7 @@ class PreferencesManager(context: Context) : AppPreferences {
             KEY_BIONIC_READING_ENABLED,
             KEY_SENTRY_REPORTING_ENABLED,
             KEY_AI_MODEL,
+            KEY_GEMMA_BACKEND,
             KEY_LAST_SYNC_TIMESTAMP,
             KEY_CACHE_OWNER,
             KEY_LAST_FULL_SYNC_TIMESTAMP,
@@ -659,6 +676,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         private val bionicReadingEnabledKey = booleanPreferencesKey(KEY_BIONIC_READING_ENABLED)
         private val sentryReportingEnabledKey = booleanPreferencesKey(KEY_SENTRY_REPORTING_ENABLED)
         private val aiModelIdKey = stringPreferencesKey(KEY_AI_MODEL)
+        private val gemmaBackendKey = stringPreferencesKey(KEY_GEMMA_BACKEND)
         private val lastSyncTimestampKey = longPreferencesKey(KEY_LAST_SYNC_TIMESTAMP)
         private val cacheOwnerKey = stringPreferencesKey(KEY_CACHE_OWNER)
         private val lastFullSyncTimestampKey = longPreferencesKey(KEY_LAST_FULL_SYNC_TIMESTAMP)

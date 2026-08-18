@@ -1,6 +1,9 @@
 package com.hiosdra.hreader.adapter.ai.openrouter
 
 import android.util.Log
+import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
+import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
+import com.hiosdra.hreader.adapter.ai.common.stripToPlainText
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
@@ -13,6 +16,8 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 
 private const val TAG = "ArticleAiService"
+private const val CREDIBILITY_MAX_OUTPUT_TOKENS = 1500
+private const val CREDIBILITY_TEMPERATURE = 0.2
 
 class OpenRouterException(val code: Int?, message: String) : Exception(message)
 
@@ -41,17 +46,28 @@ class ArticleAiService(
         source: CredibilitySource,
         modelId: String
     ): Result<CredibilityReport> = withContext(Dispatchers.IO) {
-        val prompt = credibilityPromptBuilder.build(source, modelId)
+        val prompt = credibilityPromptBuilder.buildText(source)
             ?: return@withContext Result.failure(EmptyAiContentException())
 
         Log.d(TAG, "Analyzing credibility with model: $modelId")
 
-        val firstAttempt = executeChat(prompt.request)
+        val request = OpenRouterRequest(
+            model = modelId,
+            messages = listOf(
+                ChatMessage(role = "system", content = prompt.systemMessage),
+                ChatMessage(role = "user", content = prompt.userMessage)
+            ),
+            maxTokens = CREDIBILITY_MAX_OUTPUT_TOKENS,
+            temperature = CREDIBILITY_TEMPERATURE,
+            responseFormat = ResponseFormat.JsonObject
+        )
+
+        val firstAttempt = executeChat(request)
         val chatResult = firstAttempt.exceptionOrNull()
             ?.takeIf(::isUnsupportedResponseFormat)
             ?.let {
                 Log.i(TAG, "Model $modelId rejected response_format, retrying without it")
-                executeChat(prompt.request.copy(responseFormat = null))
+                executeChat(request.copy(responseFormat = null))
             }
             ?: firstAttempt
         chatResult.mapCatching { raw ->

@@ -69,7 +69,7 @@
     <string name="main_refresh_now">Actualizar ahora</string>
     <string name="main_offline_banner">Sin conexión — mostrando artículos descargados. Lo que leas se sincronizará al volver a estar en línea.</string>
     <string name="main_ai_model_unavailable_title">Modelo de IA no disponible</string>
-    <string name="main_ai_model_unavailable_message">OpenRouter ya no ofrece %1$s. Los resúmenes y la evaluación de credibilidad fallarán hasta que elijas otro modelo.</string>
+    <string name="main_ai_model_unavailable_message">El modelo de IA seleccionado %1$s no está disponible. Descárgalo o elige otro en Ajustes.</string>
     <string name="error_prepare_local_storage">No se pudo preparar el almacenamiento local. Inténtalo de nuevo.</string>
     <string name="error_need_connection_refresh">Necesitas conexión a Internet para actualizar.</string>
     <string name="error_refresh_articles">No se pudieron actualizar los artículos. Comprueba la conexión e inténtalo de nuevo.</string>
@@ -141,7 +141,7 @@
     <string name="article_partial_content">El texto completo de este artículo nunca se descargó; esto es solo lo que contenía la fuente.</string>
     <string name="article_missing_content">El texto del artículo aún se está descargando. Inténtalo de nuevo en un momento.</string>
     <string name="article_summary_error">No se pudo generar el resumen. Inténtalo de nuevo.</string>
-    <string name="article_ai_api_key_missing">Añade una clave API de OpenRouter en Ajustes para usar las funciones de IA.</string>
+    <string name="article_ai_api_key_missing">Añade una clave de OpenRouter o instala el modelo de IA local en Ajustes.</string>
     <string name="article_credibility_error">No se pudo analizar la credibilidad</string>
     <string name="article_unknown_feed">Feed desconocido</string>
     <string name="feeds_title">Suscripciones</string>
@@ -218,13 +218,13 @@
     <string name="settings_rating_values">• Señales sólidas: fuentes, pruebas y equilibrio
 • Señales mixtas: verifica antes de confiar
 • Señales débiles: afirmaciones sensacionalistas o sin apoyo</string>
-    <string name="settings_credibility_disclaimer">Esta es una impresión de IA del texto, no una verificación de hechos — el modelo no puede navegar por la web ni comprobar afirmaciones. Cada análisis envía el artículo a OpenRouter y se guarda hasta que vuelvas a analizarlo.</string>
+    <string name="settings_credibility_disclaimer">Es una impresión de IA del texto, no una verificación de hechos — el modelo no puede navegar por la web ni comprobar afirmaciones. Los modelos locales conservan el artículo en el dispositivo; OpenRouter lo envía al proveedor elegido y guarda el resultado hasta volver a analizarlo.</string>
     <string name="settings_paywall_service">Servicio de desbloqueo de paywall</string>
     <string name="settings_bypass_service">Servicio de desbloqueo</string>
     <string name="settings_ai_provider">Proveedor de IA</string>
     <string name="settings_ai_model_summaries">Modelo de IA para resúmenes</string>
     <string name="settings_model">Modelo</string>
-    <string name="settings_model_missing">OpenRouter ya no ofrece este modelo. Elige otro.</string>
+    <string name="settings_model_missing">Este modelo no está disponible. Descárgalo o elige otro.</string>
     <string name="settings_privacy_diagnostics">Privacidad y diagnóstico</string>
     <string name="settings_performance">Rendimiento</string>
     <string name="settings_show_performance">Mostrar información de rendimiento</string>
@@ -385,7 +385,7 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="ai_selected">Seleccionado</string>
     <string name="ai_model_loading">Cargando la lista desde OpenRouter…</string>
     <string name="ai_no_models_loaded">No se cargaron modelos</string>
-    <string name="ai_no_models_openrouter">No se cargaron modelos desde OpenRouter</string>
+    <string name="ai_no_models_openrouter">No se cargaron modelos de IA</string>
     <string name="ai_no_search_matches">No hay coincidencias</string>
     <plurals name="ai_models_count"><item quantity="one">%1$d de %2$d modelo</item><item quantity="many">%1$d de %2$d modelos</item><item quantity="other">%1$d de %2$d modelos</item></plurals>
     <string name="ai_context_length">  •  contexto de %1$dk</string>

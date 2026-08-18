@@ -22,12 +22,13 @@ class CredibilityRepository(
     private val articleCredibilityDao: ArticleCredibilityDao,
     private val articleAiGateway: ArticleAiGateway
 ) : CredibilityStore {
-    override suspend fun getCached(entryId: Long): CredibilityReport? =
-        articleCredibilityDao.getForEntry(entryId)?.toDomain()
+    override suspend fun getCached(entryId: Long, modelId: String): CredibilityReport? =
+        articleCredibilityDao.getForEntry(entryId, modelId)?.toDomain()
 
-    override suspend fun getCached(entryIds: List<Long>): Map<Long, CredibilityReport> {
+    override suspend fun getCached(entryIds: List<Long>, modelId: String): Map<Long, CredibilityReport> {
         if (entryIds.isEmpty()) return emptyMap()
-        return articleCredibilityDao.getForEntries(entryIds).associate { it.entryId to it.toDomain() }
+        return articleCredibilityDao.getForEntries(entryIds, modelId)
+            .associate { it.entryId to it.toDomain() }
     }
 
     override suspend fun analyze(
@@ -37,7 +38,7 @@ class CredibilityRepository(
         forceRefresh: Boolean
     ): Result<CredibilityReport> {
         if (!forceRefresh) {
-            getCached(entryId)?.let { return Result.success(it) }
+            getCached(entryId, modelId)?.let { return Result.success(it) }
         }
 
         return articleAiGateway.analyzeCredibility(source, modelId)

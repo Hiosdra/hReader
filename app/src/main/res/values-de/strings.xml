@@ -72,7 +72,7 @@
     <string name="main_refresh_now">Jetzt aktualisieren</string>
     <string name="main_offline_banner">Offline — heruntergeladene Artikel werden angezeigt. Gelesenes wird synchronisiert, sobald du wieder online bist.</string>
     <string name="main_ai_model_unavailable_title">KI-Modell nicht verfügbar</string>
-    <string name="main_ai_model_unavailable_message">OpenRouter bietet %1$s nicht mehr an. Zusammenfassungen und Glaubwürdigkeitsbewertungen schlagen fehl, bis du ein anderes Modell auswählst.</string>
+    <string name="main_ai_model_unavailable_message">Das ausgewählte KI-Modell %1$s ist nicht verfügbar. Lade es herunter oder wähle in den Einstellungen ein anderes Modell.</string>
     <string name="error_prepare_local_storage">Lokaler Speicher konnte nicht vorbereitet werden. Erneut versuchen.</string>
     <string name="error_need_connection_refresh">Zum Aktualisieren ist eine Internetverbindung erforderlich.</string>
     <string name="error_refresh_articles">Artikel konnten nicht aktualisiert werden. Verbindung prüfen und erneut versuchen.</string>
@@ -150,7 +150,7 @@
     <string name="article_partial_content">Der vollständige Text dieses Artikels wurde nie heruntergeladen; angezeigt wird nur der vom Feed gelieferte Inhalt.</string>
     <string name="article_missing_content">Der Artikeltext wird noch heruntergeladen. Gleich erneut versuchen.</string>
     <string name="article_summary_error">Zusammenfassung konnte nicht erstellt werden. Erneut versuchen.</string>
-    <string name="article_ai_api_key_missing">Füge in den Einstellungen einen OpenRouter-API-Schlüssel hinzu, um KI-Funktionen zu verwenden.</string>
+    <string name="article_ai_api_key_missing">Füge in den Einstellungen einen OpenRouter-Schlüssel hinzu oder installiere das lokale KI-Modell.</string>
     <string name="article_credibility_error">Glaubwürdigkeit konnte nicht analysiert werden</string>
     <string name="article_unknown_feed">Unbekannter Feed</string>
     <string name="feeds_title">Abonnements</string>
@@ -227,13 +227,13 @@
     <string name="settings_rating_values">• Starke Signale: belegt, nachweisbar, ausgewogen
 • Gemischte Signale: vor der Nutzung prüfen
 • Schwache Signale: sensationelle oder unbelegte Behauptungen</string>
-    <string name="settings_credibility_disclaimer">Dies ist ein KI-Eindruck des Artikeltexts, kein Faktencheck — das Modell kann nicht im Web suchen oder Behauptungen prüfen. Jede Analyse sendet den Artikel an OpenRouter und wird bis zur erneuten Analyse gespeichert.</string>
+    <string name="settings_credibility_disclaimer">Dies ist ein KI-Eindruck des Artikeltexts, kein Faktencheck — das Modell kann nicht im Web suchen oder Behauptungen prüfen. Lokale Modelle behalten den Artikel auf dem Gerät; OpenRouter sendet ihn an den ausgewählten Anbieter und speichert das Ergebnis bis zur erneuten Analyse.</string>
     <string name="settings_paywall_service">Paywall-Umgehungsdienst</string>
     <string name="settings_bypass_service">Umgehungsdienst</string>
     <string name="settings_ai_provider">KI-Anbieter</string>
     <string name="settings_ai_model_summaries">KI-Modell für Zusammenfassungen</string>
     <string name="settings_model">Modell</string>
-    <string name="settings_model_missing">OpenRouter bietet dieses Modell nicht mehr an. Anderes auswählen.</string>
+    <string name="settings_model_missing">Dieses Modell ist nicht verfügbar. Lade es herunter oder wähle ein anderes.</string>
     <string name="settings_privacy_diagnostics">Datenschutz &amp; Diagnose</string>
     <string name="settings_performance">Leistung</string>
     <string name="settings_show_performance">Leistungsinformationen anzeigen</string>
@@ -394,7 +394,7 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="ai_selected">Ausgewählt</string>
     <string name="ai_model_loading">Liste von OpenRouter wird geladen…</string>
     <string name="ai_no_models_loaded">Keine Modelle geladen</string>
-    <string name="ai_no_models_openrouter">Keine Modelle von OpenRouter geladen</string>
+    <string name="ai_no_models_openrouter">Keine KI-Modelle geladen</string>
     <string name="ai_no_search_matches">Keine passenden Ergebnisse</string>
     <plurals name="ai_models_count"><item quantity="one">%1$d von %2$d Modell</item><item quantity="other">%1$d von %2$d Modellen</item></plurals>
     <string name="ai_context_length">  •  %1$dk Kontext</string>

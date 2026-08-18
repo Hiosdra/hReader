@@ -5,6 +5,7 @@
     <string name="notification_channel_sync">Synchronizacja</string>
     <string name="notification_channel_tts">Czytanie na głos</string>
     <string name="notification_channel_model_download">Pobieranie głosów</string>
+    <string name="notification_channel_ai_model_download">Pobieranie modeli AI</string>
     <string name="notification_sync_title">Synchronizowanie artykułów</string>
     <string name="notification_offline_title">Przygotowywanie do czytania offline</string>
     <string name="notification_full_offline_title">Pobieranie pełnych stron</string>
@@ -13,6 +14,7 @@
     <string name="notification_prefetch_text">Pobieranie treści artykułów</string>
     <string name="notification_full_offline_text">Pobieranie pełnych stron</string>
     <string name="notification_model_download_title">Pobieranie głosu</string>
+    <string name="notification_ai_model_download_title">Pobieranie modelu AI</string>
     <string name="notification_cancel">Anuluj</string>
     <string name="notification_tts_title">Czytanie na głos</string>
     <string name="tts_voice_model_default">Model głosu</string>
@@ -76,7 +78,7 @@
     <string name="main_refresh_now">Odśwież teraz</string>
     <string name="main_offline_banner">Brak połączenia — wyświetlam pobrane artykuły. To, co przeczytasz, zsynchronizuje się po powrocie online.</string>
     <string name="main_ai_model_unavailable_title">Model AI niedostępny</string>
-    <string name="main_ai_model_unavailable_message">OpenRouter nie oferuje już modelu %1$s. Podsumowania i ocena wiarygodności będą niedostępne, dopóki nie wybierzesz innego modelu.</string>
+    <string name="main_ai_model_unavailable_message">Wybrany model AI %1$s jest niedostępny. Pobierz go albo wybierz inny model w Ustawieniach.</string>
     <string name="error_prepare_local_storage">Nie można przygotować pamięci lokalnej. Spróbuj ponownie.</string>
     <string name="error_need_connection_refresh">Do odświeżenia potrzebne jest połączenie z internetem.</string>
     <string name="error_refresh_articles">Nie można odświeżyć artykułów. Sprawdź połączenie i spróbuj ponownie.</string>
@@ -159,7 +161,8 @@
     <string name="article_partial_content">Pełny tekst tego artykułu nigdy nie został pobrany — widzisz tylko treść dostarczoną przez kanał.</string>
     <string name="article_missing_content">Tekst artykułu jest jeszcze pobierany. Spróbuj ponownie za chwilę.</string>
     <string name="article_summary_error">Nie udało się utworzyć podsumowania. Spróbuj ponownie.</string>
-    <string name="article_ai_api_key_missing">Aby korzystać z funkcji AI, dodaj klucz API OpenRouter w Ustawieniach.</string>
+    <string name="article_ai_api_key_missing">Aby korzystać z AI, dodaj klucz OpenRouter albo zainstaluj lokalny model w Ustawieniach.</string>
+    <string name="article_ai_model_missing">Przed użyciem tej funkcji zainstaluj lokalny model AI w Ustawieniach.</string>
     <string name="article_credibility_error">Nie udało się przeanalizować wiarygodności</string>
     <string name="article_unknown_feed">Nieznany kanał</string>
 
@@ -239,13 +242,29 @@
     <string name="settings_rating_values">• Silne sygnały: źródła, dowody, równowaga
 • Mieszane sygnały: zweryfikuj przed użyciem
 • Słabe sygnały: sensacyjne lub niepoparte twierdzenia</string>
-    <string name="settings_credibility_disclaimer">To ocena AI tekstu artykułu, a nie fact-checking — model nie może przeglądać internetu ani weryfikować twierdzeń. Każda analiza wysyła artykuł do OpenRouter i jest przechowywana do ponownej analizy.</string>
+    <string name="settings_credibility_disclaimer">To ocena AI tekstu artykułu, a nie fact-checking — model nie może przeglądać internetu ani weryfikować twierdzeń. Lokalny model zachowuje artykuł na urządzeniu; OpenRouter wysyła go do wybranego dostawcy i przechowuje wynik do ponownej analizy.</string>
+    <string name="settings_local_ai">Lokalne AI</string>
+    <string name="ai_gemma_model_name">Gemma 4 E2B</string>
+    <string name="ai_gemma_model_description">Działa na urządzeniu przez LiteRT-LM. Treść artykułu nie jest wysyłana do dostawcy chmurowego.</string>
+    <string name="ai_model_size">Rozmiar pobierania: %.1f GB</string>
+    <string name="ai_model_not_downloaded">Lokalny model nie jest pobrany.</string>
+    <string name="ai_model_downloading">Pobieranie lokalnego modelu…</string>
+    <string name="ai_model_ready">Lokalny model jest gotowy.</string>
+    <string name="ai_download_model">Pobierz model</string>
+    <string name="ai_remove_model">Usuń model</string>
+    <string name="ai_model_install_failed">Nie można zainstalować lokalnego modelu AI. Sprawdź połączenie i wolne miejsce.</string>
+    <string name="ai_backend">Preferowany backend lokalny</string>
+    <string name="ai_backend_auto">Automatyczny (GPU, potem CPU)</string>
+    <string name="ai_backend_cpu">CPU</string>
+    <string name="ai_backend_gpu">GPU</string>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_backend_fallback">Jeśli preferowany backend jest niedostępny, hReader użyje innego lokalnego backendu. Nie przełączy się po cichu na OpenRouter.</string>
     <string name="settings_paywall_service">Usługa obejścia paywalla</string>
     <string name="settings_bypass_service">Usługa obejścia</string>
     <string name="settings_ai_provider">Dostawca AI</string>
     <string name="settings_ai_model_summaries">Model AI do podsumowań</string>
     <string name="settings_model">Model</string>
-    <string name="settings_model_missing">OpenRouter nie oferuje już tego modelu. Wybierz inny.</string>
+    <string name="settings_model_missing">Ten model jest niedostępny. Pobierz go albo wybierz inny.</string>
     <string name="settings_privacy_diagnostics">Prywatność i diagnostyka</string>
     <string name="settings_performance">Wydajność</string>
     <string name="settings_show_performance">Pokaż informacje o wydajności</string>
@@ -420,7 +439,7 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="ai_selected">Wybrany</string>
     <string name="ai_model_loading">Wczytywanie listy z OpenRouter…</string>
     <string name="ai_no_models_loaded">Nie wczytano modeli</string>
-    <string name="ai_no_models_openrouter">Nie wczytano modeli z OpenRouter</string>
+    <string name="ai_no_models_openrouter">Nie wczytano modeli AI</string>
     <string name="ai_no_search_matches">Nic nie pasuje do wyszukiwania</string>
     <plurals name="ai_models_count"><item quantity="one">%1$d z %2$d modelu</item><item quantity="few">%1$d z %2$d modeli</item><item quantity="many">%1$d z %2$d modeli</item><item quantity="other">%1$d z %2$d modeli</item></plurals>
     <string name="ai_context_length">  •  kontekst %1$dk</string>

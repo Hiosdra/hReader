@@ -1,0 +1,21 @@
+<resources>
+    <string name="notification_channel_ai_model_download">AI 模型下载</string>
+    <string name="notification_ai_model_download_title">正在下载 AI 模型</string>
+    <string name="settings_local_ai">本地 AI</string>
+    <string name="ai_gemma_model_name">Gemma 4 E2B</string>
+    <string name="ai_gemma_model_description">通过 LiteRT-LM 在此设备上运行。文章内容不会发送给云服务提供商。</string>
+    <string name="ai_model_size">下载大小：%.1f GB</string>
+    <string name="ai_model_not_downloaded">尚未下载本地模型。</string>
+    <string name="ai_model_downloading">正在下载本地模型…</string>
+    <string name="ai_model_ready">本地模型已就绪。</string>
+    <string name="ai_download_model">下载模型</string>
+    <string name="ai_remove_model">移除模型</string>
+    <string name="ai_model_install_failed">无法安装本地 AI 模型。请检查网络连接和可用存储空间。</string>
+    <string name="article_ai_model_missing">使用此功能前，请在设置中安装本地 AI 模型。</string>
+    <string name="ai_backend">首选本地后端</string>
+    <string name="ai_backend_auto">自动（GPU，然后 CPU）</string>
+    <string name="ai_backend_cpu">CPU</string>
+    <string name="ai_backend_gpu">GPU</string>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_backend_fallback">如果首选后端不可用，hReader 会使用其他本地后端。它不会悄悄切换到 OpenRouter。</string>
+</resources>
