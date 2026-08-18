@@ -1,12 +1,12 @@
 import java.util.Properties
 
 plugins {
-    id("com.android.application")
-    id("io.sentry.android.gradle")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp") version "2.3.10"
-    id("androidx.room")
-    id("androidx.baselineprofile")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.sentry.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 
@@ -136,9 +136,7 @@ android {
 
 // Configure KSP to export Room schemas
 ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
-    arg("room.generateKotlin", "true")
 }
 
 sentry {
@@ -165,96 +163,92 @@ sentry {
     telemetry.set(false)
 }
 
-//noinspection UseTomlInstead
 dependencies {
     // AndroidX Core & Lifecycle
-    implementation("androidx.activity:activity-compose:1.13.0")
-    implementation("androidx.browser:browser:1.10.0")
-    implementation("androidx.core:core-ktx:1.19.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
-    implementation("androidx.lifecycle:lifecycle-process:2.11.0")
-    implementation("androidx.navigation:navigation-compose:2.9.8")
-    implementation("androidx.work:work-runtime-ktx:2.11.2")
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.browser)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.runtime.process)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Paging: the article list is read a page at a time rather than as one list in memory.
-    implementation("androidx.paging:paging-runtime-ktx:3.5.1")
-    implementation("androidx.paging:paging-compose:3.5.1")
-    implementation("androidx.room:room-paging:${rootProject.extra["roomVersion"]}")
+    implementation(libs.androidx.paging.runtime.ktx)
+    implementation(libs.androidx.paging.compose)
+    implementation(libs.androidx.room.paging)
 
     // Installs the shipped ART profile on first run; without it the baseline profile is inert.
-    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    implementation(libs.androidx.profileinstaller)
     baselineProfile(project(":baselineprofile"))
 
     // Compose BOM and related libraries
-    implementation(platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}"))
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
-    // material3 no longer brings the icons along and the BOM stopped managing
-    // them, so the version is pinned by hand. 1.7.8 is the last release there
-    // will ever be; the way out is redrawing them as Material Symbols vectors.
-    implementation("androidx.compose.material:material-icons-core:1.7.8")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
 
     // Room Database
-    implementation("androidx.room:room-ktx:${rootProject.extra["roomVersion"]}")
-    implementation("androidx.room:room-runtime:${rootProject.extra["roomVersion"]}")
-    ksp("androidx.room:room-compiler:${rootProject.extra["roomVersion"]}")
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
 
     // Networking
-    implementation("com.squareup.okhttp3:okhttp:5.4.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:5.4.0")
-    implementation("com.squareup.retrofit2:converter-moshi:3.0.0")
-    implementation("com.squareup.retrofit2:retrofit:3.0.0")
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.retrofit.converter.moshi)
+    implementation(libs.retrofit)
 
     // JSON Processing
-    implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
-    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
+    implementation(libs.moshi.kotlin)
+    ksp(libs.moshi.kotlin.codegen)
 
     // Error reporting without the optional NDK and session-replay native modules.
-    implementation("io.sentry:sentry-android-core:8.53.0")
+    implementation(libs.sentry.android.core)
 
     // Dependency Injection (Koin)
-    implementation(platform("io.insert-koin:koin-bom:4.2.2"))
-    implementation("io.insert-koin:koin-android")
-    implementation("io.insert-koin:koin-androidx-compose-navigation")
-    implementation("io.insert-koin:koin-androidx-workmanager")
+    implementation(platform(libs.koin.bom))
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose.navigation)
+    implementation(libs.koin.androidx.workmanager)
 
     // Image Loading (Coil 3)
-    implementation("io.coil-kt.coil3:coil-compose:3.5.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation(libs.coroutines.android)
 
     // HTML Parsing
-    implementation("org.jsoup:jsoup:1.23.1")
-    implementation("org.apache.commons:commons-compress:1.28.0")
+    implementation(libs.jsoup)
+    implementation(libs.commons.compress)
 
     // On-device speech synthesis
     implementation(files("libs/sherpa-onnx-1.13.4-arm64.aar"))
 
     // Testing - JUnit
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
 
     // Testing - Android
-    androidTestImplementation("androidx.test.ext:junit:1.3.0")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso.core)
 
     // Testing - Compose
-    androidTestImplementation(platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}"))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 
     // Testing - Architecture
-    testImplementation("com.tngtech.archunit:archunit:1.5.0")
-    testImplementation("com.tngtech.archunit:archunit-junit4:1.5.0")
+    testImplementation(libs.archunit)
+    testImplementation(libs.archunit.junit4)
 
     // MockK for mocking in unit tests
-    testImplementation("io.mockk:mockk:1.14.11")
+    testImplementation(libs.mockk)
 
     // Debug Tools
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }
