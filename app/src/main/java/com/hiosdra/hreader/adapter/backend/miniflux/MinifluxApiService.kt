@@ -1,7 +1,6 @@
 package com.hiosdra.hreader.adapter.backend.miniflux
 
 import com.hiosdra.hreader.adapter.backend.miniflux.dto.CreateFeedRequest
-import com.hiosdra.hreader.adapter.backend.miniflux.dto.CreateFeedResponse
 import com.hiosdra.hreader.adapter.backend.miniflux.dto.DiscoverRequest
 import com.hiosdra.hreader.adapter.backend.miniflux.dto.DiscoverResponse
 import com.hiosdra.hreader.adapter.backend.miniflux.dto.FeedCountersResponse
@@ -46,7 +45,7 @@ interface MinifluxApiService {
     @POST("v1/feeds")
     suspend fun createFeed(
         @Body request: CreateFeedRequest
-    ): CreateFeedResponse
+    )
 
     @DELETE("v1/feeds/{feedId}")
     suspend fun deleteFeed(

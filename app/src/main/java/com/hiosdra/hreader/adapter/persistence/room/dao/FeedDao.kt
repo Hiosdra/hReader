@@ -30,6 +30,9 @@ interface FeedDao {
     @Query("DELETE FROM feeds WHERE id = :feedId")
     suspend fun deleteById(feedId: Long)
 
+    @Query("DELETE FROM feeds WHERE id IN (:feedIds)")
+    suspend fun deleteByIds(feedIds: List<Long>)
+
     @Query("DELETE FROM feeds")
     suspend fun clearAll()
 }

@@ -61,7 +61,7 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
 
     override suspend fun getFeeds(): List<Feed> = withRetries { fetchFeeds() }
 
-    override suspend fun verifyConnection(): Int = fetchFeeds().size
+    override suspend fun verifyConnection(): Int = withRetries { fetchFeeds().size }
 
     override suspend fun getUnreadCounts(): Map<Long, Int> = withRetries {
         apiService.getFeedCounters().unreads.mapKeys { it.key.toLong() }

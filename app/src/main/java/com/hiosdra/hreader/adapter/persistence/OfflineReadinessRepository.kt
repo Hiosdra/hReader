@@ -20,68 +20,64 @@ class OfflineReadinessRepository(
     private val articlePageSnapshotDao: ArticlePageSnapshotDao,
     private val preferencesManager: AppPreferences
 ) : OfflineReadinessStore {
-    override fun observe(): Flow<OfflineReadiness> = combine(
+    private val articleReadiness = combine(
         articleDao.observeArticleCount(),
         articleDao.observeUnreadCount(),
         articleDao.observeBacklogCount(),
         articleDao.observeOfflineTargetCount()
-    ) { articles, unread, backlog, target ->
-        OfflineBase(articles, unread, backlog, target)
-    }.combine(
-        combine(
-            articleContentDao.observeOfflineContentCount(ArticleContentSource.FEED_FALLBACK),
-            articleContentDao.observeOfflineContentCount(ArticleContentSource.FULL),
-            ::Pair
-        ),
-        ::Pair
-    ).combine(
-        combine(
-            articleImageDao.observeImageCount(),
-            articleImageDao.observeImageBytes(),
-            articleImageDao.observeOfflineExpectedImageCount(),
-            articleImageDao.observeOfflineStoredExpectedImageCount()
-        ) { imageCount, imageBytes, expected, storedExpected ->
-            ImageReadiness(imageCount, imageBytes, expected, storedExpected)
-        }
-    ) { baseAndContent, images ->
-        val (base, content) = baseAndContent
-        ReadinessBase(
-            articleCount = base.articleCount,
-            unreadCount = base.unreadCount,
-            backlogCount = base.backlogCount,
-            storedContentCount = content.first + content.second,
+    ) { articleCount, unreadCount, backlogCount, offlineTargetCount ->
+        ArticleReadiness(articleCount, unreadCount, backlogCount, offlineTargetCount)
+    }
+
+    private val contentReadiness = combine(
+        articleContentDao.observeOfflineContentCount(ArticleContentSource.FEED_FALLBACK),
+        articleContentDao.observeOfflineContentCount(ArticleContentSource.FULL)
+    ) { feedContentCount, fullContentCount ->
+        ContentReadiness(feedContentCount, fullContentCount)
+    }
+
+    private val imageReadiness = combine(
+        articleImageDao.observeImageCount(),
+        articleImageDao.observeImageBytes(),
+        articleImageDao.observeOfflineExpectedImageCount(),
+        articleImageDao.observeOfflineStoredExpectedImageCount()
+    ) { imageCount, imageBytes, expectedImageCount, storedExpectedImageCount ->
+        ImageReadiness(imageCount, imageBytes, expectedImageCount, storedExpectedImageCount)
+    }
+
+    override fun observe(): Flow<OfflineReadiness> = combine(
+        articleReadiness,
+        contentReadiness,
+        imageReadiness,
+        articlePageSnapshotDao.observeOfflineCompleteCount(),
+        preferencesManager.observeLastSyncTimestamp()
+    ) { articles, content, images, storedFullPageCount, lastSync ->
+        OfflineReadiness(
+            articleCount = articles.articleCount,
+            unreadCount = articles.unreadCount,
+            backlogCount = articles.backlogCount,
+            storedContentCount = content.feedContentCount + content.fullContentCount,
             storedImageCount = images.imageCount,
             storedImageBytes = images.imageBytes,
-            offlineTargetCount = base.offlineTargetCount,
-            storedFullContentCount = content.second,
+            offlineTargetCount = articles.offlineTargetCount,
+            storedFullContentCount = content.fullContentCount,
             expectedImageCount = images.expectedImageCount,
-            storedExpectedImageCount = images.storedExpectedImageCount
+            storedExpectedImageCount = images.storedExpectedImageCount,
+            storedFullPageCount = storedFullPageCount,
+            lastSyncAt = lastSync.takeIf { it > 0 }?.let(Instant::ofEpochMilli)
         )
-    }.combine(articlePageSnapshotDao.observeOfflineCompleteCount()) { readiness, storedFullPageCount ->
-        readiness.copy(storedFullPageCount = storedFullPageCount)
-    }.combine(preferencesManager.observeLastSyncTimestamp()) { readiness, lastSync ->
-        readiness.toOfflineReadiness(lastSync)
     }.distinctUntilChanged()
 
-    private data class OfflineBase(
+    private data class ArticleReadiness(
         val articleCount: Int,
         val unreadCount: Int,
         val backlogCount: Int,
         val offlineTargetCount: Int
     )
 
-    private data class ReadinessBase(
-        val articleCount: Int,
-        val unreadCount: Int,
-        val backlogCount: Int,
-        val storedContentCount: Int,
-        val storedImageCount: Int,
-        val storedImageBytes: Long,
-        val offlineTargetCount: Int,
-        val storedFullContentCount: Int,
-        val expectedImageCount: Int,
-        val storedExpectedImageCount: Int,
-        val storedFullPageCount: Int = 0
+    private data class ContentReadiness(
+        val feedContentCount: Int,
+        val fullContentCount: Int
     )
 
     private data class ImageReadiness(
@@ -89,20 +85,5 @@ class OfflineReadinessRepository(
         val imageBytes: Long,
         val expectedImageCount: Int,
         val storedExpectedImageCount: Int
-    )
-
-    private fun ReadinessBase.toOfflineReadiness(lastSync: Long): OfflineReadiness = OfflineReadiness(
-        articleCount = articleCount,
-        unreadCount = unreadCount,
-        backlogCount = backlogCount,
-        storedContentCount = storedContentCount,
-        storedImageCount = storedImageCount,
-        storedImageBytes = storedImageBytes,
-        offlineTargetCount = offlineTargetCount,
-        storedFullContentCount = storedFullContentCount,
-        expectedImageCount = expectedImageCount,
-        storedExpectedImageCount = storedExpectedImageCount,
-        storedFullPageCount = storedFullPageCount,
-        lastSyncAt = lastSync.takeIf { it > 0 }?.let(Instant::ofEpochMilli)
     )
 }

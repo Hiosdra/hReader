@@ -15,6 +15,8 @@ import com.hiosdra.hreader.core.application.feeds.OpmlImportResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 
+private const val DELETE_FEED_CHUNK = 500
+
 class FeedRepository(
     private val backend: FeedBackend,
     private val feedDao: FeedDao,
@@ -34,12 +36,13 @@ class FeedRepository(
     override suspend fun refreshFeeds(): List<Feed> {
         val feeds = backend.getFeeds()
         val incoming = feeds.map { it.toFeedEntity() }
-        val staleIds = feedDao.getAllIds().filterNot { id -> incoming.any { it.id == id } }
+        val incomingIds = incoming.mapTo(hashSetOf()) { it.id }
+        val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
         db.withTransaction {
             if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
-            staleIds.forEach { feedId ->
-                articleDao.deleteByFeedId(feedId)
-                feedDao.deleteById(feedId)
+            staleIds.chunked(DELETE_FEED_CHUNK).forEach { feedIds ->
+                articleDao.deleteByFeedIds(feedIds)
+                feedDao.deleteByIds(feedIds)
             }
         }
         return feeds
@@ -96,7 +99,10 @@ class FeedRepository(
                 failed += feed.feedUrl
             }
         }
-        if (added > 0) runCatching { refreshFeeds() }
+        if (added > 0) {
+            runCatching { refreshFeeds() }
+                .onFailure { if (it is CancellationException) throw it }
+        }
         return OpmlImportResult(added = added, skipped = skipped, failed = failed)
     }
 }
