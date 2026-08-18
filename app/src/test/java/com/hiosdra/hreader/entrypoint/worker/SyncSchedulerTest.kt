@@ -70,7 +70,6 @@ class SyncSchedulerTest {
         assertNotNull(scheduler.prepareForOffline())
 
         assertTrue(request.captured.tags.contains("OfflinePreparation"))
-        verify { workManager.cancelUniqueWork("RequestedSync") }
         verify {
             workManager.beginUniqueWork(
                 "SyncPipeline",
@@ -80,6 +79,15 @@ class SyncSchedulerTest {
         }
         verify(exactly = 1) { workContinuation.then(any<OneTimeWorkRequest>()) }
         assertTrue(request.captured.tags.none { it == "FullOfflinePreparation" })
+    }
+
+    @Test
+    fun cancelAllSync_cancelsTheActiveWorkOnly() {
+        scheduler.cancelAllSync()
+
+        verify { workManager.cancelUniqueWork("ContentSyncWorker") }
+        verify { workManager.cancelUniqueWork("SyncPipeline") }
+        verify(exactly = 2) { workManager.cancelUniqueWork(any()) }
     }
 
     @Test
