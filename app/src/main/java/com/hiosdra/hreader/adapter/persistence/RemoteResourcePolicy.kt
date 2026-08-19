@@ -16,8 +16,7 @@ class RemoteResourcePolicy(
         allowedHosts = {
             runCatching {
                 val backendType = preferences.getBackendType()
-                URI(preferences.getServerUrl(backendType)).host
-                    ?.lowercase()
+                normalizedConfiguredHost(preferences.getServerUrl(backendType))
                     ?.let(::setOf)
                     ?: emptySet()
             }.getOrDefault(emptySet())
@@ -71,4 +70,15 @@ class RemoteResourcePolicy(
     private companion object {
         val HTTP_SCHEMES = setOf("http", "https")
     }
+}
+
+internal fun normalizedConfiguredHost(serverUrl: String): String? {
+    val trimmed = serverUrl.trim()
+    if (trimmed.isEmpty()) return null
+    val absolute = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        trimmed
+    } else {
+        "https://$trimmed"
+    }
+    return runCatching { URI(absolute).host?.lowercase() }.getOrNull()
 }
