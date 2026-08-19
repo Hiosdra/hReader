@@ -7,4 +7,6 @@ interface AppPreferences :
     SentryPreferences,
     PerformancePreferences,
     SyncPreferences,
-    TtsPreferences
+    TtsPreferences {
+    suspend fun awaitReady() = Unit
+}

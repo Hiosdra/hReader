@@ -26,10 +26,10 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -44,6 +44,11 @@ class PreferencesManager(context: Context) : AppPreferences {
     private val ready = CompletableDeferred<Unit>()
     private val preferencesWriteMutex = Mutex()
     private val secretsWriteMutex = Mutex()
+    private val stateLock = Any()
+    private val pendingPreferenceUpdates = mutableListOf<(PreferenceState) -> PreferenceState>()
+    private val pendingSecretUpdates = mutableListOf<(SecretState) -> SecretState>()
+    private var preferenceStateLoaded = false
+    private var secretStateLoaded = false
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -76,8 +81,24 @@ class PreferencesManager(context: Context) : AppPreferences {
 
         scope.launch {
             runCatching {
-                preferenceState.set(preferencesDataStore.data.first().toPreferenceState())
-                secretState.set(secretDataStore.data.first().toSecretState())
+                val loadedPreferenceState = preferencesDataStore.data.first().toPreferenceState()
+                val loadedSecretState = secretDataStore.data.first().toSecretState()
+                synchronized(stateLock) {
+                    preferenceState.set(
+                        pendingPreferenceUpdates.fold(loadedPreferenceState) { state, update ->
+                            update(state)
+                        }
+                    )
+                    secretState.set(
+                        pendingSecretUpdates.fold(loadedSecretState) { state, update ->
+                            update(state)
+                        }
+                    )
+                    pendingPreferenceUpdates.clear()
+                    pendingSecretUpdates.clear()
+                    preferenceStateLoaded = true
+                    secretStateLoaded = true
+                }
             }.onSuccess {
                 ready.complete(Unit)
             }.onFailure { failure ->
@@ -86,12 +107,26 @@ class PreferencesManager(context: Context) : AppPreferences {
         }
     }
 
-    suspend fun awaitReady() = ready.await()
+    override suspend fun awaitReady() = ready.await()
+
+    private fun updatePreferenceState(update: (PreferenceState) -> PreferenceState) {
+        synchronized(stateLock) {
+            preferenceState.set(update(preferenceState.get()))
+            if (!preferenceStateLoaded) pendingPreferenceUpdates += update
+        }
+    }
+
+    private fun updateSecretState(update: (SecretState) -> SecretState) {
+        synchronized(stateLock) {
+            secretState.set(update(secretState.get()))
+            if (!secretStateLoaded) pendingSecretUpdates += update
+        }
+    }
 
     override fun getBackendType(): BackendType = preferenceState.get().backendType
 
     override fun setBackendType(backendType: BackendType) {
-        preferenceState.updateAndGet { it.copy(backendType = backendType) }
+        updatePreferenceState { it.copy(backendType = backendType) }
         writePreferences { this[backendTypeKey] = backendType.name }
     }
 
@@ -101,7 +136,7 @@ class PreferencesManager(context: Context) : AppPreferences {
     }
 
     override fun setServerUrl(backendType: BackendType, url: String) {
-        preferenceState.updateAndGet { state ->
+        updatePreferenceState { state ->
             when (backendType) {
                 BackendType.FRESHRSS -> state.copy(freshRssServerUrl = url)
                 BackendType.MINIFLUX -> state.copy(minifluxServerUrl = url)
@@ -116,7 +151,7 @@ class PreferencesManager(context: Context) : AppPreferences {
     }
 
     override fun setBackendSecret(backendType: BackendType, secret: String) {
-        secretState.updateAndGet { state ->
+        updateSecretState { state ->
             when (backendType) {
                 BackendType.FRESHRSS -> state.copy(freshRssApiPassword = secret)
                 BackendType.MINIFLUX -> state.copy(minifluxApiToken = secret)
@@ -128,7 +163,7 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getFreshRssUsername(): String = secretState.get().freshRssUsername
 
     override fun setFreshRssUsername(username: String) {
-        secretState.updateAndGet { it.copy(freshRssUsername = username) }
+        updateSecretState { it.copy(freshRssUsername = username) }
         writeSecrets { this[freshRssUsernameKey] = username }
     }
 
@@ -141,28 +176,28 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getOpenRouterApiKey(): String = secretState.get().openRouterApiKey
 
     override fun setOpenRouterApiKey(apiKey: String) {
-        secretState.updateAndGet { it.copy(openRouterApiKey = apiKey) }
+        updateSecretState { it.copy(openRouterApiKey = apiKey) }
         writeSecrets { this[openRouterApiKey] = apiKey }
     }
 
     override fun getPaywallBypassMethod(): PaywallBypassMethod = preferenceState.get().paywallBypassMethod
 
     override fun setPaywallBypassMethod(method: PaywallBypassMethod) {
-        preferenceState.updateAndGet { it.copy(paywallBypassMethod = method) }
+        updatePreferenceState { it.copy(paywallBypassMethod = method) }
         writePreferences { this[paywallBypassMethodKey] = method.name }
     }
 
     override fun getBionicReadingEnabled(): Boolean = preferenceState.get().bionicReadingEnabled
 
     override fun setBionicReadingEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(bionicReadingEnabled = enabled) }
+        updatePreferenceState { it.copy(bionicReadingEnabled = enabled) }
         writePreferences { this[bionicReadingEnabledKey] = enabled }
     }
 
     override fun getSentryReportingEnabled(): Boolean = preferenceState.get().sentryReportingEnabled
 
     override fun setSentryReportingEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(sentryReportingEnabled = enabled) }
+        updatePreferenceState { it.copy(sentryReportingEnabled = enabled) }
         writePreferences { this[sentryReportingEnabledKey] = enabled }
     }
 
@@ -173,7 +208,7 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getAiModelId(): String = preferenceState.get().aiModelId
 
     override fun setAiModelId(modelId: String) {
-        preferenceState.updateAndGet { it.copy(aiModelId = modelId) }
+        updatePreferenceState { it.copy(aiModelId = modelId) }
         writePreferences { this[aiModelIdKey] = modelId }
     }
 
@@ -184,21 +219,21 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getGemmaBackend(): GemmaBackend = preferenceState.get().gemmaBackend
 
     override fun setGemmaBackend(backend: GemmaBackend) {
-        preferenceState.updateAndGet { it.copy(gemmaBackend = backend) }
+        updatePreferenceState { it.copy(gemmaBackend = backend) }
         writePreferences { this[gemmaBackendKey] = backend.name }
     }
 
     override fun getLastSyncTimestamp(): Long = preferenceState.get().lastSyncTimestamp
 
     override fun setLastSyncTimestamp(timestamp: Long) {
-        preferenceState.updateAndGet { it.copy(lastSyncTimestamp = timestamp) }
+        updatePreferenceState { it.copy(lastSyncTimestamp = timestamp) }
         writePreferences { this[lastSyncTimestampKey] = timestamp }
     }
 
     override fun getCacheOwnerKey(): String = preferenceState.get().cacheOwnerKey
 
     override fun setCacheOwnerKey(ownerKey: String) {
-        preferenceState.updateAndGet { it.copy(cacheOwnerKey = ownerKey) }
+        updatePreferenceState { it.copy(cacheOwnerKey = ownerKey) }
         writePreferences { this[cacheOwnerKey] = ownerKey }
     }
 
@@ -209,7 +244,7 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getLastFullSyncTimestamp(): Long = preferenceState.get().lastFullSyncTimestamp
 
     override fun setLastFullSyncTimestamp(timestamp: Long) {
-        preferenceState.updateAndGet { it.copy(lastFullSyncTimestamp = timestamp) }
+        updatePreferenceState { it.copy(lastFullSyncTimestamp = timestamp) }
         writePreferences { this[lastFullSyncTimestampKey] = timestamp }
     }
 
@@ -217,7 +252,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         preferenceState.get().syncPerformanceRecords
 
     override fun addSyncPerformanceRecord(record: SyncPerformanceRecord) {
-        preferenceState.updateAndGet { state ->
+        updatePreferenceState { state ->
             state.copy(syncPerformanceRecords = (listOf(record) + state.syncPerformanceRecords)
                 .take(MAX_PERFORMANCE_RECORDS))
         }
@@ -229,7 +264,7 @@ class PreferencesManager(context: Context) : AppPreferences {
     }
 
     override fun clearSyncPerformanceRecords() {
-        preferenceState.updateAndGet { it.copy(syncPerformanceRecords = emptyList()) }
+        updatePreferenceState { it.copy(syncPerformanceRecords = emptyList()) }
         writePreferences { remove(syncPerformanceRecordsKey) }
     }
 
@@ -237,14 +272,14 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     override fun setOfflineBacklogTarget(target: Int) {
         val normalizedTarget = target.coerceAtLeast(0)
-        preferenceState.updateAndGet { it.copy(offlineBacklogTarget = normalizedTarget) }
+        updatePreferenceState { it.copy(offlineBacklogTarget = normalizedTarget) }
         writePreferences { this[offlineBacklogTargetKey] = normalizedTarget }
     }
 
     override fun getImageDownloadEnabled(): Boolean = preferenceState.get().imageDownloadEnabled
 
     override fun setImageDownloadEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(imageDownloadEnabled = enabled) }
+        updatePreferenceState { it.copy(imageDownloadEnabled = enabled) }
         writePreferences { this[imageDownloadEnabledKey] = enabled }
     }
 
@@ -252,7 +287,7 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     override fun setImageCacheBudgetMegabytes(megabytes: Int) {
         val normalizedMegabytes = megabytes.coerceAtLeast(0)
-        preferenceState.updateAndGet { it.copy(imageCacheBudgetMegabytes = normalizedMegabytes) }
+        updatePreferenceState { it.copy(imageCacheBudgetMegabytes = normalizedMegabytes) }
         writePreferences { this[imageCacheBudgetMegabytesKey] = normalizedMegabytes }
     }
 
@@ -260,28 +295,28 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     override fun setSyncIntervalMinutes(minutes: Int) {
         val normalizedMinutes = minutes.coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES)
-        preferenceState.updateAndGet { it.copy(syncIntervalMinutes = normalizedMinutes) }
+        updatePreferenceState { it.copy(syncIntervalMinutes = normalizedMinutes) }
         writePreferences { this[syncIntervalMinutesKey] = normalizedMinutes }
     }
 
     override fun getSyncOnUnmeteredOnly(): Boolean = preferenceState.get().syncOnUnmeteredOnly
 
     override fun setSyncOnUnmeteredOnly(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(syncOnUnmeteredOnly = enabled) }
+        updatePreferenceState { it.copy(syncOnUnmeteredOnly = enabled) }
         writePreferences { this[syncOnUnmeteredOnlyKey] = enabled }
     }
 
     override fun getSyncWhileRoaming(): Boolean = preferenceState.get().syncWhileRoaming
 
     override fun setSyncWhileRoaming(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(syncWhileRoaming = enabled) }
+        updatePreferenceState { it.copy(syncWhileRoaming = enabled) }
         writePreferences { this[syncWhileRoamingKey] = enabled }
     }
 
     override fun getQuietHoursEnabled(): Boolean = preferenceState.get().quietHoursEnabled
 
     override fun setQuietHoursEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(quietHoursEnabled = enabled) }
+        updatePreferenceState { it.copy(quietHoursEnabled = enabled) }
         writePreferences { this[quietHoursEnabledKey] = enabled }
     }
 
@@ -292,7 +327,7 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun setQuietHours(startHour: Int, endHour: Int) {
         val normalizedStartHour = startHour.coerceIn(0, 23)
         val normalizedEndHour = endHour.coerceIn(0, 23)
-        preferenceState.updateAndGet {
+        updatePreferenceState {
             it.copy(
                 quietHoursStartHour = normalizedStartHour,
                 quietHoursEndHour = normalizedEndHour
@@ -307,21 +342,21 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getLastChainedSyncTimestamp(): Long = preferenceState.get().lastChainedSyncTimestamp
 
     override fun setLastChainedSyncTimestamp(timestamp: Long) {
-        preferenceState.updateAndGet { it.copy(lastChainedSyncTimestamp = timestamp) }
+        updatePreferenceState { it.copy(lastChainedSyncTimestamp = timestamp) }
         writePreferences { this[lastChainedSyncTimestampKey] = timestamp }
     }
 
     override fun getCredibilityScoreEnabled(): Boolean = preferenceState.get().credibilityScoreEnabled
 
     override fun setCredibilityScoreEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(credibilityScoreEnabled = enabled) }
+        updatePreferenceState { it.copy(credibilityScoreEnabled = enabled) }
         writePreferences { this[credibilityScoreEnabledKey] = enabled }
     }
 
     override fun getTtsModel(): TtsModel = preferenceState.get().ttsModel
 
     override fun setTtsModel(model: TtsModel) {
-        preferenceState.updateAndGet { it.copy(ttsModel = model) }
+        updatePreferenceState { it.copy(ttsModel = model) }
         writePreferences { this[ttsModelKey] = model.name }
     }
 
@@ -332,7 +367,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         preferenceState.get().ttsLanguageOverrides
 
     override fun setTtsLanguageOverride(language: String, model: TtsModel?) {
-        preferenceState.updateAndGet { state ->
+        updatePreferenceState { state ->
             state.copy(ttsLanguageOverrides = state.ttsLanguageOverrides.updated(language, model))
         }
         writePreferences {
@@ -346,7 +381,7 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     override fun setTtsSpeed(speed: Float) {
         val normalizedSpeed = speed.coerceIn(0.7f, 1.4f)
-        preferenceState.updateAndGet { it.copy(ttsSpeed = normalizedSpeed) }
+        updatePreferenceState { it.copy(ttsSpeed = normalizedSpeed) }
         writePreferences { this[ttsSpeedKey] = normalizedSpeed }
     }
 
@@ -354,7 +389,7 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     override fun setTtsAdvancedSettings(settings: TtsAdvancedSettings) {
         val normalizedSettings = settings.normalized()
-        preferenceState.updateAndGet { it.copy(ttsAdvancedSettings = normalizedSettings) }
+        updatePreferenceState { it.copy(ttsAdvancedSettings = normalizedSettings) }
         writePreferences {
             this[ttsThreadsKey] = normalizedSettings.numThreads
             this[ttsSilenceScaleKey] = normalizedSettings.silenceScale
@@ -368,12 +403,14 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     private fun writePreferences(transform: suspend MutablePreferences.() -> Unit) {
         scope.launch {
+            ready.await()
             preferencesWriteMutex.withLock { preferencesDataStore.edit(transform) }
         }
     }
 
     private fun writeSecrets(transform: suspend MutablePreferences.() -> Unit) {
         scope.launch {
+            ready.await()
             secretsWriteMutex.withLock { secretDataStore.edit(transform) }
         }
     }
