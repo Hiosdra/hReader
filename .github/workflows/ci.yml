@@ -8,6 +8,9 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,6 +42,8 @@ jobs:
   debug_apk:
     name: Debug APK
     runs-on: ubuntu-latest
+    outputs:
+      artifact_url: ${{ steps.upload_debug_apk.outputs.artifact-url }}
 
     steps:
       - name: Checkout repository
@@ -92,12 +97,72 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk artifacts/hreader-debug.apk
 
       - name: Upload debug APK
+        id: upload_debug_apk
         uses: actions/upload-artifact@v7
         with:
           path: artifacts/hreader-debug.apk
           archive: false
           if-no-files-found: error
           retention-days: 7
+
+  update_debug_apk_comment:
+    name: Update debug APK PR comment
+    needs: debug_apk
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: debug-apk-comment-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Update PR comment with debug APK
+        uses: actions/github-script@v9
+        env:
+          ARTIFACT_URL: ${{ needs.debug_apk.outputs.artifact_url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- hreader-debug-apk -->';
+            const body = [
+              marker,
+              '### Debug APK',
+              '',
+              `[Download the latest debug APK](${process.env.ARTIFACT_URL})`,
+              '',
+              `Built by [CI run](${process.env.RUN_URL}).`,
+            ].join('\n');
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const existingComment = comments.find((comment) =>
+              comment.body?.includes(marker),
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
 
   release:
     needs: [build, debug_apk]
