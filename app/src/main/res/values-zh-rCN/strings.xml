@@ -196,7 +196,7 @@
     <string name="onboarding_description">hReader 会与你自己的 FreshRSS 或 Miniflux 实例同步。选择服务器类型，输入地址，然后粘贴来自 %2$s 的 %1$s。</string>
     <string name="onboarding_start_reading">开始阅读</string>
     <string name="onboarding_continue_without_testing">不测试，继续</string>
-    <string name="backend_freshrss">FreshRSS</string>
+    <string name="backend_freshrss">FreshRSS（实验性）</string>
     <string name="backend_miniflux">Miniflux</string>
     <string name="backend_freshrss_secret_label">API 密码</string>
     <string name="backend_freshrss_secret_hint">FreshRSS 中的个人资料 → API 管理</string>
