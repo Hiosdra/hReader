@@ -1,0 +1,123 @@
+version: 2
+
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "04:00"
+      timezone: "Europe/Warsaw"
+    groups:
+      androidx-testing:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "androidx.test:*"
+          - "androidx.benchmark:*"
+          - "androidx.compose.ui:ui-test*"
+      androidx-compose:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "androidx.compose:*"
+      androidx-room:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "androidx.room:*"
+      androidx-platform:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "androidx.activity:*"
+          - "androidx.browser:*"
+          - "androidx.core:*"
+          - "androidx.lifecycle:*"
+          - "androidx.navigation:*"
+          - "androidx.paging:*"
+          - "androidx.profileinstaller:*"
+          - "androidx.work:*"
+      build-tooling:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "com.android.tools.build:*"
+          - "org.jetbrains.kotlin:*"
+          - "com.google.devtools.ksp:*"
+          - "androidx.baselineprofile:*"
+      networking-serialization:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "com.squareup.okhttp3:*"
+          - "com.squareup.retrofit2:*"
+          - "com.squareup.moshi:*"
+      app-runtime:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "io.insert-koin:*"
+          - "io.coil-kt.coil3:*"
+          - "org.jetbrains.kotlinx:*"
+      observability:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "io.sentry:*"
+      test-quality:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "junit:*"
+          - "com.tngtech.archunit:*"
+          - "io.mockk:*"
+      content-archive:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "org.jsoup:*"
+          - "org.apache.commons:*"
+      other-gradle:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "04:00"
+      timezone: "Europe/Warsaw"
+    groups:
+      github-actions:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
