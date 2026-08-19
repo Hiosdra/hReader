@@ -21,8 +21,12 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.time.Instant
+import java.util.UUID
 
 class ArticleImageRepository(
     context: Context,
@@ -114,16 +118,20 @@ class ArticleImageRepository(
                     val imageId = generateImageId(entryId, imageUrl)
                     val extension = getFileExtension(contentType, imageUrl)
                     val target = File(imagesDir, "$imageId$extension")
-                    localFile = target
+                    val staging = File(imagesDir, ".$imageId-${UUID.randomUUID()}.tmp")
+                    localFile = staging
 
                     // Streamed with the cap applied as it goes. A response without a declared
                     // length — anything chunked, which is most CDNs — used to sail past the check
                     // above and be downloaded in full before its size could be objected to.
-                    val fileSize = copyAtMost(body.byteStream(), target, MAX_IMAGE_BYTES)
+                    val fileSize = copyAtMost(body.byteStream(), staging, MAX_IMAGE_BYTES)
                     if (fileSize == null) {
                         Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
                         return@withContext
                     }
+
+                    moveIntoCache(staging, target)
+                    localFile = target
 
                     val articleImage = ArticleImage(
                         id = imageId,
@@ -193,6 +201,23 @@ class ArticleImageRepository(
             }
         }
         return written
+    }
+
+    private fun moveIntoCache(staging: File, target: File) {
+        try {
+            Files.move(
+                staging.toPath(),
+                target.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING
+            )
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(
+                staging.toPath(),
+                target.toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+            )
+        }
     }
 
     /**
