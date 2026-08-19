@@ -58,20 +58,19 @@ import com.hiosdra.hreader.presentation.theme.sectionCardColors
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController? = null,
     onSignedOut: () -> Unit = {},
-    preferencesManager: AppPreferences = koinInject(),
-    errorReportingManager: ErrorReporter = koinInject(),
-    ttsModelManager: TtsModelGateway = koinInject(),
-    ttsModelDownloadScheduler: TtsModelDownloadRequester = koinInject(),
-    gemmaModelManager: GemmaModelGateway = koinInject(),
-    gemmaModelDownloadScheduler: GemmaModelDownloadRequester = koinInject(),
-    gemmaModelLifecycle: GemmaModelLifecycle = koinInject(),
+    preferencesManager: AppPreferences,
+    errorReportingManager: ErrorReporter,
+    ttsModelManager: TtsModelGateway,
+    ttsModelDownloadScheduler: TtsModelDownloadRequester,
+    gemmaModelManager: GemmaModelGateway,
+    gemmaModelDownloadScheduler: GemmaModelDownloadRequester,
+    gemmaModelLifecycle: GemmaModelLifecycle,
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()

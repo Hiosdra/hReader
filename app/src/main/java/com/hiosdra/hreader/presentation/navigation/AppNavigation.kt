@@ -19,6 +19,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hiosdra.hreader.presentation.article.ArticleScreen
+import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
+import com.hiosdra.hreader.core.application.port.out.ErrorReporter
+import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
+import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
+import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
+import com.hiosdra.hreader.core.application.port.out.PaywallBypass
+import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
+import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.presentation.feeds.FeedDetailScreen
 import com.hiosdra.hreader.presentation.feeds.FeedsViewModel
 import com.hiosdra.hreader.presentation.feeds.SubscriptionsDrawer
@@ -38,7 +46,15 @@ import org.koin.compose.koinInject
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     entryPoint: EntryPoint = EntryPoint.ArticleList,
-    preferencesManager: AppPreferences = koinInject()
+    preferencesManager: AppPreferences = koinInject(),
+    errorReporter: ErrorReporter = koinInject(),
+    ttsModelManager: TtsModelGateway = koinInject(),
+    ttsModelDownloadScheduler: TtsModelDownloadRequester = koinInject(),
+    gemmaModelManager: GemmaModelGateway = koinInject(),
+    gemmaModelDownloadScheduler: GemmaModelDownloadRequester = koinInject(),
+    gemmaModelLifecycle: GemmaModelLifecycle = koinInject(),
+    paywallBypass: PaywallBypass = koinInject(),
+    articleTtsPlayer: ArticleTtsPlayer = koinInject()
 ) {
     val configured = remember { preferencesManager.hasBackendCredentials() }
     val startDestination = remember(entryPoint) {
@@ -66,6 +82,7 @@ fun AppNavigation(
     ) {
         composable(Routes.SERVER_SETUP) {
             ServerSetupScreen(
+                errorReportingManager = errorReporter,
                 onSetupFinished = {
                     navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.SERVER_SETUP) { inclusive = true }
@@ -112,7 +129,10 @@ fun AppNavigation(
                 startArticleId = arguments?.getLong("startId") ?: 0L,
                 starredOnly = arguments?.getBoolean("starred") ?: false,
                 includeRead = arguments?.getBoolean("includeRead") ?: false,
-                sessionStartMillis = arguments?.getLong("session") ?: 0L
+                sessionStartMillis = arguments?.getLong("session") ?: 0L,
+                preferencesManager = preferencesManager,
+                paywallBypassService = paywallBypass,
+                ttsController = articleTtsPlayer
             )
         }
         composable(
@@ -131,6 +151,13 @@ fun AppNavigation(
         composable(Routes.SETTINGS) { _ ->
             SettingsScreen(
                 navController = navController,
+                preferencesManager = preferencesManager,
+                errorReportingManager = errorReporter,
+                ttsModelManager = ttsModelManager,
+                ttsModelDownloadScheduler = ttsModelDownloadScheduler,
+                gemmaModelManager = gemmaModelManager,
+                gemmaModelDownloadScheduler = gemmaModelDownloadScheduler,
+                gemmaModelLifecycle = gemmaModelLifecycle,
                 onSignedOut = {
                     navController.navigate(Routes.SERVER_SETUP) {
                         popUpTo(Routes.MAIN) { inclusive = true }
