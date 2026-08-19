@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.ai.openrouter
 import android.util.Log
 import com.hiosdra.hreader.adapter.ai.common.CredibilityParseException
 import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
+import com.hiosdra.hreader.adapter.ai.common.CredibilityReportFactory
 import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.core.domain.model.CredibilityConfidence
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
@@ -36,7 +37,8 @@ class ArticleAiServiceCredibilityTest {
         credibilityPromptBuilder = CredibilityPromptBuilder(Clock.systemDefaultZone()),
         credibilityResponseParser = CredibilityResponseParser(
             Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-        )
+        ),
+        credibilityReportFactory = CredibilityReportFactory(Clock.systemDefaultZone())
     )
 
     private val source = CredibilitySource(
