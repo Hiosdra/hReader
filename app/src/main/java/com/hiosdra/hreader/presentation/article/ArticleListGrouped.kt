@@ -4,9 +4,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.CircularProgressIndicator
@@ -16,6 +19,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +35,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -44,61 +50,92 @@ fun ArticleListGrouped(
     // place; the days are recomputed as pages arrive, and the keys keep positions steady.
     val loaded = items.itemSnapshotList.items
     val days = remember(loaded) { loaded.groupIntoDays() }
-
-    LazyColumn(
-        modifier = modifier.background(MaterialTheme.colorScheme.background),
-        state = listState
-    ) {
-        days.forEach { day ->
-            stickyHeader(key = "day-${day.date}") {
-                DayHeader(day.date)
+    val scrollProgress by remember(listState) {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val averageItemSizePx = if (visibleItems.isEmpty()) {
+                0
+            } else {
+                visibleItems.map { it.size }.average().roundToInt()
             }
-            items(
-                count = day.size,
-                key = { offset -> loaded[day.startIndex + offset].id }
-            ) { offset ->
-                val index = day.startIndex + offset
-                // Read through the pager rather than out of the snapshot: this is what tells it how
-                // far down the reader has got, and so when to fetch the next page.
-                val entry = items[index] ?: return@items
-                ArticleRow(
-                    entry = entry,
-                    onOpen = onOpen,
-                    onCheckedChange = onCheckedChange
-                )
+            articleListScrollProgress(
+                firstVisibleItemIndex = listState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
+                totalItemsCount = layoutInfo.totalItemsCount,
+                averageItemSizePx = averageItemSizePx,
+                viewportSizePx = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset,
+                isAtEnd = !listState.canScrollForward && listState.canScrollBackward
+            )
+        }
+    }
+    val isScrollable by remember(listState) {
+        derivedStateOf { listState.canScrollForward || listState.canScrollBackward }
+    }
+
+    Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState
+        ) {
+            days.forEach { day ->
+                stickyHeader(key = "day-${day.date}") {
+                    DayHeader(day.date)
+                }
+                items(
+                    count = day.size,
+                    key = { offset -> loaded[day.startIndex + offset].id }
+                ) { offset ->
+                    val index = day.startIndex + offset
+                    val entry = items[index] ?: return@items
+                    ArticleRow(
+                        entry = entry,
+                        onOpen = onOpen,
+                        onCheckedChange = onCheckedChange
+                    )
+                }
+            }
+            when (val append = items.loadState.append) {
+                is LoadState.Loading -> item(key = "append-spinner") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                is LoadState.Error -> item(key = "append-error") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.article_more_error),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        TextButton(onClick = { items.retry() }) { Text(stringResource(R.string.action_retry)) }
+                    }
+                }
+
+                else -> Unit
             }
         }
-        when (val append = items.loadState.append) {
-            is LoadState.Loading -> item(key = "append-spinner") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            // Without this the list simply stops, with no sign that more was meant to follow.
-            is LoadState.Error -> item(key = "append-error") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                    ) {
-                    Text(
-                        text = stringResource(R.string.article_more_error),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    TextButton(onClick = { items.retry() }) { Text(stringResource(R.string.action_retry)) }
-                }
-            }
-
-            else -> Unit
+        if (isScrollable) {
+            ScrollProgressIndicator(
+                progress = scrollProgress,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 4.dp, top = 8.dp, bottom = 8.dp)
+                    .fillMaxHeight()
+                    .width(4.dp)
+            )
         }
     }
 }

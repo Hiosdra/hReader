@@ -5,17 +5,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -113,6 +113,7 @@ internal fun ArticleContent(
     val safeWebContentHeightPx = safeArticleWebViewHeightPx(webContentHeightPx)
     val webViewHeight = with(LocalDensity.current) { safeWebContentHeightPx.toDp() }
     val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(webContentHeightPx)
+    val isScrollable = webViewNeedsInternalScroll || articleScrollState.maxValue > 0
     val scrollProgress by remember(articleScrollState, webViewNeedsInternalScroll) {
         derivedStateOf {
             if (webViewNeedsInternalScroll) {
@@ -243,16 +244,6 @@ internal fun ArticleContent(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (scrollProgress in 0.02f..0.98f) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = { scrollProgress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(3.dp)
-                                .clip(CircleShape)
-                        )
-                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     ArticleMetadata(
                         author = entry.author,
@@ -311,6 +302,16 @@ internal fun ArticleContent(
                         onImageLongClick = { url -> imageActionsUrl = url }
                     )
                 }
+            }
+            if (isScrollable) {
+                ScrollProgressIndicator(
+                    progress = scrollProgress,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 4.dp, top = 8.dp, bottom = 8.dp)
+                        .fillMaxHeight()
+                        .width(4.dp)
+                )
             }
         }
     }
