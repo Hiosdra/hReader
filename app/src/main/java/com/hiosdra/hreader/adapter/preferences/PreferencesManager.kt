@@ -29,16 +29,21 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class PreferencesManager(context: Context) : AppPreferences {
     private val applicationContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val ready = CompletableDeferred<Unit>()
+    private val preferencesWriteMutex = Mutex()
+    private val secretsWriteMutex = Mutex()
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -69,11 +74,19 @@ class PreferencesManager(context: Context) : AppPreferences {
         preferenceState = AtomicReference(PreferenceState())
         secretState = AtomicReference(SecretState())
 
-        runBlocking(Dispatchers.IO) {
-            preferenceState.set(preferencesDataStore.data.first().toPreferenceState())
-            secretState.set(secretDataStore.data.first().toSecretState())
+        scope.launch {
+            runCatching {
+                preferenceState.set(preferencesDataStore.data.first().toPreferenceState())
+                secretState.set(secretDataStore.data.first().toSecretState())
+            }.onSuccess {
+                ready.complete(Unit)
+            }.onFailure { failure ->
+                ready.completeExceptionally(failure)
+            }
         }
     }
+
+    suspend fun awaitReady() = ready.await()
 
     override fun getBackendType(): BackendType = preferenceState.get().backendType
 
@@ -354,11 +367,15 @@ class PreferencesManager(context: Context) : AppPreferences {
     }
 
     private fun writePreferences(transform: suspend MutablePreferences.() -> Unit) {
-        scope.launch { preferencesDataStore.edit(transform) }
+        scope.launch {
+            preferencesWriteMutex.withLock { preferencesDataStore.edit(transform) }
+        }
     }
 
     private fun writeSecrets(transform: suspend MutablePreferences.() -> Unit) {
-        scope.launch { secretDataStore.edit(transform) }
+        scope.launch {
+            secretsWriteMutex.withLock { secretDataStore.edit(transform) }
+        }
     }
 
     private fun Preferences.toPreferenceState() = PreferenceState(
