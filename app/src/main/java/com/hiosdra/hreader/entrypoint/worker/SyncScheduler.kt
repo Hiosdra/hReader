@@ -27,11 +27,11 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -226,15 +226,11 @@ class SyncScheduler(
     /** Stops everything in flight. What is queued has no account left to run against. */
     override suspend fun cancelAllSync() {
         listOf(CONTENT_SYNC_WORK, SYNC_PIPELINE_WORK).forEach { workName ->
-            runCatching { workManager.cancelUniqueWork(workName).await() }.getOrElse { return@forEach }
-            repeat(40) {
-                val infos = runCatching {
-                    withContext(Dispatchers.IO) {
-                        workManager.getWorkInfosForUniqueWork(workName).get()
-                    }
-                }.getOrElse { return@repeat }
-                if (infos.none { !it.state.isFinished }) return@forEach
-                delay(50)
+            workManager.cancelUniqueWork(workName).await()
+            withContext(Dispatchers.IO) {
+                workManager.getWorkInfosForUniqueWorkFlow(workName).first { infos ->
+                    infos.none { !it.state.isFinished }
+                }
             }
         }
     }

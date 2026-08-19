@@ -26,6 +26,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import java.util.UUID
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 
 @RunWith(JUnit4::class)
@@ -53,9 +54,7 @@ class SyncSchedulerTest {
         every { context.getString(any()) } returns "Sync"
         every { cancelOperation.result } returns completedFuture(Operation.SUCCESS)
         every { workManager.cancelUniqueWork(any()) } returns cancelOperation
-        every {
-            workManager.getWorkInfosForUniqueWork(any())
-        } returns completedFuture(emptyList<WorkInfo>())
+        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(emptyList())
         every {
             workManager.beginUniqueWork(
                 any<String>(),
