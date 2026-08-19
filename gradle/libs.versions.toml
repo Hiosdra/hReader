@@ -1,8 +1,8 @@
 [versions]
 agp = "9.3.1"
 kotlin = "2.4.10"
-ksp = "2.3.10"
-sentry-plugin = "6.16.0"
+ksp = "2.3.11"
+sentry-plugin = "6.19.0"
 room = "2.8.4"
 baseline-profile = "1.5.0-alpha07"
 compose-bom = "2026.06.01"
@@ -31,7 +31,7 @@ espresso = "3.7.0"
 archunit = "1.5.0"
 mockk = "1.14.11"
 litert-lm = "0.16.1"
-uiautomator = "2.3.0"
+uiautomator = "2.4.0"
 benchmark-macro = "1.5.0-alpha07"
 
 [libraries]
