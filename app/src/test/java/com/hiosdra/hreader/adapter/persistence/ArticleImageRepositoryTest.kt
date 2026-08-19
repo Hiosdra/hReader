@@ -37,13 +37,11 @@ class ArticleImageRepositoryTest {
         preferencesManager,
         RemoteResourcePolicy(allowedHosts = { setOf("example.com") })
     ) { path ->
-        println("fileExists called with: $path")
         path == "/tmp/image.jpg" || path == "/tmp/orphan.jpg"
     }
 
     @Test
     fun getLocalImagePath_returnsPath_whenImageExists() = runBlocking {
-        println("Running getLocalImagePath_returnsPath_whenImageExists")
         val entryId = 1L
         val imageUrl = "https://example.com/image.jpg"
         val localPath = "/tmp/image.jpg"
@@ -55,7 +53,6 @@ class ArticleImageRepositoryTest {
 
     @Test
     fun getLocalImagePath_returnsNull_whenImageDoesNotExist() = runBlocking {
-        println("Running getLocalImagePath_returnsNull_whenImageDoesNotExist")
         val entryId = 2L
         val imageUrl = "https://example.com/image2.jpg"
         coEvery { articleImageDao.getImageForArticleByUrl(entryId, imageUrl) } returns null
