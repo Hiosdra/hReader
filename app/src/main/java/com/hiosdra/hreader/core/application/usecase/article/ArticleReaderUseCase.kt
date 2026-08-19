@@ -5,6 +5,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.ArticleListWindow
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
@@ -41,7 +42,11 @@ class ArticleReaderUseCase(
 
     fun observeAiModelId(): Flow<String> = aiPreferences.observeAiModelId()
 
-    suspend fun getArticleIds(query: ArticleListQuery): List<Long> = articles.listIds(query)
+    suspend fun getArticleListWindow(
+        query: ArticleListQuery,
+        articleId: Long,
+        radius: Int
+    ): ArticleListWindow = articles.listWindow(query, articleId, radius)
 
     fun observeArticles(ids: List<Long>): Flow<List<Entry>> = articles.getArticlesByIds(ids)
 

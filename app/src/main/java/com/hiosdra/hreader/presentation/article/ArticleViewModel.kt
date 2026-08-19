@@ -400,28 +400,26 @@ class ArticleViewModel(
         }
         listResolutionJob = viewModelScope.launch {
             try {
-                // The same visibility rule the list used, resolved to ids in one statement rather
-                // than by loading the articles and filtering them here.
-                val listed = reader.getArticleIds(
+                val window = reader.getArticleListWindow(
                     ArticleListQuery(
                         feedId = feedId,
                         starredOnly = starredOnly,
                         includeRead = includeRead,
                         sessionStart = Instant.ofEpochMilli(sessionStartMillis)
-                    )
+                    ),
+                    articleId = startArticleId,
+                    radius = PAGER_WINDOW_RADIUS
                 )
-                val ids = listed.windowAround(startArticleId).ifEmpty { listOf(startArticleId) }
-                val startIndex = ids.indexOf(startArticleId).coerceAtLeast(0)
-                val listSize = listed.size.coerceAtLeast(ids.size)
-                val listWindowStartIndex = listed.indexOf(ids.first()).coerceAtLeast(0)
-                val currentListPosition = (listWindowStartIndex + startIndex + 1)
-                    .coerceIn(1, listSize)
+                val ids = window.ids.ifEmpty { listOf(startArticleId) }
+                val startIndex = window.currentIndex.coerceIn(0, ids.lastIndex.coerceAtLeast(0))
+                val currentListPosition = (window.windowStartIndex + startIndex + 1)
+                    .coerceIn(1, window.totalCount.coerceAtLeast(1))
                 _uiState.update {
                     it.copy(
                         currentIndex = startIndex,
                         currentListPosition = currentListPosition,
-                        listSize = listSize,
-                        listWindowStartIndex = listWindowStartIndex
+                        listSize = window.totalCount.coerceAtLeast(ids.size),
+                        listWindowStartIndex = window.windowStartIndex
                     )
                 }
                 listResolved = true
@@ -448,15 +446,6 @@ class ArticleViewModel(
             }
             loadAround(_uiState.value.currentIndex)
         }
-    }
-
-    /** [PAGER_WINDOW_RADIUS] articles either side of [articleId], clamped to what is there. */
-    private fun List<Long>.windowAround(articleId: Long): List<Long> {
-        if (size <= PAGER_WINDOW_RADIUS * 2) return this
-        val focus = indexOf(articleId).coerceAtLeast(0)
-        val from = (focus - PAGER_WINDOW_RADIUS).coerceIn(0, size - PAGER_WINDOW_RADIUS * 2)
-        // Copied rather than a view: a sub-list would keep the whole id list alive behind it.
-        return subList(from, from + PAGER_WINDOW_RADIUS * 2).toList()
     }
 
     fun setStarred(entryId: Long, starred: Boolean) {

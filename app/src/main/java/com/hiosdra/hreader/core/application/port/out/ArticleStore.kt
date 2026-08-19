@@ -10,9 +10,16 @@ import com.hiosdra.hreader.core.domain.model.Feed
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
+data class ArticleListWindow(
+    val ids: List<Long>,
+    val totalCount: Int,
+    val windowStartIndex: Int,
+    val currentIndex: Int
+)
+
 interface ArticleStore {
     fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListEntry>>
-    suspend fun listIds(query: ArticleListQuery): List<Long>
+    suspend fun listWindow(query: ArticleListQuery, articleId: Long, radius: Int): ArticleListWindow
     suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long>
     fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int>
     fun observeReadCount(feedId: Long?, starredOnly: Boolean): Flow<Int>

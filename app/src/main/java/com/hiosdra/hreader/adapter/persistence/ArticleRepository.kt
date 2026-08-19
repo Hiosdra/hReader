@@ -19,6 +19,7 @@ import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleListWindow
 import com.hiosdra.hreader.core.application.port.out.ENTRIES_PAGE_LIMIT
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
@@ -117,18 +118,48 @@ class ArticleRepository(
         }.flow.map { page -> page.map { it.toListEntry() } }
     }
 
-    /**
-     * The same list as ids, for the reader to page through. A search is deliberately not applied:
-     * opening an article from a search result and swiping on should walk the feed, not the handful
-     * of matches, and a query that changes underneath would resize the pager mid-read.
-     */
-    override suspend fun listIds(query: ArticleListQuery): List<Long> =
-        articleDao.getListIds(
+    override suspend fun listWindow(
+        query: ArticleListQuery,
+        articleId: Long,
+        radius: Int
+    ): ArticleListWindow {
+        val totalCount = articleDao.countList(
             feedId = query.feedId,
             starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
-        ).toArticleIds("the reader's list")
+        )
+        if (totalCount == 0) {
+            return ArticleListWindow(emptyList(), 0, 0, 0)
+        }
+
+        val publishedAt = articleDao.getPublishedAt(articleId.toString())
+        val currentPosition = publishedAt?.let {
+            articleDao.countArticlesBefore(
+                articleId = articleId.toString(),
+                publishedAt = it,
+                feedId = query.feedId,
+                starredOnly = query.starredOnly,
+                includeRead = query.includeRead,
+                sessionStart = query.sessionStart
+            )
+        }?.coerceIn(0, (totalCount - 1).coerceAtLeast(0)) ?: 0
+        val windowStart = (currentPosition - radius).coerceAtLeast(0)
+        val ids = articleDao.getListWindow(
+            feedId = query.feedId,
+            starredOnly = query.starredOnly,
+            includeRead = query.includeRead,
+            sessionStart = query.sessionStart,
+            limit = (radius * 2 + 1).coerceAtLeast(1),
+            offset = windowStart
+        ).toArticleIds("the reader's window")
+        return ArticleListWindow(
+            ids = ids,
+            totalCount = totalCount,
+            windowStartIndex = windowStart,
+            currentIndex = (currentPosition - windowStart).coerceIn(0, (ids.size - 1).coerceAtLeast(0))
+        )
+    }
 
     override suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
         articleDao.getUnreadIds(feedId, starredOnly).toArticleIds("the unread set")
@@ -473,4 +504,3 @@ private fun List<String>.toArticleIds(what: String): List<Long> {
     if (ids.size != size) Log.w(TAG, "Ignored ${size - ids.size} unreadable article ids in $what")
     return ids
 }
-

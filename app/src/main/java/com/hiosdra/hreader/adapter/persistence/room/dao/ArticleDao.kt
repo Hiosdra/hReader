@@ -88,18 +88,44 @@ interface ArticleDao {
         readStatus: ArticleStatus = ArticleStatus.READ
     ): PagingSource<Int, ArticleListItem>
 
-    /**
-     * The ids of the same list, in the same order, for the reader to page through. Loading the rows
-     * would pull down every column of every article to use one of them.
-     */
-    @Query(
-        "SELECT a.id $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER $LIST_ORDER"
-    )
-    suspend fun getListIds(
+    @Query("SELECT COUNT(*) $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER")
+    suspend fun countList(
         feedId: Long?,
         starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): Int
+
+    @Query(
+        "SELECT COUNT(*) $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+            "AND (a.publishedAt < :publishedAt OR " +
+            "(a.publishedAt = :publishedAt AND a.id < :articleId))"
+    )
+    suspend fun countArticlesBefore(
+        articleId: String,
+        publishedAt: Instant,
+        feedId: Long?,
+        starredOnly: Boolean,
+        includeRead: Boolean,
+        sessionStart: Instant,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): Int
+
+    @Query("SELECT publishedAt FROM articles WHERE id = :articleId")
+    suspend fun getPublishedAt(articleId: String): Instant?
+
+    @Query(
+        "SELECT a.id $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+            "$LIST_ORDER LIMIT :limit OFFSET :offset"
+    )
+    suspend fun getListWindow(
+        feedId: Long?,
+        starredOnly: Boolean,
+        includeRead: Boolean,
+        sessionStart: Instant,
+        limit: Int,
+        offset: Int,
         readStatus: ArticleStatus = ArticleStatus.READ
     ): List<String>
 
