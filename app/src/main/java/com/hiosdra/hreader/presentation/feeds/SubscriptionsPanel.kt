@@ -64,9 +64,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.getKoin
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import kotlin.text.Charsets.UTF_8
 
 /** Exporters disagree on the OPML media type, so the picker cannot be narrowed to one. */
 private const val OPML_MIME_TYPE = "text/x-opml"
+private const val MAX_OPML_BYTES = 100L * 1024L * 1024L
 
 @Composable
 fun SubscriptionsPanel(
@@ -101,7 +105,7 @@ fun SubscriptionsPanel(
         scope.launch {
             val xml = withContext(Dispatchers.IO) {
                 runCatchingCancellable {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    context.contentResolver.openInputStream(uri)?.use { it.readBoundedText(MAX_OPML_BYTES) }
                 }.getOrNull()
             }
             if (xml == null) viewModel.reportUnreadableFile() else viewModel.importOpml(xml)
@@ -346,6 +350,20 @@ private suspend fun writeTo(context: android.content.Context, uri: Uri, opml: St
             context.contentResolver.openOutputStream(uri)?.use { it.write(opml.toByteArray()) }
         }.isSuccess
     }
+
+private fun java.io.InputStream.readBoundedText(maxBytes: Long): String {
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    var total = 0L
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        total += count
+        if (total > maxBytes) throw IOException("OPML file exceeds the ${maxBytes}-byte limit")
+        output.write(buffer, 0, count)
+    }
+    return output.toByteArray().toString(UTF_8)
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
