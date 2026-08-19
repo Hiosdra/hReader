@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -26,6 +27,8 @@ import com.hiosdra.hreader.core.application.content.sanitizeArticleHtml
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import org.koin.compose.koinInject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -67,12 +70,16 @@ fun ArticleWebView(
         .collectAsStateWithLifecycle(initialValue = preferencesManager.getBionicReadingEnabled())
 
     val embeddedMediaLabel = stringResource(R.string.article_open_embedded_media)
-    val processedContent = remember(articleContent, baseUrl, bionicReadingEnabled, embeddedMediaLabel) {
-        val safeContent = sanitizeArticleHtml(articleContent, baseUrl, embeddedMediaLabel)
-        if (bionicReadingEnabled) {
-            BionicReadingProcessor.processTextToBionic(safeContent)
-        } else {
-            safeContent
+    val processedContent by produceState(
+        initialValue = articleContent,
+        articleContent,
+        baseUrl,
+        bionicReadingEnabled,
+        embeddedMediaLabel
+    ) {
+        value = withContext(Dispatchers.Default) {
+            val safeContent = sanitizeArticleHtml(articleContent, baseUrl, embeddedMediaLabel)
+            if (bionicReadingEnabled) BionicReadingProcessor.processTextToBionic(safeContent) else safeContent
         }
     }
 

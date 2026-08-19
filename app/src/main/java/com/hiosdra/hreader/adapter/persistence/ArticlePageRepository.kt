@@ -43,9 +43,10 @@ class ArticlePageRepository(
         private const val TAG = "ArticlePageRepository"
         private const val INDEX_FILE = "index.html"
         private const val ASSETS_DIRECTORY = "assets"
-        private const val MAX_HTML_BYTES = 5L * 1024 * 1024
+        private const val MAX_HTML_BYTES = 100L * 1024 * 1024
         private const val MAX_RESOURCE_BYTES = 5L * 1024 * 1024
-        private const val MAX_PAGE_BYTES = 50L * 1024 * 1024
+        private const val MAX_PAGE_BYTES = 100L * 1024 * 1024
+        private const val PAGE_PREFETCH_CONCURRENCY = 4
         private const val MAX_RESOURCES = 256
         private const val MAX_CSS_DEPTH = 3
         private const val DELETE_CHUNK = 500
@@ -124,20 +125,22 @@ class ArticlePageRepository(
         val selected = if (limit == null) entries else entries.take(limit)
         val total = selected.size
         val done = AtomicInteger()
-        selected.map { (entryId, url) ->
-            async(Dispatchers.IO) {
-                pageLimiter.withPermit {
-                    try {
-                        downloadPage(entryId, url)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to archive page for entry $entryId", e)
+        selected.chunked(PAGE_PREFETCH_CONCURRENCY).forEach { batch ->
+            batch.map { (entryId, url) ->
+                async(Dispatchers.IO) {
+                    pageLimiter.withPermit {
+                        try {
+                            downloadPage(entryId, url)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to archive page for entry $entryId", e)
+                        }
                     }
+                    onProgress(done.incrementAndGet(), total)
                 }
-                onProgress(done.incrementAndGet(), total)
-            }
-        }.awaitAll()
+            }.awaitAll()
+        }
         Unit
     }
 

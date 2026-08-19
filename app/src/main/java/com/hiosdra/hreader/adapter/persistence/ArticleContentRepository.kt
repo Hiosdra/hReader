@@ -44,7 +44,7 @@ class ArticleContentRepository(
          * downloads the images it references. On a large backlog that put thousands of requests in
          * flight at the same time.
          */
-        private const val MAX_CONCURRENT_PREFETCH = 100
+        private const val MAX_CONCURRENT_PREFETCH = 8
 
         /** Below SQLite's 999 bound-variable ceiling on Android. */
         private const val DELETE_CHUNK = 500
@@ -224,36 +224,38 @@ class ArticleContentRepository(
         val limitedEntries = if (limit != null) entries.take(limit) else entries
         val total = limitedEntries.size
         val done = AtomicInteger()
-        val deferredResults = limitedEntries.map { (entryId, url) ->
-            async(Dispatchers.IO) {
-                prefetchLimiter.withPermit {
-                    try {
-                        val stored = articleContentDao.getArticleContent(entryId)
-                        if (stored == null || stored.source != ArticleContentSource.FULL) {
-                            getArticleContent(entryId, url)
+        limitedEntries.chunked(MAX_CONCURRENT_PREFETCH).forEach { batch ->
+            batch.map { (entryId, url) ->
+                async(Dispatchers.IO) {
+                    prefetchLimiter.withPermit {
+                        try {
+                            val stored = articleContentDao.getArticleContent(entryId)
+                            if (stored == null || stored.source != ArticleContentSource.FULL) {
+                                getArticleContent(entryId, url)
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                         }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                     }
+                    onProgress(done.incrementAndGet(), total)
                 }
-                onProgress(done.incrementAndGet(), total)
-            }
+            }.awaitAll()
         }
-        deferredResults.awaitAll()
         Unit
     }
 
     override suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>) = coroutineScope {
-        val deferredResults = entries.map { (entryId, imageUrls) ->
-            async(Dispatchers.IO) {
-                prefetchLimiter.withPermit {
-                    downloadImagesForEntry(entryId, imageUrls)
+        entries.chunked(MAX_CONCURRENT_PREFETCH).forEach { batch ->
+            batch.map { (entryId, imageUrls) ->
+                async(Dispatchers.IO) {
+                    prefetchLimiter.withPermit {
+                        downloadImagesForEntry(entryId, imageUrls)
+                    }
                 }
-            }
+            }.awaitAll()
         }
-        deferredResults.awaitAll()
         Unit
     }
 

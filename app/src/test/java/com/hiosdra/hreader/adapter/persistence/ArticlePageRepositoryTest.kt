@@ -22,6 +22,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.nio.file.Files
 
@@ -123,7 +124,9 @@ class ArticlePageRepositoryTest {
         val root = Files.createTempDirectory("hreader-pages").toFile()
         try {
             val pageDirectory = File(root, "article_pages/42").apply { mkdirs() }
-            File(pageDirectory, "index.html").writeBytes(ByteArray(5 * 1024 * 1024 + 1))
+            RandomAccessFile(File(pageDirectory, "index.html"), "rw").use {
+                it.setLength(100L * 1024 * 1024 + 1)
+            }
             val context = mockk<Context>()
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
@@ -134,7 +137,7 @@ class ArticlePageRepositoryTest {
                 finalUrl = ARTICLE_URL,
                 directoryPath = pageDirectory.absolutePath,
                 fetchedAt = java.time.Instant.EPOCH,
-                byteSize = 5L * 1024 * 1024 + 1,
+                byteSize = 100L * 1024 * 1024 + 1,
                 isComplete = true
             )
             val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
