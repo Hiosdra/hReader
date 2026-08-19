@@ -60,7 +60,7 @@ class ArticlePageRepository(
     }
 
     private val pagesDirectory = File(context.filesDir, "article_pages").apply { mkdirs() }
-    private val pageLimiter = Semaphore(4)
+    private val pageLimiter = Semaphore(PAGE_PREFETCH_CONCURRENCY)
     private val safeHttpClient = httpClient.newBuilder()
         .addNetworkInterceptor { chain ->
             if (!remoteResourcePolicy.allows(chain.request().url.toString())) {

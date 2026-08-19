@@ -70,8 +70,8 @@ fun ArticleWebView(
         .collectAsStateWithLifecycle(initialValue = preferencesManager.getBionicReadingEnabled())
 
     val embeddedMediaLabel = stringResource(R.string.article_open_embedded_media)
-    val processedContent by produceState(
-        initialValue = articleContent,
+    val processedContent by produceState<String?>(
+        initialValue = null,
         articleContent,
         baseUrl,
         bionicReadingEnabled,
@@ -84,7 +84,7 @@ fun ArticleWebView(
     }
 
     val htmlData = remember(processedContent, textColorHex, linkColorHex, codeBg, ruleColor) {
-        articleHtml(processedContent, textColorHex, linkColorHex, codeBg, ruleColor)
+        articleHtml(processedContent.orEmpty(), textColorHex, linkColorHex, codeBg, ruleColor)
     }
 
     /**
