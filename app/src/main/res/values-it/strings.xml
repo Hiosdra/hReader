@@ -196,7 +196,7 @@
     <string name="onboarding_description">hReader si sincronizza con la tua istanza FreshRSS o Miniflux. Scegli il tipo di server, inserisci l’indirizzo e incolla il %1$s da %2$s.</string>
     <string name="onboarding_start_reading">Inizia a leggere</string>
     <string name="onboarding_continue_without_testing">Continua senza testare</string>
-    <string name="backend_freshrss">FreshRSS</string>
+    <string name="backend_freshrss">FreshRSS (sperimentale)</string>
     <string name="backend_miniflux">Miniflux</string>
     <string name="backend_freshrss_secret_label">Password API</string>
     <string name="backend_freshrss_secret_hint">Profilo → Gestione API in FreshRSS</string>

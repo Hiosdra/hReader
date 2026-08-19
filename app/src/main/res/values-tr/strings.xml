@@ -196,7 +196,7 @@
     <string name="onboarding_description">hReader kendi FreshRSS veya Miniflux örneğinizle senkronize olur. Sunucu türünü seçin, adresini girin ve %2$s içindeki %1$s değerini yapıştırın.</string>
     <string name="onboarding_start_reading">Okumaya başla</string>
     <string name="onboarding_continue_without_testing">Test etmeden devam et</string>
-    <string name="backend_freshrss">FreshRSS</string>
+    <string name="backend_freshrss">FreshRSS (deneysel)</string>
     <string name="backend_miniflux">Miniflux</string>
     <string name="backend_freshrss_secret_label">API parolası</string>
     <string name="backend_freshrss_secret_hint">FreshRSS’te Profil → API yönetimi</string>
