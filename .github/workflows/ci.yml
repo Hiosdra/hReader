@@ -36,8 +36,8 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Run lint and tests
-        run: ./gradlew --configuration-cache lint test
+      - name: Run lint, tests, and debug build
+        run: ./gradlew --configuration-cache lint test assembleDebug
 
   debug_apk:
     name: Debug APK
