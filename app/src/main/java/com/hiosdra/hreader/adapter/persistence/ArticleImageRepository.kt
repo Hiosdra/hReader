@@ -69,8 +69,12 @@ class ArticleImageRepository(
         )
     }
 
-    private val imagesDir = File(context.filesDir, "article_images")
-        .apply { mkdirs() }
+    private val imagesDir = File(context.filesDir, "article_images").also { directory ->
+        directory.mkdirs()
+        directory.listFiles { file ->
+            file.name.startsWith(".") && file.name.endsWith(".tmp")
+        }?.forEach(File::delete)
+    }
 
     private val cacheBudgetMutex = Mutex()
     private val safeHttpClient = okHttpClient.newBuilder()
