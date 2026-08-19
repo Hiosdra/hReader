@@ -19,8 +19,8 @@ fun rememberNotificationPermissionRequest(): ((() -> Unit) -> Unit) {
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) {
-        pendingAction?.invoke()
+    ) { granted ->
+        if (granted) pendingAction?.invoke()
         pendingAction = null
     }
     return { action ->
