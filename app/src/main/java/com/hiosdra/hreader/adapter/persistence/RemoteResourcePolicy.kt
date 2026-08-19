@@ -5,6 +5,7 @@ import okhttp3.Dns
 import java.net.InetAddress
 import java.net.URI
 import java.net.UnknownHostException
+import java.util.Locale
 
 class RemoteResourcePolicy(
     private val allowedHosts: () -> Set<String>,
@@ -25,7 +26,7 @@ class RemoteResourcePolicy(
 
     fun allows(url: String): Boolean {
         val uri = runCatching { URI(url) }.getOrNull() ?: return false
-        if (uri.scheme?.lowercase() !in HTTP_SCHEMES || uri.userInfo != null) return false
+        if (uri.scheme?.lowercase(Locale.ROOT) !in HTTP_SCHEMES || uri.userInfo != null) return false
         val host = uri.host?.let(::normalizeHost)?.takeIf { it.isNotBlank() } ?: return false
         val addresses = runCatching { resolveHost(host) }.getOrNull() ?: return false
         return isAllowedHost(host, addresses)
@@ -51,7 +52,8 @@ class RemoteResourcePolicy(
         return addresses.isNotEmpty() && addresses.all { it.isPublicAddress() }
     }
 
-    private fun normalizeHost(host: String): String = host.trim().trim('[', ']').lowercase()
+    private fun normalizeHost(host: String): String =
+        host.trim().trim('[', ']').lowercase(Locale.ROOT)
 
     private fun InetAddress.isPublicAddress(): Boolean {
         if (isAnyLocalAddress || isLoopbackAddress || isLinkLocalAddress || isSiteLocalAddress || isMulticastAddress) {
@@ -75,10 +77,13 @@ class RemoteResourcePolicy(
 internal fun normalizedConfiguredHost(serverUrl: String): String? {
     val trimmed = serverUrl.trim()
     if (trimmed.isEmpty()) return null
-    val absolute = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    val absolute = if (
+        trimmed.startsWith("http://", ignoreCase = true) ||
+        trimmed.startsWith("https://", ignoreCase = true)
+    ) {
         trimmed
     } else {
         "https://$trimmed"
     }
-    return runCatching { URI(absolute).host?.lowercase() }.getOrNull()
+    return runCatching { URI(absolute).host?.lowercase(Locale.ROOT) }.getOrNull()
 }
