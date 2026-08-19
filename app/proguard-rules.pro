@@ -2,6 +2,7 @@
 # way to see for itself.
 
 # Line numbers in crash reports, without leaking the original file names.
+-dontobfuscate
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
