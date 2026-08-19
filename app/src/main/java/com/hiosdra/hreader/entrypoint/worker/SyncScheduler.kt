@@ -14,6 +14,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.await
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.port.out.BackendPreferences
@@ -26,6 +27,7 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -221,11 +224,19 @@ class SyncScheduler(
         observeSyncPipeline().map { it.status }
 
     /** Stops everything in flight. What is queued has no account left to run against. */
-    override fun cancelAllSync() {
-        listOf(
-            CONTENT_SYNC_WORK,
-            SYNC_PIPELINE_WORK
-        ).forEach(workManager::cancelUniqueWork)
+    override suspend fun cancelAllSync() {
+        listOf(CONTENT_SYNC_WORK, SYNC_PIPELINE_WORK).forEach { workName ->
+            runCatching { workManager.cancelUniqueWork(workName).await() }.getOrElse { return@forEach }
+            repeat(40) {
+                val infos = runCatching {
+                    withContext(Dispatchers.IO) {
+                        workManager.getWorkInfosForUniqueWork(workName).get()
+                    }
+                }.getOrElse { return@repeat }
+                if (infos.none { !it.state.isFinished }) return@forEach
+                delay(50)
+            }
+        }
     }
 
     /** Sync then prefetch when the app goes to the background, at most once every two minutes. */
