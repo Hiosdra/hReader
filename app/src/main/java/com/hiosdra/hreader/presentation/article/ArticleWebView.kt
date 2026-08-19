@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.presentation.article
 
-import android.os.SystemClock
 import android.view.View
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
@@ -106,21 +105,13 @@ fun ArticleWebView(
             AndroidView(
                 factory = { context ->
                     ReaderWebView(context).apply {
-                        var lastProgress = -1f
                         var lastScrollY = -1
-                        var lastProgressAt = 0L
+                        val progressReporter = ReaderWebViewScrollProgressReporter { progress, _ ->
+                            currentOnScrollProgress.value?.invoke(progress)
+                        }
                         fun updateScrollProgress(wv: ReaderWebView) {
                             if (wv.isReleased) return
-                            val contentHeightPx = wv.contentHeight * wv.resources.displayMetrics.density
-                            val viewHeight = wv.height.toFloat()
-                            val denom = (contentHeightPx - viewHeight).coerceAtLeast(1f)
-                            val progress = (wv.scrollY / denom).coerceIn(0f, 1f)
-                            val now = SystemClock.elapsedRealtime()
-                            if (abs(progress - lastProgress) >= 0.01f || now - lastProgressAt >= 500L) {
-                                lastProgress = progress
-                                lastProgressAt = now
-                                currentOnScrollProgress.value?.invoke(progress)
-                            }
+                            val progress = progressReporter.update(wv)
                             if (lastScrollY < 0 || abs(wv.scrollY - lastScrollY) >= 8 || progress == 0f || progress == 1f) {
                                 lastScrollY = wv.scrollY
                                 currentOnScrollYChanged.value?.invoke(wv.scrollY)

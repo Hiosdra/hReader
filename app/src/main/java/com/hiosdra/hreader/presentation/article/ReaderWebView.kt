@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.presentation.article
 
 import android.content.Context
+import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.ViewGroup
@@ -28,6 +29,52 @@ private const val CONTENT_HEIGHT_UPDATE_DELAY_MS = 100L
 internal enum class ReaderGestureDirection {
     Horizontal,
     Vertical
+}
+
+internal fun readerWebViewIsScrollable(contentHeightPx: Float, viewportHeightPx: Float): Boolean =
+    viewportHeightPx > 0f && contentHeightPx > viewportHeightPx
+
+internal fun readerWebViewScrollProgress(
+    scrollY: Int,
+    contentHeightPx: Float,
+    viewportHeightPx: Float
+): Float {
+    if (!readerWebViewIsScrollable(contentHeightPx, viewportHeightPx)) return 0f
+    val maxScrollPx = (contentHeightPx - viewportHeightPx).coerceAtLeast(1f)
+    return (scrollY.toFloat() / maxScrollPx).coerceIn(0f, 1f)
+}
+
+internal class ReaderWebViewScrollProgressReporter(
+    private val onChanged: (progress: Float, isScrollable: Boolean) -> Unit
+) {
+    private var lastProgress = -1f
+    private var lastScrollable = false
+    private var lastReportedAt = 0L
+
+    fun update(webView: ReaderWebView): Float {
+        if (webView.isReleased) return 0f
+        val density = webView.resources.displayMetrics.density
+        val contentHeightPx = webView.contentHeight * density
+        val viewportHeightPx = webView.height.toFloat()
+        val isScrollable = readerWebViewIsScrollable(contentHeightPx, viewportHeightPx)
+        val progress = readerWebViewScrollProgress(
+            scrollY = webView.scrollY,
+            contentHeightPx = contentHeightPx,
+            viewportHeightPx = viewportHeightPx
+        )
+        val now = SystemClock.elapsedRealtime()
+        if (
+            isScrollable != lastScrollable ||
+            abs(progress - lastProgress) >= 0.01f ||
+            now - lastReportedAt >= 500L
+        ) {
+            lastProgress = progress
+            lastScrollable = isScrollable
+            lastReportedAt = now
+            onChanged(progress, isScrollable)
+        }
+        return progress
+    }
 }
 
 internal fun readerGestureDirection(
