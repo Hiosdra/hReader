@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.persistence.room
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.util.Locale
 
 class FtsQueryTest {
 
@@ -38,5 +39,16 @@ class FtsQueryTest {
     @Test
     fun `like pattern is lowercased and wrapped`() {
         assertEquals("%the verge%", buildLikePattern("  The Verge  "))
+    }
+
+    @Test
+    fun `like pattern lowercasing is independent of the default locale`() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"))
+            assertEquals("%i%", buildLikePattern("I"))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 }
