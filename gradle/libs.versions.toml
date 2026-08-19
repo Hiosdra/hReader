@@ -32,7 +32,7 @@ archunit = "1.5.0"
 mockk = "1.14.11"
 litert-lm = "0.16.1"
 uiautomator = "2.4.0"
-benchmark-macro = "1.5.0-alpha07"
+benchmark-macro = "1.5.0-rc01"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
