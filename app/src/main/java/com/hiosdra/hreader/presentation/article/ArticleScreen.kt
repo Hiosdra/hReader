@@ -260,7 +260,6 @@ fun ArticleScreen(
                         isWebViewMode = isWebViewMode,
                         textScale = textScale,
                         paddingValues = paddingValues,
-                        bottomContentPadding = bottomActionBarHeight,
                         getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                         getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                         getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
