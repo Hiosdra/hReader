@@ -14,8 +14,6 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
@@ -29,7 +27,6 @@ internal fun ArticlePager(
     isWebViewMode: Boolean,
     textScale: Float,
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
-    bottomContentPadding: Dp = 0.dp,
     getContentForEntry: (Long) -> String?,
     getLeadImageForEntry: (Long) -> String?,
     getOfflinePageForEntry: (Long) -> OfflinePage?,
@@ -73,7 +70,6 @@ internal fun ArticlePager(
                     val webViewModifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .padding(bottom = bottomContentPadding)
                     if (!isOnline && offlinePage != null) {
                         OfflinePageWebView(
                             page = offlinePage,
@@ -97,8 +93,7 @@ internal fun ArticlePager(
                         mainImageUrl = getLeadImageForEntry(entry.id),
                         textScale = textScale,
                         modifier = Modifier
-                            .padding(paddingValues)
-                            .padding(bottom = bottomContentPadding),
+                            .padding(paddingValues),
                         articleContent = getContentForEntry(entry.id) ?: stringResource(R.string.article_no_content),
                         contentLoaded = entry.id in loadedContentIds,
                         readingPositionLoaded = entry.id in loadedReadingPositionIds,
