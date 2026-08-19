@@ -67,7 +67,7 @@ val networkModule = module {
     single { BackendUrlInterceptor(get(), androidApplication()) }
     single<HttpLoggingInterceptor> {
         HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
             redactHeader("Authorization")
             redactHeader("X-Auth-Token")
         }
