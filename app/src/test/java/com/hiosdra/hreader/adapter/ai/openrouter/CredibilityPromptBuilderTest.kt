@@ -55,6 +55,22 @@ class CredibilityPromptBuilderTest {
     }
 
     @Test
+    fun formatsPublishedDateInTheUsersTimezone() {
+        val builder = CredibilityPromptBuilder(
+            Clock.fixed(
+                Instant.parse("2026-07-27T22:30:00Z"),
+                ZoneId.of("Europe/Warsaw")
+            )
+        )
+
+        val message = builder.buildText(
+            sourceWith().copy(publishedAt = Instant.parse("2026-07-27T22:30:00Z"))
+        )!!.userMessage
+
+        assertTrue(message.contains("Published: 2026-07-28"))
+    }
+
+    @Test
     fun putsEveryFeedSuppliedValueInsideTheDelimiters() {
         val message = userMessageOf(sourceWith())
         val body = message.substringAfter(CONTENT_START).substringBefore(CONTENT_END)
