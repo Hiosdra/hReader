@@ -16,6 +16,7 @@ import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
+import java.time.Clock
 import java.time.LocalTime
 
 private const val MAX_RUN_ATTEMPTS = 5
@@ -27,7 +28,8 @@ class ContentSyncWorker(
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val syncScheduler: SyncRequester,
     private val preferencesManager: SyncPreferences,
-    private val errorReportingManager: ErrorReporter
+    private val errorReportingManager: ErrorReporter,
+    private val clock: Clock
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -104,7 +106,7 @@ class ContentSyncWorker(
         if (inputData.getBoolean(KEY_IGNORE_QUIET_HOURS, false)) return false
         if (!preferencesManager.getQuietHoursEnabled()) return false
         return isWithinQuietHours(
-            hour = LocalTime.now().hour,
+            hour = LocalTime.now(clock).hour,
             startHour = preferencesManager.getQuietHoursStartHour(),
             endHour = preferencesManager.getQuietHoursEndHour()
         )

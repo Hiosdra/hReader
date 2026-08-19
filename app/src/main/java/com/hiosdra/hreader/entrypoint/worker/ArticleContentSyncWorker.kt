@@ -21,6 +21,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -53,7 +54,8 @@ class ArticleContentSyncWorker(
     private val articleContentRepository: ArticleContentStore,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val preferencesManager: SyncPreferences,
-    private val errorReportingManager: ErrorReporter
+    private val errorReportingManager: ErrorReporter,
+    private val clock: Clock
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -139,7 +141,7 @@ class ArticleContentSyncWorker(
         if (inputData.getBoolean(KEY_IGNORE_QUIET_HOURS, false)) return false
         if (!preferencesManager.getQuietHoursEnabled()) return false
         return isWithinQuietHours(
-            hour = LocalTime.now().hour,
+            hour = LocalTime.now(clock).hour,
             startHour = preferencesManager.getQuietHoursStartHour(),
             endHour = preferencesManager.getQuietHoursEndHour()
         )
