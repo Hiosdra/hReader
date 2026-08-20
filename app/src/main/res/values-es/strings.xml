@@ -305,13 +305,17 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="offline_download_pages">Descargar páginas completas</string>
     <string name="offline_description">La lectura sin conexión guarda textos e imágenes. Descargar páginas completas también guarda las páginas web originales, pero solo al pulsar ese botón.</string>
     <string name="offline_download_complete">Descarga sin conexión completada.</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="one">Descarga sin conexión completada — %1$d imagen no está disponible sin conexión.</item>
+        <item quantity="other">Descarga sin conexión completada — %1$d imágenes no están disponibles sin conexión.</item>
+    </plurals>
     <string name="offline_download_failed">Descarga sin conexión fallida: %1$s</string>
     <string name="offline_download_cancelled">Descarga sin conexión cancelada.</string>
     <string name="offline_articles_to_keep">Artículos para conservar sin conexión</string>
     <string name="offline_articles_description">Cuántos artículos conservar descargados en total. Cuando se acaben los no leídos, los artículos leídos recientes completarán el resto.</string>
     <string name="offline_unread_only">Solo no leídos</string>
     <string name="offline_download_images">Descargar imágenes</string>
-    <string name="offline_images_description">Desactivarlo mantiene pequeña la caché cuando el almacenamiento importa más que las imágenes</string>
+    <string name="offline_images_description">Desactivarlo mantiene pequeña la caché cuando el almacenamiento importa más que las imágenes. Si faltan imágenes, activa esta opción, aumenta abajo el límite de almacenamiento de imágenes si es necesario y descárgalas de nuevo.</string>
     <string name="offline_image_limit">Límite de almacenamiento de imágenes</string>
     <string name="offline_nothing_available">Aún no hay nada disponible sin conexión</string>
     <plurals name="offline_ready"><item quantity="one">Listo para leer sin conexión — el artículo %1$d está disponible</item><item quantity="many">Listo para leer sin conexión — los %1$d artículos están disponibles</item><item quantity="other">Listo para leer sin conexión — los %1$d artículos están disponibles</item></plurals>

@@ -302,13 +302,16 @@
     <string name="offline_download_pages">ページ全体をダウンロード</string>
     <string name="offline_description">オフライン閲覧では記事本文と画像を保存します。ページ全体のダウンロードでは元のウェブページも保存しますが、このボタンを押した場合のみ実行されます。</string>
     <string name="offline_download_complete">オフラインダウンロードが完了しました。</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="other">オフラインダウンロードが完了しました — %1$d 個の画像をオフラインで利用できません。</item>
+    </plurals>
     <string name="offline_download_failed">オフラインダウンロードに失敗しました：%1$s</string>
     <string name="offline_download_cancelled">オフラインダウンロードをキャンセルしました。</string>
     <string name="offline_articles_to_keep">オフラインに保存する記事</string>
     <string name="offline_articles_description">保存する記事の合計数です。未読記事がなくなると、最近読んだ記事で残りを補います。</string>
     <string name="offline_unread_only">未読のみ</string>
     <string name="offline_download_images">画像をダウンロード</string>
-    <string name="offline_images_description">画像よりストレージ容量を優先する場合はオフにするとキャッシュを小さくできます</string>
+    <string name="offline_images_description">画像よりストレージ容量を優先する場合はオフにするとキャッシュを小さくできます。画像が不足している場合は、これをオンにし、必要に応じて下の画像ストレージ上限を増やして再度ダウンロードしてください。</string>
     <string name="offline_image_limit">画像の保存容量上限</string>
     <string name="offline_nothing_available">オフラインで利用できるものはまだありません</string>
     <plurals name="offline_ready"><item quantity="other">オフライン閲覧の準備完了 — %1$d 件すべての記事を利用できます</item></plurals>

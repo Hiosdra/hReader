@@ -129,7 +129,7 @@ fun OfflineReadinessSection(
         )
         when (state.preparationStatus.state) {
             SyncOperationState.SUCCEEDED -> Text(
-                text = stringResource(R.string.offline_download_complete),
+                text = readiness.downloadCompleteMessage(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 4.dp)
@@ -227,6 +227,18 @@ fun OfflineReadinessSection(
         }
     }
 }
+
+@Composable
+private fun OfflineReadiness.downloadCompleteMessage(): String =
+    if (missingImageCount > 0) {
+        pluralStringResource(
+            R.plurals.offline_download_complete_missing_images,
+            missingImageCount,
+            missingImageCount
+        )
+    } else {
+        stringResource(R.string.offline_download_complete)
+    }
 
 @Composable
 private fun OfflineReadiness.headline(): String = when {

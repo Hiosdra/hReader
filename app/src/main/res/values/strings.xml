@@ -362,13 +362,17 @@
     <string name="offline_download_pages">Download full pages</string>
     <string name="offline_description">Offline reading stores article bodies and images. Download full pages also saves the original web pages, but only when you press that button.</string>
     <string name="offline_download_complete">Offline download complete.</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="one">Offline download complete — %1$d image is not available offline.</item>
+        <item quantity="other">Offline download complete — %1$d images are not available offline.</item>
+    </plurals>
     <string name="offline_download_failed">Offline download failed: %1$s</string>
     <string name="offline_download_cancelled">Offline download cancelled.</string>
     <string name="offline_articles_to_keep">Articles to keep offline</string>
     <string name="offline_articles_description">How many articles to keep downloaded in total. When the unread ones run out, recent articles you have already read fill the rest.</string>
     <string name="offline_unread_only">Unread only</string>
     <string name="offline_download_images">Download images</string>
-    <string name="offline_images_description">Off keeps the cache small when storage matters more than pictures</string>
+    <string name="offline_images_description">Off keeps the cache small when storage matters more than pictures. If images are missing, turn this on, increase the image storage limit below if needed, and download again.</string>
     <string name="offline_image_limit">Image storage limit</string>
     <string name="offline_nothing_available">Nothing is available offline yet</string>
     <plurals name="offline_ready">

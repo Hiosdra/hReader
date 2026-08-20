@@ -302,13 +302,16 @@
     <string name="offline_download_pages">전체 페이지 다운로드</string>
     <string name="offline_description">오프라인 읽기는 기사 본문과 이미지를 저장합니다. 전체 페이지를 다운로드하면 원래 웹 페이지도 저장하지만 이 버튼을 누른 경우에만 실행됩니다.</string>
     <string name="offline_download_complete">오프라인 다운로드가 완료되었습니다.</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="other">오프라인 다운로드가 완료되었습니다 — 이미지 %1$d개를 오프라인에서 사용할 수 없습니다.</item>
+    </plurals>
     <string name="offline_download_failed">오프라인 다운로드 실패: %1$s</string>
     <string name="offline_download_cancelled">오프라인 다운로드가 취소되었습니다.</string>
     <string name="offline_articles_to_keep">오프라인에 보관할 기사</string>
     <string name="offline_articles_description">전체적으로 저장할 기사 수입니다. 읽지 않은 기사가 더 이상 없으면 최근에 읽은 기사로 나머지를 채웁니다.</string>
     <string name="offline_unread_only">읽지 않은 항목만</string>
     <string name="offline_download_images">이미지 다운로드</string>
-    <string name="offline_images_description">이미지보다 저장 공간이 중요할 때 끄면 캐시를 작게 유지할 수 있습니다</string>
+    <string name="offline_images_description">이미지보다 저장 공간이 중요할 때 끄면 캐시를 작게 유지할 수 있습니다. 이미지가 부족하면 이 옵션을 켜고, 필요한 경우 아래의 이미지 저장 한도를 늘린 후 다시 다운로드하세요.</string>
     <string name="offline_image_limit">이미지 저장 한도</string>
     <string name="offline_nothing_available">아직 오프라인으로 사용할 수 있는 항목이 없습니다</string>
     <plurals name="offline_ready"><item quantity="other">오프라인 읽기 준비 완료 — 기사 %1$d개를 모두 오프라인에서 사용할 수 있습니다</item></plurals>

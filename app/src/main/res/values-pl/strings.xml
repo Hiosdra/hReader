@@ -357,13 +357,19 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="offline_download_pages">Pobierz pełne strony</string>
     <string name="offline_description">Czytanie offline przechowuje treść artykułów i obrazy. Pobieranie pełnych stron zapisuje też oryginalne strony WWW, ale tylko po naciśnięciu tego przycisku.</string>
     <string name="offline_download_complete">Pobieranie offline zakończone.</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="one">Pobieranie offline zakończone — %1$d obraz nie jest dostępny offline.</item>
+        <item quantity="few">Pobieranie offline zakończone — %1$d obrazy nie są dostępne offline.</item>
+        <item quantity="many">Pobieranie offline zakończone — %1$d obrazów nie jest dostępnych offline.</item>
+        <item quantity="other">Pobieranie offline zakończone — %1$d obrazów nie jest dostępnych offline.</item>
+    </plurals>
     <string name="offline_download_failed">Pobieranie offline nieudane: %1$s</string>
     <string name="offline_download_cancelled">Pobieranie offline anulowane.</string>
     <string name="offline_articles_to_keep">Artykuły przechowywane offline</string>
     <string name="offline_articles_description">Łączna liczba pobieranych artykułów. Gdy zabraknie nieprzeczytanych, resztę uzupełnią najnowsze przeczytane artykuły.</string>
     <string name="offline_unread_only">Tylko nieprzeczytane</string>
     <string name="offline_download_images">Pobieraj obrazy</string>
-    <string name="offline_images_description">Wyłączenie zmniejsza pamięć podręczną, gdy ważniejsze jest miejsce niż obrazy</string>
+    <string name="offline_images_description">Wyłączenie zmniejsza pamięć podręczną, gdy ważniejsze jest miejsce niż obrazy. Jeśli brakuje obrazów, włącz tę opcję, w razie potrzeby zwiększ poniżej limit miejsca na obrazy i pobierz je ponownie.</string>
     <string name="offline_image_limit">Limit miejsca na obrazy</string>
     <string name="offline_nothing_available">Nie ma jeszcze nic dostępnego offline</string>
     <plurals name="offline_ready"><item quantity="one">Gotowe do czytania offline — %1$d artykuł jest dostępny offline</item><item quantity="few">Gotowe do czytania offline — wszystkie %1$d artykuły są dostępne offline</item><item quantity="many">Gotowe do czytania offline — wszystkie %1$d artykułów są dostępne offline</item><item quantity="other">Gotowe do czytania offline — wszystkie %1$d artykułów są dostępne offline</item></plurals>
