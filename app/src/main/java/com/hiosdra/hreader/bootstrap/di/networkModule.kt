@@ -122,7 +122,13 @@ val networkModule = module {
     single { GemmaInferenceEngine(androidApplication(), get(), get()) }
     single<GemmaModelLifecycle> { get<GemmaInferenceEngine>() }
     single { GemmaArticleAiService(get(), get(), get(), get()) }
-    single<ArticleAiGateway> { ArticleAiGatewayRouter(get(), get()) }
+    single<ArticleAiGateway> {
+        ArticleAiGatewayRouter(
+            openRouter = get(),
+            gemma = get(),
+            errorReporter = get()
+        )
+    }
     single { AiModelRepository(get(), get()) }
     single<AiModelCatalog> {
         CompositeAiModelCatalog(androidApplication(), get<AiModelRepository>(), get(), get())
