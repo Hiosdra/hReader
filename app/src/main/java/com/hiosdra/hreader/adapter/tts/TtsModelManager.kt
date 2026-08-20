@@ -104,7 +104,7 @@ class TtsModelManager(
         var downloaded = 0L
         artifact.files.forEach { remote ->
             val output = File(staging, remote.name)
-            downloadTo(remote.url, output) { count ->
+            downloadTo(remote.url, output, remote.size) { count ->
                 downloaded += count
                 updateProgress(model, downloaded, total)
             }
@@ -122,7 +122,7 @@ class TtsModelManager(
     ) {
         val source = checkNotNull(artifact.archive)
         var downloaded = 0L
-        downloadTo(source.url, archive) { count ->
+        downloadTo(source.url, archive, source.size) { count ->
             downloaded += count
             updateProgress(model, downloaded, source.size)
         }
@@ -130,18 +130,26 @@ class TtsModelManager(
         extract(archive, staging)
     }
 
-    private suspend fun downloadTo(url: String, output: File, onBytes: (Long) -> Unit) {
+    private suspend fun downloadTo(url: String, output: File, expectedSize: Long, onBytes: (Long) -> Unit) {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
             check(response.isSuccessful) { "Download failed (${response.code})" }
             val body = checkNotNull(response.body)
+            check(body.contentLength() < 0 || body.contentLength() <= expectedSize) {
+                "Download exceeds the expected model size"
+            }
             body.byteStream().use { input ->
                 FileOutputStream(output).use { target ->
                     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var downloaded = 0L
                     while (true) {
                         currentCoroutineContext().ensureActive()
                         val count = input.read(buffer)
                         if (count < 0) break
+                        downloaded += count
+                        check(downloaded <= expectedSize) {
+                            "Download exceeds the expected model size"
+                        }
                         target.write(buffer, 0, count)
                         onBytes(count.toLong())
                     }

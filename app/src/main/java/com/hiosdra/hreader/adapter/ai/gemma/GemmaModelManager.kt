@@ -129,6 +129,10 @@ class GemmaModelManager(
                 partialFile.delete()
             }
             val body = checkNotNull(response.body)
+            val expectedBytes = Gemma4E2bModel.MODEL_SIZE_BYTES - start
+            check(body.contentLength() < 0 || body.contentLength() <= expectedBytes) {
+                "Gemma model response exceeds the expected size"
+            }
             body.byteStream().use { input ->
                 FileOutputStream(partialFile, append).use { output ->
                     var downloaded = start
@@ -138,6 +142,9 @@ class GemmaModelManager(
                         currentCoroutineContext().ensureActive()
                         val count = input.read(buffer)
                         if (count < 0) break
+                        check(downloaded + count <= Gemma4E2bModel.MODEL_SIZE_BYTES) {
+                            "Gemma model response exceeds the expected size"
+                        }
                         output.write(buffer, 0, count)
                         downloaded += count
                         updateProgress(downloaded)
