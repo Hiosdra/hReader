@@ -296,13 +296,17 @@
     <string name="offline_download_pages">Scarica pagine complete</string>
     <string name="offline_description">La lettura offline salva testi e immagini degli articoli. Il download delle pagine complete salva anche le pagine Web originali, ma solo dopo aver premuto questo pulsante.</string>
     <string name="offline_download_complete">Download offline completato.</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="one">Download offline completato — %1$d immagine non è disponibile offline.</item>
+        <item quantity="other">Download offline completato — %1$d immagini non sono disponibili offline.</item>
+    </plurals>
     <string name="offline_download_failed">Download offline non riuscito: %1$s</string>
     <string name="offline_download_cancelled">Download offline annullato.</string>
     <string name="offline_articles_to_keep">Articoli da conservare offline</string>
     <string name="offline_articles_description">Quanti articoli conservare in totale. Quando non ci sono più articoli non letti, gli articoli letti recenti riempiono il resto.</string>
     <string name="offline_unread_only">Solo non letti</string>
     <string name="offline_download_images">Scarica immagini</string>
-    <string name="offline_images_description">Disattivando questa opzione la cache resta più piccola quando lo spazio è più importante delle immagini</string>
+    <string name="offline_images_description">Disattivando questa opzione la cache resta più piccola quando lo spazio è più importante delle immagini. Se mancano immagini, attiva questa opzione, aumenta se necessario il limite di spazio per le immagini e scaricale di nuovo.</string>
     <string name="offline_image_limit">Limite spazio per immagini</string>
     <string name="offline_nothing_available">Niente disponibile offline</string>
     <plurals name="offline_ready"><item quantity="one">Pronto per la lettura offline — l’articolo %1$d è disponibile</item><item quantity="many">Pronto per la lettura offline — tutti i %1$d articoli sono disponibili</item><item quantity="other">Pronto per la lettura offline — tutti i %1$d articoli sono disponibili</item></plurals>

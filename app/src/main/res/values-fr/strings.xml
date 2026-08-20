@@ -296,13 +296,17 @@
     <string name="offline_download_pages">Télécharger les pages complètes</string>
     <string name="offline_description">La lecture hors connexion enregistre les textes et images des articles. Le téléchargement des pages complètes enregistre aussi les pages Web originales, mais uniquement après avoir appuyé sur ce bouton.</string>
     <string name="offline_download_complete">Téléchargement hors connexion terminé.</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="one">Téléchargement hors connexion terminé — %1$d image n’est pas disponible hors connexion.</item>
+        <item quantity="other">Téléchargement hors connexion terminé — %1$d images ne sont pas disponibles hors connexion.</item>
+    </plurals>
     <string name="offline_download_failed">Échec du téléchargement hors connexion : %1$s</string>
     <string name="offline_download_cancelled">Téléchargement hors connexion annulé.</string>
     <string name="offline_articles_to_keep">Articles à conserver hors connexion</string>
     <string name="offline_articles_description">Nombre total d’articles à conserver. Lorsqu’il n’y a plus d’articles non lus, les articles lus récents remplissent le reste.</string>
     <string name="offline_unread_only">Non lus uniquement</string>
     <string name="offline_download_images">Télécharger les images</string>
-    <string name="offline_images_description">Désactiver réduit la taille du cache lorsque l’espace est plus important que les images</string>
+    <string name="offline_images_description">Désactiver réduit la taille du cache lorsque l’espace est plus important que les images. Si des images manquent, activez cette option, augmentez si nécessaire la limite de stockage des images ci-dessous et relancez le téléchargement.</string>
     <string name="offline_image_limit">Limite de stockage des images</string>
     <string name="offline_nothing_available">Rien de disponible hors connexion pour le moment</string>
     <plurals name="offline_ready"><item quantity="one">Prêt pour la lecture hors connexion — l’article %1$d est disponible</item><item quantity="many">Prêt pour la lecture hors connexion — les %1$d articles sont disponibles</item><item quantity="other">Prêt pour la lecture hors connexion — les %1$d articles sont disponibles</item></plurals>

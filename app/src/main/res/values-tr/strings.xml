@@ -296,13 +296,17 @@
     <string name="offline_download_pages">Tam sayfaları indir</string>
     <string name="offline_description">Çevrimdışı okuma makale metinlerini ve görsellerini kaydeder. Tam sayfaları indirmek özgün web sayfalarını da kaydeder, ancak yalnızca bu düğmeye bastıktan sonra.</string>
     <string name="offline_download_complete">Çevrimdışı indirme tamamlandı.</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="one">Çevrimdışı indirme tamamlandı — %1$d görsel çevrimdışı kullanılamıyor.</item>
+        <item quantity="other">Çevrimdışı indirme tamamlandı — %1$d görsel çevrimdışı kullanılamıyor.</item>
+    </plurals>
     <string name="offline_download_failed">Çevrimdışı indirme başarısız: %1$s</string>
     <string name="offline_download_cancelled">Çevrimdışı indirme iptal edildi.</string>
     <string name="offline_articles_to_keep">Çevrimdışı tutulacak makaleler</string>
     <string name="offline_articles_description">Toplam kaç makalenin tutulacağı. Okunmamış kalmadığında, son okunan makaleler kalan alanı doldurur.</string>
     <string name="offline_unread_only">Yalnızca okunmamış</string>
     <string name="offline_download_images">Görselleri indir</string>
-    <string name="offline_images_description">Depolama alanı görsellerden daha önemliyse kapatmak önbelleği küçük tutar</string>
+    <string name="offline_images_description">Depolama alanı görsellerden daha önemliyse kapatmak önbelleği küçük tutar. Görseller eksikse bunu açın, gerekirse aşağıdaki görsel depolama sınırını artırıp yeniden indirin.</string>
     <string name="offline_image_limit">Görsel depolama sınırı</string>
     <string name="offline_nothing_available">Henüz çevrimdışı kullanılabilir bir şey yok</string>
     <plurals name="offline_ready"><item quantity="one">Çevrimdışı okumaya hazır — %1$d makale kullanılabilir</item><item quantity="other">Çevrimdışı okumaya hazır — %1$d makalenin tamamı kullanılabilir</item></plurals>

@@ -308,13 +308,17 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="offline_download_pages">Vollständige Seiten herunterladen</string>
     <string name="offline_description">Offline-Lesen speichert Artikeltexte und Bilder. Das Herunterladen vollständiger Seiten speichert auch die originalen Webseiten, aber nur nach Betätigung dieser Schaltfläche.</string>
     <string name="offline_download_complete">Offline-Download abgeschlossen.</string>
+    <plurals name="offline_download_complete_missing_images">
+        <item quantity="one">Offline-Download abgeschlossen — %1$d Bild ist offline nicht verfügbar.</item>
+        <item quantity="other">Offline-Download abgeschlossen — %1$d Bilder sind offline nicht verfügbar.</item>
+    </plurals>
     <string name="offline_download_failed">Offline-Download fehlgeschlagen: %1$s</string>
     <string name="offline_download_cancelled">Offline-Download abgebrochen.</string>
     <string name="offline_articles_to_keep">Offline gespeicherte Artikel</string>
     <string name="offline_articles_description">Wie viele Artikel insgesamt gespeichert werden. Wenn keine ungelesenen mehr vorhanden sind, füllen aktuelle gelesene Artikel den Rest.</string>
     <string name="offline_unread_only">Nur ungelesene</string>
     <string name="offline_download_images">Bilder herunterladen</string>
-    <string name="offline_images_description">Aus hält den Cache klein, wenn Speicher wichtiger als Bilder ist</string>
+    <string name="offline_images_description">Aus hält den Cache klein, wenn Speicher wichtiger als Bilder ist. Wenn Bilder fehlen, schalte dies ein, erhöhe bei Bedarf unten das Speicherlimit für Bilder und lade sie erneut herunter.</string>
     <string name="offline_image_limit">Speicherlimit für Bilder</string>
     <string name="offline_nothing_available">Noch nichts offline verfügbar</string>
     <plurals name="offline_ready"><item quantity="one">Bereit zum Offline-Lesen — der %1$d Artikel ist offline verfügbar</item><item quantity="other">Bereit zum Offline-Lesen — alle %1$d Artikel sind offline verfügbar</item></plurals>
