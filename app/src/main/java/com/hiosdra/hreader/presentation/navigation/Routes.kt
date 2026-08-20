@@ -18,6 +18,7 @@ object Routes {
     const val ARTICLE = "article?feedId={feedId}&startId={startId}&starred={starred}" +
         "&includeRead={includeRead}&session={session}"
     const val SETTINGS = "settings"
+    const val TTS_SETTINGS = "settings/tts"
 
     /** [url] is a site or feed address shared into the app; the argument is optional without it. */
     fun addFeed(url: String? = null): String =

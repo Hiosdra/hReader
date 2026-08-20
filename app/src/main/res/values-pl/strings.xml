@@ -242,7 +242,7 @@
     <string name="settings_reading_experience">Czytanie</string>
     <string name="settings_bionic_reading">Czytanie bioniczne</string>
     <string name="settings_bionic_reading_description">Wyróżniaj fragmenty słów, aby czytać szybciej</string>
-    <string name="settings_ai_credibility">Analiza wiarygodności AI</string>
+    <string name="settings_ai_features">Funkcje AI</string>
     <string name="settings_show_credibility_chip">Pokazuj oznaczenie wiarygodności</string>
     <string name="settings_credibility_description">Dodaje do każdego artykułu oznaczenie oceniające źródła, ton i równowagę tekstu</string>
     <string name="settings_rating_meaning">Znaczenie oceny:</string>
@@ -266,14 +266,11 @@
     <string name="ai_backend_gpu">GPU</string>
     <string name="ai_backend_npu">NPU</string>
     <string name="ai_backend_fallback">Jeśli preferowany backend jest niedostępny, hReader użyje innego lokalnego backendu. Nie przełączy się po cichu na OpenRouter.</string>
-    <string name="settings_paywall_service">Usługa obejścia paywalla</string>
     <string name="settings_bypass_service">Usługa obejścia</string>
-    <string name="settings_ai_provider">Dostawca AI</string>
-    <string name="settings_ai_model_summaries">Model AI do podsumowań</string>
     <string name="settings_model">Model</string>
     <string name="settings_model_missing">Ten model jest niedostępny. Pobierz go albo wybierz inny.</string>
     <string name="settings_privacy_diagnostics">Prywatność i diagnostyka</string>
-    <string name="settings_performance">Wydajność</string>
+    <string name="settings_local_data">Dane lokalne</string>
     <string name="settings_show_performance">Pokaż informacje o wydajności</string>
     <string name="settings_sign_out_title">Wyczyść pobrane dane i wyloguj</string>
     <string name="settings_sign_out_message">Dane logowania do serwera i pobrane dane zostaną usunięte z tego urządzenia.</string>
@@ -311,7 +308,6 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="server_username">Nazwa użytkownika</string>
     <string name="server_testing">Testowanie…</string>
     <string name="server_test_connection">Testuj połączenie</string>
-    <string name="server_clear_sign_out">Wyczyść dane i wyloguj</string>
     <string name="backend_switch_title">Przełączyć na %1$s?</string>
     <string name="backend_switch_message">hReader synchronizuje się tylko z jednym serwerem naraz. Przełączenie wyloguje Cię z %1$s i usunie wszystkie pobrane artykuły, kanały oraz obrazy. Dane logowania %2$s zostaną zachowane, a potem rozpocznie się nowa synchronizacja.</string>
 

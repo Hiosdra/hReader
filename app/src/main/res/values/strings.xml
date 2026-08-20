@@ -247,7 +247,7 @@
     <string name="settings_reading_experience">Reading experience</string>
     <string name="settings_bionic_reading">Bionic Reading</string>
     <string name="settings_bionic_reading_description">Highlight portions of words for faster reading</string>
-    <string name="settings_ai_credibility">AI Credibility Analysis</string>
+    <string name="settings_ai_features">AI features</string>
     <string name="settings_show_credibility_chip">Show credibility chip</string>
     <string name="settings_credibility_description">Adds a chip to every article that rates the text for sourcing, tone and balance</string>
     <string name="settings_rating_meaning">What the rating means:</string>
@@ -269,14 +269,11 @@
     <string name="ai_backend_gpu">GPU</string>
     <string name="ai_backend_npu">NPU</string>
     <string name="ai_backend_fallback">If the preferred backend is unavailable, hReader falls back to another local backend. It never silently switches to OpenRouter.</string>
-    <string name="settings_paywall_service">Paywall bypass service</string>
     <string name="settings_bypass_service">Bypass service</string>
-    <string name="settings_ai_provider">AI provider</string>
-    <string name="settings_ai_model_summaries">AI model for summaries</string>
     <string name="settings_model">Model</string>
     <string name="settings_model_missing">The selected model is unavailable. Download it or pick another one.</string>
     <string name="settings_privacy_diagnostics">Privacy &amp; diagnostics</string>
-    <string name="settings_performance">Performance</string>
+    <string name="settings_local_data">Local data</string>
     <string name="settings_show_performance">Show performance info</string>
     <string name="settings_sign_out_title">Clear downloaded data and sign out</string>
     <string name="settings_sign_out_message">Your server credentials and downloaded data will be removed from this device.</string>
@@ -320,7 +317,6 @@
     <string name="server_username">Username</string>
     <string name="server_testing">Testing…</string>
     <string name="server_test_connection">Test connection</string>
-    <string name="server_clear_sign_out">Clear downloaded data and sign out</string>
     <string name="backend_switch_title">Switch to %1$s?</string>
     <string name="backend_switch_message">hReader syncs with one server at a time. Switching signs you out of %1$s and deletes every article, feed and image downloaded from it. Your %2$s credentials are kept and a fresh sync starts afterwards.</string>
 

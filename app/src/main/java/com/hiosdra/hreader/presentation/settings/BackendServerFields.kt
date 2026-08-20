@@ -10,7 +10,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -29,8 +28,7 @@ fun BackendServerFields(
     onUsernameChange: (String) -> Unit,
     onSecretChange: (String) -> Unit,
     onTestConnection: () -> Unit,
-    modifier: Modifier = Modifier,
-    onSignOut: (() -> Unit)? = null
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier,
@@ -80,15 +78,6 @@ fun BackendServerFields(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(if (state.isTesting) R.string.server_testing else R.string.server_test_connection))
-        }
-        if (onSignOut != null && state.hasAllFields) {
-            TextButton(
-                onClick = onSignOut,
-                enabled = !state.isSwitchingBackend,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.server_clear_sign_out))
-            }
         }
         state.statusMessage?.let { message ->
             Text(

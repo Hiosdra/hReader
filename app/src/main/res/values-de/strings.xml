@@ -227,7 +227,7 @@
     <string name="settings_reading_experience">Leseerlebnis</string>
     <string name="settings_bionic_reading">Bionisches Lesen</string>
     <string name="settings_bionic_reading_description">Wortteile hervorheben, um schneller zu lesen</string>
-    <string name="settings_ai_credibility">KI-Glaubwürdigkeitsanalyse</string>
+    <string name="settings_ai_features">KI-Funktionen</string>
     <string name="settings_show_credibility_chip">Glaubwürdigkeitsmarkierung anzeigen</string>
     <string name="settings_credibility_description">Fügt jedem Artikel eine Markierung hinzu, die Quellen, Ton und Ausgewogenheit bewertet</string>
     <string name="settings_rating_meaning">Bedeutung der Bewertung:</string>
@@ -235,14 +235,11 @@
 • Gemischte Signale: vor der Nutzung prüfen
 • Schwache Signale: sensationelle oder unbelegte Behauptungen</string>
     <string name="settings_credibility_disclaimer">Dies ist ein KI-Eindruck des Artikeltexts, kein Faktencheck — das Modell kann nicht im Web suchen oder Behauptungen prüfen. Lokale Modelle behalten den Artikel auf dem Gerät; OpenRouter sendet ihn an den ausgewählten Anbieter und speichert das Ergebnis bis zur erneuten Analyse.</string>
-    <string name="settings_paywall_service">Paywall-Umgehungsdienst</string>
     <string name="settings_bypass_service">Umgehungsdienst</string>
-    <string name="settings_ai_provider">KI-Anbieter</string>
-    <string name="settings_ai_model_summaries">KI-Modell für Zusammenfassungen</string>
     <string name="settings_model">Modell</string>
     <string name="settings_model_missing">Dieses Modell ist nicht verfügbar. Lade es herunter oder wähle ein anderes.</string>
     <string name="settings_privacy_diagnostics">Datenschutz &amp; Diagnose</string>
-    <string name="settings_performance">Leistung</string>
+    <string name="settings_local_data">Lokale Daten</string>
     <string name="settings_show_performance">Leistungsinformationen anzeigen</string>
     <string name="settings_sign_out_title">Heruntergeladene Daten löschen und abmelden</string>
     <string name="settings_sign_out_message">Serverzugangsdaten und heruntergeladene Daten werden von diesem Gerät entfernt.</string>
@@ -280,7 +277,6 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="server_username">Benutzername</string>
     <string name="server_testing">Wird getestet…</string>
     <string name="server_test_connection">Verbindung testen</string>
-    <string name="server_clear_sign_out">Daten löschen und abmelden</string>
     <string name="backend_switch_title">Zu %1$s wechseln?</string>
     <string name="backend_switch_message">hReader synchronisiert immer nur mit einem Server. Der Wechsel meldet dich von %1$s ab und löscht alle davon heruntergeladenen Artikel, Feeds und Bilder. Deine %2$s-Zugangsdaten bleiben erhalten; danach beginnt eine neue Synchronisierung.</string>
     <string name="sync_automatic">Automatische Synchronisierung</string>
