@@ -52,4 +52,24 @@ class GemmaArticleAiServiceTest {
         onDelta.captured("Local summary")
         assertTrue(progress.any { it.phase == ArticleAiPhase.STREAMING })
     }
+
+    @Test
+    fun splitsLongArticlesForTheLocalModelContext() = runBlocking {
+        var inferenceCalls = 0
+        coEvery {
+            engine.generate(any(), any(), any(), any(), any())
+        } answers {
+            inferenceCalls++
+            Result.success("Local summary")
+        }
+
+        service.generateArticleOverview(
+            title = "Title",
+            content = (1..6_000).joinToString(" ") { "Fact $it." },
+            modelId = Gemma4E2bModel.MODEL_ID,
+            onProgress = {}
+        ).getOrThrow()
+
+        assertTrue(inferenceCalls > 1)
+    }
 }

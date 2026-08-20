@@ -7,7 +7,7 @@ import com.hiosdra.hreader.core.application.ai.AiProvider
 
 object Gemma4E2bModel {
     const val MODEL_ID = AiModel.GEMMA_4_E2B_ID
-    const val CONTEXT_LENGTH = 128_000
+    const val CONTEXT_LENGTH = 4_096
     const val MODEL_SIZE_BYTES = 2_588_147_712L
     const val MODEL_SHA256 = "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c"
 
