@@ -36,6 +36,7 @@ import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.presentation.main.MainScreen
 import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.presentation.settings.SettingsScreen
+import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
 import com.hiosdra.hreader.R
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
@@ -153,8 +154,6 @@ fun AppNavigation(
                 navController = navController,
                 preferencesManager = preferencesManager,
                 errorReportingManager = errorReporter,
-                ttsModelManager = ttsModelManager,
-                ttsModelDownloadScheduler = ttsModelDownloadScheduler,
                 gemmaModelManager = gemmaModelManager,
                 gemmaModelDownloadScheduler = gemmaModelDownloadScheduler,
                 gemmaModelLifecycle = gemmaModelLifecycle,
@@ -163,6 +162,14 @@ fun AppNavigation(
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }
                 }
+            )
+        }
+        composable(Routes.TTS_SETTINGS) {
+            TtsSettingsScreen(
+                navController = navController,
+                preferencesManager = preferencesManager,
+                ttsModelManager = ttsModelManager,
+                ttsModelDownloadScheduler = ttsModelDownloadScheduler
             )
         }
     }

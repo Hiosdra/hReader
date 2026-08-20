@@ -27,47 +27,60 @@ fun ErrorReportingPreferenceCard(
     onEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val uriHandler = LocalUriHandler.current
     Card(
         modifier = modifier,
         shape = MaterialTheme.shapes.medium,
         colors = sectionCardColors()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = enabled,
-                        role = Role.Switch,
-                        onValueChange = onEnabledChange
-                    )
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.error_reporting_title),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = stringResource(R.string.error_reporting_description),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = null
+        ErrorReportingPreferenceContent(
+            enabled = enabled,
+            onEnabledChange = onEnabledChange,
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Composable
+internal fun ErrorReportingPreferenceContent(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val uriHandler = LocalUriHandler.current
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = enabled,
+                    role = Role.Switch,
+                    onValueChange = onEnabledChange
+                )
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.error_reporting_title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(R.string.error_reporting_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            TextButton(
-                onClick = { uriHandler.openUri(ErrorReporter.PRIVACY_POLICY_URL) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.error_reporting_privacy))
-            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = null
+            )
+        }
+        TextButton(
+            onClick = { uriHandler.openUri(ErrorReporter.PRIVACY_POLICY_URL) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.error_reporting_privacy))
         }
     }
 }

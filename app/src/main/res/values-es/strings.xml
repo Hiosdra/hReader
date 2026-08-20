@@ -218,7 +218,7 @@
     <string name="settings_reading_experience">Experiencia de lectura</string>
     <string name="settings_bionic_reading">Lectura biónica</string>
     <string name="settings_bionic_reading_description">Resalta partes de las palabras para leer más rápido</string>
-    <string name="settings_ai_credibility">Análisis de credibilidad con IA</string>
+    <string name="settings_ai_features">Funciones de IA</string>
     <string name="settings_show_credibility_chip">Mostrar indicador de credibilidad</string>
     <string name="settings_credibility_description">Añade a cada artículo un indicador que valora las fuentes, el tono y el equilibrio</string>
     <string name="settings_rating_meaning">Qué significa la valoración:</string>
@@ -226,14 +226,11 @@
 • Señales mixtas: verifica antes de confiar
 • Señales débiles: afirmaciones sensacionalistas o sin apoyo</string>
     <string name="settings_credibility_disclaimer">Es una impresión de IA del texto, no una verificación de hechos — el modelo no puede navegar por la web ni comprobar afirmaciones. Los modelos locales conservan el artículo en el dispositivo; OpenRouter lo envía al proveedor elegido y guarda el resultado hasta volver a analizarlo.</string>
-    <string name="settings_paywall_service">Servicio de desbloqueo de paywall</string>
     <string name="settings_bypass_service">Servicio de desbloqueo</string>
-    <string name="settings_ai_provider">Proveedor de IA</string>
-    <string name="settings_ai_model_summaries">Modelo de IA para resúmenes</string>
     <string name="settings_model">Modelo</string>
     <string name="settings_model_missing">Este modelo no está disponible. Descárgalo o elige otro.</string>
     <string name="settings_privacy_diagnostics">Privacidad y diagnóstico</string>
-    <string name="settings_performance">Rendimiento</string>
+    <string name="settings_local_data">Datos locales</string>
     <string name="settings_show_performance">Mostrar información de rendimiento</string>
     <string name="settings_sign_out_title">Borrar datos descargados y cerrar sesión</string>
     <string name="settings_sign_out_message">Las credenciales del servidor y los datos descargados se eliminarán de este dispositivo.</string>
@@ -271,7 +268,6 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="server_username">Nombre de usuario</string>
     <string name="server_testing">Probando…</string>
     <string name="server_test_connection">Probar conexión</string>
-    <string name="server_clear_sign_out">Borrar datos y cerrar sesión</string>
     <string name="backend_switch_title">¿Cambiar a %1$s?</string>
     <string name="backend_switch_message">hReader se sincroniza con un solo servidor. Cambiar cerrará tu sesión de %1$s y eliminará todos los artículos, fuentes e imágenes descargados. Tus credenciales de %2$s se conservarán y después comenzará una sincronización nueva.</string>
     <string name="sync_automatic">Sincronización automática</string>

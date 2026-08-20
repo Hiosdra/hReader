@@ -1,21 +1,16 @@
 package com.hiosdra.hreader.presentation.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -23,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -34,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.pluralStringResource
@@ -50,13 +43,11 @@ import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
-import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
-import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
-import com.hiosdra.hreader.presentation.components.ErrorReportingPreferenceCard
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
-import com.hiosdra.hreader.presentation.theme.sectionCardColors
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
+import com.hiosdra.hreader.presentation.navigation.Routes
+import com.hiosdra.hreader.presentation.theme.sectionCardColors
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,8 +57,6 @@ fun SettingsScreen(
     onSignedOut: () -> Unit = {},
     preferencesManager: AppPreferences,
     errorReportingManager: ErrorReporter,
-    ttsModelManager: TtsModelGateway,
-    ttsModelDownloadScheduler: TtsModelDownloadRequester,
     gemmaModelManager: GemmaModelGateway,
     gemmaModelDownloadScheduler: GemmaModelDownloadRequester,
     gemmaModelLifecycle: GemmaModelLifecycle,
@@ -87,6 +76,7 @@ fun SettingsScreen(
     var showBypassDialog by remember { mutableStateOf(false) }
     var showModelSheet by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
+
     val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
         bionicReadingEnabled = enabled
         preferencesManager.setBionicReadingEnabled(enabled)
@@ -103,14 +93,15 @@ fun SettingsScreen(
     LaunchedEffect(serverSettings.signOutCompleted) {
         if (serverSettings.signOutCompleted) onSignedOut()
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
                         stringResource(R.string.settings_title),
                         style = MaterialTheme.typography.titleMedium
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController?.popBackStack() }) {
@@ -131,10 +122,10 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .padding(paddingValues)
+                .imePadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // FreshRSS Server Card
             item {
                 Text(
                     text = stringResource(R.string.settings_rss_server),
@@ -158,8 +149,7 @@ fun SettingsScreen(
                         onUsernameChange = settingsViewModel::onUsernameChange,
                         onSecretChange = settingsViewModel::onSecretChange,
                         onTestConnection = settingsViewModel::testConnection,
-                        modifier = Modifier.padding(16.dp),
-                        onSignOut = { showSignOutDialog = true }
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             }
@@ -183,9 +173,6 @@ fun SettingsScreen(
                         onSyncWhileRoamingChange = settingsViewModel::onSyncWhileRoamingChange,
                         onQuietHoursEnabledChange = settingsViewModel::onQuietHoursEnabledChange,
                         onQuietHoursChange = settingsViewModel::onQuietHoursChange,
-                        onResyncFromScratch = {
-                            requestNotificationPermission(settingsViewModel::resyncFromScratch)
-                        },
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -219,55 +206,14 @@ fun SettingsScreen(
                 }
             }
 
-            // Reading Experience Card
             item {
-                Text(
-                    text = stringResource(R.string.settings_reading_experience),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onToggleBionicReading(!bionicReadingEnabled) }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stringResource(R.string.settings_bionic_reading),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = stringResource(R.string.settings_bionic_reading_description),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Switch(
-                                checked = bionicReadingEnabled,
-                                onCheckedChange = onToggleBionicReading
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                TtsSettingsSection(
-                    preferences = preferencesManager,
-                    modelManager = ttsModelManager,
-                    downloadScheduler = ttsModelDownloadScheduler,
-                    onRequestNotifications = requestNotificationPermission
+                ReadingSettingsSection(
+                    bionicReadingEnabled = bionicReadingEnabled,
+                    onBionicReadingChange = onToggleBionicReading,
+                    selectedTtsModel = preferencesManager.getTtsModel(),
+                    selectedBypassMethod = selectedBypassMethod,
+                    onOpenTts = { navController?.navigate(Routes.TTS_SETTINGS) },
+                    onOpenBypass = { showBypassDialog = true }
                 )
             }
 
@@ -282,177 +228,37 @@ fun SettingsScreen(
             }
 
             item {
-                Text(
-                    text = stringResource(R.string.settings_ai_credibility),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onToggleCredibilityScore(!credibilityScoreEnabled) }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stringResource(R.string.settings_show_credibility_chip),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = stringResource(R.string.settings_credibility_description),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Switch(
-                                checked = credibilityScoreEnabled,
-                                onCheckedChange = onToggleCredibilityScore
-                            )
-                        }
-                        if (credibilityScoreEnabled) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                            Text(
-                                text = stringResource(R.string.settings_rating_meaning),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(bottom = 4.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_rating_values),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.settings_credibility_disclaimer),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Paywall Bypass Method Section
-            item {
-                Text(
-                    text = stringResource(R.string.settings_paywall_service),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
-                ) {
-                    SettingRow(
-                        title = stringResource(R.string.settings_bypass_service),
-                        value = stringResource(selectedBypassMethod.displayNameRes),
-                        supportingText = selectedBypassMethod.host,
-                        onClick = { showBypassDialog = true }
-                    )
-                }
-            }
-
-            // OpenRouter Key Section
-            item {
-                Text(
-                    text = stringResource(R.string.settings_ai_provider),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
-                ) {
-                    OpenRouterKeyField(
-                        apiKey = openRouterApiKey,
-                        onApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
-
-            // AI Model Selection Section
-            item {
-                Text(
-                    text = stringResource(R.string.settings_ai_model_summaries),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
-                ) {
-                    SettingRow(
-                        title = stringResource(R.string.settings_model),
-                        value = aiModels.selectedModelName,
-                        supportingText = aiModels.selectedModelId.takeIf { it != aiModels.selectedModelName },
-                        onClick = { showModelSheet = true }
-                    )
-                }
-                if (aiModels.selectedModelIsMissing) {
-                    Text(
-                        text = stringResource(R.string.settings_model_missing),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-
-            item {
-                Text(
-                    text = stringResource(R.string.settings_privacy_diagnostics),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                ErrorReportingPreferenceCard(
-                    enabled = sentryReportingEnabled,
-                    onEnabledChange = onToggleSentryReporting,
-                    modifier = Modifier.fillMaxWidth()
+                AiSettingsSection(
+                    credibilityScoreEnabled = credibilityScoreEnabled,
+                    onCredibilityScoreChange = onToggleCredibilityScore,
+                    openRouterApiKey = openRouterApiKey,
+                    onOpenRouterApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
+                    aiModels = aiModels,
+                    onOpenModelPicker = { showModelSheet = true }
                 )
             }
 
-            // Performance Section
             item {
-                Text(
-                    text = stringResource(R.string.settings_performance),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                DiagnosticsSettingsSection(
+                    errorReportingEnabled = sentryReportingEnabled,
+                    onErrorReportingChange = onToggleSentryReporting,
+                    onShowPerformance = { showPerformanceDialog = true }
                 )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Button(
-                            onClick = { showPerformanceDialog = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(R.string.settings_show_performance))
-                        }
-                    }
-                }
+            }
+
+            item {
+                LocalDataSection(
+                    state = sync,
+                    canSignOut = serverSettings.hasAllFields,
+                    isBusy = serverSettings.isSwitchingBackend,
+                    onResyncFromScratch = {
+                        requestNotificationPermission(settingsViewModel::resyncFromScratch)
+                    },
+                    onSignOut = { showSignOutDialog = true }
+                )
             }
         }
+
         serverSettings.pendingBackendType?.let { target ->
             BackendSwitchDialog(
                 currentBackend = serverSettings.backendType,
@@ -504,10 +310,14 @@ fun SettingsScreen(
                             settingsViewModel.signOut()
                         },
                         enabled = !serverSettings.isSwitchingBackend
-                    ) { Text(stringResource(R.string.action_sign_out)) }
+                    ) {
+                        Text(stringResource(R.string.action_sign_out))
+                    }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showSignOutDialog = false }) { Text(stringResource(R.string.action_cancel)) }
+                    TextButton(onClick = { showSignOutDialog = false }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
                 }
             )
         }
@@ -583,8 +393,6 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-        // Additional details based on what's available
         record.batchSize?.let { batchSize ->
             record.totalArticles?.let { totalArticles ->
                 Text(
@@ -599,7 +407,6 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
                 )
             }
         }
-
         record.isIncremental?.let { isIncremental ->
             val syncInfo = record.lastSyncHoursAgo?.let { hours ->
                 stringResource(
@@ -609,7 +416,6 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
             } ?: stringResource(
                 if (isIncremental) R.string.settings_incremental_sync_plain else R.string.settings_full_sync_plain
             )
-
             Text(
                 text = syncInfo,
                 style = MaterialTheme.typography.bodySmall,
