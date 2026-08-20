@@ -1,5 +1,7 @@
 package com.hiosdra.hreader.adapter.persistence.room
 
+import java.util.Locale
+
 private val NON_SEARCHABLE = Regex("[^\\p{L}\\p{N}]+")
 
 /**
@@ -21,4 +23,4 @@ fun buildFtsMatchQuery(rawQuery: String): String? {
  * as they are: without an ESCAPE clause they widen the match rather than break it, and a feed name
  * is not somewhere either character carries meaning worth defending.
  */
-fun buildLikePattern(rawQuery: String): String = "%${rawQuery.trim().lowercase()}%"
+fun buildLikePattern(rawQuery: String): String = "%${rawQuery.trim().lowercase(Locale.ROOT)}%"
