@@ -6,6 +6,8 @@ import android.content.Context
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
+import androidx.work.Operation
+import androidx.work.impl.utils.futures.SettableFuture
 import androidx.work.WorkContinuation
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -24,15 +26,20 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import java.util.UUID
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
 
 @RunWith(JUnit4::class)
 class SyncSchedulerTest {
+    private fun <T> completedFuture(value: T) = SettableFuture.create<T>().also { it.set(value) }
+
     private val context = mockk<Context>(relaxed = true)
     private val backendPreferences = mockk<BackendPreferences>(relaxed = true)
     private val syncPreferences = mockk<SyncPreferences>(relaxed = true)
     private val networkMonitor = mockk<NetworkMonitor>(relaxed = true)
     private val workManager = mockk<WorkManager>(relaxed = true)
     private val workContinuation = mockk<WorkContinuation>(relaxed = true)
+    private val cancelOperation = mockk<Operation>()
     private val scheduler = SyncScheduler(
         context = context,
         backendPreferences = backendPreferences,
@@ -45,6 +52,9 @@ class SyncSchedulerTest {
         every { backendPreferences.hasBackendCredentials() } returns true
         every { syncPreferences.getSyncWhileRoaming() } returns true
         every { context.getString(any()) } returns "Sync"
+        every { cancelOperation.result } returns completedFuture(Operation.SUCCESS)
+        every { workManager.cancelUniqueWork(any()) } returns cancelOperation
+        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(emptyList())
         every {
             workManager.beginUniqueWork(
                 any<String>(),
@@ -82,7 +92,7 @@ class SyncSchedulerTest {
     }
 
     @Test
-    fun cancelAllSync_cancelsTheActiveWorkOnly() {
+    fun cancelAllSync_cancelsTheActiveWorkOnly() = runBlocking {
         scheduler.cancelAllSync()
 
         verify { workManager.cancelUniqueWork("ContentSyncWorker") }

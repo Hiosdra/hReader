@@ -17,7 +17,7 @@ interface SyncRequester {
     fun resyncNow(): UUID?
     fun observeRequestedSync(): Flow<SyncOperationStatus>
     fun observeOfflinePreparation(): Flow<OfflinePreparationProgress>
-    fun cancelAllSync()
+    suspend fun cancelAllSync()
     fun enqueueBackgroundSyncChain()
     fun prepareForOffline(): UUID?
     fun prepareFullOffline(): UUID?

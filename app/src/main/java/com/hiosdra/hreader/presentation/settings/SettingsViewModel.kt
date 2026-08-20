@@ -292,8 +292,7 @@ class SettingsViewModel(
                 resyncStatus = SyncOperationStatus(SyncOperationState.RUNNING),
                 showResyncStatus = true
             )
-            settings.cancelAllSync()
-            val cleared = runCatchingCancellable { settings.clearBackendData() }
+            val cleared = runCatchingCancellable { settings.cancelAndClearBackendData() }
             // Rescheduled even when clearing failed: leaving the periodic worker deregistered
             // would turn a failed wipe into an app that never syncs again.
             settings.schedulePeriodicSync()
@@ -422,8 +421,7 @@ class SettingsViewModel(
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, pendingBackendType = null)
             // In flight work belongs to the backend being left, and would write its articles back
             // into the cache that was just emptied.
-            settings.cancelAllSync()
-            val cleared = runCatchingCancellable { settings.clearBackendData() }
+            val cleared = runCatchingCancellable { settings.cancelAndClearBackendData() }
             if (cleared.isSuccess) {
                 settings.setBackendType(backendType)
             }
@@ -441,8 +439,7 @@ class SettingsViewModel(
         val backendType = _uiState.value.backendType
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, signOutCompleted = false)
-            settings.cancelAllSync()
-            val cleared = runCatchingCancellable { settings.clearBackendData() }
+            val cleared = runCatchingCancellable { settings.cancelAndClearBackendData() }
             settings.setBackendSecret(backendType, "")
             if (backendType.requiresUsername) {
                 settings.setFreshRssUsername("")

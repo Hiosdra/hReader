@@ -62,7 +62,11 @@ class SettingsUseCase(
     fun prepareForOffline() = sync.prepareForOffline()
     fun prepareFullOffline() = sync.prepareFullOffline()
     fun schedulePeriodicSync() = sync.schedulePeriodicSync()
-    fun cancelAllSync() = sync.cancelAllSync()
+    suspend fun cancelAllSync() = sync.cancelAllSync()
+    suspend fun cancelAndClearBackendData() {
+        sync.cancelAllSync()
+        cache.clearBackendData()
+    }
     fun resyncNow() = sync.resyncNow()
     fun syncNow(forceFullSync: Boolean, userVisible: Boolean) =
         sync.syncNow(forceFullSync = forceFullSync, userVisible = userVisible)
