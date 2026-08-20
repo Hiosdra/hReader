@@ -106,6 +106,12 @@
     <plurals name="article_reading_time_minutes"><item quantity="other">阅读 %1$d 分钟</item></plurals>
     <string name="article_ai_summary">AI 摘要</string>
     <string name="article_generating_summary">正在生成摘要…</string>
+    <string name="article_ai_preparing">正在准备文章…</string>
+    <string name="article_ai_loading_model">正在加载模型…</string>
+    <string name="article_ai_compacting">正在总结第 %1$d/%2$d 部分…</string>
+    <string name="article_ai_thinking">模型思考中（第 %1$d/%2$d 部分）…</string>
+    <string name="article_ai_streaming">正在接收回答（第 %1$d/%2$d 部分）…</string>
+    <string name="article_ai_finalizing">正在完成摘要…</string>
     <string name="article_hide_summary">隐藏摘要</string>
     <string name="article_show_summary">显示摘要</string>
     <string name="article_analyzing">正在分析…</string>

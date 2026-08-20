@@ -126,6 +126,12 @@
     </plurals>
     <string name="article_ai_summary">Podsumowanie AI</string>
     <string name="article_generating_summary">Tworzenie podsumowania…</string>
+    <string name="article_ai_preparing">Przygotowywanie artykułu…</string>
+    <string name="article_ai_loading_model">Ładowanie modelu…</string>
+    <string name="article_ai_compacting">Tworzenie skrótu — część %1$d z %2$d…</string>
+    <string name="article_ai_thinking">Model analizuje (część %1$d z %2$d)…</string>
+    <string name="article_ai_streaming">Odbieranie odpowiedzi (część %1$d z %2$d)…</string>
+    <string name="article_ai_finalizing">Finalizowanie skrótu…</string>
     <string name="article_hide_summary">Ukryj podsumowanie</string>
     <string name="article_show_summary">Pokaż podsumowanie</string>
     <string name="article_analyzing">Analizowanie…</string>

@@ -117,7 +117,17 @@ val networkModule = module {
     single { CredibilityPromptBuilder(get()) }
     single { CredibilityReportFactory(get()) }
     single { CredibilityResponseParser(get()) }
-    single<ArticleAiService> { ArticleAiService(get(), get(), get(), get(), get()) }
+    single<ArticleAiService> {
+        ArticleAiService(
+            openRouterApiService = get(),
+            preferencesManager = get(),
+            credibilityPromptBuilder = get(),
+            credibilityResponseParser = get(),
+            credibilityReportFactory = get(),
+            aiModelCatalog = get(),
+            moshi = get()
+        )
+    }
     single { GemmaModelManager(androidApplication(), get()) }
     single<GemmaModelGateway> { get<GemmaModelManager>() }
     single { GemmaInferenceEngine(androidApplication(), get(), get()) }

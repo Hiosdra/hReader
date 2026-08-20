@@ -9,7 +9,8 @@ data class OpenRouterRequest(
     val messages: List<ChatMessage>,
     @field:Json(name = "max_tokens") val maxTokens: Int,
     val temperature: Double,
-    @field:Json(name = "response_format") val responseFormat: ResponseFormat? = null
+    @field:Json(name = "response_format") val responseFormat: ResponseFormat? = null,
+    val stream: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -29,7 +30,7 @@ data class ChatMessage(
 
 @JsonClass(generateAdapter = true)
 data class OpenRouterResponse(
-    val choices: List<Choice>,
+    val choices: List<Choice> = emptyList(),
     val usage: Usage? = null,
     val error: ErrorDetail? = null
 )
@@ -43,16 +44,40 @@ data class Choice(
 
 @JsonClass(generateAdapter = true)
 data class Usage(
-    @field:Json(name = "prompt_tokens") val promptTokens: Int,
-    @field:Json(name = "completion_tokens") val completionTokens: Int,
-    @field:Json(name = "total_tokens") val totalTokens: Int
+    @field:Json(name = "prompt_tokens") val promptTokens: Int = 0,
+    @field:Json(name = "completion_tokens") val completionTokens: Int = 0,
+    @field:Json(name = "total_tokens") val totalTokens: Int = 0
 )
 
 @JsonClass(generateAdapter = true)
 data class ErrorDetail(
-    val message: String,
+    val message: String = "Unknown AI provider error",
     val type: String? = null,
     val code: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class OpenRouterStreamResponse(
+    val choices: List<StreamChoice> = emptyList(),
+    val usage: Usage? = null,
+    val error: ErrorDetail? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class StreamChoice(
+    @field:Json(name = "delta") val delta: StreamDelta? = null,
+    @field:Json(name = "finish_reason") val finishReason: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class StreamDelta(
+    val role: String? = null,
+    val content: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class OpenRouterErrorEnvelope(
+    val error: ErrorDetail? = null
 )
 
 @JsonClass(generateAdapter = true)

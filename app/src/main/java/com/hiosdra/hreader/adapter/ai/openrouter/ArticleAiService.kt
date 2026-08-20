@@ -5,42 +5,74 @@ import com.hiosdra.hreader.adapter.ai.common.CredibilityReportFactory
 import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
 import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.adapter.ai.common.stripToPlainText
-import com.hiosdra.hreader.core.application.port.out.AiPreferences
-import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
+import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
+import com.hiosdra.hreader.core.application.ai.ArticleSummaryPart
+import com.hiosdra.hreader.core.application.ai.ArticleSummaryPipeline
+import com.hiosdra.hreader.core.application.ai.AiProviderException
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
+import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
+import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
-import kotlinx.coroutines.Dispatchers
+import com.squareup.moshi.Moshi
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okio.BufferedSource
 
 private const val TAG = "ArticleAiService"
-private const val CREDIBILITY_MAX_OUTPUT_TOKENS = 1500
+private const val DEFAULT_CONTEXT_LENGTH = 4_096
+private const val CREDIBILITY_MAX_OUTPUT_TOKENS = 1_500
 private const val CREDIBILITY_TEMPERATURE = 0.2
+private const val MAX_PROVIDER_ERROR_LENGTH = 400
 
-class OpenRouterException(val code: Int?, message: String) : Exception(message)
+class OpenRouterException(val code: Int?, message: String) : AiProviderException(code, message)
 
 class ArticleAiService(
     private val openRouterApiService: OpenRouterApiService,
     private val preferencesManager: AiPreferences,
     private val credibilityPromptBuilder: CredibilityPromptBuilder,
     private val credibilityResponseParser: CredibilityResponseParser,
-    private val credibilityReportFactory: CredibilityReportFactory
+    private val credibilityReportFactory: CredibilityReportFactory,
+    private val aiModelCatalog: AiModelCatalog,
+    moshi: Moshi
 ) : ArticleAiGateway {
+    private val streamAdapter = moshi.adapter(OpenRouterStreamResponse::class.java)
+    private val errorAdapter = moshi.adapter(OpenRouterErrorEnvelope::class.java)
+    private val summaryPipeline = ArticleSummaryPipeline()
+
     private fun apiKeyOrNull(): String? = preferencesManager.getOpenRouterApiKey().takeIf { it.isNotBlank() }
 
     override suspend fun generateArticleOverview(
         title: String,
         content: String,
-        modelId: String
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit
     ): Result<String> = withContext(Dispatchers.IO) {
+        onProgress(ArticleAiProgress(ArticleAiPhase.PREPARING))
         val plainText = stripToPlainText(content)
         if (plainText.isBlank()) {
             return@withContext Result.failure(EmptyAiContentException())
         }
+        if (apiKeyOrNull() == null) {
+            return@withContext Result.failure(MissingAiApiKeyException())
+        }
+
         Log.d(TAG, "Generating overview with model: $modelId")
-        executeChat(createSummaryRequest(title, plainText, modelId)).map { it.trim() }
+        onProgress(ArticleAiProgress(ArticleAiPhase.LOADING_MODEL))
+        val contextLength = resolveContextLength(modelId)
+        summaryPipeline.generate(
+            title = stripToPlainText(title).trim(),
+            content = plainText,
+            modelId = modelId,
+            contextLength = contextLength,
+            onProgress = onProgress
+        ) { part, onDelta ->
+            executeChatStreaming(createSummaryRequest(part, modelId), onDelta)
+        }
     }
 
     override suspend fun analyzeCredibility(
@@ -77,6 +109,19 @@ class ArticleAiService(
         }.onFailure { Log.e(TAG, "Credibility analysis failed", it) }
     }
 
+    private suspend fun resolveContextLength(modelId: String): Int = try {
+        aiModelCatalog.getModels()
+            .firstOrNull { it.id == modelId }
+            ?.contextLength
+            ?.takeIf { it > 0 }
+            ?: DEFAULT_CONTEXT_LENGTH
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w(TAG, "Could not load context length for model $modelId", e)
+        DEFAULT_CONTEXT_LENGTH
+    }
+
     private suspend fun executeChat(request: OpenRouterRequest): Result<String> {
         val apiKey = apiKeyOrNull() ?: return Result.failure(MissingAiApiKeyException())
         return try {
@@ -86,7 +131,10 @@ class ArticleAiService(
             )
 
             if (!response.isSuccessful) {
-                val message = "API call failed: ${response.code()} - ${response.message()}"
+                val providerMessage = response.errorBody()?.string()
+                    ?.let(::providerErrorMessage)
+                    ?.takeIf(String::isNotBlank)
+                val message = "API call failed: ${response.code()} - ${providerMessage ?: response.message()}"
                 Log.e(TAG, message)
                 return Result.failure(OpenRouterException(response.code(), message))
             }
@@ -111,6 +159,69 @@ class ArticleAiService(
         }
     }
 
+    private suspend fun executeChatStreaming(
+        request: OpenRouterRequest,
+        onDelta: suspend (String) -> Unit
+    ): Result<String> {
+        val apiKey = apiKeyOrNull() ?: return Result.failure(MissingAiApiKeyException())
+        return try {
+            val response = openRouterApiService.chatCompletionStream(
+                authorization = "Bearer $apiKey",
+                request = request.copy(stream = true)
+            )
+            if (!response.isSuccessful) {
+                val providerMessage = response.errorBody()?.string()
+                    ?.let(::providerErrorMessage)
+                    ?.takeIf(String::isNotBlank)
+                val message = "API call failed: ${response.code()} - ${providerMessage ?: response.message()}"
+                Log.e(TAG, message)
+                return Result.failure(OpenRouterException(response.code(), message))
+            }
+
+            val body = response.body()
+                ?: return Result.failure(OpenRouterException(null, "The model returned an empty response."))
+            val content = body.use { readStream(it.source(), onDelta) }
+            if (content.isBlank()) {
+                Result.failure(OpenRouterException(null, "The model returned an empty response."))
+            } else {
+                Result.success(content)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Streaming chat completion failed", e)
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun readStream(source: BufferedSource, onDelta: suspend (String) -> Unit): String {
+        val content = StringBuilder()
+        while (true) {
+            val line = source.readUtf8Line() ?: break
+            if (line.isBlank() || line.startsWith(":")) continue
+            val payload = line.removePrefix("data:").trim()
+            if (payload.isBlank()) continue
+            if (payload == "[DONE]") break
+
+            val chunk = streamAdapter.fromJson(payload)
+                ?: throw OpenRouterException(null, "The AI provider returned an invalid stream chunk.")
+            chunk.error?.let { error ->
+                throw OpenRouterException(null, "AI Error: ${error.message}")
+            }
+            val delta = chunk.choices.firstOrNull()?.delta?.content.orEmpty()
+            if (delta.isNotEmpty()) {
+                content.append(delta)
+                onDelta(delta)
+            }
+        }
+        return content.toString()
+    }
+
+    private fun providerErrorMessage(raw: String): String {
+        val parsed = runCatching { errorAdapter.fromJson(raw)?.error?.message }.getOrNull()
+        return (parsed ?: raw.trim()).take(MAX_PROVIDER_ERROR_LENGTH)
+    }
+
     private fun isUnsupportedResponseFormat(error: Throwable): Boolean {
         val openRouterError = error as? OpenRouterException ?: return false
         if (openRouterError.code?.let { it == 400 || it == 404 || it == 422 } == true) return true
@@ -118,36 +229,15 @@ class ArticleAiService(
         return "response_format" in message || "json mode" in message
     }
 
-    private fun createSummaryRequest(
-        title: String,
-        content: String,
-        modelId: String
-    ): OpenRouterRequest {
-        val systemMessage = ChatMessage(
-            role = "system",
-            content = """
-You are a helpful assistant that creates concise, informative overviews of articles.
-Provide a summary in 2-3 sentences that captures the main points and key insights.
-Language of the summary should be the same as the language of the article.
-
-DO NOT INCLUDE "Here's your summary" or "Here's your overview" in the response.
-                """.trimIndent()
-        )
-
-        val userMessage = ChatMessage(
-            role = "user",
-            content = """
-Please provide a brief overview of this article:
-Title: $title
-Content: $content
-""".trimIndent()
-        )
-
-        return OpenRouterRequest(
+    private fun createSummaryRequest(part: ArticleSummaryPart, modelId: String): OpenRouterRequest =
+        OpenRouterRequest(
             model = modelId,
-            messages = listOf(systemMessage, userMessage),
-            maxTokens = 500,
-            temperature = 0.5
+            messages = listOf(
+                ChatMessage(role = "system", content = part.systemPrompt),
+                ChatMessage(role = "user", content = part.userPrompt)
+            ),
+            maxTokens = part.maxOutputTokens,
+            temperature = 0.2,
+            stream = true
         )
-    }
 }

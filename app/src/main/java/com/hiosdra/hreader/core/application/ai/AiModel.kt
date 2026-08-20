@@ -24,6 +24,11 @@ class MissingAiApiKeyException : Exception()
 
 class EmptyAiContentException : Exception()
 
+open class AiProviderException(
+    val statusCode: Int?,
+    message: String
+) : Exception(message)
+
 class GemmaModelNotInstalledException : Exception()
 
 sealed interface SelectedModelStatus {

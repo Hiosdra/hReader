@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.core.application.usecase.article
 
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
@@ -66,10 +67,11 @@ class ArticleReaderUseCase(
         entryId: Long,
         title: String,
         body: String,
-        modelId: String = getAiModelId()
+        modelId: String = getAiModelId(),
+        onProgress: suspend (ArticleAiProgress) -> Unit = {}
     ): Result<String> {
         overviews.get(entryId, body, modelId)?.let { return Result.success(it) }
-        return ai.generateArticleOverview(title, body, modelId).onSuccess { overview ->
+        return ai.generateArticleOverview(title, body, modelId, onProgress).onSuccess { overview ->
             overviews.save(entryId, body, modelId, overview)
         }
     }

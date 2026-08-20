@@ -122,6 +122,12 @@
     </plurals>
     <string name="article_ai_summary">AI summary</string>
     <string name="article_generating_summary">Generating summary…</string>
+    <string name="article_ai_preparing">Preparing article…</string>
+    <string name="article_ai_loading_model">Loading model…</string>
+    <string name="article_ai_compacting">Summarizing part %1$d of %2$d…</string>
+    <string name="article_ai_thinking">Model is thinking (part %1$d of %2$d)…</string>
+    <string name="article_ai_streaming">Receiving answer (part %1$d of %2$d)…</string>
+    <string name="article_ai_finalizing">Finishing summary…</string>
     <string name="article_hide_summary">Hide summary</string>
     <string name="article_show_summary">Show summary</string>
     <string name="article_analyzing">Analyzing…</string>

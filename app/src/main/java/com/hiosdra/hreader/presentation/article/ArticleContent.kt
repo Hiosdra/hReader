@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.hiosdra.hreader.core.application.content.removeDuplicateArticleTitle
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
@@ -80,6 +81,7 @@ internal fun ArticleContent(
     isOnline: Boolean = true,
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
+    aiOverviewProgress: ArticleAiProgress? = null,
     onAiOverview: ((Long) -> Unit)? = null,
     credibilityEnabled: Boolean = false,
     credibilityReport: CredibilityReport? = null,
@@ -252,6 +254,7 @@ internal fun ArticleContent(
                         isOnline = isOnline,
                         aiOverview = aiOverview,
                         isGeneratingOverview = isGeneratingOverview,
+                        aiOverviewProgress = aiOverviewProgress,
                         onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null,
                         credibilityEnabled = credibilityEnabled,
                         credibilityReport = credibilityReport,
