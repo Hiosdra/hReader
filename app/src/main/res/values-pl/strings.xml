@@ -125,6 +125,7 @@
         <item quantity="other">%1$d min czytania</item>
     </plurals>
     <string name="article_ai_summary">Podsumowanie AI</string>
+    <string name="article_ai_working_summary">Podsumowanie robocze — to jeszcze nie jest wersja finalna</string>
     <string name="article_generating_summary">Tworzenie podsumowania…</string>
     <string name="article_ai_preparing">Przygotowywanie artykułu…</string>
     <string name="article_ai_loading_model">Ładowanie modelu…</string>

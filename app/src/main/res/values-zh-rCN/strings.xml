@@ -105,6 +105,7 @@
     <string name="article_image_sharing_failed">图片分享失败</string>
     <plurals name="article_reading_time_minutes"><item quantity="other">阅读 %1$d 分钟</item></plurals>
     <string name="article_ai_summary">AI 摘要</string>
+    <string name="article_ai_working_summary">工作摘要 — 还不是最终版本</string>
     <string name="article_generating_summary">正在生成摘要…</string>
     <string name="article_ai_preparing">正在准备文章…</string>
     <string name="article_ai_loading_model">正在加载模型…</string>

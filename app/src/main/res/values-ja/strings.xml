@@ -105,6 +105,7 @@
     <string name="article_image_sharing_failed">画像を共有できませんでした</string>
     <plurals name="article_reading_time_minutes"><item quantity="other">読了時間 %1$d 分</item></plurals>
     <string name="article_ai_summary">AI要約</string>
+    <string name="article_ai_working_summary">作業用の要約 — まだ最終版ではありません</string>
     <string name="article_generating_summary">要約を生成中…</string>
     <string name="article_ai_preparing">記事を準備中…</string>
     <string name="article_ai_loading_model">モデルを読み込み中…</string>

@@ -105,6 +105,7 @@
     <string name="article_image_sharing_failed">Falha ao compartilhar imagem</string>
     <plurals name="article_reading_time_minutes"><item quantity="one">%1$d min de leitura</item><item quantity="many">%1$d min de leitura</item><item quantity="other">%1$d min de leitura</item></plurals>
     <string name="article_ai_summary">Resumo de IA</string>
+    <string name="article_ai_working_summary">Resumo de trabalho — ainda não é o resultado final</string>
     <string name="article_generating_summary">Gerando resumo…</string>
     <string name="article_ai_preparing">Preparando o artigo…</string>
     <string name="article_ai_loading_model">Carregando o modelo…</string>
