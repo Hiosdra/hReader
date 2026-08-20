@@ -227,9 +227,9 @@ val appModule = module {
             sync = get<SyncRequester>()
         )
     }
-    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
-    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
-    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
+    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }
