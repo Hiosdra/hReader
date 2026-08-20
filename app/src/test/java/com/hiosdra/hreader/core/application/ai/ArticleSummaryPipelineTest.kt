@@ -41,6 +41,11 @@ class ArticleSummaryPipelineTest {
         assertTrue(callsAfterFirstRun > 1)
         assertEquals(callsAfterFirstRun, inferenceCalls)
         assertEquals(first, second)
+        assertTrue(
+            progress
+                .filter { it.phase == ArticleAiPhase.STREAMING }
+                .all { it.part == it.totalParts }
+        )
         assertTrue(progress.any { it.phase == ArticleAiPhase.STREAMING })
         assertTrue(progress.any { it.phase == ArticleAiPhase.FINALIZING })
     }

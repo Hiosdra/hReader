@@ -86,6 +86,11 @@ class ArticleAiServiceSummaryTest {
         assertTrue(requests.captured.messages.last().content.contains("first part"))
         assertTrue(progress.any { it.phase == ArticleAiPhase.COMPACTING && it.part == 2 })
         assertTrue(progress.any { it.phase == ArticleAiPhase.THINKING })
+        assertTrue(
+            progress
+                .filter { it.phase == ArticleAiPhase.STREAMING }
+                .all { it.part == it.totalParts }
+        )
         assertTrue(progress.any { it.phase == ArticleAiPhase.STREAMING && it.draft.contains("final overview") })
         assertEquals(ArticleAiPhase.FINALIZING, progress.last().phase)
     }

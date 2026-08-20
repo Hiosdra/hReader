@@ -129,20 +129,17 @@ class ArticleSummaryPipeline {
                     isFinalPart = part == plan.chunks.size
                 )
             ) { delta ->
-                streamedSummary.append(delta)
-                val draft = if (part == plan.chunks.size) {
-                    streamedSummary.toString()
-                } else {
-                    workingSummary + streamedSummary.toString()
-                }
-                onProgress(
-                    ArticleAiProgress(
-                        phase = ArticleAiPhase.STREAMING,
-                        part = part,
-                        totalParts = plan.chunks.size,
-                        draft = draft
+                if (part == plan.chunks.size) {
+                    streamedSummary.append(delta)
+                    onProgress(
+                        ArticleAiProgress(
+                            phase = ArticleAiPhase.STREAMING,
+                            part = part,
+                            totalParts = plan.chunks.size,
+                            draft = streamedSummary.toString()
+                        )
                     )
-                )
+                }
             }
             workingSummary = result.getOrElse { return Result.failure(it) }
                 .let { ArticleSummaryPlanner.boundWorkingSummary(it, plan.workingSummaryCharacterLimit) }
