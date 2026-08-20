@@ -53,10 +53,9 @@ private const val WRITE_TIMEOUT_SECONDS = 30L
 val networkModule = module {
     single { ServerConfig(get()) }
     single<BackendIdentity> { get<ServerConfig>() }
-    // The login call carries the username and API password in its form body and gets the auth token
-    // back in the response body, so it goes out on a client with the interceptors stripped: body
-    // logging is on in debug builds, and redactHeader only covers headers. The connection pool and
-    // dispatcher are still shared, since newBuilder keeps them.
+    // The login call carries credentials in its form body and gets the auth token back in the
+    // response body, so it uses a client without the app's auth and logging interceptors. The
+    // connection pool and dispatcher are still shared, since newBuilder keeps them.
     single {
         GoogleReaderAuthenticator(get()) {
             get<OkHttpClient>().newBuilder().apply { interceptors().clear() }.build()
@@ -67,7 +66,7 @@ val networkModule = module {
     single { BackendUrlInterceptor(get(), androidApplication()) }
     single<HttpLoggingInterceptor> {
         HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
             redactHeader("Authorization")
             redactHeader("X-Auth-Token")
         }
