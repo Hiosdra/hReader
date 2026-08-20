@@ -10,6 +10,16 @@ import org.junit.Test
 
 class RemoteResourcePolicyTest {
     @Test
+    fun `normalizes a bare configured server host`() {
+        assertEquals("reader.example", normalizedConfiguredHost("reader.example"))
+    }
+
+    @Test
+    fun `normalizes a configured host with a case insensitive scheme`() {
+        assertEquals("reader.example", normalizedConfiguredHost("HTTPS://READER.EXAMPLE"))
+    }
+
+    @Test
     fun `allows configured private server`() {
         val policy = policyFor("10.0.0.4", allowedHosts = setOf("reader.local"))
 
