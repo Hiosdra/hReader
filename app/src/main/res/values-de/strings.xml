@@ -114,6 +114,7 @@
         <item quantity="other">%1$d Min. Lesezeit</item>
     </plurals>
     <string name="article_ai_summary">KI-Zusammenfassung</string>
+    <string name="article_ai_working_summary">Arbeitszusammenfassung — noch nicht final</string>
     <string name="article_generating_summary">Zusammenfassung wird erstellt…</string>
     <string name="article_ai_preparing">Artikel wird vorbereitet…</string>
     <string name="article_ai_loading_model">Modell wird geladen…</string>

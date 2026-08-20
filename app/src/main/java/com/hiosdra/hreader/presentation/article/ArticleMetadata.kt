@@ -198,6 +198,13 @@ internal fun ArticleMetadata(
                                 ?.let { draft ->
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
+                                        text = stringResource(R.string.article_ai_working_summary),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
                                         text = draft,
                                         style = MaterialTheme.typography.bodyMedium,
                                         lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,

@@ -105,6 +105,7 @@
     <string name="article_image_sharing_failed">Condivisione immagine non riuscita</string>
     <plurals name="article_reading_time_minutes"><item quantity="one">%1$d min di lettura</item><item quantity="many">%1$d min di lettura</item><item quantity="other">%1$d min di lettura</item></plurals>
     <string name="article_ai_summary">Riepilogo IA</string>
+    <string name="article_ai_working_summary">Riepilogo di lavoro — non è ancora definitivo</string>
     <string name="article_generating_summary">Generazione riepilogo…</string>
     <string name="article_ai_preparing">Preparazione dell’articolo…</string>
     <string name="article_ai_loading_model">Caricamento del modello…</string>
