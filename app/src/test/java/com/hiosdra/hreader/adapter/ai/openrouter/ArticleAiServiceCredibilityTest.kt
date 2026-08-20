@@ -8,6 +8,7 @@ import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.core.domain.model.CredibilityConfidence
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
 import com.hiosdra.hreader.adapter.preferences.PreferencesManager
+import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.mockk.coEvery
@@ -31,14 +32,16 @@ import java.time.Instant
 class ArticleAiServiceCredibilityTest {
     private val api = mockk<OpenRouterApiService>()
     private val preferences = mockk<PreferencesManager>()
+    private val modelCatalog = mockk<AiModelCatalog>()
+    private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
     private val service = ArticleAiService(
         openRouterApiService = api,
         preferencesManager = preferences,
         credibilityPromptBuilder = CredibilityPromptBuilder(Clock.systemDefaultZone()),
-        credibilityResponseParser = CredibilityResponseParser(
-            Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-        ),
-        credibilityReportFactory = CredibilityReportFactory(Clock.systemDefaultZone())
+        credibilityResponseParser = CredibilityResponseParser(moshi),
+        credibilityReportFactory = CredibilityReportFactory(Clock.systemDefaultZone()),
+        aiModelCatalog = modelCatalog,
+        moshi = moshi
     )
 
     private val source = CredibilitySource(
@@ -55,6 +58,7 @@ class ArticleAiServiceCredibilityTest {
         mockkStatic(Log::class)
         every { Log.d(any(), any()) } returns 0
         every { Log.i(any(), any()) } returns 0
+        every { Log.w(any(), any(), any()) } returns 0
         every { Log.e(any(), any()) } returns 0
         every { Log.e(any(), any(), any()) } returns 0
         every { preferences.getOpenRouterApiKey() } returns "test-key"

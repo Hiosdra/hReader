@@ -271,6 +271,7 @@ fun ArticleScreen(
                         isOnline = uiState.isOnline,
                         aiOverviews = uiState.aiOverviews,
                         generatingOverviewIds = uiState.generatingOverviewIds,
+                        aiOverviewProgress = uiState.aiOverviewProgress,
                         onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
                         credibilityEnabled = uiState.credibilityEnabled,
                         credibilityReports = uiState.credibilityReports,

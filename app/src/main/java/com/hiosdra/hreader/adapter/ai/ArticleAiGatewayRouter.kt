@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.ai
 import com.hiosdra.hreader.adapter.ai.gemma.Gemma4E2bModel
 import com.hiosdra.hreader.adapter.ai.gemma.GemmaArticleAiService
 import com.hiosdra.hreader.adapter.ai.openrouter.ArticleAiService
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
@@ -21,10 +22,11 @@ class ArticleAiGatewayRouter(
     override suspend fun generateArticleOverview(
         title: String,
         content: String,
-        modelId: String
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit
     ): Result<String> = try {
         gatewayFor(modelId)
-            .generateArticleOverview(title, content, modelId)
+            .generateArticleOverview(title, content, modelId, onProgress)
             .onFailure(::reportSummaryFailure)
     } catch (e: CancellationException) {
         throw e

@@ -5,6 +5,9 @@ import com.hiosdra.hreader.adapter.ai.common.CredibilityReportFactory
 import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
 import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.adapter.ai.common.stripToPlainText
+import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
+import com.hiosdra.hreader.core.application.ai.ArticleSummaryPipeline
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
@@ -14,7 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val TAG = "GemmaArticleAi"
-private const val SUMMARY_MAX_OUTPUT_TOKENS = 500
 private const val CREDIBILITY_MAX_OUTPUT_TOKENS = 1500
 
 class GemmaArticleAiService(
@@ -23,27 +25,33 @@ class GemmaArticleAiService(
     private val credibilityResponseParser: CredibilityResponseParser,
     private val credibilityReportFactory: CredibilityReportFactory
 ) : ArticleAiGateway {
+    private val summaryPipeline = ArticleSummaryPipeline()
+
     override suspend fun generateArticleOverview(
         title: String,
         content: String,
-        modelId: String
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit
     ): Result<String> = withContext(Dispatchers.Default) {
+        onProgress(ArticleAiProgress(ArticleAiPhase.PREPARING))
         val plainText = stripToPlainText(content)
         if (plainText.isBlank()) return@withContext Result.failure(EmptyAiContentException())
-        engine.generate(
-            systemPrompt = """
-                You create concise, informative article overviews.
-                Return 2-3 sentences in the same language as the article.
-                Do not add an introduction such as \"Here is the summary\".
-            """.trimIndent(),
-            userPrompt = """
-                Provide a brief overview of this article.
-                Title: $title
-                Content: $plainText
-            """.trimIndent(),
-            maxOutputTokens = SUMMARY_MAX_OUTPUT_TOKENS,
-            temperature = 0.5
-        ).map { it.trim() }
+        onProgress(ArticleAiProgress(ArticleAiPhase.LOADING_MODEL))
+        summaryPipeline.generate(
+            title = stripToPlainText(title).trim(),
+            content = plainText,
+            modelId = modelId,
+            contextLength = Gemma4E2bModel.CONTEXT_LENGTH,
+            onProgress = onProgress
+        ) { part, onDelta ->
+            engine.generate(
+                systemPrompt = part.systemPrompt,
+                userPrompt = part.userPrompt,
+                maxOutputTokens = part.maxOutputTokens,
+                temperature = 0.2,
+                onDelta = onDelta
+            )
+        }
     }
 
     override suspend fun analyzeCredibility(

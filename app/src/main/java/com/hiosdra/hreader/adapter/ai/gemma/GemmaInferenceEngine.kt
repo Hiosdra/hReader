@@ -44,7 +44,8 @@ class GemmaInferenceEngine(
         systemPrompt: String,
         userPrompt: String,
         maxOutputTokens: Int,
-        temperature: Double
+        temperature: Double,
+        onDelta: suspend (String) -> Unit = {}
     ): Result<String> = withContext(Dispatchers.Default) {
         lock.withLock {
             if (!modelManager.isInstalled()) {
@@ -71,7 +72,10 @@ class GemmaInferenceEngine(
                             conversation.sendMessageAsync(Contents.of(userPrompt)).collect { message ->
                                 message.contents.contents
                                     .filterIsInstance<Content.Text>()
-                                    .forEach { append(it.text) }
+                                    .forEach {
+                                        append(it.text)
+                                        onDelta(it.text)
+                                    }
                             }
                         }.trim()
                     }

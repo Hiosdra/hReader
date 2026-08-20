@@ -18,6 +18,7 @@ import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -39,6 +40,7 @@ internal fun ArticlePager(
     isOnline: Boolean = true,
     aiOverviews: Map<Long, String> = emptyMap(),
     generatingOverviewIds: Set<Long> = emptySet(),
+    aiOverviewProgress: Map<Long, ArticleAiProgress> = emptyMap(),
     onAiOverview: ((Long) -> Unit)? = null,
     credibilityEnabled: Boolean = false,
     credibilityReports: Map<Long, CredibilityReport> = emptyMap(),
@@ -104,6 +106,7 @@ internal fun ArticlePager(
                         isOnline = isOnline,
                         aiOverview = aiOverviews[entry.id],
                         isGeneratingOverview = generatingOverviewIds.contains(entry.id),
+                        aiOverviewProgress = aiOverviewProgress[entry.id],
                         onAiOverview = onAiOverview,
                         credibilityEnabled = credibilityEnabled,
                         credibilityReport = credibilityReports[entry.id],

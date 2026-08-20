@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 
 @Composable
@@ -45,6 +47,7 @@ internal fun ArticleMetadata(
     isOnline: Boolean = true,
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
+    aiOverviewProgress: ArticleAiProgress? = null,
     onAiOverviewClick: (() -> Unit)? = null,
     credibilityEnabled: Boolean = false,
     credibilityReport: CredibilityReport? = null,
@@ -84,8 +87,12 @@ internal fun ArticleMetadata(
                 androidx.compose.material3.AssistChip(
                     onClick = {
                         if (aiOverview == null) {
-                            isAiExpanded = true
-                            aiOverviewClick()
+                            if (isGeneratingOverview) {
+                                isAiExpanded = !isAiExpanded
+                            } else {
+                                isAiExpanded = true
+                                aiOverviewClick()
+                            }
                         } else {
                             isAiExpanded = !isAiExpanded
                         }
@@ -100,8 +107,7 @@ internal fun ArticleMetadata(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             val chipText = when {
-                                aiOverview == null && isGeneratingOverview ->
-                                    stringResource(R.string.article_generating_summary)
+                                aiOverview == null && isGeneratingOverview -> articleAiProgressLabel(aiOverviewProgress)
                                 aiOverview == null -> stringResource(R.string.article_ai_summary)
                                 isAiExpanded -> stringResource(R.string.article_hide_summary)
                                 else -> stringResource(R.string.article_show_summary)
@@ -109,7 +115,7 @@ internal fun ArticleMetadata(
                             Text(chipText)
                         }
                     },
-                    enabled = !(aiOverview == null && isGeneratingOverview) && (aiOverview != null || isOnline),
+                    enabled = isGeneratingOverview || aiOverview != null || isOnline,
                     colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
                         containerColor = if (aiOverview != null || isGeneratingOverview) {
                             MaterialTheme.colorScheme.primaryContainer
@@ -182,11 +188,22 @@ internal fun ArticleMetadata(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = stringResource(R.string.article_generating_summary),
+                                    text = articleAiProgressLabel(aiOverviewProgress),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            aiOverviewProgress?.draft
+                                ?.takeIf(String::isNotBlank)
+                                ?.let { draft ->
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = draft,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                         } else {
                             Text(
                                 text = aiOverview ?: "",
@@ -217,3 +234,31 @@ internal fun ArticleMetadata(
         }
     }
 }
+
+@Composable
+private fun articleAiProgressLabel(progress: ArticleAiProgress?): String = when (progress?.phase) {
+    ArticleAiPhase.PREPARING -> stringResource(R.string.article_ai_preparing)
+    ArticleAiPhase.LOADING_MODEL -> stringResource(R.string.article_ai_loading_model)
+    ArticleAiPhase.COMPACTING -> progressPartLabel(
+        progress,
+        R.string.article_ai_compacting
+    )
+    ArticleAiPhase.THINKING -> progressPartLabel(
+        progress,
+        R.string.article_ai_thinking
+    )
+    ArticleAiPhase.STREAMING -> progressPartLabel(
+        progress,
+        R.string.article_ai_streaming
+    )
+    ArticleAiPhase.FINALIZING -> stringResource(R.string.article_ai_finalizing)
+    null -> stringResource(R.string.article_generating_summary)
+}
+
+@Composable
+private fun progressPartLabel(progress: ArticleAiProgress, resourceId: Int): String =
+    if (progress.part > 0 && progress.totalParts > 0) {
+        stringResource(resourceId, progress.part, progress.totalParts)
+    } else {
+        stringResource(R.string.article_generating_summary)
+    }

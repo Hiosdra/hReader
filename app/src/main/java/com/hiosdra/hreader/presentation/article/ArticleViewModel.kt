@@ -3,6 +3,9 @@ package com.hiosdra.hreader.presentation.article
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
+import com.hiosdra.hreader.core.application.ai.AiProviderException
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.GemmaModelNotInstalledException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
@@ -82,6 +85,7 @@ data class ArticleUiState(
     val isOnline: Boolean = true,
     val aiOverviews: Map<Long, String> = emptyMap(),
     val generatingOverviewIds: Set<Long> = emptySet(),
+    val aiOverviewProgress: Map<Long, ArticleAiProgress> = emptyMap(),
     val overviewError: UiText? = null,
     val credibilityEnabled: Boolean = false,
     val credibilityReports: Map<Long, CredibilityReport> = emptyMap(),
@@ -107,6 +111,7 @@ internal fun ArticleUiState.trimReaderState(index: Int = currentIndex): ArticleU
         readingPositionLoadedIds = readingPositionLoadedIds.filterTo(mutableSetOf()) { it in retainedIds },
         offlinePages = offlinePages.filterKeys { it in retainedIds },
         aiOverviews = aiOverviews.filterKeys { it in retainedIds },
+        aiOverviewProgress = aiOverviewProgress.filterKeys { it in retainedIds },
         credibilityReports = credibilityReports.filterKeys { it in retainedIds },
         partialContentIds = partialContentIds.filterTo(mutableSetOf()) { it in retainedIds }
     )
@@ -164,6 +169,7 @@ class ArticleViewModel(
                         aiOverviews = emptyMap(),
                         credibilityReports = emptyMap(),
                         generatingOverviewIds = emptySet(),
+                        aiOverviewProgress = emptyMap(),
                         analyzingCredibilityIds = emptySet(),
                         overviewError = null,
                         scoreError = null
@@ -511,7 +517,12 @@ class ArticleViewModel(
         val generation = aiModelGeneration
 
         _uiState.update {
-            it.copy(generatingOverviewIds = it.generatingOverviewIds + entryId, overviewError = null)
+            it.copy(
+                generatingOverviewIds = it.generatingOverviewIds + entryId,
+                aiOverviewProgress = it.aiOverviewProgress +
+                    (entryId to ArticleAiProgress(ArticleAiPhase.PREPARING)),
+                overviewError = null
+            )
         }
 
         viewModelScope.launch {
@@ -520,12 +531,26 @@ class ArticleViewModel(
                 _uiState.update { state ->
                     if (generation != aiModelGeneration) state else state.copy(
                         generatingOverviewIds = state.generatingOverviewIds - entryId,
+                        aiOverviewProgress = state.aiOverviewProgress - entryId,
                         overviewError = MISSING_CONTENT_MESSAGE
                     )
                 }
                 return@launch
             }
-            val result = reader.generateOverview(entryId, entry.title, content, modelId)
+            val result = reader.generateOverview(
+                entryId = entryId,
+                title = entry.title,
+                body = content,
+                modelId = modelId
+            ) { progress ->
+                _uiState.update { state ->
+                    if (generation != aiModelGeneration || entryId !in state.readerWindowIds()) {
+                        state
+                    } else {
+                        state.copy(aiOverviewProgress = state.aiOverviewProgress + (entryId to progress))
+                    }
+                }
+            }
 
             _uiState.update { state ->
                 if (generation != aiModelGeneration) {
@@ -533,6 +558,7 @@ class ArticleViewModel(
                 } else {
                     state.copy(
                         generatingOverviewIds = state.generatingOverviewIds - entryId,
+                        aiOverviewProgress = state.aiOverviewProgress - entryId,
                         aiOverviews = result.fold(
                             onSuccess = { overview ->
                                 if (entryId in state.readerWindowIds()) {
@@ -614,6 +640,10 @@ class ArticleViewModel(
         is MissingAiApiKeyException -> UiText.Resource(R.string.article_ai_api_key_missing)
         is GemmaModelNotInstalledException -> UiText.Resource(R.string.article_ai_model_missing)
         is EmptyAiContentException -> MISSING_CONTENT_MESSAGE
+        is AiProviderException -> error.message
+            ?.takeIf(String::isNotBlank)
+            ?.let(UiText::Plain)
+            ?: UiText.Resource(fallbackResId)
         else -> UiText.Resource(fallbackResId)
     }
 

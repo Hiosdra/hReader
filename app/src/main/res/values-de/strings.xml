@@ -115,6 +115,12 @@
     </plurals>
     <string name="article_ai_summary">KI-Zusammenfassung</string>
     <string name="article_generating_summary">Zusammenfassung wird erstellt…</string>
+    <string name="article_ai_preparing">Artikel wird vorbereitet…</string>
+    <string name="article_ai_loading_model">Modell wird geladen…</string>
+    <string name="article_ai_compacting">Teil %1$d von %2$d wird zusammengefasst…</string>
+    <string name="article_ai_thinking">Modell denkt nach (Teil %1$d von %2$d)…</string>
+    <string name="article_ai_streaming">Antwort wird empfangen (Teil %1$d von %2$d)…</string>
+    <string name="article_ai_finalizing">Zusammenfassung wird abgeschlossen…</string>
     <string name="article_hide_summary">Zusammenfassung ausblenden</string>
     <string name="article_show_summary">Zusammenfassung anzeigen</string>
     <string name="article_analyzing">Analyse läuft…</string>

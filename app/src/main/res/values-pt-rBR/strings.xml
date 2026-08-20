@@ -106,6 +106,12 @@
     <plurals name="article_reading_time_minutes"><item quantity="one">%1$d min de leitura</item><item quantity="many">%1$d min de leitura</item><item quantity="other">%1$d min de leitura</item></plurals>
     <string name="article_ai_summary">Resumo de IA</string>
     <string name="article_generating_summary">Gerando resumo…</string>
+    <string name="article_ai_preparing">Preparando o artigo…</string>
+    <string name="article_ai_loading_model">Carregando o modelo…</string>
+    <string name="article_ai_compacting">Resumindo a parte %1$d de %2$d…</string>
+    <string name="article_ai_thinking">O modelo está pensando (parte %1$d de %2$d)…</string>
+    <string name="article_ai_streaming">Recebendo a resposta (parte %1$d de %2$d)…</string>
+    <string name="article_ai_finalizing">Finalizando o resumo…</string>
     <string name="article_hide_summary">Ocultar resumo</string>
     <string name="article_show_summary">Mostrar resumo</string>
     <string name="article_analyzing">Analisando…</string>

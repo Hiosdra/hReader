@@ -27,4 +27,19 @@ class OpenRouterRequestSerializationTest {
         assertTrue(json.contains("\"max_tokens\":123"))
         assertTrue(json.contains("\"temperature\":0.5"))
     }
+
+    @Test
+    fun serializeStreamingRequest_setsStreamFlag() {
+        val request = OpenRouterRequest(
+            model = "test-model",
+            messages = emptyList(),
+            maxTokens = 10,
+            temperature = 0.2,
+            stream = true
+        )
+
+        val json = moshi.adapter(OpenRouterRequest::class.java).toJson(request)
+
+        assertTrue(json.contains("\"stream\":true"))
+    }
 }
