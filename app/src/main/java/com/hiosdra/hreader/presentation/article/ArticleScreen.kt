@@ -58,7 +58,6 @@ import com.hiosdra.hreader.R
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 
 internal const val MIN_ARTICLE_TEXT_SCALE = 0.85f
 internal const val MAX_ARTICLE_TEXT_SCALE = 1.35f
@@ -96,6 +95,9 @@ fun ArticleScreen(
     starredOnly: Boolean = false,
     includeRead: Boolean = false,
     sessionStartMillis: Long = 0L,
+    preferencesManager: AppPreferences,
+    paywallBypassService: PaywallBypass,
+    ttsController: ArticleTtsPlayer,
     viewModel: ArticleViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -107,9 +109,6 @@ fun ArticleScreen(
     var pagerPositioned by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val preferencesManager: AppPreferences = koinInject()
-    val paywallBypassService: PaywallBypass = koinInject()
-    val ttsController: ArticleTtsPlayer = koinInject()
     val ttsState by ttsController.state.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 

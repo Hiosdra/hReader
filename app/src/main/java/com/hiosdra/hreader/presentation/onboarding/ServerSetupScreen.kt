@@ -36,14 +36,13 @@ import com.hiosdra.hreader.presentation.settings.secretLabelRes
 import com.hiosdra.hreader.presentation.theme.sectionCardColors
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerSetupScreen(
     onSetupFinished: () -> Unit,
     settingsViewModel: SettingsViewModel = koinViewModel(),
-    errorReportingManager: ErrorReporter = koinInject()
+    errorReportingManager: ErrorReporter
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsStateWithLifecycle()
