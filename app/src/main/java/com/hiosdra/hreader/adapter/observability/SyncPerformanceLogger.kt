@@ -12,9 +12,9 @@ class SyncPerformanceLogger(private val preferencesManager: PerformancePreferenc
     }
     
     override suspend fun <T> measureSyncTime(operation: SyncPerformanceOperation, block: suspend () -> T): T {
-        val startTime = System.currentTimeMillis()
+        val startTime = System.nanoTime()
         val result = block()
-        val duration = System.currentTimeMillis() - startTime
+        val duration = (System.nanoTime() - startTime) / 1_000_000L
         
         addRecord(operationName = operation.key, durationMs = duration)
         Log.i(TAG, "${operation.key} completed in ${duration}ms")

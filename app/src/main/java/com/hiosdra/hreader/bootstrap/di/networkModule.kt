@@ -4,6 +4,7 @@ import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.adapter.ai.ArticleAiGatewayRouter
 import com.hiosdra.hreader.adapter.ai.CompositeAiModelCatalog
 import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
+import com.hiosdra.hreader.adapter.ai.common.CredibilityReportFactory
 import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.adapter.ai.gemma.GemmaArticleAiService
 import com.hiosdra.hreader.adapter.ai.gemma.GemmaInferenceEngine
@@ -114,8 +115,9 @@ val networkModule = module {
     single<OpenRouterApiService> { get<Retrofit>(named(OPENROUTER_RETROFIT)).create(OpenRouterApiService::class.java) }
     single<Clock> { Clock.systemDefaultZone() }
     single { CredibilityPromptBuilder(get()) }
+    single { CredibilityReportFactory(get()) }
     single { CredibilityResponseParser(get()) }
-    single<ArticleAiService> { ArticleAiService(get(), get(), get(), get()) }
+    single<ArticleAiService> { ArticleAiService(get(), get(), get(), get(), get()) }
     single { GemmaModelManager(androidApplication(), get()) }
     single<GemmaModelGateway> { get<GemmaModelManager>() }
     single { GemmaInferenceEngine(androidApplication(), get(), get()) }

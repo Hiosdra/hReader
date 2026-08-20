@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.ai.openrouter
 
 import android.util.Log
+import com.hiosdra.hreader.adapter.ai.common.CredibilityReportFactory
 import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
 import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.adapter.ai.common.stripToPlainText
@@ -13,7 +14,6 @@ import com.hiosdra.hreader.core.domain.model.CredibilitySource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
-import java.time.Instant
 
 private const val TAG = "ArticleAiService"
 private const val CREDIBILITY_MAX_OUTPUT_TOKENS = 1500
@@ -25,7 +25,8 @@ class ArticleAiService(
     private val openRouterApiService: OpenRouterApiService,
     private val preferencesManager: AiPreferences,
     private val credibilityPromptBuilder: CredibilityPromptBuilder,
-    private val credibilityResponseParser: CredibilityResponseParser
+    private val credibilityResponseParser: CredibilityResponseParser,
+    private val credibilityReportFactory: CredibilityReportFactory
 ) : ArticleAiGateway {
     private fun apiKeyOrNull(): String? = preferencesManager.getOpenRouterApiKey().takeIf { it.isNotBlank() }
 
@@ -72,17 +73,7 @@ class ArticleAiService(
             ?: firstAttempt
         chatResult.mapCatching { raw ->
             val parsed = credibilityResponseParser.parse(raw)
-            CredibilityReport(
-                score = parsed.score,
-                confidence = parsed.confidence,
-                summary = parsed.summary,
-                reasons = parsed.reasons,
-                redFlags = parsed.redFlags,
-                factors = parsed.factors,
-                modelId = modelId,
-                analyzedAt = Instant.now(),
-                contentTruncated = prompt.contentTruncated
-            )
+            credibilityReportFactory.create(parsed, modelId, prompt.contentTruncated)
         }.onFailure { Log.e(TAG, "Credibility analysis failed", it) }
     }
 

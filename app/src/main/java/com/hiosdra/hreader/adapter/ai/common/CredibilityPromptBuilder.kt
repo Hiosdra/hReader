@@ -5,7 +5,6 @@ import org.jsoup.Jsoup
 import java.net.URI
 import java.time.Clock
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 const val CONTENT_START = "<<<ARTICLE_START>>>"
@@ -15,7 +14,7 @@ private const val MAX_CONTENT_CHARS = 12_000
 private const val MAX_METADATA_CHARS = 200
 
 private val DATE_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault())
+    DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
 private val SYSTEM_PROMPT = """
 You are an expert fact-checker and media analyst. Assess how much confidence a reader
@@ -95,7 +94,9 @@ class CredibilityPromptBuilder(
         source.author?.let { sanitize(it) }?.let { add("Author: $it") }
         source.feedTitle?.let { sanitize(it) }?.let { add("Feed: $it") }
         domainOf(source.url)?.let { add("Publisher domain: $it") }
-        source.publishedAt?.let { add("Published: ${DATE_FORMATTER.format(it)}") }
+        source.publishedAt?.let {
+            add("Published: ${DATE_FORMATTER.withZone(clock.zone).format(it)}")
+        }
     }.joinToString("\n")
 
     private fun cleanContent(content: String): CleanedContent {

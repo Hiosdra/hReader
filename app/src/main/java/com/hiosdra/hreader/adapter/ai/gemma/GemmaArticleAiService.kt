@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.ai.gemma
 
 import android.util.Log
+import com.hiosdra.hreader.adapter.ai.common.CredibilityReportFactory
 import com.hiosdra.hreader.adapter.ai.common.CredibilityPromptBuilder
 import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.adapter.ai.common.stripToPlainText
@@ -11,8 +12,6 @@ import com.hiosdra.hreader.core.domain.model.CredibilitySource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.Clock
-import java.time.Instant
 
 private const val TAG = "GemmaArticleAi"
 private const val SUMMARY_MAX_OUTPUT_TOKENS = 500
@@ -22,7 +21,7 @@ class GemmaArticleAiService(
     private val engine: GemmaInferenceEngine,
     private val credibilityPromptBuilder: CredibilityPromptBuilder,
     private val credibilityResponseParser: CredibilityResponseParser,
-    private val clock: Clock
+    private val credibilityReportFactory: CredibilityReportFactory
 ) : ArticleAiGateway {
     override suspend fun generateArticleOverview(
         title: String,
@@ -61,17 +60,7 @@ class GemmaArticleAiService(
                 temperature = 0.2
             ).mapCatching { raw ->
                 val parsed = credibilityResponseParser.parse(raw)
-                CredibilityReport(
-                    score = parsed.score,
-                    confidence = parsed.confidence,
-                    summary = parsed.summary,
-                    reasons = parsed.reasons,
-                    redFlags = parsed.redFlags,
-                    factors = parsed.factors,
-                    modelId = modelId,
-                    analyzedAt = Instant.now(clock),
-                    contentTruncated = prompt.contentTruncated
-                )
+                credibilityReportFactory.create(parsed, modelId, prompt.contentTruncated)
             }
         } catch (e: CancellationException) {
             throw e
