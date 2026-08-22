@@ -54,6 +54,7 @@ import com.hiosdra.hreader.core.domain.service.cleanUrl
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
 import com.hiosdra.hreader.presentation.text.resolve
+import com.hiosdra.hreader.presentation.theme.MotionDuration
 import com.hiosdra.hreader.R
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
@@ -326,13 +327,17 @@ fun ArticleScreen(
                     visible = currentEntry != null,
                     modifier = Modifier.fillMaxWidth(),
                     enter = slideInVertically(
-                        animationSpec = tween(180),
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD)),
                         initialOffsetY = { it / 2 }
-                    ) + fadeIn(animationSpec = tween(180)),
+                    ) + fadeIn(
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                    ),
                     exit = slideOutVertically(
-                        animationSpec = tween(120),
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT)),
                         targetOffsetY = { it / 2 }
-                    ) + fadeOut(animationSpec = tween(120))
+                    ) + fadeOut(
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                    )
                 ) {
                     currentEntry?.let { entry ->
                         ArticleBottomActionBar(

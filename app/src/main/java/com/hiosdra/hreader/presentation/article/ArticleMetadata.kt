@@ -1,10 +1,15 @@
 package com.hiosdra.hreader.presentation.article
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -38,6 +43,7 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
+import com.hiosdra.hreader.presentation.theme.MotionDuration
 
 @Composable
 internal fun ArticleMetadata(
@@ -142,11 +148,19 @@ internal fun ArticleMetadata(
             }
         }
 
-        if ((aiOverview != null || isGeneratingOverview) && isAiExpanded) {
+        if (aiOverview != null || isGeneratingOverview) {
             AnimatedVisibility(
                 visible = isAiExpanded,
-                enter = slideInVertically() + fadeIn(),
-                exit = slideOutVertically() + fadeOut()
+                enter = slideInVertically(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                ) + fadeIn(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                ),
+                exit = slideOutVertically(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                ) + fadeOut(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                )
             ) {
                 Card(
                     modifier = Modifier
@@ -178,65 +192,109 @@ internal fun ArticleMetadata(
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        if (isGeneratingOverview) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
+                        AnimatedContent(
+                            targetState = isGeneratingOverview,
+                            transitionSpec = {
+                                (fadeIn(
+                                    animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+                                ) + scaleIn(
+                                    initialScale = 0.98f,
+                                    animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+                                )) togetherWith (fadeOut(
+                                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                                ) + scaleOut(
+                                    targetScale = 0.98f,
+                                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                                ))
+                            },
+                            label = "AI summary content"
+                        ) { generating ->
+                            if (generating) {
+                                Column {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = articleAiProgressLabel(aiOverviewProgress),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    aiOverviewProgress?.draft
+                                        ?.takeIf(String::isNotBlank)
+                                        ?.let { draft ->
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = stringResource(R.string.article_ai_working_summary),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = draft,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                }
+                            } else {
                                 Text(
-                                    text = articleAiProgressLabel(aiOverviewProgress),
+                                    text = aiOverview ?: "",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
-                            aiOverviewProgress?.draft
-                                ?.takeIf(String::isNotBlank)
-                                ?.let { draft ->
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.article_ai_working_summary),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = draft,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                        } else {
-                            Text(
-                                text = aiOverview ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
                         }
                     }
                 }
             }
         }
 
-        if (credibilityEnabled && isCredibilityExpanded &&
-            (credibilityReport != null || isAnalyzingCredibility)
-        ) {
+        if (credibilityEnabled && (credibilityReport != null || isAnalyzingCredibility)) {
             AnimatedVisibility(
                 visible = isCredibilityExpanded,
-                enter = slideInVertically() + fadeIn(),
-                exit = slideOutVertically() + fadeOut()
-            ) {
-                CredibilityCard(
-                    report = credibilityReport,
-                    isAnalyzing = isAnalyzingCredibility,
-                    onReanalyze = { onAnalyzeCredibility?.invoke(true) }
+                enter = slideInVertically(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                ) + fadeIn(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                ),
+                exit = slideOutVertically(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                ) + fadeOut(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
                 )
+            ) {
+                AnimatedContent(
+                    targetState = isAnalyzingCredibility,
+                    transitionSpec = {
+                        (fadeIn(
+                            animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+                        ) + scaleIn(
+                            initialScale = 0.98f,
+                            animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+                        )) togetherWith (fadeOut(
+                            animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                        ) + scaleOut(
+                            targetScale = 0.98f,
+                            animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                        ))
+                    },
+                    label = "credibility content"
+                ) { analyzing ->
+                    CredibilityCard(
+                        report = credibilityReport,
+                        isAnalyzing = analyzing,
+                        onReanalyze = { onAnalyzeCredibility?.invoke(true) }
+                    )
+                }
             }
         }
     }

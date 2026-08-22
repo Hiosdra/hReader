@@ -1,10 +1,16 @@
 package com.hiosdra.hreader.presentation.main
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -72,6 +78,7 @@ import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.article.ArticleListGrouped
 import com.hiosdra.hreader.presentation.components.ArticleListSkeleton
 import com.hiosdra.hreader.presentation.text.resolve
+import com.hiosdra.hreader.presentation.theme.MotionDuration
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -214,13 +221,31 @@ fun MainScreen(
                             },
                             modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
-                            Icon(
-                                if (searchActive.value) Icons.Filled.Close else Icons.Filled.Search,
-                                contentDescription = stringResource(
-                                    if (searchActive.value) R.string.main_close_search else R.string.action_search
-                                ),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                            AnimatedContent(
+                                targetState = searchActive.value,
+                                transitionSpec = {
+                                    (fadeIn(
+                                        animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+                                    ) + scaleIn(
+                                        initialScale = 0.8f,
+                                        animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+                                    )) togetherWith (fadeOut(
+                                        animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                                    ) + scaleOut(
+                                        targetScale = 0.8f,
+                                        animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                                    ))
+                                },
+                                label = "search action icon"
+                            ) { active ->
+                                Icon(
+                                    if (active) Icons.Filled.Close else Icons.Filled.Search,
+                                    contentDescription = stringResource(
+                                        if (active) R.string.main_close_search else R.string.action_search
+                                    ),
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
                         // Always offered. Whether a network is usable is a guess the platform makes
                         // for us, and a reader who taps refresh has better information than a
@@ -339,7 +364,19 @@ fun MainScreen(
                     ),
                     scrollBehavior = scrollBehavior
                 )
-                AnimatedVisibility(visible = searchActive.value) {
+                AnimatedVisibility(
+                    visible = searchActive.value,
+                    enter = expandVertically(
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                    ) + fadeIn(
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                    ),
+                    exit = shrinkVertically(
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                    ) + fadeOut(
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                    )
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -376,8 +413,12 @@ fun MainScreen(
         floatingActionButton = {
             AnimatedVisibility(
                 visible = unreadCount > 0,
-                enter = fadeIn(animationSpec = tween(durationMillis = 300)),
-                exit = fadeOut(animationSpec = tween(durationMillis = 300))
+                enter = fadeIn(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                ),
+                exit = fadeOut(
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                )
             ) {
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.markAllAsRead(onFeedMarkedRead) },

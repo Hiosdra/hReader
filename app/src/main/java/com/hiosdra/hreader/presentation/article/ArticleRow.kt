@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.presentation.article
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,7 @@ import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
 import com.hiosdra.hreader.presentation.theme.sectionCardColors
+import com.hiosdra.hreader.presentation.theme.MotionDuration
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -67,7 +69,11 @@ fun ArticleRow(
 
     // Read rows are dimmed, not hidden. Below this the summary drops under the 4.5:1 needed to
     // stay readable, and a read article still has to be re-findable by eye.
-    val contentAlpha by animateFloatAsState(targetValue = if (checked) 0.70f else 1f, label = "alpha")
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (checked) 0.70f else 1f,
+        animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK)),
+        label = "alpha"
+    )
     val titleWeight = if (checked) FontWeight.Normal else FontWeight.SemiBold
     val indicatorColor by animateColorAsState(
         targetValue = if (checked) {
@@ -77,6 +83,7 @@ fun ArticleRow(
         } else {
             MaterialTheme.colorScheme.primary
         },
+        animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK)),
         label = "indicator"
     )
 
