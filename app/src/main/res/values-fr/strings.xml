@@ -402,6 +402,7 @@
     <string name="error_reporting_title">Envoyer les rapports de plantage et les données de diagnostic</string>
     <string name="error_reporting_description">Partager les rapports de plantage et les données techniques de diagnostic avec Sentry. Vous pourrez modifier ce choix dans les paramètres.</string>
     <string name="error_reporting_privacy">Afficher la politique de confidentialité</string>
+    <string name="privacy_policy_title">Afficher la politique de confidentialité de hReader</string>
     <string name="loading_articles">Chargement des articles</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

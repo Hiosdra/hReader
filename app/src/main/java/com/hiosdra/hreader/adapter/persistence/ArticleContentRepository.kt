@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import android.util.Log
+import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
@@ -297,7 +298,9 @@ class ArticleContentRepository(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to download image $imageUrl for entry $entryId", e)
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "Failed to download image $imageUrl for entry $entryId", e)
+                }
             }
         }
     }

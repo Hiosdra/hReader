@@ -23,7 +23,7 @@ internal suspend fun OkHttpClient.fetchHtml(
         .header("User-Agent", WEB_USER_AGENT)
         .build()
     newCall(request).execute().use { response ->
-        if (!response.isSuccessful) throw IOException("Request to $url failed with HTTP ${response.code}")
+        if (!response.isSuccessful) throw IOException("Web request failed with HTTP " + response.code)
         val body = response.body
         readBoundedBody(body, maxBytes)
     }

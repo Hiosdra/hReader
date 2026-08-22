@@ -401,6 +401,7 @@
     <string name="error_reporting_title">충돌 보고서 및 진단 데이터 보내기</string>
     <string name="error_reporting_description">충돌 보고서와 기술 진단 데이터를 Sentry와 공유합니다. 나중에 설정에서 변경할 수 있습니다.</string>
     <string name="error_reporting_privacy">개인정보 보호정책 보기</string>
+    <string name="privacy_policy_title">hReader 개인정보 보호정책 보기</string>
     <string name="loading_articles">기사 로드 중</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

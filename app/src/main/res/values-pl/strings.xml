@@ -461,6 +461,7 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="error_reporting_title">Wysyłaj raporty awarii i diagnostykę</string>
     <string name="error_reporting_description">Udostępniaj raporty awarii i dane techniczne w Sentry. Możesz zmienić to później w Ustawieniach.</string>
     <string name="error_reporting_privacy">Zobacz politykę prywatności</string>
+    <string name="privacy_policy_title">Wyświetl politykę prywatności hReader</string>
     <string name="loading_articles">Wczytywanie artykułów</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

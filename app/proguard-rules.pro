@@ -16,11 +16,20 @@
 }
 # The reflective adapter factory serialises this one, so its property names have to survive.
 -keep class kotlin.Metadata { *; }
--keepclassmembers class com.hiosdra.hreader.util.SyncPerformanceRecord { *; }
+-keepclassmembers class com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord { *; }
 
 # Wire models are built from JSON by property name, never constructed by the app.
--keep class com.hiosdra.hreader.data.remote.**.dto.** { *; }
--keep class com.hiosdra.hreader.data.ai.OpenRouter** { *; }
+-keep class com.hiosdra.hreader.adapter.backend.**.dto.** { *; }
+-keep class com.hiosdra.hreader.adapter.ai.openrouter.** { *; }
+
+-assumenosideeffects class android.util.Log {
+    public static *** v(...);
+    public static *** d(...);
+    public static *** i(...);
+    public static *** w(...);
+    public static *** e(...);
+    public static *** wtf(...);
+}
 
 # Retrofit resolves service interfaces and their generic return types reflectively.
 -keep,allowobfuscation,allowshrinking interface retrofit2.Call

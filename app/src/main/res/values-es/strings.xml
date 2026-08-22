@@ -405,6 +405,7 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="error_reporting_title">Enviar informes de fallos y diagnósticos</string>
     <string name="error_reporting_description">Compartir informes de fallos y diagnósticos técnicos con Sentry. Puedes cambiarlo más tarde en Ajustes.</string>
     <string name="error_reporting_privacy">Ver política de privacidad</string>
+    <string name="privacy_policy_title">Ver la política de privacidad de hReader</string>
     <string name="loading_articles">Cargando artículos</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

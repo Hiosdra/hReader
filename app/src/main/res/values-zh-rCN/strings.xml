@@ -401,6 +401,7 @@
     <string name="error_reporting_title">发送崩溃报告和诊断数据</string>
     <string name="error_reporting_description">与 Sentry 分享崩溃报告和技术诊断数据。之后可以在设置中更改。</string>
     <string name="error_reporting_privacy">查看隐私政策</string>
+    <string name="privacy_policy_title">查看 hReader 隐私政策</string>
     <string name="loading_articles">正在加载文章</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>
