@@ -11,4 +11,6 @@ interface AiPreferences {
     fun observeAiModelId(): Flow<String>
     fun getGemmaBackend(): GemmaBackend
     fun setGemmaBackend(backend: GemmaBackend)
+    fun getGemmaDownloadOnUnmeteredOnly(): Boolean
+    fun setGemmaDownloadOnUnmeteredOnly(enabled: Boolean)
 }

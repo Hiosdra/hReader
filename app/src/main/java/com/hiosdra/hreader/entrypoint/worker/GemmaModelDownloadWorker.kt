@@ -7,6 +7,7 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.ai.GemmaModelInsufficientStorageException
 import com.hiosdra.hreader.core.application.ai.GemmaModelStatus
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
@@ -58,7 +59,7 @@ class GemmaModelDownloadWorker(
             if (modelManager.status.value == GemmaModelStatus.Available) {
                 Result.success()
             } else {
-                val message = applicationContext.getString(R.string.ai_model_install_failed)
+                val message = modelFailureMessage()
                 modelManager.markDownloadFailed(message)
                 errorReporter.captureMessage(message, "gemma_model_download")
                 Result.failure(workDataOf(KEY_ERROR_MESSAGE to message))
@@ -69,16 +70,16 @@ class GemmaModelDownloadWorker(
         } catch (e: Exception) {
             val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
             if (!shouldRetry) {
-                modelManager.markDownloadFailed(
-                    applicationContext.getString(R.string.ai_model_install_failed)
-                )
-                errorReporter.captureException(e, "gemma_model_download")
+                modelManager.markDownloadFailed(modelFailureMessage())
+                if (e !is GemmaModelInsufficientStorageException) {
+                    errorReporter.captureException(e, "gemma_model_download")
+                }
             } else {
                 modelManager.markDownloadRetrying()
             }
             Log.w(TAG, "Gemma model download failed", e)
             if (shouldRetry) Result.retry() else Result.failure(
-                workDataOf(KEY_ERROR_MESSAGE to applicationContext.getString(R.string.ai_model_install_failed))
+                workDataOf(KEY_ERROR_MESSAGE to modelFailureMessage())
             )
         } finally {
             reporter?.cancel()
@@ -95,4 +96,8 @@ class GemmaModelDownloadWorker(
 
     private fun modelProgress(): Float =
         (modelManager.status.value as? GemmaModelStatus.Downloading)?.progress ?: 0f
+
+    private fun modelFailureMessage(): String =
+        (modelManager.status.value as? GemmaModelStatus.Failed)?.message
+            ?: applicationContext.getString(R.string.ai_model_install_failed)
 }

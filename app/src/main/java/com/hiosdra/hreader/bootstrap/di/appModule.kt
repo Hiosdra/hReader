@@ -169,7 +169,13 @@ val appModule = module {
     single<ArticleTtsPlaybackServiceControl> { ArticleTtsPlaybackServiceLauncher(androidApplication()) }
     single { TtsModelDownloadScheduler(androidApplication(), get()) }
     single<TtsModelDownloadRequester> { get<TtsModelDownloadScheduler>() }
-    single { GemmaModelDownloadScheduler(androidApplication(), get<GemmaModelGateway>()) }
+    single {
+        GemmaModelDownloadScheduler(
+            context = androidApplication(),
+            modelManager = get<GemmaModelGateway>(),
+            aiPreferences = get<AiPreferences>()
+        )
+    }
     single<GemmaModelDownloadRequester> { get<GemmaModelDownloadScheduler>() }
     single { ArticleTtsController(androidApplication(), get(), get(), get()) }
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }

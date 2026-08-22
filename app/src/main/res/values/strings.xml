@@ -257,6 +257,14 @@
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">Runs on this device through LiteRT-LM. The article text is not sent to a cloud provider.</string>
     <string name="ai_model_size">Download size: %.1f GB</string>
+    <string name="ai_model_download_details">This download is about %.1f GB. Download time depends on your connection.</string>
+    <string name="ai_model_wifi_only">Download on Wi-Fi only</string>
+    <string name="ai_model_wifi_only_description">Wait for an unmetered connection before downloading this large model.</string>
+    <string name="ai_model_mobile_data_warning">Mobile data is allowed. This download uses about %.1f GB.</string>
+    <string name="ai_model_storage_required">Free space needed: %.1f GB</string>
+    <string name="ai_model_storage_available">Free space available: %.1f GB</string>
+    <string name="ai_model_insufficient_storage">Not enough free storage. Need at least %1$.1f GB; %2$.1f GB is available.</string>
+    <string name="ai_model_low_ram_warning">This device reports low memory. Local AI may be slow or unavailable; hReader will try another local backend.</string>
     <string name="ai_model_not_downloaded">The local model is not downloaded.</string>
     <string name="ai_model_downloading">Downloading local model…</string>
     <string name="ai_model_ready">Local model is ready.</string>

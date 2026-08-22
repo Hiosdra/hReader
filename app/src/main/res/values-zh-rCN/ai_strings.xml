@@ -5,6 +5,14 @@
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">通过 LiteRT-LM 在此设备上运行。文章内容不会发送给云服务提供商。</string>
     <string name="ai_model_size">下载大小：%.1f GB</string>
+    <string name="ai_model_download_details">此次下载约为 %.1f GB。下载时间取决于网络连接。</string>
+    <string name="ai_model_wifi_only">仅通过 Wi-Fi 下载</string>
+    <string name="ai_model_wifi_only_description">下载此大型模型前，请等待非按流量计费的网络连接。</string>
+    <string name="ai_model_mobile_data_warning">已允许使用移动数据。此次下载约使用 %.1f GB。</string>
+    <string name="ai_model_storage_required">所需可用空间：%.1f GB</string>
+    <string name="ai_model_storage_available">可用空间：%.1f GB</string>
+    <string name="ai_model_insufficient_storage">可用空间不足。至少需要 %1$.1f GB，目前可用 %2$.1f GB。</string>
+    <string name="ai_model_low_ram_warning">此设备内存较少。本地 AI 可能运行缓慢或不可用；hReader 将尝试其他本地后端。</string>
     <string name="ai_model_not_downloaded">尚未下载本地模型。</string>
     <string name="ai_model_downloading">正在下载本地模型…</string>
     <string name="ai_model_ready">本地模型已就绪。</string>
