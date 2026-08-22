@@ -17,22 +17,21 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.slot
 import kotlinx.coroutines.runBlocking
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import retrofit2.Response
 import java.time.Clock
 
 class ArticleAiServiceSummaryTest {
     private val api = mockk<OpenRouterApiService>()
+    private val streamingClient = mockk<OpenRouterStreamingClient>()
     private val preferences = mockk<AiPreferences>()
     private val modelCatalog = mockk<AiModelCatalog>()
     private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
     private val service = ArticleAiService(
         openRouterApiService = api,
+        streamingClient = streamingClient,
         preferencesManager = preferences,
         credibilityPromptBuilder = CredibilityPromptBuilder(Clock.systemUTC()),
         credibilityResponseParser = CredibilityResponseParser(moshi),
@@ -63,12 +62,14 @@ class ArticleAiServiceSummaryTest {
     @Test
     fun compactsLongArticlesAndStreamsEachPart() = runBlocking {
         val requests = slot<OpenRouterRequest>()
+        val responses = ArrayDeque(listOf("first part", "final overview"))
         coEvery {
-            api.chatCompletionStream(any(), any(), any(), capture(requests))
-        } returnsMany listOf(
-            streamResponse("first part"),
-            streamResponse("final overview")
-        )
+            streamingClient.stream(any(), capture(requests), any())
+        } coAnswers {
+            val response = responses.removeFirst()
+            thirdArg<suspend (String) -> Unit>()(response)
+            response
+        }
         val progress = mutableListOf<com.hiosdra.hreader.core.application.ai.ArticleAiProgress>()
         val article = (1..250).joinToString(" ") { "Fact $it." }
 
@@ -80,7 +81,7 @@ class ArticleAiServiceSummaryTest {
         ).getOrThrow()
 
         assertEquals("final overview", result)
-        coVerify(exactly = 2) { api.chatCompletionStream(any(), any(), any(), any()) }
+        coVerify(exactly = 2) { streamingClient.stream(any(), any(), any()) }
         assertTrue(requests.isCaptured)
         assertTrue(requests.captured.stream == true)
         assertTrue(requests.captured.messages.last().content.contains("first part"))
@@ -97,25 +98,13 @@ class ArticleAiServiceSummaryTest {
 
     @Test
     fun exposesStructuredProviderErrors() = runBlocking {
-        coEvery { api.chatCompletionStream(any(), any(), any(), any()) } returns Response.error(
-            429,
-            "{\"error\":{\"message\":\"rate limited\"}}".toResponseBody("application/json".toMediaType())
-        )
+        coEvery { streamingClient.stream(any(), any(), any()) } throws
+            OpenRouterException(429, "API call failed: 429 - rate limited")
 
         val error = service.generateArticleOverview("Title", "Body", "test/model").exceptionOrNull()
 
         assertTrue(error is OpenRouterException)
         assertEquals(429, (error as OpenRouterException).code)
         assertTrue(error.message.orEmpty().contains("rate limited"))
-    }
-
-    private fun streamResponse(content: String): Response<okhttp3.ResponseBody> {
-        val body = buildString {
-            append("data: {\"choices\":[{\"delta\":{\"content\":\"")
-            append(content)
-            append("\"}}]}\n\n")
-            append("data: [DONE]\n\n")
-        }.toResponseBody("text/event-stream".toMediaType())
-        return Response.success(body)
     }
 }

@@ -202,6 +202,7 @@ dependencies {
     // Networking
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    implementation(libs.okhttp.sse)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.retrofit)
 
