@@ -1,149 +1,150 @@
-# Polityka prywatności hReader
+# hReader Privacy Policy
 
-Ostatnia aktualizacja: 22 sierpnia 2026 r.
+Last updated: 22 August 2026
 
-## Wydawca i kontakt
+## Publisher and contact
 
-Wydawcą aplikacji hReader jest Oskar Drozda.
+hReader is published by Oskar Drozda.
 
-Punkt kontaktu w sprawach prywatności: [profil GitHub wydawcy](https://github.com/Hiosdra).
+Privacy contact: the [hReader GitHub repository](https://github.com/Hiosdra/hReader) or a direct
+message to the publisher through [GitHub](https://github.com/Hiosdra).
 
-## Zakres polityki
+## Scope of this policy
 
-hReader jest aplikacją kliencką do samodzielnie utrzymywanego czytnika RSS. Aplikacja nie
-prowadzi własnego konta użytkownika, nie ma własnego backendu wydawcy i nie sprzedaje danych.
-Nie używamy reklam, analityki behawioralnej ani dodatkowych trackerów.
+hReader is a client application for a self-hosted RSS reader. The application does not provide
+its own user accounts, does not operate a publisher-owned backend, and does not sell data. We do
+not use advertising, behavioral analytics, or additional trackers.
 
-Ta polityka opisuje dane, do których hReader uzyskuje dostęp, które przechowuje lokalnie lub
-przesyła w celu wykonania funkcji wybranych przez użytkownika. Informacje przetwarzane przez
-Google Play podczas instalacji, aktualizacji lub obsługi aplikacji są przetwarzane przez Google
-zgodnie z [polityką prywatności Google](https://policies.google.com/privacy). hReader nie otrzymuje
-tych danych od Google.
+This policy describes the data hReader accesses, stores locally, or transfers to provide features
+selected by the user. Data processed by Google Play during installation, updates, or app operation
+is processed by Google under the [Google Privacy Policy](https://policies.google.com/privacy).
+hReader does not receive that data from Google.
 
-## Dane przechowywane na urządzeniu
+## Data stored on the device
 
-hReader może przechowywać lokalnie:
+hReader may store locally:
 
-- adres i typ wybranego serwera FreshRSS lub Miniflux;
-- nazwę użytkownika FreshRSS oraz hasło API lub token API Miniflux;
-- opcjonalny klucz API OpenRouter;
-- ustawienia aplikacji, w tym ustawienie raportowania awarii;
-- zsynchronizowane kanały, tytuły, autorów, daty, linki, treść artykułów, obrazy oraz stan
-  przeczytania i oznaczenia artykułów;
-- wygenerowane lokalnie wyniki podsumowań i analiz wiarygodności.
+- the address and type of the selected FreshRSS or Miniflux server;
+- the FreshRSS username and API password, or the Miniflux API token;
+- the optional OpenRouter API key;
+- app settings, including the crash-reporting setting;
+- synchronized feeds, titles, authors, dates, links, article content, images, and read/star state;
+- locally generated article summaries and credibility-analysis results.
 
-Powyższe dane są przechowywane w prywatnym obszarze aplikacji. Plik zawierający dane logowania
-i klucz OpenRouter jest wyłączony z kopii zapasowych i transferu urządzenia. Dane lokalne można
-usunąć z poziomu ustawień aplikacji albo przez wyczyszczenie danych aplikacji lub jej
-odinstalowanie.
+This data is stored in the app's private storage area. The file containing login credentials and the
+OpenRouter key is excluded from backups and device transfer. Local data can be removed from the
+app's settings, by clearing the app's data, or by uninstalling hReader.
 
-## Połączenia z serwerami RSS
+## Connections to RSS servers
 
-Użytkownik sam wskazuje instancję FreshRSS albo Miniflux, z którą łączy się hReader. Aplikacja
-przesyła do tej instancji dane wymagane przez wybrany protokół, w szczególności dane logowania
-lub token, żądania synchronizacji, listę subskrypcji, metadane i treści artykułów oraz zmiany
-stanu przeczytania i oznaczenia.
+The user chooses the FreshRSS or Miniflux instance to which hReader connects. The application
+sends that instance the data required by the selected protocol, including credentials or a token,
+sync requests, subscription data, article metadata and content, and read/star state changes.
 
-Dokumentacja używanych protokołów:
+Documentation for the protocols used:
 
 - [FreshRSS Google Reader API](https://freshrss.github.io/FreshRSS/en/developers/06_GoogleReader_API.html);
 - [Miniflux API](https://miniflux.app/docs/api.html).
 
-Operator skonfigurowanej instancji FreshRSS lub Miniflux może przetwarzać i rejestrować te dane,
-adres IP, czas żądania oraz inne informacje wynikające z konfiguracji serwera. Oskar Drozda nie
-kontroluje retencji ani logów tej instancji. W sprawie danych przechowywanych przez serwer należy
-skontaktować się z jego operatorem.
+The operator of the configured FreshRSS or Miniflux instance may process and log this data, the
+IP address, request time, and other information determined by the server configuration. Oskar
+Drozda does not control that instance's retention or logs. Contact the server operator about data
+stored by that server.
 
 ## OpenRouter
 
-Funkcje podsumowania i analizy wiarygodności są opcjonalne. Po zapisaniu własnego klucza API
-OpenRouter i uruchomieniu jednej z tych funkcji hReader wysyła bezpośrednio do OpenRouter:
+Article summaries and credibility analysis are optional. After the user saves their own OpenRouter
+API key and starts one of these features, hReader sends directly to OpenRouter:
 
-- tytuł i tekst artykułu dla podsumowania;
-- tekst artykułu oraz ograniczone metadane, takie jak tytuł, autor, nazwa kanału, domena
-  wydawcy i data publikacji, dla analizy wiarygodności;
-- wybrany identyfikator modelu i dane techniczne żądania.
+- the article title and text for a summary;
+- the article text and limited metadata, such as the title, author, feed name, publisher domain,
+  and publication date, for credibility analysis;
+- the selected model identifier and technical request data.
 
-OpenRouter może przekazać żądanie do wybranego dostawcy modelu zgodnie ze swoimi warunkami
-i polityką prywatności. Szczegóły znajdują się w
-[polityce prywatności OpenRouter](https://openrouter.ai/privacy). hReader nie otrzymuje klucza
-API OpenRouter poza lokalnym urządzeniem i nie wysyła treści artykułów do OpenRouter bez
-uruchomienia funkcji AI przez użytkownika.
+OpenRouter may forward a request to the selected model provider under its terms and privacy policy.
+See the [OpenRouter Privacy Policy](https://openrouter.ai/privacy). hReader does not receive the
+OpenRouter API key outside the device and does not send article content to OpenRouter unless the
+user starts an AI feature.
 
-Lista dostępnych modeli OpenRouter może być pobierana przy otwieraniu ustawień AI lub po ręcznym
-odświeżeniu. To żądanie nie zawiera treści artykułów, ale serwery OpenRouter mogą widzieć
-standardowe dane połączenia, takie jak adres IP i czas żądania. Jeżeli użytkownik wybierze lokalny
-model Gemma, tytuł i treść artykułu są przetwarzane na urządzeniu i nie są wysyłane do OpenRouter
-ani do dostawcy zewnętrznego. Sam model Gemma jest pobierany z Hugging Face; ten transfer dotyczy
-pliku modelu, a nie treści artykułów.
+The available OpenRouter model list may be fetched when the AI settings are opened or manually
+refreshed. This request does not contain article content, but OpenRouter servers may see standard
+connection data such as the IP address and request time. If the user selects the local Gemma model,
+the article title and content are processed on the device and are not sent to OpenRouter or an
+external model provider. The Gemma model itself is downloaded from Hugging Face; that transfer is
+the model file, not article content.
 
-## Raporty awarii i diagnostyka Sentry
+## Sentry crash reports and diagnostics
 
-Raportowanie awarii i diagnostyki Sentry jest włączone domyślnie, gdy aplikacja ma skonfigurowany
-serwer Sentry. Użytkownik może wyłączyć je w dowolnym momencie w sekcji ustawień prywatności
-i diagnostyki. Po wyłączeniu hReader nie wysyła kolejnych raportów.
+Sentry crash and diagnostic reporting is enabled by default when the app has a Sentry server
+configured. The user can disable it at any time in the privacy and diagnostics settings. After it
+is disabled, hReader does not send new reports.
 
-Włączone raportowanie może obejmować informacje techniczne potrzebne do diagnozy, takie jak
-wyjątek, stos wywołań, wersja aplikacji, wersja Androida, model urządzenia i oznaczenie
-komponentu aplikacji. hReader wyłącza domyślne PII, zrzuty ekranu, hierarchię widoku, sesje,
-NDK, automatyczne breadcrumbs i automatyczne śledzenie sesji. Sentry przetwarza dane zgodnie
-z [własną polityką prywatności](https://sentry.io/privacy/).
+When enabled, reporting may include technical information needed for diagnosis, such as the
+exception, stack trace, app version, Android version, device model, and app component. hReader
+disables default PII, screenshots, view hierarchy, sessions, NDK, automatic breadcrumbs, and
+automatic session tracking. Sentry processes data under its [Privacy Policy](https://sentry.io/privacy/).
 
-## Inne połączenia z siecią
+## Other network connections
 
-hReader może bezpośrednio pobierać kanały, strony artykułów, obrazy i zasoby potrzebne do
-wyświetlenia treści z adresów znajdujących się w konfiguracji lub w dostarczonych artykułach.
-Może również pobierać modele TTS z ich źródeł, gdy użytkownik włączy tę funkcję, oraz model Gemma
-z Hugging Face. Serwery tych źródeł mogą widzieć standardowe dane żądania sieciowego, takie jak
-adres IP i czas połączenia, zgodnie z własnymi zasadami. hReader nie tworzy z tych danych własnego
-profilu użytkownika.
+hReader may directly fetch feeds, article pages, images, and resources needed to display content
+from addresses in the configuration or supplied by articles. It may also download TTS models from
+their sources when the user enables that feature, and the Gemma model from Hugging Face. These
+source servers may see standard network-request data, such as the IP address and connection time,
+under their own policies. hReader does not create its own user profile from this data.
 
-## Usługi otwierania artykułów przez serwisy zewnętrzne
+## Services for opening articles through external sites
 
-Funkcja wyboru serwisu do otwierania artykułu z pominięciem paywalla jest opcjonalna. Po jej użyciu
-hReader otwiera adres wybranego serwisu, przekazując mu adres oryginalnego artykułu. Dostępne
-serwisy to: Smry.ai, RemovePaywall.com, RemovePaywalls.com, PaywallBuster, Archive.ph, Wayback
-Machine, Archive Buttons oraz Bypass Paywall Reader. Są to niezależne serwisy zewnętrzne, a nie
-backend wydawcy hReader. Ich operatorzy mogą otrzymać adres artykułu, adres IP, czas żądania oraz
-inne standardowe dane przeglądarki i stosują własne zasady prywatności oraz retencji.
+The optional paywall-bypass feature opens an article through a service selected by the user. When
+used, hReader opens the selected service's address and passes it the original article address. The
+available services are:
 
-Poza skonfigurowanym serwerem RSS, opcjonalnym OpenRouterem, opcjonalnym Sentry oraz
-połączeniami koniecznymi do pobrania żądanej treści hReader nie komunikuje się z żadnym
-własnym backendem wydawcy i nie zbiera dodatkowych danych.
+- Smry.ai (`smry.ai`);
+- RemovePaywall.com (`www.removepaywall.com`);
+- RemovePaywalls.com (`removepaywalls.com`);
+- PaywallBuster (`paywallbuster.com`);
+- Archive.ph (`archive.ph`);
+- Wayback Machine (`web.archive.org`);
+- Archive Buttons (`www.archivebuttons.com`);
+- Bypass Paywall Reader (`www.bypasspaywallreader.com`).
 
-## Udostępnianie danych
+These are independent external services, not a hReader publisher-owned backend. Their operators
+may receive the article address, IP address, request time, and other standard browser data, and
+apply their own privacy and retention policies.
 
-Nie sprzedajemy danych i nie udostępniamy ich w celach reklamowych. Dane są przekazywane
-wyłącznie:
+Apart from the configured RSS server, optional OpenRouter and Sentry services, content and model
+sources, and the third-party paywall services described above, hReader does not communicate with
+any publisher-owned backend and does not collect additional data.
 
-1. do serwera FreshRSS lub Miniflux wskazanego przez użytkownika;
-2. do OpenRoutera, gdy użytkownik korzysta z funkcji AI;
-3. do Sentry, gdy raportowanie diagnostyczne jest włączone;
-4. do serwerów źródłowych, gdy jest to konieczne do pobrania żądanej treści lub modelu;
-5. do wybranego serwisu zewnętrznego, gdy użytkownik korzysta z funkcji otwierania artykułu przez
-   serwis z pominięciem paywalla.
+## Sharing data
 
-## Okres przechowywania i usuwanie
+We do not sell data or share it for advertising purposes. Data is transferred only:
 
-Dane lokalne pozostają na urządzeniu do czasu ich usunięcia przez użytkownika z ustawień,
-wyczyszczenia danych aplikacji lub odinstalowania hReader. Dane przechowywane przez serwer RSS,
-OpenRouter, Sentry, serwis zewnętrzny albo serwer źródłowy podlegają zasadom ich operatorów.
-Wyłączenie Sentry zatrzymuje przyszłe wysyłanie, ale nie usuwa automatycznie zdarzeń już
-dostarczonych do Sentry.
+1. to the FreshRSS or Miniflux server selected by the user;
+2. to OpenRouter when the user uses an AI feature;
+3. to Sentry when diagnostic reporting is enabled;
+4. to source servers when needed to fetch requested content or a model;
+5. to the selected external service when the user opens an article through the paywall-bypass
+   feature.
 
-W sprawach dotyczących danych lokalnych lub niniejszej polityki można skontaktować się przez
-[GitHub wydawcy](https://github.com/Hiosdra). Usunięcie danych z zewnętrznego serwera wymaga
-kontaktu z jego operatorem.
+## Retention and deletion
 
-## Bezpieczeństwo
+Local data remains on the device until the user removes it from the settings, clears the app's
+data, or uninstalls hReader. Data stored by an RSS server, OpenRouter, Sentry, an external service,
+or a source server is subject to that operator's policies. Disabling Sentry stops future sending,
+but does not automatically delete events already delivered to Sentry.
 
-hReader korzysta z prywatnego magazynu aplikacji i wyklucza sekrety z kopii zapasowych oraz
-transferu urządzenia. W wydaniu produkcyjnym aplikacja nie zezwala na komunikację HTTP bez
-szyfrowania; wyjątek dla HTTP jest dostępny wyłącznie w wariancie debug do lokalnych serwerów
-testowych. Użytkownik odpowiada za bezpieczeństwo i konfigurację własnej instancji RSS oraz
-za ochronę klucza OpenRouter.
+For questions about local data or this policy, use the [hReader GitHub repository](https://github.com/Hiosdra/hReader)
+or send a direct message to the [publisher through GitHub](https://github.com/Hiosdra).
+Deleting data from an external server requires contacting that server's operator.
 
-## Zmiany polityki
+## Security
 
-Polityka może zostać zaktualizowana, gdy zmieni się sposób działania aplikacji lub wymagania
-prawne. Aktualna wersja jest publikowana razem z kodem źródłowym hReader.
+hReader uses private app storage and excludes secrets from backups and device transfer. Production
+builds do not allow unencrypted HTTP; the HTTP exception is available only in the debug variant for
+local test servers. The user is responsible for securing and configuring their RSS instance and
+protecting their OpenRouter key.
+
+## Changes to this policy
+
+This policy may be updated when the app's behavior or legal requirements change. The current
+version is published with the hReader source code.
