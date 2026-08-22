@@ -2,6 +2,7 @@ package com.hiosdra.hreader.presentation.navigation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import com.hiosdra.hreader.presentation.main.MainScreen
 import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.presentation.settings.SettingsScreen
 import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
+import com.hiosdra.hreader.presentation.theme.MotionDuration
 import com.hiosdra.hreader.R
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
@@ -69,16 +71,32 @@ fun AppNavigation(
         navController = navController,
         startDestination = startDestination,
         enterTransition = {
-            fadeIn() + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+            fadeIn(animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))) +
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                )
         },
         exitTransition = {
-            fadeOut() + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+            fadeOut(animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))) +
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                )
         },
         popEnterTransition = {
-            fadeIn() + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+            fadeIn(animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))) +
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+                )
         },
         popExitTransition = {
-            fadeOut() + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+            fadeOut(animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))) +
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                )
         }
     ) {
         composable(Routes.SERVER_SETUP) {

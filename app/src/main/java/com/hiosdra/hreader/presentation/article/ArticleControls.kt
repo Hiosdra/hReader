@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.presentation.theme.MotionDuration
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
 
@@ -234,7 +235,7 @@ private fun ReadStatusButton(
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
-        animationSpec = tween(160),
+        animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK)),
         label = "read status color"
     )
 
@@ -248,10 +249,16 @@ private fun ReadStatusButton(
         AnimatedContent(
             targetState = isRead,
             transitionSpec = {
-                (fadeIn(animationSpec = tween(120)) +
-                    scaleIn(initialScale = 0.8f, animationSpec = tween(120))) togetherWith
-                    (fadeOut(animationSpec = tween(80)) +
-                        scaleOut(targetScale = 0.8f, animationSpec = tween(80)))
+                (fadeIn(animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))) +
+                    scaleIn(
+                        initialScale = 0.8f,
+                        animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+                    )) togetherWith
+                    (fadeOut(animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))) +
+                        scaleOut(
+                            targetScale = 0.8f,
+                            animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+                        ))
             },
             label = "read status icon"
         ) { read ->
@@ -306,13 +313,28 @@ private fun ReaderModeOption(
     contentDescription: String,
     onClick: () -> Unit
 ) {
-    Surface(
-        shape = CircleShape,
-        color = if (selected) {
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
             Color.Transparent
         },
+        animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK)),
+        label = "reader mode container"
+    )
+    val textColor by animateColorAsState(
+        targetValue = when {
+            selected -> MaterialTheme.colorScheme.onPrimaryContainer
+            enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        },
+        animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK)),
+        label = "reader mode text"
+    )
+
+    Surface(
+        shape = CircleShape,
+        color = containerColor,
         modifier = Modifier
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { this.contentDescription = contentDescription }
@@ -320,11 +342,7 @@ private fun ReaderModeOption(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = when {
-                selected -> MaterialTheme.colorScheme.onPrimaryContainer
-                enabled -> MaterialTheme.colorScheme.onSurfaceVariant
-                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            },
+            color = textColor,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
         )
     }
