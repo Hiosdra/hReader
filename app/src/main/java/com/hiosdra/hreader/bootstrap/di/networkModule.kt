@@ -12,6 +12,9 @@ import com.hiosdra.hreader.adapter.ai.gemma.GemmaModelManager
 import com.hiosdra.hreader.adapter.ai.openrouter.ArticleAiService
 import com.hiosdra.hreader.adapter.ai.openrouter.AiModelRepository
 import com.hiosdra.hreader.adapter.ai.openrouter.OpenRouterApiService
+import com.hiosdra.hreader.adapter.ai.openrouter.OPENROUTER_API_BASE_URL
+import com.hiosdra.hreader.adapter.ai.openrouter.OkHttpOpenRouterStreamingClient
+import com.hiosdra.hreader.adapter.ai.openrouter.OpenRouterStreamingClient
 import com.hiosdra.hreader.adapter.backend.common.BackendUrlInterceptor
 import com.hiosdra.hreader.adapter.backend.common.DelegatingFeedBackend
 import com.hiosdra.hreader.adapter.backend.common.FRESHRSS_PLACEHOLDER_BASE_URL
@@ -95,7 +98,7 @@ val networkModule = module {
 
     single<Retrofit>(named(FRESHRSS_RETROFIT)) { retrofitFor(FRESHRSS_PLACEHOLDER_BASE_URL, get(), get()) }
     single<Retrofit>(named(MINIFLUX_RETROFIT)) { retrofitFor(MINIFLUX_PLACEHOLDER_BASE_URL, get(), get()) }
-    single<Retrofit>(named(OPENROUTER_RETROFIT)) { retrofitFor("https://openrouter.ai/api/v1/", get(), get()) }
+    single<Retrofit>(named(OPENROUTER_RETROFIT)) { retrofitFor(OPENROUTER_API_BASE_URL, get(), get()) }
 
     single<FreshRssApiService> { get<Retrofit>(named(FRESHRSS_RETROFIT)).create(FreshRssApiService::class.java) }
     single<MinifluxApiService> { get<Retrofit>(named(MINIFLUX_RETROFIT)).create(MinifluxApiService::class.java) }
@@ -113,6 +116,7 @@ val networkModule = module {
     }
 
     single<OpenRouterApiService> { get<Retrofit>(named(OPENROUTER_RETROFIT)).create(OpenRouterApiService::class.java) }
+    single<OpenRouterStreamingClient> { OkHttpOpenRouterStreamingClient(get(), get()) }
     single<Clock> { Clock.systemDefaultZone() }
     single { CredibilityPromptBuilder(get()) }
     single { CredibilityReportFactory(get()) }
@@ -120,6 +124,7 @@ val networkModule = module {
     single<ArticleAiService> {
         ArticleAiService(
             openRouterApiService = get(),
+            streamingClient = get(),
             preferencesManager = get(),
             credibilityPromptBuilder = get(),
             credibilityResponseParser = get(),

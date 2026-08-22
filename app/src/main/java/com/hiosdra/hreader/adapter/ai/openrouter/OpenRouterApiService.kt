@@ -1,12 +1,12 @@
 package com.hiosdra.hreader.adapter.ai.openrouter
 
-import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
-import retrofit2.http.Streaming
+
+internal const val OPENROUTER_API_BASE_URL = "https://openrouter.ai/api/v1/"
 
 interface OpenRouterApiService {
     @GET("models")
@@ -19,13 +19,4 @@ interface OpenRouterApiService {
         @Header("X-Title") title: String = "hReader",
         @Body request: OpenRouterRequest
     ): Response<OpenRouterResponse>
-
-    @Streaming
-    @POST("chat/completions")
-    suspend fun chatCompletionStream(
-        @Header("Authorization") authorization: String,
-        @Header("HTTP-Referer") referer: String = "https://hiosdra.com",
-        @Header("X-Title") title: String = "hReader",
-        @Body request: OpenRouterRequest
-    ): Response<ResponseBody>
 }
