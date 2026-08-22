@@ -9,7 +9,6 @@ import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.ArticleSummaryPart
 import com.hiosdra.hreader.core.application.ai.ArticleSummaryPipeline
-import com.hiosdra.hreader.core.application.ai.AiProviderException
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
@@ -21,18 +20,15 @@ import com.squareup.moshi.Moshi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okio.BufferedSource
 
 private const val TAG = "ArticleAiService"
 private const val DEFAULT_CONTEXT_LENGTH = 4_096
 private const val CREDIBILITY_MAX_OUTPUT_TOKENS = 1_500
 private const val CREDIBILITY_TEMPERATURE = 0.2
-private const val MAX_PROVIDER_ERROR_LENGTH = 400
-
-class OpenRouterException(val code: Int?, message: String) : AiProviderException(code, message)
 
 class ArticleAiService(
     private val openRouterApiService: OpenRouterApiService,
+    private val streamingClient: OpenRouterStreamingClient,
     private val preferencesManager: AiPreferences,
     private val credibilityPromptBuilder: CredibilityPromptBuilder,
     private val credibilityResponseParser: CredibilityResponseParser,
@@ -40,7 +36,6 @@ class ArticleAiService(
     private val aiModelCatalog: AiModelCatalog,
     moshi: Moshi
 ) : ArticleAiGateway {
-    private val streamAdapter = moshi.adapter(OpenRouterStreamResponse::class.java)
     private val errorAdapter = moshi.adapter(OpenRouterErrorEnvelope::class.java)
     private val summaryPipeline = ArticleSummaryPipeline()
 
@@ -132,7 +127,7 @@ class ArticleAiService(
 
             if (!response.isSuccessful) {
                 val providerMessage = response.errorBody()?.string()
-                    ?.let(::providerErrorMessage)
+                    ?.let { providerErrorMessage(it, errorAdapter) }
                     ?.takeIf(String::isNotBlank)
                 val message = "API call failed: ${response.code()} - ${providerMessage ?: response.message()}"
                 Log.e(TAG, message)
@@ -165,61 +160,18 @@ class ArticleAiService(
     ): Result<String> {
         val apiKey = apiKeyOrNull() ?: return Result.failure(MissingAiApiKeyException())
         return try {
-            val response = openRouterApiService.chatCompletionStream(
+            val content = streamingClient.stream(
                 authorization = "Bearer $apiKey",
-                request = request.copy(stream = true)
+                request = request,
+                onDelta = onDelta
             )
-            if (!response.isSuccessful) {
-                val providerMessage = response.errorBody()?.string()
-                    ?.let(::providerErrorMessage)
-                    ?.takeIf(String::isNotBlank)
-                val message = "API call failed: ${response.code()} - ${providerMessage ?: response.message()}"
-                Log.e(TAG, message)
-                return Result.failure(OpenRouterException(response.code(), message))
-            }
-
-            val body = response.body()
-                ?: return Result.failure(OpenRouterException(null, "The model returned an empty response."))
-            val content = body.use { readStream(it.source(), onDelta) }
-            if (content.isBlank()) {
-                Result.failure(OpenRouterException(null, "The model returned an empty response."))
-            } else {
-                Result.success(content)
-            }
+            Result.success(content)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Streaming chat completion failed", e)
             Result.failure(e)
         }
-    }
-
-    private suspend fun readStream(source: BufferedSource, onDelta: suspend (String) -> Unit): String {
-        val content = StringBuilder()
-        while (true) {
-            val line = source.readUtf8Line() ?: break
-            if (line.isBlank() || line.startsWith(":")) continue
-            val payload = line.removePrefix("data:").trim()
-            if (payload.isBlank()) continue
-            if (payload == "[DONE]") break
-
-            val chunk = streamAdapter.fromJson(payload)
-                ?: throw OpenRouterException(null, "The AI provider returned an invalid stream chunk.")
-            chunk.error?.let { error ->
-                throw OpenRouterException(null, "AI Error: ${error.message}")
-            }
-            val delta = chunk.choices.firstOrNull()?.delta?.content.orEmpty()
-            if (delta.isNotEmpty()) {
-                content.append(delta)
-                onDelta(delta)
-            }
-        }
-        return content.toString()
-    }
-
-    private fun providerErrorMessage(raw: String): String {
-        val parsed = runCatching { errorAdapter.fromJson(raw)?.error?.message }.getOrNull()
-        return (parsed ?: raw.trim()).take(MAX_PROVIDER_ERROR_LENGTH)
     }
 
     private fun isUnsupportedResponseFormat(error: Throwable): Boolean {

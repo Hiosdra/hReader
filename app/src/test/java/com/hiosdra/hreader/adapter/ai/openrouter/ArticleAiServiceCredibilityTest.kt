@@ -31,11 +31,13 @@ import java.time.Instant
 
 class ArticleAiServiceCredibilityTest {
     private val api = mockk<OpenRouterApiService>()
+    private val streamingClient = mockk<OpenRouterStreamingClient>()
     private val preferences = mockk<PreferencesManager>()
     private val modelCatalog = mockk<AiModelCatalog>()
     private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
     private val service = ArticleAiService(
         openRouterApiService = api,
+        streamingClient = streamingClient,
         preferencesManager = preferences,
         credibilityPromptBuilder = CredibilityPromptBuilder(Clock.systemDefaultZone()),
         credibilityResponseParser = CredibilityResponseParser(moshi),
