@@ -221,6 +221,7 @@ dependencies {
     // Image Loading (Coil 3)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.telephoto.zoomable.image.coil3)
 
     // Coroutines
     implementation(libs.coroutines.android)
