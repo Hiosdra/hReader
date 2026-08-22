@@ -29,7 +29,7 @@ fun prepareArticleImages(
 ): PreparedArticleImages {
     if (html.isBlank()) return PreparedArticleImages(html, emptyList())
 
-    val document = Jsoup.parse(html, baseUri)
+    val document = Jsoup.parse(sanitizeArticleInput(html), baseUri)
     sanitizeArticleDocument(document, embeddedMediaLabel)
     removeDuplicateArticleTitle(document, articleTitle)
     document.select("source[srcset]").forEach { it.removeAttr("srcset") }

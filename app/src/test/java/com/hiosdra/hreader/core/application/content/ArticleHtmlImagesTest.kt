@@ -97,8 +97,8 @@ class ArticleHtmlImagesTest {
         val prepared = prepareArticleImages(html, baseUri, "Open embedded media")
 
         assertTrue(prepared.html.contains("Intro"))
-        assertTrue(prepared.html.contains("<style>"))
-        assertTrue(prepared.html.contains("<svg"))
+        assertFalse(prepared.html.contains("<style"))
+        assertFalse(prepared.html.contains("<svg"))
         assertTrue(prepared.html.contains("Body"))
         assertTrue(prepared.html.contains("Open embedded media"))
         assertTrue(prepared.html.contains("https://example.com/photo.jpg"))
@@ -109,6 +109,29 @@ class ArticleHtmlImagesTest {
         assertFalse(prepared.html.contains("javascript:"))
         assertTrue(prepared.html.contains("Obfuscated label"))
         assertFalse(prepared.html.contains("script:"))
+    }
+
+    @Test
+    fun `drops unsupported protocols and parser edge cases`() {
+        val html = """
+            <a href="vbscript:alert('bad')">Bad link</a>
+            <img src="data:image/png;base64,AAAA">
+            <div style="background:url(javascript:alert('bad'))">Safe text</div>
+        """.trimIndent()
+        val parserEdgeCase = "<noscript><style></noscript><script>alert('bad')</script>"
+
+        val sanitized = sanitizeArticleHtml(html, baseUri, "Open embedded media")
+        val sanitizedEdgeCase = sanitizeArticleHtml(parserEdgeCase, baseUri, "Open embedded media")
+
+        assertTrue(sanitized.contains("Safe text"))
+        assertFalse(sanitized.contains("<style"))
+        assertFalse(sanitized.contains("<script"))
+        assertFalse(sanitized.contains("vbscript:"))
+        assertFalse(sanitized.contains("data:image"))
+        assertFalse(sanitized.contains("javascript:"))
+        assertFalse(sanitizedEdgeCase.contains("noscript"))
+        assertFalse(sanitizedEdgeCase.contains("<style"))
+        assertFalse(sanitizedEdgeCase.contains("<script"))
     }
 
     @Test

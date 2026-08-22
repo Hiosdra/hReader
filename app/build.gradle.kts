@@ -227,6 +227,7 @@ dependencies {
 
     // HTML Parsing
     implementation(libs.jsoup)
+    implementation(libs.owasp.html.sanitizer)
     implementation(libs.commons.compress)
 
     // On-device speech synthesis
