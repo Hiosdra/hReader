@@ -51,13 +51,20 @@ fun ArticleListGrouped(
     val scrollbarMetrics by remember(listState) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
-            val measuredItemSizes = layoutInfo.visibleItemsInfo.map { it.size }.filter { it > 0 }
-            val averageItemSizePx = measuredItemSizes.takeIf { it.isNotEmpty() }?.average()?.roundToInt() ?: 0
+            val measuredArticleSizes = layoutInfo.visibleItemsInfo
+                .filter { it.key is Long }
+                .map { it.size }
+                .filter { it > 0 }
+            val averageArticleSizePx = measuredArticleSizes
+                .takeIf { it.isNotEmpty() }
+                ?.average()
+                ?.roundToInt()
+                ?: 0
             listScrollbarMetrics(
                 firstVisibleItemIndex = listState.firstVisibleItemIndex,
                 firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
                 totalItemsCount = layoutInfo.totalItemsCount,
-                averageItemSizePx = averageItemSizePx,
+                averageItemSizePx = averageArticleSizePx,
                 viewportSizePx = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset,
                 isAtEnd = !listState.canScrollForward && listState.canScrollBackward
             )
