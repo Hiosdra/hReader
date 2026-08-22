@@ -5,6 +5,14 @@
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">LiteRT-LM ile bu cihazda çalışır. Makale metni bir bulut sağlayıcısına gönderilmez.</string>
     <string name="ai_model_size">İndirme boyutu: %.1f GB</string>
+    <string name="ai_model_download_details">Bu indirme yaklaşık %.1f GB boyutundadır. Süre bağlantınıza bağlıdır.</string>
+    <string name="ai_model_wifi_only">Yalnızca Wi-Fi ile indir</string>
+    <string name="ai_model_wifi_only_description">Bu büyük modeli indirmeden önce ölçümlü olmayan bir bağlantı bekleyin.</string>
+    <string name="ai_model_mobile_data_warning">Mobil verilere izin verildi. Bu indirme yaklaşık %.1f GB kullanır.</string>
+    <string name="ai_model_storage_required">Gerekli boş alan: %.1f GB</string>
+    <string name="ai_model_storage_available">Kullanılabilir boş alan: %.1f GB</string>
+    <string name="ai_model_insufficient_storage">Yeterli depolama alanı yok. En az %1$.1f GB gerekli; %2$.1f GB kullanılabilir.</string>
+    <string name="ai_model_low_ram_warning">Bu cihazın belleği az. Yerel yapay zeka yavaş olabilir veya kullanılamayabilir; hReader başka bir yerel arka ucu deneyecek.</string>
     <string name="ai_model_not_downloaded">Yerel model indirilmedi.</string>
     <string name="ai_model_downloading">Yerel model indiriliyor…</string>
     <string name="ai_model_ready">Yerel model hazır.</string>

@@ -1,8 +1,13 @@
 package com.hiosdra.hreader.adapter.ai.gemma
 
+import android.app.ActivityManager
 import android.content.Context
+import android.os.StatFs
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.ai.GemmaModelDownloadPreflight
+import com.hiosdra.hreader.core.application.ai.GemmaModelInsufficientStorageException
 import com.hiosdra.hreader.core.application.ai.GemmaModelStatus
+import com.hiosdra.hreader.core.application.ai.requiredGemmaDownloadBytes
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +44,9 @@ class GemmaModelManager(
 
     override val status: StateFlow<GemmaModelStatus> = _status.asStateFlow()
     override val modelSizeBytes: Long = Gemma4E2bModel.MODEL_SIZE_BYTES
+
+    override fun downloadPreflight(): GemmaModelDownloadPreflight =
+        downloadPreflight(partialFile.length())
 
     fun modelPath(): String {
         check(isInstalled()) { "Gemma 4 E2B is not installed" }
@@ -81,6 +89,15 @@ class GemmaModelManager(
                 _status.value = GemmaModelStatus.Available
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: GemmaModelInsufficientStorageException) {
+                _status.value = GemmaModelStatus.Failed(
+                    appContext.getString(
+                        R.string.ai_model_insufficient_storage,
+                        e.requiredBytes.toGigabytes(),
+                        e.availableBytes.toGigabytes()
+                    )
+                )
+                throw e
             } catch (e: Exception) {
                 _status.value = GemmaModelStatus.Failed(
                     appContext.getString(R.string.ai_model_install_failed)
@@ -101,11 +118,14 @@ class GemmaModelManager(
     }
 
     private suspend fun downloadModel() {
-        var offset = partialFile.length().coerceAtMost(Gemma4E2bModel.MODEL_SIZE_BYTES)
-        if (partialFile.length() > Gemma4E2bModel.MODEL_SIZE_BYTES) {
+        var partialBytes = partialFile.length()
+        if (partialBytes > Gemma4E2bModel.MODEL_SIZE_BYTES) {
             partialFile.delete()
-            offset = 0L
+            partialBytes = 0L
         }
+        ensureStorageAvailable(partialBytes)
+
+        var offset = partialBytes
         if (offset == Gemma4E2bModel.MODEL_SIZE_BYTES && partialFile.sha256() == Gemma4E2bModel.MODEL_SHA256) {
             updateProgress(offset)
             return
@@ -113,6 +133,7 @@ class GemmaModelManager(
         if (offset == Gemma4E2bModel.MODEL_SIZE_BYTES) {
             partialFile.delete()
             offset = 0L
+            ensureStorageAvailable(offset)
         }
 
         val request = Request.Builder()
@@ -123,6 +144,9 @@ class GemmaModelManager(
             val append = offset > 0 && response.code == 206
             if (!append && response.code != 200) {
                 error("Gemma model download failed (${response.code})")
+            }
+            if (!append && offset > 0) {
+                ensureFullDownloadStorage(offset)
             }
             val start = if (append) offset else 0L
             if (!append) {
@@ -161,6 +185,39 @@ class GemmaModelManager(
         }
     }
 
+    private fun ensureStorageAvailable(partialBytes: Long) {
+        val preflight = downloadPreflight(partialBytes)
+        if (!preflight.hasEnoughStorage) {
+            throw GemmaModelInsufficientStorageException(
+                requiredBytes = preflight.requiredBytes,
+                availableBytes = preflight.availableBytes
+            )
+        }
+    }
+
+    private fun ensureFullDownloadStorage(partialBytes: Long) {
+        val preflight = downloadPreflight(0L)
+        val availableAfterDiscardingPartial = preflight.availableBytes + partialBytes
+        if (availableAfterDiscardingPartial < preflight.requiredBytes) {
+            throw GemmaModelInsufficientStorageException(
+                requiredBytes = preflight.requiredBytes,
+                availableBytes = availableAfterDiscardingPartial
+            )
+        }
+    }
+
+    private fun downloadPreflight(partialBytes: Long): GemmaModelDownloadPreflight {
+        val availableBytes = StatFs(appContext.filesDir.path).availableBytes
+        val isLowRamDevice = appContext
+            .getSystemService(ActivityManager::class.java)
+            ?.isLowRamDevice == true
+        return GemmaModelDownloadPreflight(
+            availableBytes = availableBytes,
+            requiredBytes = requiredGemmaDownloadBytes(modelSizeBytes, partialBytes),
+            isLowRamDevice = isLowRamDevice
+        )
+    }
+
     private fun installModel() {
         check(!backupFile.exists() || backupFile.delete()) { "Could not clear Gemma model backup" }
         if (modelFile.exists()) check(modelFile.renameTo(backupFile)) { "Could not preserve Gemma model" }
@@ -197,6 +254,8 @@ class GemmaModelManager(
             (downloaded.toFloat() / Gemma4E2bModel.MODEL_SIZE_BYTES).coerceIn(0f, 1f)
         )
     }
+
+    private fun Long.toGigabytes(): Float = this / 1_000_000_000f
 
     private suspend fun File.sha256(): String {
         val digest = MessageDigest.getInstance("SHA-256")

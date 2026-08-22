@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +48,23 @@ internal fun GemmaSettingsSection(
     val status by modelManager.status.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var backend by remember { mutableStateOf(preferences.getGemmaBackend()) }
+    var unmeteredOnly by remember {
+        mutableStateOf(preferences.getGemmaDownloadOnUnmeteredOnly())
+    }
+    var preflight by remember { mutableStateOf(modelManager.downloadPreflight()) }
     var backendMenuExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(status::class) {
+        preflight = modelManager.downloadPreflight()
+    }
+
+    val requestDownload: () -> Unit = {
+        val latestPreflight = modelManager.downloadPreflight()
+        preflight = latestPreflight
+        if (latestPreflight.hasEnoughStorage) {
+            onRequestNotifications(downloadScheduler::enqueueDownload)
+        }
+    }
 
     Text(
         text = stringResource(R.string.settings_local_ai),
@@ -76,6 +93,77 @@ internal fun GemmaSettingsSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
             )
+            Text(
+                text = stringResource(
+                    R.string.ai_model_download_details,
+                    modelManager.modelSizeBytes / 1_000_000_000f
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            ToggleSettingRow(
+                title = stringResource(R.string.ai_model_wifi_only),
+                description = if (unmeteredOnly) {
+                    stringResource(R.string.ai_model_wifi_only_description)
+                } else {
+                    stringResource(
+                        R.string.ai_model_mobile_data_warning,
+                        modelManager.modelSizeBytes / 1_000_000_000f
+                    )
+                },
+                checked = unmeteredOnly,
+                onCheckedChange = { enabled ->
+                    unmeteredOnly = enabled
+                    preferences.setGemmaDownloadOnUnmeteredOnly(enabled)
+                }
+            )
+            if (status !is GemmaModelStatus.Available) {
+                Text(
+                    text = stringResource(
+                        R.string.ai_model_storage_required,
+                        preflight.requiredBytes / 1_000_000_000f
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Text(
+                    text = stringResource(
+                        R.string.ai_model_storage_available,
+                        preflight.availableBytes / 1_000_000_000f
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                if (!preflight.hasEnoughStorage) {
+                    Text(
+                        text = stringResource(
+                            R.string.ai_model_insufficient_storage,
+                            preflight.requiredBytes / 1_000_000_000f,
+                            preflight.availableBytes / 1_000_000_000f
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    TextButton(
+                        onClick = { preflight = modelManager.downloadPreflight() },
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(stringResource(R.string.action_refresh))
+                    }
+                }
+            }
+            if (preflight.isLowRamDevice) {
+                Text(
+                    text = stringResource(R.string.ai_model_low_ram_warning),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             when (val currentStatus = status) {
                 GemmaModelStatus.NotInstalled -> {
@@ -85,7 +173,8 @@ internal fun GemmaSettingsSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Button(
-                        onClick = { onRequestNotifications(downloadScheduler::enqueueDownload) },
+                        onClick = requestDownload,
+                        enabled = preflight.hasEnoughStorage,
                         modifier = Modifier.padding(top = 8.dp)
                     ) {
                         Text(stringResource(R.string.ai_download_model))
@@ -140,7 +229,8 @@ internal fun GemmaSettingsSection(
                         color = MaterialTheme.colorScheme.error
                     )
                     Button(
-                        onClick = { onRequestNotifications(downloadScheduler::enqueueDownload) },
+                        onClick = requestDownload,
+                        enabled = preflight.hasEnoughStorage,
                         modifier = Modifier.padding(top = 8.dp)
                     ) {
                         Text(stringResource(R.string.action_retry))

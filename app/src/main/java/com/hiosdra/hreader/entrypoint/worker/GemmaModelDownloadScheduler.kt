@@ -7,13 +7,18 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import java.util.concurrent.TimeUnit
 
 class GemmaModelDownloadScheduler(
     context: Context,
-    private val modelManager: GemmaModelGateway
+    private val modelManager: GemmaModelGateway,
+    private val aiPreferences: AiPreferences,
+    private val workManagerProvider: (Context) -> WorkManager = { appContext ->
+        WorkManager.getInstance(appContext)
+    }
 ) : GemmaModelDownloadRequester {
     private val appContext = context.applicationContext
 
@@ -22,13 +27,19 @@ class GemmaModelDownloadScheduler(
         val request = OneTimeWorkRequestBuilder<GemmaModelDownloadWorker>()
             .setConstraints(
                 Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiredNetworkType(
+                        if (aiPreferences.getGemmaDownloadOnUnmeteredOnly()) {
+                            NetworkType.UNMETERED
+                        } else {
+                            NetworkType.CONNECTED
+                        }
+                    )
                     .setRequiresStorageNotLow(true)
                     .build()
             )
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
-        WorkManager.getInstance(appContext).enqueueUniqueWork(
+        workManagerProvider(appContext).enqueueUniqueWork(
             DOWNLOAD_WORK_NAME,
             ExistingWorkPolicy.KEEP,
             request
@@ -36,7 +47,7 @@ class GemmaModelDownloadScheduler(
     }
 
     override fun cancelDownload() {
-        WorkManager.getInstance(appContext).cancelUniqueWork(DOWNLOAD_WORK_NAME)
+        workManagerProvider(appContext).cancelUniqueWork(DOWNLOAD_WORK_NAME)
         modelManager.markDownloadCancelled()
     }
 }
