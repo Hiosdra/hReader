@@ -6,8 +6,7 @@ Last updated: 22 August 2026
 
 hReader is published by Oskar Drozda.
 
-Privacy contact: the [hReader GitHub repository](https://github.com/Hiosdra/hReader) or a direct
-message to the publisher through [GitHub](https://github.com/Hiosdra).
+Privacy contact: the [hReader GitHub repository](https://github.com/Hiosdra/hReader).
 
 ## Scope of this policy
 
@@ -133,8 +132,7 @@ data, or uninstalls hReader. Data stored by an RSS server, OpenRouter, Sentry, a
 or a source server is subject to that operator's policies. Disabling Sentry stops future sending,
 but does not automatically delete events already delivered to Sentry.
 
-For questions about local data or this policy, use the [hReader GitHub repository](https://github.com/Hiosdra/hReader)
-or send a direct message to the [publisher through GitHub](https://github.com/Hiosdra).
+For questions about local data or this policy, use the [hReader GitHub repository](https://github.com/Hiosdra/hReader).
 Deleting data from an external server requires contacting that server's operator.
 
 ## Security
