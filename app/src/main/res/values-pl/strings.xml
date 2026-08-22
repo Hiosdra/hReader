@@ -136,16 +136,16 @@
     <string name="article_hide_summary">Ukryj podsumowanie</string>
     <string name="article_show_summary">Pokaż podsumowanie</string>
     <string name="article_analyzing">Analizowanie…</string>
-    <string name="article_check_credibility">Sprawdź wiarygodność</string>
-    <string name="article_credibility">Wiarygodność</string>
+    <string name="article_check_credibility">Przejrzyj sygnały do weryfikacji</string>
+    <string name="article_credibility">Sygnały do weryfikacji</string>
     <string name="article_analyzing_article">Analizowanie artykułu…</string>
-    <string name="article_model_saw">Co widział model</string>
-    <string name="article_red_flags">Sygnały ostrzegawcze</string>
+    <string name="article_model_saw">Zaobserwowane sygnały</string>
+    <string name="article_red_flags">Punkty do sprawdzenia</string>
     <string name="article_reanalyze">Przeanalizuj ponownie</string>
-    <string name="credibility_high">Wiarygodność: silne sygnały</string>
-    <string name="credibility_mixed">Wiarygodność: mieszane sygnały</string>
-    <string name="credibility_low">Wiarygodność: słabe sygnały</string>
-    <string name="credibility_ai_estimate">Ocena AI wyłącznie na podstawie tekstu artykułu — to nie jest fact-checking. </string>
+    <string name="credibility_high">Sygnały do weryfikacji: silne</string>
+    <string name="credibility_mixed">Sygnały do weryfikacji: mieszane</string>
+    <string name="credibility_low">Sygnały do weryfikacji: słabe</string>
+    <string name="credibility_ai_estimate">Sygnały AI wyłącznie na podstawie tekstu artykułu — to nie jest fact-checking. </string>
     <string name="credibility_confidence_high">Pewność modelu: wysoka. </string>
     <string name="credibility_confidence_medium">Pewność modelu: średnia. </string>
     <string name="credibility_confidence_low">Pewność modelu: niska. </string>
@@ -169,8 +169,12 @@
     <string name="article_missing_content">Tekst artykułu jest jeszcze pobierany. Spróbuj ponownie za chwilę.</string>
     <string name="article_summary_error">Nie udało się utworzyć podsumowania. Spróbuj ponownie.</string>
     <string name="article_ai_api_key_missing">Aby korzystać z AI, dodaj klucz OpenRouter albo zainstaluj lokalny model w Ustawieniach.</string>
+    <string name="article_ai_api_key_invalid">Klucz OpenRouter został odrzucony. Sprawdź go w Ustawieniach.</string>
+    <string name="article_ai_model_unavailable">Wybrany model AI jest niedostępny. Wybierz inny model albo zainstaluj go w Ustawieniach.</string>
+    <string name="article_ai_network_error">Nie można połączyć się z AI. Sprawdź połączenie z siecią i spróbuj ponownie.</string>
+    <string name="article_ai_provider_error">Dostawca AI nie mógł przetworzyć żądania. Spróbuj ponownie albo wybierz inny model.</string>
     <string name="article_ai_model_missing">Przed użyciem tej funkcji zainstaluj lokalny model AI w Ustawieniach.</string>
-    <string name="article_credibility_error">Nie udało się przeanalizować wiarygodności</string>
+    <string name="article_credibility_error">Nie udało się utworzyć sygnałów do weryfikacji</string>
     <string name="article_unknown_feed">Nieznany kanał</string>
 
     <string name="feeds_title">Subskrypcje</string>
@@ -243,13 +247,19 @@
     <string name="settings_bionic_reading">Czytanie bioniczne</string>
     <string name="settings_bionic_reading_description">Wyróżniaj fragmenty słów, aby czytać szybciej</string>
     <string name="settings_ai_features">Funkcje AI</string>
-    <string name="settings_show_credibility_chip">Pokazuj oznaczenie wiarygodności</string>
-    <string name="settings_credibility_description">Dodaje do każdego artykułu oznaczenie oceniające źródła, ton i równowagę tekstu</string>
-    <string name="settings_rating_meaning">Znaczenie oceny:</string>
+    <string name="settings_show_credibility_chip">Pokazuj sygnały do weryfikacji</string>
+    <string name="settings_credibility_description">Dodaje do każdego artykułu oznaczenie z sygnałami AI dotyczącymi źródeł, tonu i równowagi tekstu</string>
+    <string name="settings_rating_meaning">Jak czytać sygnały:</string>
     <string name="settings_rating_values">• Silne sygnały: źródła, dowody, równowaga
 • Mieszane sygnały: zweryfikuj przed użyciem
 • Słabe sygnały: sensacyjne lub niepoparte twierdzenia</string>
     <string name="settings_credibility_disclaimer">To ocena AI tekstu artykułu, a nie fact-checking — model nie może przeglądać internetu ani weryfikować twierdzeń. Lokalny model zachowuje artykuł na urządzeniu; OpenRouter wysyła go do wybranego dostawcy i przechowuje wynik do ponownej analizy.</string>
+    <string name="article_ai_on_device_processing">AI na urządzeniu — tekst artykułu pozostaje na tym urządzeniu i działa offline, gdy model jest gotowy.</string>
+    <string name="article_ai_cloud_processing">AI w chmurze — po potwierdzeniu tekst artykułu zostanie wysłany do wybranego dostawcy.</string>
+    <string name="article_ai_cloud_confirmation_title">Wysłać tekst artykułu do chmurowego AI?</string>
+    <string name="article_ai_cloud_summary_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć podsumowanie. Kontynuować?</string>
+    <string name="article_ai_cloud_credibility_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć sygnały do weryfikacji. Kontynuować?</string>
+    <string name="article_ai_cloud_confirm">Wyślij i kontynuuj</string>
     <string name="settings_local_ai">Lokalne AI</string>
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">Działa na urządzeniu przez LiteRT-LM. Treść artykułu nie jest wysyłana do dostawcy chmurowego.</string>

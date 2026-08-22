@@ -6,6 +6,7 @@ import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.FeedStore
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
+import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.domain.model.BackendType
@@ -18,7 +19,8 @@ class SettingsUseCase(
     private val aiModels: AiModelCatalog,
     private val cache: CacheStore,
     private val offlineReadiness: OfflineReadinessStore,
-    private val sync: SyncRequester
+    private val sync: SyncRequester,
+    private val preferenceWrites: PreferenceWriteBarrier? = null
 ) {
     fun getOpenRouterApiKey() = aiPreferences.getOpenRouterApiKey()
     fun setOpenRouterApiKey(apiKey: String) = aiPreferences.setOpenRouterApiKey(apiKey)
@@ -67,6 +69,7 @@ class SettingsUseCase(
         sync.cancelAllSync()
         cache.clearBackendData()
     }
+    suspend fun awaitPreferenceWrites() = preferenceWrites?.awaitWrites()
     fun resyncNow() = sync.resyncNow()
     fun syncNow(forceFullSync: Boolean, userVisible: Boolean) =
         sync.syncNow(forceFullSync = forceFullSync, userVisible = userVisible)

@@ -18,7 +18,7 @@ import com.hiosdra.hreader.adapter.paywall.PaywallBypassService
 import com.hiosdra.hreader.adapter.preferences.PreferencesManager
 import com.hiosdra.hreader.adapter.image.ArticleImageShareService
 import com.hiosdra.hreader.adapter.persistence.FeedRepository
-import com.hiosdra.hreader.adapter.persistence.LocalCacheRepository
+import com.hiosdra.hreader.adapter.persistence.CacheOwnershipCoordinator
 import com.hiosdra.hreader.adapter.tts.ArticleTtsController
 import com.hiosdra.hreader.adapter.tts.TtsModelManager
 import com.hiosdra.hreader.entrypoint.tts.ArticleTtsPlaybackServiceLauncher
@@ -57,6 +57,7 @@ import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
 import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
+import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.SentryPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
@@ -122,7 +123,8 @@ val appModule = module {
             get(),
             get(),
             get(),
-            get()
+            get(),
+            get(named("applicationScope"))
         )
     }
     single<ArticleContentStore> { get<ArticleContentRepository>() }
@@ -138,23 +140,26 @@ val appModule = module {
         CacheDataCleaner(
             db = get(),
             imagesDir = File(androidApplication().filesDir, "article_images"),
-            pagesDir = File(androidApplication().filesDir, "article_pages")
+            pagesDir = File(androidApplication().filesDir, "article_pages"),
+            contentStore = get()
         )
     }
     single {
-        LocalCacheRepository(
+        CacheOwnershipCoordinator(
             dataCleaner = get(),
-            preferencesManager = get(),
-            backendIdentity = get()
+            preferences = get(),
+            backendIdentity = get(),
+            preferenceWrites = get()
         )
     }
-    single<CacheStore> { get<LocalCacheRepository>() }
+    single<CacheStore> { get<CacheOwnershipCoordinator>() }
     single { ArticleAiOverviewRepository(get()) }
     single<ArticleAiOverviewStore> { get<ArticleAiOverviewRepository>() }
     single { PaywallBypassService() }
     single<PaywallBypass> { get<PaywallBypassService>() }
     single { PreferencesManager(androidApplication()) }
     single<AppPreferences> { get<PreferencesManager>() }
+    single<PreferenceWriteBarrier> { get<PreferencesManager>() }
     single<BackendPreferences> { get<PreferencesManager>() }
     single<AiPreferences> { get<PreferencesManager>() }
     single<ReaderPreferences> { get<PreferencesManager>() }
@@ -230,7 +235,8 @@ val appModule = module {
             aiModels = get<AiModelCatalog>(),
             cache = get<CacheStore>(),
             offlineReadiness = get<OfflineReadinessStore>(),
-            sync = get<SyncRequester>()
+            sync = get<SyncRequester>(),
+            preferenceWrites = get()
         )
     }
     worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }

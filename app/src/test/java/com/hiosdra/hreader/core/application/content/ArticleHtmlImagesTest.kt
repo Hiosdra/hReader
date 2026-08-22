@@ -63,6 +63,16 @@ class ArticleHtmlImagesTest {
     }
 
     @Test
+    fun `the feed title is removed before the body is stored`() {
+        val html = "<article><h1>Article title</h1><p>Body</p></article>"
+
+        val prepared = prepareArticleImages(html, baseUri, "Open embedded media", "Article title")
+
+        assertFalse(prepared.html.contains("<h1>Article title</h1>"))
+        assertTrue(prepared.html.contains("Body"))
+    }
+
+    @Test
     fun `an image with no source is not something to download`() {
         val html = """<img alt="none"><img src="/photo.jpg">"""
 

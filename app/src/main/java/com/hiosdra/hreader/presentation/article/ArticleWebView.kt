@@ -22,10 +22,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.content.sanitizeArticleHtml
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import org.koin.compose.koinInject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -65,14 +66,18 @@ fun ArticleWebView(
     // Watched rather than read once, so turning the setting on redraws the article already open.
     val bionicReadingEnabled by preferencesManager.observeBionicReadingEnabled()
         .collectAsStateWithLifecycle(initialValue = preferencesManager.getBionicReadingEnabled())
-
-    val embeddedMediaLabel = stringResource(R.string.article_open_embedded_media)
-    val processedContent = remember(articleContent, baseUrl, bionicReadingEnabled, embeddedMediaLabel) {
-        val safeContent = sanitizeArticleHtml(articleContent, baseUrl, embeddedMediaLabel)
-        if (bionicReadingEnabled) {
-            BionicReadingProcessor.processTextToBionic(safeContent)
+    var processedContent by remember(articleContent) { mutableStateOf(articleContent) }
+    androidx.compose.runtime.LaunchedEffect(
+        articleContent,
+        bionicReadingEnabled
+    ) {
+        val content = articleContent
+        processedContent = if (bionicReadingEnabled) {
+            withContext(Dispatchers.Default) {
+                BionicReadingProcessor.processTextToBionicCached(content)
+            }
         } else {
-            safeContent
+            content
         }
     }
 
