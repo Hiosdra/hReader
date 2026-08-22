@@ -112,6 +112,19 @@ interface ArticleDao {
         readStatus: ArticleStatus = ArticleStatus.READ
     ): Int
 
+    @Query(
+        "SELECT COUNT(*) $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+            "AND a.id = :articleId"
+    )
+    suspend fun countVisibleArticle(
+        articleId: String,
+        feedId: Long?,
+        starredOnly: Boolean,
+        includeRead: Boolean,
+        sessionStart: Instant,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): Int
+
     @Query("SELECT publishedAt FROM articles WHERE id = :articleId")
     suspend fun getPublishedAt(articleId: String): Instant?
 
@@ -126,6 +139,40 @@ interface ArticleDao {
         sessionStart: Instant,
         limit: Int,
         offset: Int,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): List<String>
+
+    @Query(
+        "SELECT a.id $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+            "AND (a.publishedAt < :publishedAt OR " +
+            "(a.publishedAt = :publishedAt AND a.id < :articleId)) " +
+            "ORDER BY a.publishedAt DESC, a.id DESC LIMIT :limit"
+    )
+    suspend fun getListWindowBefore(
+        articleId: String,
+        publishedAt: Instant,
+        feedId: Long?,
+        starredOnly: Boolean,
+        includeRead: Boolean,
+        sessionStart: Instant,
+        limit: Int,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): List<String>
+
+    @Query(
+        "SELECT a.id $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+            "AND (a.publishedAt > :publishedAt OR " +
+            "(a.publishedAt = :publishedAt AND a.id > :articleId)) " +
+            "ORDER BY a.publishedAt ASC, a.id ASC LIMIT :limit"
+    )
+    suspend fun getListWindowAfter(
+        articleId: String,
+        publishedAt: Instant,
+        feedId: Long?,
+        starredOnly: Boolean,
+        includeRead: Boolean,
+        sessionStart: Instant,
+        limit: Int,
         readStatus: ArticleStatus = ArticleStatus.READ
     ): List<String>
 
@@ -175,7 +222,7 @@ interface ArticleDao {
             "a.backlogFetchedAt AS backlogFetchedAt, a.feedId AS feedId, " +
             "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl " +
             "$FROM_ARTICLES_WITH_FEED " +
-            "WHERE a.id IN (:ids) ORDER BY a.publishedAt ASC"
+            "WHERE a.id IN (:ids) ORDER BY a.publishedAt ASC, a.id ASC"
     )
     fun getArticlesWithFeedByIds(ids: List<String>): Flow<List<ArticleReaderItem>>
 

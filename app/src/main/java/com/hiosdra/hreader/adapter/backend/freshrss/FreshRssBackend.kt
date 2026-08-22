@@ -21,6 +21,8 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.jsoup.Jsoup
 
@@ -140,18 +142,21 @@ class FreshRssBackend(
 
     override suspend fun fetchFullContent(entryId: Long, articleUrl: String?): String? {
         val url = articleUrl?.takeIf { it.startsWith("http://") || it.startsWith("https://") } ?: return null
-        val document = Jsoup.parse(httpClient.fetchHtml(url), url)
-        document.select("script, style, noscript, nav, header, footer, aside, form").remove()
-        val candidate = listOf(
-            "[itemprop=articleBody]",
-            "article",
-            "main",
-            "body"
-        ).asSequence()
-            .mapNotNull { selector -> document.select(selector).firstOrNull() }
-            .firstOrNull { it.text().trim().length >= 80 }
-            ?: return null
-        return candidate.html().takeIf { Jsoup.parse(it).text().isNotBlank() }
+        val html = withContext(Dispatchers.IO) { httpClient.fetchHtml(url) }
+        return withContext(Dispatchers.Default) {
+            val document = Jsoup.parse(html, url)
+            document.select("script, style, noscript, nav, header, footer, aside, form").remove()
+            val candidate = listOf(
+                "[itemprop=articleBody]",
+                "article",
+                "main",
+                "body"
+            ).asSequence()
+                .mapNotNull { selector -> document.select(selector).firstOrNull() }
+                .firstOrNull { it.text().trim().length >= 80 }
+                ?: return@withContext null
+            candidate.html().takeIf { Jsoup.parse(it).text().isNotBlank() }
+        }
     }
 
     private suspend fun streamContents(limit: Int, cursor: String?, startTimeSeconds: Long?): EntriesPage =

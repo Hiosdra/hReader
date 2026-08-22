@@ -9,7 +9,7 @@ import androidx.paging.cachedIn
 import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
-import com.hiosdra.hreader.core.domain.model.ArticleListEntry
+import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.text.UiText
@@ -117,7 +117,7 @@ class MainViewModel(
      * Cached in the view-model scope so a configuration change re-collects the pages already
      * loaded instead of starting the list again from the top.
      */
-    val articles: Flow<PagingData<ArticleListEntry>> = readyQuery
+    val articles: Flow<PagingData<ArticleListItem>> = readyQuery
         .flatMapLatest { reader.pageArticles(it) }
         .cachedIn(viewModelScope)
 

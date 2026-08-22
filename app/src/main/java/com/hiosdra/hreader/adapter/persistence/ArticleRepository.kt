@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.insertSeparators
 import androidx.paging.map
 import androidx.room.withTransaction
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
@@ -13,7 +14,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
-import com.hiosdra.hreader.core.domain.model.ArticleListEntry
+import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Entry
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 
 private const val TAG = "ArticleRepository"
 
@@ -78,6 +80,7 @@ private const val MAX_SYNC_PAGES = 200
 private val PAGING_CONFIG = PagingConfig(
     pageSize = 40,
     prefetchDistance = 20,
+    maxSize = 200,
     enablePlaceholders = false
 )
 
@@ -95,7 +98,7 @@ class ArticleRepository(
      * to happen in the view model over the whole cache: every article body in memory, scanned again
      * on each keystroke.
      */
-    override fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListEntry>> {
+    override fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> {
         val match = buildFtsMatchQuery(query.searchQuery.trim())
         return Pager(PAGING_CONFIG) {
             if (match == null) {
@@ -115,7 +118,26 @@ class ArticleRepository(
                     titleQuery = buildLikePattern(query.searchQuery)
                 )
             }
-        }.flow.map { page -> page.map { it.toListEntry() } }
+        }.flow
+            .map { page -> page.map { ArticleListItem.Article(it.toListEntry()) } }
+            .map { page ->
+                page.insertSeparators { before, after ->
+                    val afterArticle = when (after) {
+                        is ArticleListItem.Article -> after.entry
+                        else -> return@insertSeparators null
+                    }
+                    val beforeDate = when (before) {
+                        is ArticleListItem.Article -> before.entry.publishedAt
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                        else -> null
+                    }
+                    val afterDate = afterArticle.publishedAt
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                    if (beforeDate != afterDate) ArticleListItem.DayHeader(afterDate) else null
+                }
+            }
     }
 
     override suspend fun listWindow(
@@ -134,30 +156,63 @@ class ArticleRepository(
         }
 
         val publishedAt = articleDao.getPublishedAt(articleId.toString())
-        val currentPosition = publishedAt?.let {
-            articleDao.countArticlesBefore(
-                articleId = articleId.toString(),
-                publishedAt = it,
+        val selectedArticleIsVisible = publishedAt != null && articleDao.countVisibleArticle(
+            articleId = articleId.toString(),
+            feedId = query.feedId,
+            starredOnly = query.starredOnly,
+            includeRead = query.includeRead,
+            sessionStart = query.sessionStart
+        ) > 0
+        if (!selectedArticleIsVisible) {
+            val ids = articleDao.getListWindow(
                 feedId = query.feedId,
                 starredOnly = query.starredOnly,
                 includeRead = query.includeRead,
-                sessionStart = query.sessionStart
+                sessionStart = query.sessionStart,
+                limit = (radius * 2 + 1).coerceAtLeast(1),
+                offset = 0
+            ).toArticleIds("the reader's fallback window")
+            return ArticleListWindow(
+                ids = ids,
+                totalCount = totalCount,
+                windowStartIndex = 0,
+                currentIndex = 0
             )
-        }?.coerceIn(0, (totalCount - 1).coerceAtLeast(0)) ?: 0
-        val windowStart = (currentPosition - radius).coerceAtLeast(0)
-        val ids = articleDao.getListWindow(
+        }
+
+        val currentPosition = articleDao.countArticlesBefore(
+            articleId = articleId.toString(),
+            publishedAt = publishedAt,
+            feedId = query.feedId,
+            starredOnly = query.starredOnly,
+            includeRead = query.includeRead,
+            sessionStart = query.sessionStart
+        ).coerceIn(0, (totalCount - 1).coerceAtLeast(0))
+        val before = articleDao.getListWindowBefore(
+            articleId = articleId.toString(),
+            publishedAt = publishedAt,
             feedId = query.feedId,
             starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart,
-            limit = (radius * 2 + 1).coerceAtLeast(1),
-            offset = windowStart
-        ).toArticleIds("the reader's window")
+            limit = radius.coerceAtLeast(0)
+        ).asReversed()
+        val after = articleDao.getListWindowAfter(
+            articleId = articleId.toString(),
+            publishedAt = publishedAt,
+            feedId = query.feedId,
+            starredOnly = query.starredOnly,
+            includeRead = query.includeRead,
+            sessionStart = query.sessionStart,
+            limit = radius.coerceAtLeast(0)
+        )
+        val ids = (before + articleId.toString() + after).toArticleIds("the reader's window")
+        val windowStart = currentPosition - before.size
         return ArticleListWindow(
             ids = ids,
             totalCount = totalCount,
             windowStartIndex = windowStart,
-            currentIndex = (currentPosition - windowStart).coerceIn(0, (ids.size - 1).coerceAtLeast(0))
+            currentIndex = before.size.coerceIn(0, (ids.size - 1).coerceAtLeast(0))
         )
     }
 

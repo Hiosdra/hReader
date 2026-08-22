@@ -93,6 +93,22 @@ class ServerConfigTest {
         assertTrue(freshRss.credentialsFingerprint() != miniflux.credentialsFingerprint())
     }
 
+    @Test
+    fun `cache owner stays stable when credentials rotate`() {
+        val before = configFor(serverUrl = "rss.example.com", secret = "one").cacheOwnerKey()
+        val after = configFor(serverUrl = "rss.example.com", secret = "two").cacheOwnerKey()
+
+        assertEquals(before, after)
+    }
+
+    @Test
+    fun `cache owner treats a configured reader endpoint as the same server`() {
+        val root = configFor(serverUrl = "https://rss.example.com")
+        val endpoint = configFor(serverUrl = "https://rss.example.com/api/greader.php")
+
+        assertEquals(root.cacheOwnerKey(), endpoint.cacheOwnerKey())
+    }
+
     private fun configFor(
         backendType: BackendType = BackendType.FRESHRSS,
         serverUrl: String,

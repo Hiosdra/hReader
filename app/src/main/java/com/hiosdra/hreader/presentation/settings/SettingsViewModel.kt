@@ -421,17 +421,18 @@ class SettingsViewModel(
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, pendingBackendType = null)
             // In flight work belongs to the backend being left, and would write its articles back
             // into the cache that was just emptied.
-            val cleared = runCatchingCancellable { settings.cancelAndClearBackendData() }
-            if (cleared.isSuccess) {
+            val switched = runCatchingCancellable {
+                settings.cancelAndClearBackendData()
                 settings.setBackendType(backendType)
+                settings.awaitPreferenceWrites()
             }
             // The switch wipes everything downloaded, so the new backend is fetched from scratch
             // rather than leaving the reader with an empty list until the next scheduled run.
             settings.schedulePeriodicSync()
-            if (cleared.isSuccess) {
+            if (switched.isSuccess) {
                 settings.syncNow(forceFullSync = true, userVisible = true)
             }
-            _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
+            _uiState.value = currentSettings().withClearFailure(switched.exceptionOrNull())
         }
     }
 
@@ -440,16 +441,22 @@ class SettingsViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, signOutCompleted = false)
             val cleared = runCatchingCancellable { settings.cancelAndClearBackendData() }
-            settings.setBackendSecret(backendType, "")
-            if (backendType.requiresUsername) {
-                settings.setFreshRssUsername("")
+            val signedOut = if (cleared.isSuccess) {
+                runCatchingCancellable {
+                    settings.setBackendSecret(backendType, "")
+                    if (backendType.requiresUsername) settings.setFreshRssUsername("")
+                    settings.awaitPreferenceWrites()
+                }
+            } else {
+                Result.failure(cleared.exceptionOrNull() ?: IllegalStateException("Cache clear failed"))
             }
             // Deregisters the periodic worker: without credentials every run wakes the radio only
             // to fail on a missing token, hourly, for as long as the app stays installed.
             settings.schedulePeriodicSync()
+            val failure = cleared.exceptionOrNull() ?: signedOut.exceptionOrNull()
             _uiState.value = currentSettings()
-                .withClearFailure(cleared.exceptionOrNull())
-                .copy(signOutCompleted = cleared.isSuccess)
+                .withClearFailure(failure)
+                .copy(signOutCompleted = cleared.isSuccess && signedOut.isSuccess)
         }
     }
 
@@ -497,6 +504,13 @@ class SettingsViewModel(
      */
     fun onSetupFinished() {
         viewModelScope.launch {
+            val writes = runCatchingCancellable { settings.awaitPreferenceWrites() }
+            if (writes.isFailure) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = UiText.Resource(R.string.settings_prepare_cache_failed)
+                )
+                return@launch
+            }
             val ownerCheck = runCatchingCancellable { settings.ensureCacheOwner() }
             if (ownerCheck.isFailure) {
                 _uiState.value = _uiState.value.copy(

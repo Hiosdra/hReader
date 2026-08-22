@@ -24,12 +24,14 @@ data class PreparedArticleImages(
 fun prepareArticleImages(
     html: String,
     baseUri: String,
-    embeddedMediaLabel: String
+    embeddedMediaLabel: String,
+    articleTitle: String = ""
 ): PreparedArticleImages {
     if (html.isBlank()) return PreparedArticleImages(html, emptyList())
 
     val document = Jsoup.parse(html, baseUri)
     sanitizeArticleDocument(document, embeddedMediaLabel)
+    removeDuplicateArticleTitle(document, articleTitle)
     document.select("source[srcset]").forEach { it.removeAttr("srcset") }
     val imageUrls = document.select("img").map { image ->
         image.removeAttr("srcset")

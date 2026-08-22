@@ -7,6 +7,16 @@ import org.jsoup.nodes.TextNode
 object BionicReadingProcessor {
     private val WORD_REGEX = Regex("([\\p{L}\\p{M}]+)")
     private val SKIPPED_TAGS = setOf("pre", "code", "script", "style", "svg", "strong", "b")
+    private val cachedResults = object : LinkedHashMap<String, String>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
+            size > 8
+    }
+
+    @Synchronized
+    fun processTextToBionicCached(html: String): String {
+        cachedResults[html]?.let { return it }
+        return processTextToBionic(html).also { cachedResults[html] = it }
+    }
 
     fun processTextToBionic(html: String): String {
         if (html.isBlank()) return html

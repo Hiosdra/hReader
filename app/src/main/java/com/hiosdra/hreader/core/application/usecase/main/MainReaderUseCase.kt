@@ -7,7 +7,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
-import com.hiosdra.hreader.core.domain.model.ArticleListEntry
+import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Feed
@@ -24,7 +24,7 @@ class MainReaderUseCase(
 ) {
     val isOnline: StateFlow<Boolean> = network.isOnline
 
-    fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListEntry>> = articles.pageArticles(query)
+    fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> = articles.pageArticles(query)
 
     fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
         articles.observeUnreadCount(feedId, starredOnly)

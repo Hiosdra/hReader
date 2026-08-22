@@ -6,6 +6,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
 import com.hiosdra.hreader.core.application.content.articlePreviewHtml
+import com.hiosdra.hreader.core.application.content.ArticleHtmlTransformer
 import com.hiosdra.hreader.core.application.content.leadImageUrl
 import com.hiosdra.hreader.core.application.content.prepareArticleImages
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
@@ -24,8 +25,15 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class ArticleContentRepository(
     private val embeddedMediaLabel: () -> String,
@@ -35,7 +43,8 @@ class ArticleContentRepository(
     private val articleImageStore: ArticleImageStore,
     private val credibilityStore: CredibilityStore,
     private val articleAiOverviewStore: ArticleAiOverviewStore,
-    private val articlePageStore: ArticlePageStore
+    private val articlePageStore: ArticlePageStore,
+    private val imageScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 ) : ArticleContentStore {
     companion object {
         private const val TAG = "ArticleContentRepo"
@@ -54,6 +63,8 @@ class ArticleContentRepository(
     }
 
     private val prefetchLimiter = Semaphore(MAX_CONCURRENT_PREFETCH)
+    private val imageJobsMutex = Mutex()
+    private val imageJobs = mutableMapOf<Long, Job>()
     override suspend fun getArticleContent(
         entryId: Long,
         url: String,
@@ -110,12 +121,24 @@ class ArticleContentRepository(
         val storedImageUrls = stored.imageUrls.toImageUrls()
         val hasImageManifest = stored.imageUrls.isNotEmpty()
         val prepared = if (stored.isPrepared && hasImageManifest) {
-            PreparedArticle(stored.content, storedImageUrls, stored.leadImageUrl)
+            val articleTitle = articleDao.getArticlesImmediate(listOf(entryId.toString()))
+                .firstOrNull()
+                ?.title
+                .orEmpty()
+            val normalizedContent = withContext(Dispatchers.Default) {
+                ArticleHtmlTransformer.transform(
+                    html = stored.content,
+                    baseUrl = stored.url,
+                    articleTitle = articleTitle,
+                    embeddedMediaLabel = embeddedMediaLabel()
+                )
+            }
+            PreparedArticle(normalizedContent, storedImageUrls, stored.leadImageUrl)
         } else {
             prepare(entryId, stored.content, stored.url)
         }
         articleImageStore.setExpectedImages(entryId, prepared.imageUrls)
-        if (allowNetwork) downloadImagesForEntry(entryId, prepared.imageUrls)
+        if (allowNetwork) scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl)
         val updated = stored.copy(
             content = prepared.html,
             isPrepared = true,
@@ -135,7 +158,7 @@ class ArticleContentRepository(
     ): ArticleText {
         val prepared = prepare(entryId, sourceContent, url)
         articleImageStore.setExpectedImages(entryId, prepared.imageUrls)
-        if (allowNetwork) downloadImagesForEntry(entryId, prepared.imageUrls)
+        if (allowNetwork) scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl)
         articleContentDao.insertArticleContent(
             ArticleContent(
                 entryId = entryId,
@@ -163,7 +186,8 @@ class ArticleContentRepository(
             val images = prepareArticleImages(
                 content,
                 baseUri,
-                embeddedMediaLabel()
+                embeddedMediaLabel(),
+                article?.title.orEmpty()
             )
             PreparedArticle(
                 html = images.html,
@@ -232,6 +256,7 @@ class ArticleContentRepository(
                         val stored = articleContentDao.getArticleContent(entryId)
                         if (stored == null || stored.source != ArticleContentSource.FULL) {
                             getArticleContent(entryId, url)
+                            awaitImageDownloads(entryId)
                         }
                     } catch (e: CancellationException) {
                         throw e
@@ -303,6 +328,34 @@ class ArticleContentRepository(
                 }
             }
         }
+    }
+
+    private suspend fun scheduleImageDownloads(
+        entryId: Long,
+        imageUrls: List<String>,
+        leadImageUrl: String?
+    ) {
+        val urls = (listOfNotNull(leadImageUrl) + imageUrls).distinct()
+        if (urls.isEmpty()) return
+        imageJobsMutex.withLock {
+            if (imageJobs[entryId]?.isActive == true) return@withLock
+            val job = imageScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                downloadImagesForEntry(entryId, urls)
+            }
+            imageJobs[entryId] = job
+            job.invokeOnCompletion {
+                imageScope.launch {
+                    imageJobsMutex.withLock {
+                        if (imageJobs[entryId] === job) imageJobs.remove(entryId)
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun awaitImageDownloads(entryId: Long) {
+        val job = imageJobsMutex.withLock { imageJobs[entryId] }
+        job?.join()
     }
 
     private fun String.toImageUrls(): List<String> =
