@@ -17,7 +17,8 @@ not use advertising, behavioral analytics, or additional trackers.
 This policy describes the data hReader accesses, stores locally, or transfers to provide features
 selected by the user. Data processed by Google Play during installation, updates, or app operation
 is processed by Google under the [Google Privacy Policy](https://policies.google.com/privacy).
-hReader does not receive that data from Google.
+Google may make the information and statistics visible in Google Play Console available to the
+publisher. hReader does not collect this information directly from the device.
 
 ## Data stored on the device
 
