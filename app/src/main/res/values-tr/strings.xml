@@ -402,6 +402,7 @@
     <string name="error_reporting_title">Çökme raporlarını ve tanılama verilerini gönder</string>
     <string name="error_reporting_description">Çökme raporlarını ve teknik tanılama verilerini Sentry ile paylaşın. Bu seçimi daha sonra ayarlardan değiştirebilirsiniz.</string>
     <string name="error_reporting_privacy">Gizlilik politikasını görüntüle</string>
+    <string name="privacy_policy_title">hReader gizlilik politikasını görüntüle</string>
     <string name="loading_articles">Makaleler yükleniyor</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

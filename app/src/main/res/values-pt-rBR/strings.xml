@@ -402,6 +402,7 @@
     <string name="error_reporting_title">Enviar relatórios de falhas e dados de diagnóstico</string>
     <string name="error_reporting_description">Compartilhe relatórios de falhas e dados técnicos de diagnóstico com o Sentry. Você pode mudar isso depois nas configurações.</string>
     <string name="error_reporting_privacy">Ver política de privacidade</string>
+    <string name="privacy_policy_title">Ver a política de privacidade do hReader</string>
     <string name="loading_articles">Carregando artigos</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

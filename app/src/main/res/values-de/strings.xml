@@ -414,6 +414,7 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="error_reporting_title">Absturzberichte und Diagnosedaten senden</string>
     <string name="error_reporting_description">Absturzberichte und technische Diagnosedaten mit Sentry teilen. Du kannst dies später in den Einstellungen ändern.</string>
     <string name="error_reporting_privacy">Datenschutzerklärung anzeigen</string>
+    <string name="privacy_policy_title">Datenschutzerklärung von hReader anzeigen</string>
     <string name="loading_articles">Artikel werden geladen</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

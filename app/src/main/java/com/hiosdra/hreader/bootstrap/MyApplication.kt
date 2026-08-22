@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.bootstrap
 
 import android.app.Application
+import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.bootstrap.di.appModule
 import com.hiosdra.hreader.bootstrap.di.networkModule
 import com.hiosdra.hreader.entrypoint.notification.NotificationChannels
@@ -21,7 +22,9 @@ class MyApplication : Application() {
         NotificationChannels.ensure(this)
 
         val koin = startKoin {
-            androidLogger()
+            if (BuildConfig.DEBUG) {
+                androidLogger()
+            }
             androidContext(this@MyApplication)
             workManagerFactory()
             modules(appModule, networkModule)

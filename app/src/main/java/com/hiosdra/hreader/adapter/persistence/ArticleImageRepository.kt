@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.persistence
 
 import android.content.Context
 import android.util.Log
+import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
@@ -115,7 +116,9 @@ class ArticleImageRepository(
                     // cap below is for.
                     val declaredLength = body.contentLength()
                     if (declaredLength > MAX_IMAGE_BYTES) {
-                        Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
+                        }
                         return@withContext
                     }
 
@@ -130,7 +133,9 @@ class ArticleImageRepository(
                     // above and be downloaded in full before its size could be objected to.
                     val fileSize = copyAtMost(body.byteStream(), staging, MAX_IMAGE_BYTES)
                     if (fileSize == null) {
-                        Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
+                        }
                         return@withContext
                     }
 
@@ -154,7 +159,9 @@ class ArticleImageRepository(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to download/store image $imageUrl for entry $entryId", e)
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "Failed to download/store image $imageUrl for entry $entryId", e)
+                }
             } finally {
                 if (!stored) localFile?.delete()
             }

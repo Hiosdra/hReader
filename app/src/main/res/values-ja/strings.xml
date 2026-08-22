@@ -401,6 +401,7 @@
     <string name="error_reporting_title">クラッシュレポートと診断データを送信</string>
     <string name="error_reporting_description">クラッシュレポートと技術的な診断データをSentryと共有します。この設定は後で変更できます。</string>
     <string name="error_reporting_privacy">プライバシーポリシーを表示</string>
+    <string name="privacy_policy_title">hReader のプライバシーポリシーを表示</string>
     <string name="loading_articles">記事を読み込み中</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

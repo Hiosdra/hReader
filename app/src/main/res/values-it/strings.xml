@@ -402,6 +402,7 @@
     <string name="error_reporting_title">Invia report di arresto anomalo e dati diagnostici</string>
     <string name="error_reporting_description">Condividi con Sentry i report di arresto anomalo e i dati diagnostici tecnici. Puoi modificare questa scelta nelle impostazioni.</string>
     <string name="error_reporting_privacy">Visualizza informativa sulla privacy</string>
+    <string name="privacy_policy_title">Visualizza l’informativa sulla privacy di hReader</string>
     <string name="loading_articles">Caricamento articoli</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>

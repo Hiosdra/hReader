@@ -87,7 +87,7 @@ class FreshRssBackend(
     override suspend fun createFeed(feedUrl: String) = withFeedFailureMapping {
         val response = apiService.quickAddSubscription(feedUrl, writeToken())
         if (response.numResults < 1) {
-            throw IOException(response.error ?: "FreshRSS could not subscribe to $feedUrl")
+            throw IOException(response.error ?: "FreshRSS could not subscribe to the requested feed")
         }
     }
 

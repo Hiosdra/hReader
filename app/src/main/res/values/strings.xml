@@ -507,6 +507,8 @@
     <string name="error_reporting_title">Send crash reports and diagnostics</string>
     <string name="error_reporting_description">Share crash reports and technical diagnostics with Sentry. You can change this later in Settings.</string>
     <string name="error_reporting_privacy">View privacy policy</string>
+    <string name="privacy_policy_title">View hReader privacy policy</string>
+    <string name="privacy_policy_url" translatable="false">https://github.com/Hiosdra/hReader/blob/master/PRIVACY_POLICY.md</string>
     <string name="loading_articles">Loading articles</string>
     <string name="paywall_smry_ai">Smry.ai</string>
     <string name="paywall_remove_paywall">RemovePaywall.com</string>
