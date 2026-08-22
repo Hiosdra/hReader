@@ -5,13 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +33,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -101,6 +100,7 @@ internal fun ArticleContent(
     var webContentHeightPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
     var webViewRestoreScrollY by rememberSaveable(entry.id) { mutableIntStateOf(0) }
     var webViewScrollProgress by rememberSaveable(entry.id) { mutableFloatStateOf(0f) }
+    var articleViewportHeightPx by remember(entry.id) { mutableIntStateOf(0) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
@@ -115,13 +115,24 @@ internal fun ArticleContent(
     val safeWebContentHeightPx = safeArticleWebViewHeightPx(webContentHeightPx)
     val webViewHeight = with(LocalDensity.current) { safeWebContentHeightPx.toDp() }
     val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(webContentHeightPx)
-    val isScrollable = webViewNeedsInternalScroll || articleScrollState.maxValue > 0
-    val scrollProgress by remember(articleScrollState, webViewNeedsInternalScroll) {
+    val scrollbarMetrics by remember(articleScrollState, webViewNeedsInternalScroll) {
         derivedStateOf {
             if (webViewNeedsInternalScroll) {
-                webViewScrollProgress
+                val maxScrollPx = (webContentHeightPx - safeWebContentHeightPx).coerceAtLeast(0)
+                verticalScrollbarMetrics(
+                    viewportSizePx = safeWebContentHeightPx,
+                    contentSizePx = webContentHeightPx,
+                    scrollOffsetPx = articleScrollOffset(webViewScrollProgress, maxScrollPx)
+                )
             } else {
-                articleScrollProgress(articleScrollState.value, articleScrollState.maxValue)
+                val contentSizePx = (articleViewportHeightPx.toLong() + articleScrollState.maxValue)
+                    .coerceAtMost(Int.MAX_VALUE.toLong())
+                    .toInt()
+                verticalScrollbarMetrics(
+                    viewportSizePx = articleViewportHeightPx,
+                    contentSizePx = contentSizePx,
+                    scrollOffsetPx = articleScrollState.value
+                )
             }
         }
     }
@@ -214,7 +225,11 @@ internal fun ArticleContent(
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.medium
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { articleViewportHeightPx = it.height }
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -306,16 +321,12 @@ internal fun ArticleContent(
                     )
                 }
             }
-            if (isScrollable) {
-                ScrollProgressIndicator(
-                    progress = scrollProgress,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 4.dp, top = 8.dp, bottom = 8.dp)
-                        .fillMaxHeight()
-                        .width(4.dp)
-                )
-            }
+            VerticalScrollbar(
+                metrics = scrollbarMetrics,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 2.dp)
+            )
         }
     }
     val actionsUrl = imageActionsUrl

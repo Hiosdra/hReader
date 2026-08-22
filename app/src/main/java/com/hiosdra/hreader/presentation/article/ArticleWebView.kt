@@ -106,7 +106,7 @@ fun ArticleWebView(
                 factory = { context ->
                     ReaderWebView(context).apply {
                         var lastScrollY = -1
-                        val progressReporter = ReaderWebViewScrollProgressReporter { progress, _ ->
+                        val progressReporter = ReaderWebViewScrollProgressReporter { progress, _, _ ->
                             currentOnScrollProgress.value?.invoke(progress)
                         }
                         fun updateScrollProgress(wv: ReaderWebView) {
@@ -121,8 +121,8 @@ fun ArticleWebView(
                         settings.hardenArticleContent()
                         settings.defaultFontSize = 16
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                        isVerticalScrollBarEnabled = allowScroll
-                        isHorizontalScrollBarEnabled = allowScroll
+                        isVerticalScrollBarEnabled = false
+                        isHorizontalScrollBarEnabled = false
                         overScrollMode = if (allowScroll) {
                             View.OVER_SCROLL_IF_CONTENT_SCROLLS
                         } else {
@@ -229,8 +229,8 @@ fun ArticleWebView(
                     }
                     webView.allowScroll = currentScrollEnabled.value
                     webView.protectVerticalScrollFromPager = webView.allowScroll
-                    webView.isVerticalScrollBarEnabled = webView.allowScroll
-                    webView.isHorizontalScrollBarEnabled = webView.allowScroll
+                    webView.isVerticalScrollBarEnabled = false
+                    webView.isHorizontalScrollBarEnabled = false
                     webView.overScrollMode = if (webView.allowScroll) {
                         View.OVER_SCROLL_IF_CONTENT_SCROLLS
                     } else {

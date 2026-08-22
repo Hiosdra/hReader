@@ -7,10 +7,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -43,6 +41,7 @@ fun OfflinePageWebView(
     val loadedPageKey = remember { mutableStateOf<Triple<Long, String, String>?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
     var scrollProgress by rememberSaveable(page.entryId) { mutableFloatStateOf(0f) }
+    var scrollbarThumbFraction by rememberSaveable(page.entryId) { mutableFloatStateOf(1f) }
     var isScrollable by rememberSaveable(page.entryId) { mutableStateOf(false) }
     var renderProcessError by remember(page.entryId, page.html, page.baseUrl) { mutableStateOf(false) }
     var renderAttempt by remember(page.entryId, page.html, page.baseUrl) { mutableIntStateOf(0) }
@@ -61,9 +60,10 @@ fun OfflinePageWebView(
                 AndroidView(
                     factory = { context ->
                         ReaderWebView(context).apply {
-                            val progressReporter = ReaderWebViewScrollProgressReporter { progress, scrollable ->
+                            val progressReporter = ReaderWebViewScrollProgressReporter { progress, scrollable, thumbFraction ->
                                 scrollProgress = progress
                                 isScrollable = scrollable
+                                scrollbarThumbFraction = thumbFraction
                             }
                             fun updateScrollProgress(readerView: ReaderWebView) {
                                 progressReporter.update(readerView)
@@ -80,6 +80,7 @@ fun OfflinePageWebView(
                                     loadedWebView.value = null
                                     (view as? ReaderWebView)?.destroyAfterRenderProcessGone()
                                     scrollProgress = 0f
+                                    scrollbarThumbFraction = 1f
                                     isScrollable = false
                                     renderProcessError = true
                                     return true
@@ -133,16 +134,19 @@ fun OfflinePageWebView(
                     onRelease = { webView -> webView.releaseResources() },
                     modifier = Modifier.fillMaxSize()
                 )
-                if (isScrollable) {
-                    ScrollProgressIndicator(
-                        progress = scrollProgress,
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 4.dp, top = 8.dp, bottom = 8.dp)
-                            .fillMaxHeight()
-                            .width(4.dp)
-                    )
-                }
+                VerticalScrollbar(
+                    metrics = if (isScrollable) {
+                        VerticalScrollbarMetrics(
+                            thumbFraction = scrollbarThumbFraction,
+                            positionFraction = scrollProgress
+                        )
+                    } else {
+                        null
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 2.dp)
+                )
             }
         }
     }
