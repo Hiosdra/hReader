@@ -4,12 +4,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,27 +48,27 @@ fun ArticleListGrouped(
     // place; the days are recomputed as pages arrive, and the keys keep positions steady.
     val loaded = items.itemSnapshotList.items
     val days = remember(loaded) { loaded.groupIntoDays() }
-    val scrollProgress by remember(listState) {
+    val scrollbarMetrics by remember(listState) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
-            val visibleItems = layoutInfo.visibleItemsInfo
-            val averageItemSizePx = if (visibleItems.isEmpty()) {
-                0
-            } else {
-                visibleItems.map { it.size }.average().roundToInt()
-            }
-            articleListScrollProgress(
+            val measuredArticleSizes = layoutInfo.visibleItemsInfo
+                .filter { it.key is Long }
+                .map { it.size }
+                .filter { it > 0 }
+            val averageArticleSizePx = measuredArticleSizes
+                .takeIf { it.isNotEmpty() }
+                ?.average()
+                ?.roundToInt()
+                ?: 0
+            listScrollbarMetrics(
                 firstVisibleItemIndex = listState.firstVisibleItemIndex,
                 firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
                 totalItemsCount = layoutInfo.totalItemsCount,
-                averageItemSizePx = averageItemSizePx,
+                averageItemSizePx = averageArticleSizePx,
                 viewportSizePx = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset,
                 isAtEnd = !listState.canScrollForward && listState.canScrollBackward
             )
         }
-    }
-    val isScrollable by remember(listState) {
-        derivedStateOf { listState.canScrollForward || listState.canScrollBackward }
     }
 
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
@@ -127,16 +125,12 @@ fun ArticleListGrouped(
                 else -> Unit
             }
         }
-        if (isScrollable) {
-            ScrollProgressIndicator(
-                progress = scrollProgress,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 4.dp, top = 8.dp, bottom = 8.dp)
-                    .fillMaxHeight()
-                    .width(4.dp)
-            )
-        }
+        VerticalScrollbar(
+            metrics = scrollbarMetrics,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 2.dp)
+        )
     }
 }
 
