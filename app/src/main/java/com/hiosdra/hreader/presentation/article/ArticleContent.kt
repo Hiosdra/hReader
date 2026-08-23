@@ -44,8 +44,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.hiosdra.hreader.core.application.content.removeDuplicateArticleTitle
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
+import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
@@ -79,6 +79,7 @@ internal fun ArticleContent(
     localImagePaths: Map<String, String> = emptyMap(),
     isOnline: Boolean = true,
     aiOverview: String? = null,
+    aiProvider: AiProvider = AiProvider.OPENROUTER,
     isGeneratingOverview: Boolean = false,
     aiOverviewProgress: ArticleAiProgress? = null,
     onAiOverview: ((Long) -> Unit)? = null,
@@ -91,9 +92,7 @@ internal fun ArticleContent(
     val locale = LocalLocale.current.platformLocale
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
     val dateText = remember(entry.publishedAt, locale) { formatArticleDate(entry.publishedAt, locale) }
-    val readableArticleContent = remember(articleContent, entry.title) {
-        removeDuplicateArticleTitle(articleContent, entry.title)
-    }
+    val readableArticleContent = articleContent
     val articleScrollState = rememberSaveable(entry.id, saver = ScrollState.Saver) { ScrollState(0) }
     var restoredContentPositionKey by rememberSaveable(entry.id) { mutableStateOf<Int?>(null) }
     var readingCompletionReported by rememberSaveable(entry.id) { mutableStateOf(false) }
@@ -267,6 +266,7 @@ internal fun ArticleContent(
                         dateText = dateText,
                         readingTimeMinutes = entry.readingTime,
                         isOnline = isOnline,
+                        aiProvider = aiProvider,
                         aiOverview = aiOverview,
                         isGeneratingOverview = isGeneratingOverview,
                         aiOverviewProgress = aiOverviewProgress,

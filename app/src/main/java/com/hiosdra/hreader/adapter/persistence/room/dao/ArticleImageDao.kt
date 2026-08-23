@@ -17,6 +17,15 @@ interface ArticleImageDao {
     @Query("SELECT * FROM article_images WHERE entryId = :entryId")
     suspend fun getImagesForArticle(entryId: Long): List<ArticleImage>
 
+    @Query("SELECT * FROM article_images")
+    suspend fun getAllImages(): List<ArticleImage>
+
+    @Query("DELETE FROM article_images WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+
+    @Query("SELECT * FROM article_images WHERE entryId = :entryId")
+    fun observeImagesForArticle(entryId: Long): Flow<List<ArticleImage>>
+
     @Query("SELECT * FROM article_images WHERE entryId = :entryId AND originalUrl = :originalUrl LIMIT 1")
     suspend fun getImageForArticleByUrl(entryId: Long, originalUrl: String): ArticleImage?
 

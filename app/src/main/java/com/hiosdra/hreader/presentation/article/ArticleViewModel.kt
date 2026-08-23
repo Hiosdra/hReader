@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
+import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.ai.AiProviderException
+import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.GemmaModelNotInstalledException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
@@ -28,6 +30,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.IOException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.time.Instant
 
 private val MISSING_CONTENT_MESSAGE = UiText.Resource(R.string.article_missing_content)
@@ -84,6 +90,7 @@ data class ArticleUiState(
     val contentError: UiText? = null,
     val isOnline: Boolean = true,
     val aiOverviews: Map<Long, String> = emptyMap(),
+    val aiProvider: AiProvider = AiModel.providerFor(AiModel.DEFAULT_ID),
     val generatingOverviewIds: Set<Long> = emptySet(),
     val aiOverviewProgress: Map<Long, ArticleAiProgress> = emptyMap(),
     val overviewError: UiText? = null,
@@ -123,7 +130,8 @@ class ArticleViewModel(
     private val _uiState = MutableStateFlow(
         ArticleUiState(
             credibilityEnabled = reader.credibilityEnabled(),
-            isOnline = reader.isOnline.value
+            isOnline = reader.isOnline.value,
+            aiProvider = AiModel.providerFor(reader.getAiModelId())
         )
     )
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
@@ -147,6 +155,7 @@ class ArticleViewModel(
 
     private val requestedReadingPositionIds = mutableSetOf<Long>()
     private val readingPositionWriteJobs = mutableMapOf<Long, Job>()
+    private val imagePathJobs = mutableMapOf<Long, Job>()
 
     init {
         viewModelScope.launch {
@@ -167,6 +176,7 @@ class ArticleViewModel(
                 _uiState.update {
                     it.copy(
                         aiOverviews = emptyMap(),
+                        aiProvider = AiModel.providerFor(modelId),
                         credibilityReports = emptyMap(),
                         generatingOverviewIds = emptySet(),
                         aiOverviewProgress = emptyMap(),
@@ -229,13 +239,35 @@ class ArticleViewModel(
         requestedContentIds.retainAll(nearbyIds)
         checkedCredibilityIds.retainAll(nearbyIds)
         requestedReadingPositionIds.retainAll(nearbyIds)
+        imagePathJobs.keys
+            .filterNot { it in nearbyIds }
+            .toList()
+            .forEach { imagePathJobs.remove(it)?.cancel() }
         _uiState.update { it.trimReaderState(index) }
         loadReadingPositions(nearbyIds)
+        observeLocalImagePaths(nearbyIds)
         nearby.forEach { entry ->
             loadOfflinePage(entry.id, entry.url)
             loadArticleText(entry.id, entry.url)
         }
         loadCachedCredibility(nearbyIds.toList())
+    }
+
+    private fun observeLocalImagePaths(articleIds: Set<Long>) {
+        articleIds.forEach { entryId ->
+            if (imagePathJobs[entryId]?.isActive == true) return@forEach
+            imagePathJobs[entryId] = viewModelScope.launch {
+                reader.observeLocalImagePaths(entryId).collect { paths ->
+                    _uiState.update { state ->
+                        if (entryId !in state.readerWindowIds()) {
+                            state
+                        } else {
+                            state.copy(localImagePaths = state.localImagePaths + (entryId to paths))
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun loadReadingPositions(articleIds: Set<Long>) {
@@ -640,10 +672,15 @@ class ArticleViewModel(
         is MissingAiApiKeyException -> UiText.Resource(R.string.article_ai_api_key_missing)
         is GemmaModelNotInstalledException -> UiText.Resource(R.string.article_ai_model_missing)
         is EmptyAiContentException -> MISSING_CONTENT_MESSAGE
-        is AiProviderException -> error.message
-            ?.takeIf(String::isNotBlank)
-            ?.let(UiText::Plain)
-            ?: UiText.Resource(fallbackResId)
+        is UnknownHostException,
+        is ConnectException,
+        is SocketTimeoutException,
+        is IOException -> UiText.Resource(R.string.article_ai_network_error)
+        is AiProviderException -> when (error.statusCode) {
+            401, 403 -> UiText.Resource(R.string.article_ai_api_key_invalid)
+            404, 422 -> UiText.Resource(R.string.article_ai_model_unavailable)
+            else -> UiText.Resource(R.string.article_ai_provider_error)
+        }
         else -> UiText.Resource(fallbackResId)
     }
 

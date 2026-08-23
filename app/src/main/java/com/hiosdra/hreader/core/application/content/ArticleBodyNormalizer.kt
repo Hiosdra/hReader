@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.core.application.content
 
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.util.Locale
 
@@ -8,16 +9,23 @@ internal fun removeDuplicateArticleTitle(html: String, title: String): String {
     if (html.isBlank() || title.isBlank()) return html
 
     val document = Jsoup.parseBodyFragment(html)
+    if (!removeDuplicateArticleTitle(document, title)) return html
+    return document.body().html()
+}
+
+internal fun removeDuplicateArticleTitle(document: Document, title: String): Boolean {
+    if (title.isBlank()) return false
+
     val expectedTitle = normalizedArticleText(title)
     val heading = document.body()
         .select("h1, h2, h3")
         .firstOrNull { normalizedArticleText(it.text()) == expectedTitle }
-        ?: return html
+        ?: return false
 
     val semanticHeader = heading.parents().firstOrNull { it.tagName() == "header" }
     if (semanticHeader != null && canRemoveHeader(semanticHeader, heading)) {
         semanticHeader.remove()
-        return document.body().html()
+        return true
     }
 
     var ancestor = heading.parent()
@@ -32,7 +40,7 @@ internal fun removeDuplicateArticleTitle(html: String, title: String): String {
         ancestor.remove()
         ancestor = parent
     }
-    return document.body().html()
+    return true
 }
 
 private fun canRemoveHeader(header: Element, heading: Element): Boolean {

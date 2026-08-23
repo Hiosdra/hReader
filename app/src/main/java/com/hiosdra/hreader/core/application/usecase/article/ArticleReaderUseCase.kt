@@ -60,6 +60,9 @@ class ArticleReaderUseCase(
 
     suspend fun getLocalImagePaths(entryId: Long): Map<String, String> = images.getLocalImagePaths(entryId)
 
+    fun observeLocalImagePaths(entryId: Long): Flow<Map<String, String>> =
+        images.observeLocalImagePaths(entryId)
+
     suspend fun getCachedOverview(entryId: Long, body: String, modelId: String = getAiModelId()): String? =
         overviews.get(entryId, body, modelId)
 

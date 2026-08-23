@@ -23,11 +23,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,8 +44,14 @@ import androidx.compose.ui.res.stringResource
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
+import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.presentation.theme.MotionDuration
+
+private enum class CloudAiAction {
+    SUMMARY,
+    CREDIBILITY
+}
 
 @Composable
 internal fun ArticleMetadata(
@@ -51,6 +59,7 @@ internal fun ArticleMetadata(
     dateText: String,
     readingTimeMinutes: Int?,
     isOnline: Boolean = true,
+    aiProvider: AiProvider = AiProvider.OPENROUTER,
     aiOverview: String? = null,
     isGeneratingOverview: Boolean = false,
     aiOverviewProgress: ArticleAiProgress? = null,
@@ -62,9 +71,19 @@ internal fun ArticleMetadata(
 ) {
     var isAiExpanded by rememberSaveable { mutableStateOf(false) }
     var isCredibilityExpanded by rememberSaveable { mutableStateOf(false) }
+    var pendingCloudAction by rememberSaveable { mutableStateOf<CloudAiAction?>(null) }
 
     val aiOverviewClick = onAiOverviewClick
     val analyzeCredibility = if (credibilityEnabled) onAnalyzeCredibility else null
+    val isLocalAi = aiProvider == AiProvider.GEMMA_LOCAL
+
+    fun startAiAction(action: CloudAiAction, start: () -> Unit) {
+        if (isLocalAi) {
+            start()
+        } else {
+            pendingCloudAction = action
+        }
+    }
 
     val metadata = buildList {
         if (!author.isNullOrBlank()) add(author)
@@ -97,7 +116,7 @@ internal fun ArticleMetadata(
                                 isAiExpanded = !isAiExpanded
                             } else {
                                 isAiExpanded = true
-                                aiOverviewClick()
+                                startAiAction(CloudAiAction.SUMMARY, aiOverviewClick)
                             }
                         } else {
                             isAiExpanded = !isAiExpanded
@@ -121,7 +140,7 @@ internal fun ArticleMetadata(
                             Text(chipText)
                         }
                     },
-                    enabled = isGeneratingOverview || aiOverview != null || isOnline,
+                    enabled = isGeneratingOverview || aiOverview != null || isOnline || isLocalAi,
                     colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
                         containerColor = if (aiOverview != null || isGeneratingOverview) {
                             MaterialTheme.colorScheme.primaryContainer
@@ -135,11 +154,11 @@ internal fun ArticleMetadata(
                 CredibilityChip(
                     report = credibilityReport,
                     isAnalyzing = isAnalyzingCredibility,
-                    enabled = credibilityReport != null || isOnline,
+                    enabled = credibilityReport != null || isOnline || isLocalAi,
                     onClick = {
                         if (credibilityReport == null) {
                             isCredibilityExpanded = true
-                            analyzeCredibility(false)
+                            startAiAction(CloudAiAction.CREDIBILITY) { analyzeCredibility(false) }
                         } else {
                             isCredibilityExpanded = !isCredibilityExpanded
                         }
@@ -258,6 +277,21 @@ internal fun ArticleMetadata(
             }
         }
 
+        if (aiOverviewClick != null || analyzeCredibility != null) {
+            Text(
+                text = stringResource(
+                    if (isLocalAi) {
+                        R.string.article_ai_on_device_processing
+                    } else {
+                        R.string.article_ai_cloud_processing
+                    }
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+        }
+
         if (credibilityEnabled && (credibilityReport != null || isAnalyzingCredibility)) {
             AnimatedVisibility(
                 visible = isCredibilityExpanded,
@@ -292,10 +326,49 @@ internal fun ArticleMetadata(
                     CredibilityCard(
                         report = credibilityReport,
                         isAnalyzing = analyzing,
-                        onReanalyze = { onAnalyzeCredibility?.invoke(true) }
+                        onReanalyze = {
+                            analyzeCredibility?.let { callback ->
+                                startAiAction(CloudAiAction.CREDIBILITY) { callback(true) }
+                            }
+                        }
                     )
                 }
             }
+        }
+
+        pendingCloudAction?.let { action ->
+            AlertDialog(
+                onDismissRequest = { pendingCloudAction = null },
+                title = { Text(stringResource(R.string.article_ai_cloud_confirmation_title)) },
+                text = {
+                    Text(
+                        stringResource(
+                            when (action) {
+                                CloudAiAction.SUMMARY -> R.string.article_ai_cloud_summary_confirmation
+                                CloudAiAction.CREDIBILITY -> R.string.article_ai_cloud_credibility_confirmation
+                            }
+                        )
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            pendingCloudAction = null
+                            when (action) {
+                                CloudAiAction.SUMMARY -> aiOverviewClick?.invoke()
+                                CloudAiAction.CREDIBILITY -> analyzeCredibility?.invoke(false)
+                            }
+                        }
+                    ) {
+                        Text(stringResource(R.string.article_ai_cloud_confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingCloudAction = null }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            )
         }
     }
 }

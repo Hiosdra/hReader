@@ -17,7 +17,9 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -160,6 +162,44 @@ class ArticleContentRepositoryTest {
         assertEquals("https://example.com/photo.jpg", text.leadImageUrl)
         coVerify(exactly = 0) { articleContentDao.insertArticleContent(any()) }
         coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
+    }
+
+    @Test
+    fun `a prepared row from an older version loses its duplicate title`() = runBlocking {
+        coEvery { articleContentDao.getArticleContent(entryId) } returns
+            storedContent(
+                "<h1>An article</h1><p>Prepared</p>",
+                isPrepared = true,
+                leadImageUrl = "https://example.com/photo.jpg"
+            )
+        coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
+
+        val text = repository.getArticleContent(entryId, articleUrl)
+
+        assertFalse(text.html.contains("<h1>An article</h1>"))
+        assertTrue(text.html.contains("Prepared"))
+    }
+
+    @Test
+    fun `article text returns while image download is still waiting`() = runBlocking {
+        val downloadStarted = CompletableDeferred<Unit>()
+        val releaseDownload = CompletableDeferred<Unit>()
+        coEvery { articleContentDao.getArticleContent(entryId) } returns null
+        coEvery { backend.fetchFullContent(entryId, articleUrl) } returns
+            """<p>Text</p><img src="/media/photo.jpg">"""
+        coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
+        coEvery { articleImageStore.downloadAndStoreImage(entryId, any()) } coAnswers {
+            downloadStarted.complete(Unit)
+            releaseDownload.await()
+        }
+
+        val text = repository.getArticleContent(entryId, articleUrl)
+
+        assertTrue(downloadStarted.isCompleted)
+        assertFalse(releaseDownload.isCompleted)
+        assertTrue(text.html.contains("Text"))
+        releaseDownload.complete(Unit)
+        Unit
     }
 
     @Test

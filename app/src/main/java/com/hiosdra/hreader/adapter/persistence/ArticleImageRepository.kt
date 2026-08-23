@@ -14,6 +14,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -186,6 +188,14 @@ class ArticleImageRepository(
                 null
             }
         }.toMap()
+
+    override fun observeLocalImagePaths(entryId: Long): Flow<Map<String, String>> =
+        articleImageDao.observeImagesForArticle(entryId).map { images ->
+            images.mapNotNull { image ->
+                val path = image.localFilePath.takeIf(fileExists) ?: return@mapNotNull null
+                image.originalUrl to path
+            }.toMap()
+        }
 
     override suspend fun setExpectedImages(entryId: Long, imageUrls: List<String>) {
         articleImageDao.deleteExpectedImagesForArticle(entryId)

@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.backend.common
 import com.hiosdra.hreader.core.domain.model.BackendType
 import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
+import com.hiosdra.hreader.core.application.port.out.CacheScope
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.nio.charset.StandardCharsets
@@ -46,16 +47,23 @@ class ServerConfig(private val preferencesManager: BackendPreferences) : Backend
     override fun cacheOwnerKey(): String {
         val backend = backendType()
         val server = normalizedRootFor(backend)
+            ?.let { root ->
+                if (backend == BackendType.FRESHRSS) {
+                    root.removeSuffix("/$GOOGLE_READER_ENDPOINT")
+                } else {
+                    root
+                }
+            }
             ?: serverUrlFor(backend).trim().lowercase().trimEnd('/')
         val identity = if (backend.requiresUsername) username() else ""
-        return "$backend|$server|$identity|${secretFor(backend).sha256()}"
+        return CacheScope(backend, server, identity).key
     }
 
     private fun normalizedRootFor(backendType: BackendType): String? {
         val server = serverUrlFor(backendType)
         if (server.isEmpty()) return null
         val absolute = if (server.startsWith("http://") || server.startsWith("https://")) server else "https://$server"
-        return absolute.trimEnd('/')
+        return absolute.toHttpUrlOrNull()?.toString()?.trimEnd('/') ?: absolute.trimEnd('/')
     }
 
     private fun String.sha256(): String = MessageDigest.getInstance("SHA-256")

@@ -2,7 +2,7 @@ package com.hiosdra.hreader.core.application.port.out
 
 import androidx.paging.PagingData
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
-import com.hiosdra.hreader.core.domain.model.ArticleListEntry
+import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Entry
@@ -18,7 +18,7 @@ data class ArticleListWindow(
 )
 
 interface ArticleStore {
-    fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListEntry>>
+    fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>>
     suspend fun listWindow(query: ArticleListQuery, articleId: Long, radius: Int): ArticleListWindow
     suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long>
     fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int>

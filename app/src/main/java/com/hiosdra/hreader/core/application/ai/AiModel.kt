@@ -17,6 +17,9 @@ data class AiModel(
     companion object {
         const val DEFAULT_ID = "openrouter/free"
         const val GEMMA_4_E2B_ID = "local/gemma-4-e2b"
+
+        fun providerFor(modelId: String): AiProvider =
+            if (modelId == GEMMA_4_E2B_ID) AiProvider.GEMMA_LOCAL else AiProvider.OPENROUTER
     }
 }
 

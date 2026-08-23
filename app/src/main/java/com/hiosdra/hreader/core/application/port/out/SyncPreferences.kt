@@ -7,6 +7,8 @@ interface SyncPreferences {
     fun setLastSyncTimestamp(timestamp: Long)
     fun getCacheOwnerKey(): String
     fun setCacheOwnerKey(ownerKey: String)
+    fun isCacheCleanupPending(): Boolean
+    fun setCacheCleanupPending(pending: Boolean)
     fun observeLastSyncTimestamp(): Flow<Long>
     fun getLastFullSyncTimestamp(): Long
     fun setLastFullSyncTimestamp(timestamp: Long)

@@ -17,6 +17,7 @@ import com.hiosdra.hreader.core.application.ai.GemmaBackend
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.sync.SyncDefaults
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
@@ -26,17 +27,19 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
-class PreferencesManager(context: Context) : AppPreferences {
+class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarrier {
     private val applicationContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -64,22 +67,61 @@ class PreferencesManager(context: Context) : AppPreferences {
 
     private val preferenceState: AtomicReference<PreferenceState>
     private val secretState: AtomicReference<SecretState>
+    private val preferenceStateLock = Any()
+    private val secretStateLock = Any()
+    private val pendingPreferenceTransforms = mutableListOf<(PreferenceState) -> PreferenceState>()
+    private val pendingSecretTransforms = mutableListOf<(SecretState) -> SecretState>()
+    private val preferenceReady = CompletableDeferred<Unit>()
+    private val secretReady = CompletableDeferred<Unit>()
+    private val preferenceWrites = Channel<WriteRequest>(Channel.UNLIMITED)
+    private val secretWrites = Channel<WriteRequest>(Channel.UNLIMITED)
+    private val preferenceWriteFailure = AtomicReference<Throwable?>(null)
+    private val secretWriteFailure = AtomicReference<Throwable?>(null)
 
     init {
         preferenceState = AtomicReference(PreferenceState())
         secretState = AtomicReference(SecretState())
 
-        runBlocking(Dispatchers.IO) {
-            preferenceState.set(preferencesDataStore.data.first().toPreferenceState())
-            secretState.set(secretDataStore.data.first().toSecretState())
+        scope.launch {
+            hydratePreferences()
         }
+        scope.launch {
+            hydrateSecrets()
+        }
+        scope.launch {
+            processWrites(preferencesDataStore, preferenceWrites, preferenceWriteFailure)
+        }
+        scope.launch {
+            processWrites(secretDataStore, secretWrites, secretWriteFailure)
+        }
+    }
+
+    override suspend fun awaitReady() {
+        preferenceReady.await()
+        secretReady.await()
+    }
+
+    override suspend fun awaitWrites() {
+        awaitReady()
+        val preferenceCompletion = CompletableDeferred<Unit>()
+        val secretCompletion = CompletableDeferred<Unit>()
+        preferenceWrites.send(WriteRequest({}, preferenceCompletion))
+        secretWrites.send(WriteRequest({}, secretCompletion))
+        val preferenceFailure = awaitCompletion(preferenceCompletion)
+        val secretFailure = awaitCompletion(secretCompletion)
+        preferenceWriteFailure.getAndSet(null)?.let { preferenceFailure ?: throw it }
+        secretWriteFailure.getAndSet(null)?.let { secretFailure ?: throw it }
+        preferenceFailure?.let { throw it }
+        secretFailure?.let { throw it }
     }
 
     override fun getBackendType(): BackendType = preferenceState.get().backendType
 
     override fun setBackendType(backendType: BackendType) {
-        preferenceState.updateAndGet { it.copy(backendType = backendType) }
-        writePreferences { this[backendTypeKey] = backendType.name }
+        updatePreferences(
+            transform = { it.copy(backendType = backendType) },
+            write = { this[backendTypeKey] = backendType.name }
+        )
     }
 
     override fun getServerUrl(backendType: BackendType): String = when (backendType) {
@@ -88,13 +130,15 @@ class PreferencesManager(context: Context) : AppPreferences {
     }
 
     override fun setServerUrl(backendType: BackendType, url: String) {
-        preferenceState.updateAndGet { state ->
-            when (backendType) {
-                BackendType.FRESHRSS -> state.copy(freshRssServerUrl = url)
-                BackendType.MINIFLUX -> state.copy(minifluxServerUrl = url)
-            }
-        }
-        writePreferences { this[serverUrlKey(backendType)] = url }
+        updatePreferences(
+            transform = { state ->
+                when (backendType) {
+                    BackendType.FRESHRSS -> state.copy(freshRssServerUrl = url)
+                    BackendType.MINIFLUX -> state.copy(minifluxServerUrl = url)
+                }
+            },
+            write = { this[serverUrlKey(backendType)] = url }
+        )
     }
 
     override fun getBackendSecret(backendType: BackendType): String = when (backendType) {
@@ -103,20 +147,24 @@ class PreferencesManager(context: Context) : AppPreferences {
     }
 
     override fun setBackendSecret(backendType: BackendType, secret: String) {
-        secretState.updateAndGet { state ->
-            when (backendType) {
-                BackendType.FRESHRSS -> state.copy(freshRssApiPassword = secret)
-                BackendType.MINIFLUX -> state.copy(minifluxApiToken = secret)
-            }
-        }
-        writeSecrets { this[backendSecretKey(backendType)] = secret }
+        updateSecrets(
+            transform = { state ->
+                when (backendType) {
+                    BackendType.FRESHRSS -> state.copy(freshRssApiPassword = secret)
+                    BackendType.MINIFLUX -> state.copy(minifluxApiToken = secret)
+                }
+            },
+            write = { this[backendSecretKey(backendType)] = secret }
+        )
     }
 
     override fun getFreshRssUsername(): String = secretState.get().freshRssUsername
 
     override fun setFreshRssUsername(username: String) {
-        secretState.updateAndGet { it.copy(freshRssUsername = username) }
-        writeSecrets { this[freshRssUsernameKey] = username }
+        updateSecrets(
+            transform = { it.copy(freshRssUsername = username) },
+            write = { this[freshRssUsernameKey] = username }
+        )
     }
 
     override fun hasBackendCredentials(): Boolean {
@@ -128,29 +176,37 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getOpenRouterApiKey(): String = secretState.get().openRouterApiKey
 
     override fun setOpenRouterApiKey(apiKey: String) {
-        secretState.updateAndGet { it.copy(openRouterApiKey = apiKey) }
-        writeSecrets { this[openRouterApiKey] = apiKey }
+        updateSecrets(
+            transform = { it.copy(openRouterApiKey = apiKey) },
+            write = { this[openRouterApiKey] = apiKey }
+        )
     }
 
     override fun getPaywallBypassMethod(): PaywallBypassMethod = preferenceState.get().paywallBypassMethod
 
     override fun setPaywallBypassMethod(method: PaywallBypassMethod) {
-        preferenceState.updateAndGet { it.copy(paywallBypassMethod = method) }
-        writePreferences { this[paywallBypassMethodKey] = method.name }
+        updatePreferences(
+            transform = { it.copy(paywallBypassMethod = method) },
+            write = { this[paywallBypassMethodKey] = method.name }
+        )
     }
 
     override fun getBionicReadingEnabled(): Boolean = preferenceState.get().bionicReadingEnabled
 
     override fun setBionicReadingEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(bionicReadingEnabled = enabled) }
-        writePreferences { this[bionicReadingEnabledKey] = enabled }
+        updatePreferences(
+            transform = { it.copy(bionicReadingEnabled = enabled) },
+            write = { this[bionicReadingEnabledKey] = enabled }
+        )
     }
 
     override fun getSentryReportingEnabled(): Boolean = preferenceState.get().sentryReportingEnabled
 
     override fun setSentryReportingEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(sentryReportingEnabled = enabled) }
-        writePreferences { this[sentryReportingEnabledKey] = enabled }
+        updatePreferences(
+            transform = { it.copy(sentryReportingEnabled = enabled) },
+            write = { this[sentryReportingEnabledKey] = enabled }
+        )
     }
 
     override fun observeBionicReadingEnabled(): Flow<Boolean> = preferencesDataStore.data
@@ -160,8 +216,10 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getAiModelId(): String = preferenceState.get().aiModelId
 
     override fun setAiModelId(modelId: String) {
-        preferenceState.updateAndGet { it.copy(aiModelId = modelId) }
-        writePreferences { this[aiModelIdKey] = modelId }
+        updatePreferences(
+            transform = { it.copy(aiModelId = modelId) },
+            write = { this[aiModelIdKey] = modelId }
+        )
     }
 
     override fun observeAiModelId(): Flow<String> = preferencesDataStore.data
@@ -171,30 +229,47 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getGemmaBackend(): GemmaBackend = preferenceState.get().gemmaBackend
 
     override fun setGemmaBackend(backend: GemmaBackend) {
-        preferenceState.updateAndGet { it.copy(gemmaBackend = backend) }
-        writePreferences { this[gemmaBackendKey] = backend.name }
+        updatePreferences(
+            transform = { it.copy(gemmaBackend = backend) },
+            write = { this[gemmaBackendKey] = backend.name }
+        )
     }
 
     override fun getGemmaDownloadOnUnmeteredOnly(): Boolean =
         preferenceState.get().gemmaDownloadOnUnmeteredOnly
 
     override fun setGemmaDownloadOnUnmeteredOnly(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(gemmaDownloadOnUnmeteredOnly = enabled) }
-        writePreferences { this[gemmaDownloadOnUnmeteredOnlyKey] = enabled }
+        updatePreferences(
+            transform = { it.copy(gemmaDownloadOnUnmeteredOnly = enabled) },
+            write = { this[gemmaDownloadOnUnmeteredOnlyKey] = enabled }
+        )
     }
 
     override fun getLastSyncTimestamp(): Long = preferenceState.get().lastSyncTimestamp
 
     override fun setLastSyncTimestamp(timestamp: Long) {
-        preferenceState.updateAndGet { it.copy(lastSyncTimestamp = timestamp) }
-        writePreferences { this[lastSyncTimestampKey] = timestamp }
+        updatePreferences(
+            transform = { it.copy(lastSyncTimestamp = timestamp) },
+            write = { this[lastSyncTimestampKey] = timestamp }
+        )
     }
 
     override fun getCacheOwnerKey(): String = preferenceState.get().cacheOwnerKey
 
     override fun setCacheOwnerKey(ownerKey: String) {
-        preferenceState.updateAndGet { it.copy(cacheOwnerKey = ownerKey) }
-        writePreferences { this[cacheOwnerKey] = ownerKey }
+        updatePreferences(
+            transform = { it.copy(cacheOwnerKey = ownerKey) },
+            write = { this[cacheOwnerKey] = ownerKey }
+        )
+    }
+
+    override fun isCacheCleanupPending(): Boolean = preferenceState.get().cacheCleanupPending
+
+    override fun setCacheCleanupPending(pending: Boolean) {
+        updatePreferences(
+            transform = { it.copy(cacheCleanupPending = pending) },
+            write = { this[cacheCleanupPendingKey] = pending }
+        )
     }
 
     override fun observeLastSyncTimestamp(): Flow<Long> = preferencesDataStore.data
@@ -204,80 +279,100 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun getLastFullSyncTimestamp(): Long = preferenceState.get().lastFullSyncTimestamp
 
     override fun setLastFullSyncTimestamp(timestamp: Long) {
-        preferenceState.updateAndGet { it.copy(lastFullSyncTimestamp = timestamp) }
-        writePreferences { this[lastFullSyncTimestampKey] = timestamp }
+        updatePreferences(
+            transform = { it.copy(lastFullSyncTimestamp = timestamp) },
+            write = { this[lastFullSyncTimestampKey] = timestamp }
+        )
     }
 
     override fun getSyncPerformanceRecords(): List<SyncPerformanceRecord> =
         preferenceState.get().syncPerformanceRecords
 
     override fun addSyncPerformanceRecord(record: SyncPerformanceRecord) {
-        preferenceState.updateAndGet { state ->
-            state.copy(syncPerformanceRecords = (listOf(record) + state.syncPerformanceRecords)
-                .take(MAX_PERFORMANCE_RECORDS))
-        }
-        writePreferences {
-            val records = (listOf(record) + decodeSyncPerformanceRecords(this[syncPerformanceRecordsKey]))
-                .take(MAX_PERFORMANCE_RECORDS)
-            this[syncPerformanceRecordsKey] = syncRecordsAdapter.toJson(records)
-        }
+        updatePreferences(
+            transform = { state ->
+                state.copy(syncPerformanceRecords = (listOf(record) + state.syncPerformanceRecords)
+                    .take(MAX_PERFORMANCE_RECORDS))
+            },
+            write = {
+                val records = (listOf(record) + decodeSyncPerformanceRecords(this[syncPerformanceRecordsKey]))
+                    .take(MAX_PERFORMANCE_RECORDS)
+                this[syncPerformanceRecordsKey] = syncRecordsAdapter.toJson(records)
+            }
+        )
     }
 
     override fun clearSyncPerformanceRecords() {
-        preferenceState.updateAndGet { it.copy(syncPerformanceRecords = emptyList()) }
-        writePreferences { remove(syncPerformanceRecordsKey) }
+        updatePreferences(
+            transform = { it.copy(syncPerformanceRecords = emptyList()) },
+            write = { remove(syncPerformanceRecordsKey) }
+        )
     }
 
     override fun getOfflineBacklogTarget(): Int = preferenceState.get().offlineBacklogTarget
 
     override fun setOfflineBacklogTarget(target: Int) {
         val normalizedTarget = target.coerceAtLeast(0)
-        preferenceState.updateAndGet { it.copy(offlineBacklogTarget = normalizedTarget) }
-        writePreferences { this[offlineBacklogTargetKey] = normalizedTarget }
+        updatePreferences(
+            transform = { it.copy(offlineBacklogTarget = normalizedTarget) },
+            write = { this[offlineBacklogTargetKey] = normalizedTarget }
+        )
     }
 
     override fun getImageDownloadEnabled(): Boolean = preferenceState.get().imageDownloadEnabled
 
     override fun setImageDownloadEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(imageDownloadEnabled = enabled) }
-        writePreferences { this[imageDownloadEnabledKey] = enabled }
+        updatePreferences(
+            transform = { it.copy(imageDownloadEnabled = enabled) },
+            write = { this[imageDownloadEnabledKey] = enabled }
+        )
     }
 
     override fun getImageCacheBudgetMegabytes(): Int = preferenceState.get().imageCacheBudgetMegabytes
 
     override fun setImageCacheBudgetMegabytes(megabytes: Int) {
         val normalizedMegabytes = megabytes.coerceAtLeast(0)
-        preferenceState.updateAndGet { it.copy(imageCacheBudgetMegabytes = normalizedMegabytes) }
-        writePreferences { this[imageCacheBudgetMegabytesKey] = normalizedMegabytes }
+        updatePreferences(
+            transform = { it.copy(imageCacheBudgetMegabytes = normalizedMegabytes) },
+            write = { this[imageCacheBudgetMegabytesKey] = normalizedMegabytes }
+        )
     }
 
     override fun getSyncIntervalMinutes(): Int = preferenceState.get().syncIntervalMinutes
 
     override fun setSyncIntervalMinutes(minutes: Int) {
         val normalizedMinutes = minutes.coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES)
-        preferenceState.updateAndGet { it.copy(syncIntervalMinutes = normalizedMinutes) }
-        writePreferences { this[syncIntervalMinutesKey] = normalizedMinutes }
+        updatePreferences(
+            transform = { it.copy(syncIntervalMinutes = normalizedMinutes) },
+            write = { this[syncIntervalMinutesKey] = normalizedMinutes }
+        )
     }
 
     override fun getSyncOnUnmeteredOnly(): Boolean = preferenceState.get().syncOnUnmeteredOnly
 
     override fun setSyncOnUnmeteredOnly(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(syncOnUnmeteredOnly = enabled) }
-        writePreferences { this[syncOnUnmeteredOnlyKey] = enabled }
+        updatePreferences(
+            transform = { it.copy(syncOnUnmeteredOnly = enabled) },
+            write = { this[syncOnUnmeteredOnlyKey] = enabled }
+        )
     }
 
     override fun getSyncWhileRoaming(): Boolean = preferenceState.get().syncWhileRoaming
 
     override fun setSyncWhileRoaming(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(syncWhileRoaming = enabled) }
-        writePreferences { this[syncWhileRoamingKey] = enabled }
+        updatePreferences(
+            transform = { it.copy(syncWhileRoaming = enabled) },
+            write = { this[syncWhileRoamingKey] = enabled }
+        )
     }
 
     override fun getQuietHoursEnabled(): Boolean = preferenceState.get().quietHoursEnabled
 
     override fun setQuietHoursEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(quietHoursEnabled = enabled) }
-        writePreferences { this[quietHoursEnabledKey] = enabled }
+        updatePreferences(
+            transform = { it.copy(quietHoursEnabled = enabled) },
+            write = { this[quietHoursEnabledKey] = enabled }
+        )
     }
 
     override fun getQuietHoursStartHour(): Int = preferenceState.get().quietHoursStartHour
@@ -287,37 +382,45 @@ class PreferencesManager(context: Context) : AppPreferences {
     override fun setQuietHours(startHour: Int, endHour: Int) {
         val normalizedStartHour = startHour.coerceIn(0, 23)
         val normalizedEndHour = endHour.coerceIn(0, 23)
-        preferenceState.updateAndGet {
-            it.copy(
-                quietHoursStartHour = normalizedStartHour,
-                quietHoursEndHour = normalizedEndHour
-            )
-        }
-        writePreferences {
-            this[quietHoursStartHourKey] = normalizedStartHour
-            this[quietHoursEndHourKey] = normalizedEndHour
-        }
+        updatePreferences(
+            transform = {
+                it.copy(
+                    quietHoursStartHour = normalizedStartHour,
+                    quietHoursEndHour = normalizedEndHour
+                )
+            },
+            write = {
+                this[quietHoursStartHourKey] = normalizedStartHour
+                this[quietHoursEndHourKey] = normalizedEndHour
+            }
+        )
     }
 
     override fun getLastChainedSyncTimestamp(): Long = preferenceState.get().lastChainedSyncTimestamp
 
     override fun setLastChainedSyncTimestamp(timestamp: Long) {
-        preferenceState.updateAndGet { it.copy(lastChainedSyncTimestamp = timestamp) }
-        writePreferences { this[lastChainedSyncTimestampKey] = timestamp }
+        updatePreferences(
+            transform = { it.copy(lastChainedSyncTimestamp = timestamp) },
+            write = { this[lastChainedSyncTimestampKey] = timestamp }
+        )
     }
 
     override fun getCredibilityScoreEnabled(): Boolean = preferenceState.get().credibilityScoreEnabled
 
     override fun setCredibilityScoreEnabled(enabled: Boolean) {
-        preferenceState.updateAndGet { it.copy(credibilityScoreEnabled = enabled) }
-        writePreferences { this[credibilityScoreEnabledKey] = enabled }
+        updatePreferences(
+            transform = { it.copy(credibilityScoreEnabled = enabled) },
+            write = { this[credibilityScoreEnabledKey] = enabled }
+        )
     }
 
     override fun getTtsModel(): TtsModel = preferenceState.get().ttsModel
 
     override fun setTtsModel(model: TtsModel) {
-        preferenceState.updateAndGet { it.copy(ttsModel = model) }
-        writePreferences { this[ttsModelKey] = model.name }
+        updatePreferences(
+            transform = { it.copy(ttsModel = model) },
+            write = { this[ttsModelKey] = model.name }
+        )
     }
 
     override fun getTtsModelForLanguage(language: String): TtsModel =
@@ -327,47 +430,136 @@ class PreferencesManager(context: Context) : AppPreferences {
         preferenceState.get().ttsLanguageOverrides
 
     override fun setTtsLanguageOverride(language: String, model: TtsModel?) {
-        preferenceState.updateAndGet { state ->
-            state.copy(ttsLanguageOverrides = state.ttsLanguageOverrides.updated(language, model))
-        }
-        writePreferences {
-            val overrides = parseTtsLanguageOverrides(this[ttsLanguageOverridesKey].orEmpty())
-                .updated(language, model)
-            this[ttsLanguageOverridesKey] = overrides.toPreferenceSet()
-        }
+        updatePreferences(
+            transform = { state ->
+                state.copy(ttsLanguageOverrides = state.ttsLanguageOverrides.updated(language, model))
+            },
+            write = {
+                val overrides = parseTtsLanguageOverrides(this[ttsLanguageOverridesKey].orEmpty())
+                    .updated(language, model)
+                this[ttsLanguageOverridesKey] = overrides.toPreferenceSet()
+            }
+        )
     }
 
     override fun getTtsSpeed(): Float = preferenceState.get().ttsSpeed
 
     override fun setTtsSpeed(speed: Float) {
         val normalizedSpeed = speed.coerceIn(0.7f, 1.4f)
-        preferenceState.updateAndGet { it.copy(ttsSpeed = normalizedSpeed) }
-        writePreferences { this[ttsSpeedKey] = normalizedSpeed }
+        updatePreferences(
+            transform = { it.copy(ttsSpeed = normalizedSpeed) },
+            write = { this[ttsSpeedKey] = normalizedSpeed }
+        )
     }
 
     override fun getTtsAdvancedSettings(): TtsAdvancedSettings = preferenceState.get().ttsAdvancedSettings
 
     override fun setTtsAdvancedSettings(settings: TtsAdvancedSettings) {
         val normalizedSettings = settings.normalized()
-        preferenceState.updateAndGet { it.copy(ttsAdvancedSettings = normalizedSettings) }
-        writePreferences {
-            this[ttsThreadsKey] = normalizedSettings.numThreads
-            this[ttsSilenceScaleKey] = normalizedSettings.silenceScale
-            this[ttsSupertonicSpeakerKey] = normalizedSettings.supertonicSpeaker
-            this[ttsSupertonicStepsKey] = normalizedSettings.supertonicSteps
-            this[ttsKokoroSpeakerKey] = normalizedSettings.kokoroSpeaker
-            this[ttsGosiaNoiseScaleKey] = normalizedSettings.gosiaNoiseScale
-            this[ttsGosiaDurationNoiseScaleKey] = normalizedSettings.gosiaDurationNoiseScale
+        updatePreferences(
+            transform = { it.copy(ttsAdvancedSettings = normalizedSettings) },
+            write = {
+                this[ttsThreadsKey] = normalizedSettings.numThreads
+                this[ttsSilenceScaleKey] = normalizedSettings.silenceScale
+                this[ttsSupertonicSpeakerKey] = normalizedSettings.supertonicSpeaker
+                this[ttsSupertonicStepsKey] = normalizedSettings.supertonicSteps
+                this[ttsKokoroSpeakerKey] = normalizedSettings.kokoroSpeaker
+                this[ttsGosiaNoiseScaleKey] = normalizedSettings.gosiaNoiseScale
+                this[ttsGosiaDurationNoiseScaleKey] = normalizedSettings.gosiaDurationNoiseScale
+            }
+        )
+    }
+
+    private fun updatePreferences(
+        transform: (PreferenceState) -> PreferenceState,
+        write: suspend MutablePreferences.() -> Unit
+    ) {
+        synchronized(preferenceStateLock) {
+            if (!preferenceReady.isCompleted) pendingPreferenceTransforms += transform
+            preferenceState.updateAndGet(transform)
+            preferenceWrites.trySend(WriteRequest(write))
         }
     }
 
-    private fun writePreferences(transform: suspend MutablePreferences.() -> Unit) {
-        scope.launch { preferencesDataStore.edit(transform) }
+    private fun updateSecrets(
+        transform: (SecretState) -> SecretState,
+        write: suspend MutablePreferences.() -> Unit
+    ) {
+        synchronized(secretStateLock) {
+            if (!secretReady.isCompleted) pendingSecretTransforms += transform
+            secretState.updateAndGet(transform)
+            secretWrites.trySend(WriteRequest(write))
+        }
     }
 
-    private fun writeSecrets(transform: suspend MutablePreferences.() -> Unit) {
-        scope.launch { secretDataStore.edit(transform) }
+    private suspend fun hydratePreferences() {
+        try {
+            val loaded = preferencesDataStore.data.first().toPreferenceState()
+            synchronized(preferenceStateLock) {
+                preferenceState.set(pendingPreferenceTransforms.fold(loaded) { state, transform ->
+                    transform(state)
+                })
+                pendingPreferenceTransforms.clear()
+                preferenceReady.complete(Unit)
+            }
+        } catch (error: Throwable) {
+            synchronized(preferenceStateLock) {
+                preferenceReady.completeExceptionally(error)
+            }
+            throw error
+        } finally {
+            if (!preferenceReady.isCompleted) preferenceReady.complete(Unit)
+        }
     }
+
+    private suspend fun hydrateSecrets() {
+        try {
+            val loaded = secretDataStore.data.first().toSecretState()
+            synchronized(secretStateLock) {
+                secretState.set(pendingSecretTransforms.fold(loaded) { state, transform ->
+                    transform(state)
+                })
+                pendingSecretTransforms.clear()
+                secretReady.complete(Unit)
+            }
+        } catch (error: Throwable) {
+            synchronized(secretStateLock) {
+                secretReady.completeExceptionally(error)
+            }
+            throw error
+        } finally {
+            if (!secretReady.isCompleted) secretReady.complete(Unit)
+        }
+    }
+
+    private suspend fun processWrites(
+        dataStore: androidx.datastore.core.DataStore<Preferences>,
+        writes: Channel<WriteRequest>,
+        failure: AtomicReference<Throwable?>
+    ) {
+        for (request in writes) {
+            try {
+                dataStore.edit(request.transform)
+                request.completion?.complete(Unit)
+            } catch (error: CancellationException) {
+                request.completion?.cancel(error)
+                throw error
+            } catch (error: Throwable) {
+                failure.set(error)
+                request.completion?.completeExceptionally(error)
+            }
+        }
+    }
+
+    private suspend fun awaitCompletion(completion: CompletableDeferred<Unit>): Throwable? =
+        try {
+            completion.await()
+            null
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            error
+        }
 
     private fun Preferences.toPreferenceState() = PreferenceState(
         backendType = BackendType.fromName(this[backendTypeKey]),
@@ -381,6 +573,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         gemmaDownloadOnUnmeteredOnly = this[gemmaDownloadOnUnmeteredOnlyKey] ?: true,
         lastSyncTimestamp = this[lastSyncTimestampKey] ?: 0L,
         cacheOwnerKey = this[cacheOwnerKey].orEmpty(),
+        cacheCleanupPending = this[cacheCleanupPendingKey] ?: false,
         lastFullSyncTimestamp = this[lastFullSyncTimestampKey] ?: 0L,
         syncPerformanceRecords = decodeSyncPerformanceRecords(this[syncPerformanceRecordsKey]),
         offlineBacklogTarget = (this[offlineBacklogTargetKey] ?: DEFAULT_OFFLINE_BACKLOG_TARGET)
@@ -457,6 +650,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         val gemmaDownloadOnUnmeteredOnly: Boolean = true,
         val lastSyncTimestamp: Long = 0L,
         val cacheOwnerKey: String = "",
+        val cacheCleanupPending: Boolean = false,
         val lastFullSyncTimestamp: Long = 0L,
         val syncPerformanceRecords: List<SyncPerformanceRecord> = emptyList(),
         val offlineBacklogTarget: Int = DEFAULT_OFFLINE_BACKLOG_TARGET,
@@ -501,6 +695,7 @@ class PreferencesManager(context: Context) : AppPreferences {
         private const val KEY_GEMMA_DOWNLOAD_UNMETERED_ONLY = "gemma_download_unmetered_only"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
         private const val KEY_CACHE_OWNER = "cache_owner"
+        private const val KEY_CACHE_CLEANUP_PENDING = "cache_cleanup_pending"
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
@@ -541,6 +736,7 @@ class PreferencesManager(context: Context) : AppPreferences {
             booleanPreferencesKey(KEY_GEMMA_DOWNLOAD_UNMETERED_ONLY)
         private val lastSyncTimestampKey = longPreferencesKey(KEY_LAST_SYNC_TIMESTAMP)
         private val cacheOwnerKey = stringPreferencesKey(KEY_CACHE_OWNER)
+        private val cacheCleanupPendingKey = booleanPreferencesKey(KEY_CACHE_CLEANUP_PENDING)
         private val lastFullSyncTimestampKey = longPreferencesKey(KEY_LAST_FULL_SYNC_TIMESTAMP)
         private val syncPerformanceRecordsKey = stringPreferencesKey(KEY_SYNC_PERFORMANCE_RECORDS)
         private val credibilityScoreEnabledKey = booleanPreferencesKey(KEY_CREDIBILITY_SCORE_ENABLED)
@@ -569,6 +765,11 @@ class PreferencesManager(context: Context) : AppPreferences {
         private const val DEFAULT_OFFLINE_BACKLOG_TARGET = 0
         private const val DEFAULT_IMAGE_CACHE_BUDGET_MB = 500
         private const val MIN_SYNC_INTERVAL_MINUTES = 15
+
+        private data class WriteRequest(
+            val transform: suspend MutablePreferences.() -> Unit,
+            val completion: CompletableDeferred<Unit>? = null
+        )
 
         private fun serverUrlKey(backendType: BackendType): Preferences.Key<String> = when (backendType) {
             BackendType.FRESHRSS -> freshRssServerUrlKey

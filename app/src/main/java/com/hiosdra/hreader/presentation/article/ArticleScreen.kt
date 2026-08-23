@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import com.hiosdra.hreader.core.application.content.removeDuplicateArticleTitle
+import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
@@ -271,6 +271,7 @@ fun ArticleScreen(
                         localImagePaths = uiState.localImagePaths,
                         isOnline = uiState.isOnline,
                         aiOverviews = uiState.aiOverviews,
+                        aiProvider = uiState.aiProvider,
                         generatingOverviewIds = uiState.generatingOverviewIds,
                         aiOverviewProgress = uiState.aiOverviewProgress,
                         onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
@@ -290,7 +291,9 @@ fun ArticleScreen(
                 RetryableSnackbar(
                     hostState = snackbarHostState,
                     message = error.resolve(),
-                    actionLabel = stringResource(R.string.action_retry).takeIf { currentEntryId != null },
+                    actionLabel = stringResource(R.string.action_retry).takeIf {
+                        currentEntryId != null && uiState.aiProvider == AiProvider.GEMMA_LOCAL
+                    },
                     onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
                     onDismissed = viewModel::clearOverviewError
                 )
@@ -311,7 +314,9 @@ fun ArticleScreen(
                 RetryableSnackbar(
                     hostState = snackbarHostState,
                     message = error.resolve(),
-                    actionLabel = stringResource(R.string.action_retry).takeIf { currentEntryId != null },
+                    actionLabel = stringResource(R.string.action_retry).takeIf {
+                        currentEntryId != null && uiState.aiProvider == AiProvider.GEMMA_LOCAL
+                    },
                     onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
                     onDismissed = viewModel::clearScoreError
                 )
@@ -359,10 +364,7 @@ fun ArticleScreen(
                                         ttsController.play(
                                             articleId = entry.id,
                                             title = entry.title,
-                                            html = removeDuplicateArticleTitle(
-                                                viewModel.getContentForEntry(entry.id).orEmpty(),
-                                                entry.title
-                                            )
+                                            html = viewModel.getContentForEntry(entry.id).orEmpty()
                                         )
                                     }
                                 }

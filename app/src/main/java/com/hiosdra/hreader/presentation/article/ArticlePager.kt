@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
+import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 
@@ -39,6 +40,7 @@ internal fun ArticlePager(
     localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     isOnline: Boolean = true,
     aiOverviews: Map<Long, String> = emptyMap(),
+    aiProvider: AiProvider = AiProvider.OPENROUTER,
     generatingOverviewIds: Set<Long> = emptySet(),
     aiOverviewProgress: Map<Long, ArticleAiProgress> = emptyMap(),
     onAiOverview: ((Long) -> Unit)? = null,
@@ -105,6 +107,7 @@ internal fun ArticlePager(
                         localImagePaths = localImagePaths[entry.id].orEmpty(),
                         isOnline = isOnline,
                         aiOverview = aiOverviews[entry.id],
+                        aiProvider = aiProvider,
                         isGeneratingOverview = generatingOverviewIds.contains(entry.id),
                         aiOverviewProgress = aiOverviewProgress[entry.id],
                         onAiOverview = onAiOverview,

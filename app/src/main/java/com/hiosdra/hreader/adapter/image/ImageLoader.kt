@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.image
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -27,4 +28,7 @@ class ImageLoader(
     override suspend fun getLocalImagePaths(entryId: Long): Map<String, String> = withContext(Dispatchers.IO) {
         articleImageStore.getLocalImagePaths(entryId)
     }
+
+    override fun observeLocalImagePaths(entryId: Long): Flow<Map<String, String>> =
+        articleImageStore.observeLocalImagePaths(entryId)
 }
