@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
@@ -37,7 +38,7 @@ class TtsModelDownloadWorker(
 
     private val model: TtsModel?
         get() = inputData.getString(KEY_MODEL)?.let { name ->
-            TtsModel.entries.firstOrNull { it.name == name }
+            TtsModelCatalog.models.firstOrNull { it.name == name }
         }
 
     private var foregroundUnavailable = false

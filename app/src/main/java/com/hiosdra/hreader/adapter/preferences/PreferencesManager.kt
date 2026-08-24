@@ -464,8 +464,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
                 this[ttsSupertonicSpeakerKey] = normalizedSettings.supertonicSpeaker
                 this[ttsSupertonicStepsKey] = normalizedSettings.supertonicSteps
                 this[ttsKokoroSpeakerKey] = normalizedSettings.kokoroSpeaker
-                this[ttsGosiaNoiseScaleKey] = normalizedSettings.gosiaNoiseScale
-                this[ttsGosiaDurationNoiseScaleKey] = normalizedSettings.gosiaDurationNoiseScale
+                this[ttsGosiaNoiseScaleKey] = normalizedSettings.vitsNoiseScale
+                this[ttsGosiaDurationNoiseScaleKey] = normalizedSettings.vitsDurationNoiseScale
             }
         )
     }
@@ -599,8 +599,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             supertonicSpeaker = (this[ttsSupertonicSpeakerKey] ?: 0).coerceIn(0, 9),
             supertonicSteps = (this[ttsSupertonicStepsKey] ?: 8).coerceIn(4, 12),
             kokoroSpeaker = (this[ttsKokoroSpeakerKey] ?: 0).coerceIn(0, 102),
-            gosiaNoiseScale = (this[ttsGosiaNoiseScaleKey] ?: 0.667f).coerceIn(0f, 1f),
-            gosiaDurationNoiseScale = (this[ttsGosiaDurationNoiseScaleKey] ?: 0.8f).coerceIn(0f, 1f)
+            vitsNoiseScale = (this[ttsGosiaNoiseScaleKey] ?: 0.667f).coerceIn(0f, 1f),
+            vitsDurationNoiseScale = (this[ttsGosiaDurationNoiseScaleKey] ?: 0.8f).coerceIn(0f, 1f)
         )
     )
 
@@ -634,8 +634,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         supertonicSpeaker = supertonicSpeaker.coerceIn(0, 9),
         supertonicSteps = supertonicSteps.coerceIn(4, 12),
         kokoroSpeaker = kokoroSpeaker.coerceIn(0, 102),
-        gosiaNoiseScale = gosiaNoiseScale.coerceIn(0f, 1f),
-        gosiaDurationNoiseScale = gosiaDurationNoiseScale.coerceIn(0f, 1f)
+        vitsNoiseScale = vitsNoiseScale.coerceIn(0f, 1f),
+        vitsDurationNoiseScale = vitsDurationNoiseScale.coerceIn(0f, 1f)
     )
 
     private data class PreferenceState(
