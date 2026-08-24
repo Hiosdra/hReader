@@ -231,6 +231,7 @@ dependencies {
 
     // On-device speech synthesis
     implementation(files("libs/sherpa-onnx-1.13.4-arm64.aar"))
+    debugImplementation(libs.executorch.android)
 
     // On-device Gemma inference
     implementation(libs.litert.lm.android)

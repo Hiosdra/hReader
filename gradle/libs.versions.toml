@@ -31,6 +31,7 @@ espresso = "3.7.0"
 archunit = "1.5.0"
 mockk = "1.14.11"
 litert-lm = "0.16.1"
+executorch = "1.1.0"
 uiautomator = "2.4.0"
 benchmark-macro = "1.5.0-rc01"
 
@@ -82,6 +83,7 @@ archunit = { module = "com.tngtech.archunit:archunit", version.ref = "archunit" 
 archunit-junit4 = { module = "com.tngtech.archunit:archunit-junit4", version.ref = "archunit" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 litert-lm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litert-lm" }
+executorch-android = { module = "org.pytorch:executorch-android", version.ref = "executorch" }
 androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
