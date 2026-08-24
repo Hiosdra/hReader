@@ -14,6 +14,13 @@ enum class TtsModel(
     SUPERTONIC(false, TtsEngineFamily.SUPERTONIC),
     KOKORO(false, TtsEngineFamily.KOKORO),
     GOSIA(false, TtsEngineFamily.VITS),
+    PIPER_BASS_HIGH(false, TtsEngineFamily.VITS),
+    PIPER_DARKMAN_MEDIUM(false, TtsEngineFamily.VITS),
+    PIPER_JARVIS_MEDIUM(false, TtsEngineFamily.VITS),
+    PIPER_JUSTYNA_MEDIUM(false, TtsEngineFamily.VITS),
+    PIPER_MC_SPEECH_MEDIUM(false, TtsEngineFamily.VITS),
+    PIPER_MESKI_MEDIUM(false, TtsEngineFamily.VITS),
+    PIPER_ZENSKI_MEDIUM(false, TtsEngineFamily.VITS),
     ANDROID(true, TtsEngineFamily.ANDROID);
 
     companion object {

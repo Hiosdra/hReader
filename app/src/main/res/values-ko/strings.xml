@@ -383,6 +383,15 @@
     <string name="tts_model_kokoro_description">영어 및 중국어 신경망 음성 · 140MB 다운로드</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">폴란드어 신경망 음성 · 21MB 다운로드</string>
+    <string name="tts_model_piper_bass_high_name">Piper Bass (high)</string>
+    <string name="tts_model_piper_darkman_name">Piper Darkman</string>
+    <string name="tts_model_piper_jarvis_name">Piper Jarvis</string>
+    <string name="tts_model_piper_justyna_name">Piper Justyna</string>
+    <string name="tts_model_piper_mc_speech_name">Piper MC Speech</string>
+    <string name="tts_model_piper_meski_name">Piper Męski</string>
+    <string name="tts_model_piper_zenski_name">Piper Żeński</string>
+    <string name="tts_model_piper_high_description">폴란드어 Piper 음성 · 35MB 다운로드</string>
+    <string name="tts_model_piper_medium_description">폴란드어 Piper 음성 · 21MB 다운로드</string>
     <string name="tts_model_android_name">시스템 음성</string>
     <string name="tts_model_android_description">내장 음성 · 항상 사용 가능</string>
     <string name="tts_speech_playback_failed">음성 재생에 실패했습니다.</string>

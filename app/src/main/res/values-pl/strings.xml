@@ -450,6 +450,15 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="tts_model_kokoro_description">Angielskie i chińskie głosy neuronowe · pobranie 140 MB</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">Polski głos neuronowy · pobranie 21 MB</string>
+    <string name="tts_model_piper_bass_high_name">Piper Bass (high)</string>
+    <string name="tts_model_piper_darkman_name">Piper Darkman</string>
+    <string name="tts_model_piper_jarvis_name">Piper Jarvis</string>
+    <string name="tts_model_piper_justyna_name">Piper Justyna</string>
+    <string name="tts_model_piper_mc_speech_name">Piper MC Speech</string>
+    <string name="tts_model_piper_meski_name">Piper Męski</string>
+    <string name="tts_model_piper_zenski_name">Piper Żeński</string>
+    <string name="tts_model_piper_high_description">Polski głos Piper · pobranie 35 MB</string>
+    <string name="tts_model_piper_medium_description">Polski głos Piper · pobranie 21 MB</string>
     <string name="tts_model_android_name">Głos systemowy</string>
     <string name="tts_model_android_description">Głos wbudowany · zawsze dostępny</string>
     <string name="tts_speech_playback_failed">Odtwarzanie mowy nie powiodło się.</string>

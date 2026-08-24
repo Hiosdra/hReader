@@ -43,7 +43,18 @@ class SupertonicLanguagesTest {
     @Test
     fun `routes Polish only to compatible neural voices`() {
         assertEquals(
-            listOf(TtsModel.SUPERTONIC, TtsModel.GOSIA, TtsModel.ANDROID),
+            listOf(
+                TtsModel.SUPERTONIC,
+                TtsModel.GOSIA,
+                TtsModel.PIPER_BASS_HIGH,
+                TtsModel.PIPER_DARKMAN_MEDIUM,
+                TtsModel.PIPER_JARVIS_MEDIUM,
+                TtsModel.PIPER_JUSTYNA_MEDIUM,
+                TtsModel.PIPER_MC_SPEECH_MEDIUM,
+                TtsModel.PIPER_MESKI_MEDIUM,
+                TtsModel.PIPER_ZENSKI_MEDIUM,
+                TtsModel.ANDROID
+            ),
             TtsLanguages.compatibleModels("pl")
         )
     }

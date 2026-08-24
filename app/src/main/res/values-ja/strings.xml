@@ -383,6 +383,15 @@
     <string name="tts_model_kokoro_description">英語と中国語のニューラル音声 · 140 MBのダウンロード</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">ポーランド語のニューラル音声 · 21 MBのダウンロード</string>
+    <string name="tts_model_piper_bass_high_name">Piper Bass (high)</string>
+    <string name="tts_model_piper_darkman_name">Piper Darkman</string>
+    <string name="tts_model_piper_jarvis_name">Piper Jarvis</string>
+    <string name="tts_model_piper_justyna_name">Piper Justyna</string>
+    <string name="tts_model_piper_mc_speech_name">Piper MC Speech</string>
+    <string name="tts_model_piper_meski_name">Piper Męski</string>
+    <string name="tts_model_piper_zenski_name">Piper Żeński</string>
+    <string name="tts_model_piper_high_description">ポーランド語のPiper音声 · 35 MBのダウンロード</string>
+    <string name="tts_model_piper_medium_description">ポーランド語のPiper音声 · 21 MBのダウンロード</string>
     <string name="tts_model_android_name">システム音声</string>
     <string name="tts_model_android_description">内蔵音声 · 常に利用可能</string>
     <string name="tts_speech_playback_failed">音声を再生できませんでした。</string>

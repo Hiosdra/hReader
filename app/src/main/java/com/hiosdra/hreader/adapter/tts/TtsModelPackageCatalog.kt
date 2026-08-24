@@ -99,6 +99,55 @@ internal object TtsModelPackageCatalog {
                 sha256 = "72acac4c4b031725c41a61b3af0314a3d30e1ec2cd83ee410ea5f9e6d2d9d4fb",
                 size = 21_109_262
             )
+        ),
+        TtsModel.PIPER_BASS_HIGH to piperPackage(
+            directoryName = "piper-bass-high",
+            modelName = "pl_PL-bass-high.onnx",
+            archiveName = "vits-piper-pl_PL-bass-high-int8.tar.bz2",
+            sha256 = "e6667ea284c15b90e5fd6350b8005a0a4d7c1ce1cc1ce647ee64d2650a57a12f",
+            size = 35_321_483
+        ),
+        TtsModel.PIPER_DARKMAN_MEDIUM to piperPackage(
+            directoryName = "piper-darkman-medium",
+            modelName = "pl_PL-darkman-medium.onnx",
+            archiveName = "vits-piper-pl_PL-darkman-medium-int8.tar.bz2",
+            sha256 = "0ec47b7d591e48913da887ea7e81287f4ef621d9c5aa1848700d2d736ed3f99c",
+            size = 21_078_264
+        ),
+        TtsModel.PIPER_JARVIS_MEDIUM to piperPackage(
+            directoryName = "piper-jarvis-medium",
+            modelName = "pl_PL-jarvis_wg_glos-medium.onnx",
+            archiveName = "vits-piper-pl_PL-jarvis_wg_glos-medium-int8.tar.bz2",
+            sha256 = "7d01e13ffe5a6773a99c7005e926d67122937b4333cb771e6217820145889921",
+            size = 21_063_665
+        ),
+        TtsModel.PIPER_JUSTYNA_MEDIUM to piperPackage(
+            directoryName = "piper-justyna-medium",
+            modelName = "pl_PL-justyna_wg_glos-medium.onnx",
+            archiveName = "vits-piper-pl_PL-justyna_wg_glos-medium-int8.tar.bz2",
+            sha256 = "9051a597ff6b475ecec976ffcddcc411a06b96994f2c92cf74ff96499916dbc4",
+            size = 21_068_261
+        ),
+        TtsModel.PIPER_MC_SPEECH_MEDIUM to piperPackage(
+            directoryName = "piper-mc-speech-medium",
+            modelName = "pl_PL-mc_speech-medium.onnx",
+            archiveName = "vits-piper-pl_PL-mc_speech-medium-int8.tar.bz2",
+            sha256 = "c67a1b152bced5cb0d8aaa97fa12700aab743feaa756e1ac903cc7e92174f171",
+            size = 20_938_473
+        ),
+        TtsModel.PIPER_MESKI_MEDIUM to piperPackage(
+            directoryName = "piper-meski-medium",
+            modelName = "pl_PL-meski_wg_glos-medium.onnx",
+            archiveName = "vits-piper-pl_PL-meski_wg_glos-medium-int8.tar.bz2",
+            sha256 = "e611de2d9f4d99650d90a40e1587957ecf08e5e479e644c8a94e5f76cae91036",
+            size = 21_108_038
+        ),
+        TtsModel.PIPER_ZENSKI_MEDIUM to piperPackage(
+            directoryName = "piper-zenski-medium",
+            modelName = "pl_PL-zenski_wg_glos-medium.onnx",
+            archiveName = "vits-piper-pl_PL-zenski_wg_glos-medium-int8.tar.bz2",
+            sha256 = "b37ee12e4ee6369f73f735feb5fd34ef33ae2479b12baff9a62c717c43f02c6c",
+            size = 21_028_352
         )
     )
 
@@ -107,6 +156,29 @@ internal object TtsModelPackageCatalog {
     fun directoryName(model: TtsModel): String =
         packageFor(model)?.directoryName ?: model.name.lowercase()
 }
+
+private fun piperPackage(
+    directoryName: String,
+    modelName: String,
+    archiveName: String,
+    sha256: String,
+    size: Long
+) = TtsModelPackage(
+    directoryName = directoryName,
+    engineFiles = SherpaModelFiles.Vits(
+        model = modelName,
+        tokens = "tokens.txt",
+        dataDir = "espeak-ng-data"
+    ),
+    requiredFiles = listOf(modelName, "tokens.txt"),
+    requiredDirectories = listOf("espeak-ng-data"),
+    archive = RemoteFile(
+        name = archiveName,
+        url = "$PIPER_RELEASE_ROOT/$archiveName",
+        sha256 = sha256,
+        size = size
+    )
+)
 
 internal data class RemoteFile(
     val name: String,
@@ -123,6 +195,8 @@ internal fun TtsModelPackage.isComplete(directory: File): Boolean =
         }
 
 private const val SUPERTONIC_HF_REVISION = "cca5a0e6c96e1d2c720986bf7e75fcc81dee3ae4"
+private const val PIPER_RELEASE_ROOT =
+    "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models"
 private const val SUPERTONIC_HF_ROOT =
     "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/$SUPERTONIC_HF_REVISION"
 
