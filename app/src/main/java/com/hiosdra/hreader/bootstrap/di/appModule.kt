@@ -20,6 +20,9 @@ import com.hiosdra.hreader.adapter.image.ArticleImageShareService
 import com.hiosdra.hreader.adapter.persistence.FeedRepository
 import com.hiosdra.hreader.adapter.persistence.CacheOwnershipCoordinator
 import com.hiosdra.hreader.adapter.tts.ArticleTtsController
+import com.hiosdra.hreader.adapter.tts.NeuralTtsEngine
+import com.hiosdra.hreader.adapter.tts.NeuralTtsEngineRegistry
+import com.hiosdra.hreader.adapter.tts.SherpaTtsEngine
 import com.hiosdra.hreader.adapter.tts.TtsModelManager
 import com.hiosdra.hreader.entrypoint.tts.ArticleTtsPlaybackServiceLauncher
 import com.hiosdra.hreader.presentation.article.ArticleViewModel
@@ -182,7 +185,9 @@ val appModule = module {
         )
     }
     single<GemmaModelDownloadRequester> { get<GemmaModelDownloadScheduler>() }
-    single { ArticleTtsController(androidApplication(), get(), get(), get()) }
+    single { SherpaTtsEngine(get()) }
+    single<NeuralTtsEngine> { NeuralTtsEngineRegistry(listOf(get<SherpaTtsEngine>())) }
+    single { ArticleTtsController(androidApplication(), get(), get(), get(), get()) }
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }
     single { SyncPerformanceLogger(get()) }
     single<SyncPerformanceTracker> { get<SyncPerformanceLogger>() }

@@ -1,13 +1,23 @@
 package com.hiosdra.hreader.core.application.tts
 
-enum class TtsModel(val bundled: Boolean) {
-    SUPERTONIC(false),
-    KOKORO(false),
-    GOSIA(false),
-    ANDROID(true);
+enum class TtsEngineFamily {
+    SUPERTONIC,
+    KOKORO,
+    VITS,
+    ANDROID
+}
+
+enum class TtsModel(
+    val bundled: Boolean,
+    val family: TtsEngineFamily
+) {
+    SUPERTONIC(false, TtsEngineFamily.SUPERTONIC),
+    KOKORO(false, TtsEngineFamily.KOKORO),
+    GOSIA(false, TtsEngineFamily.VITS),
+    ANDROID(true, TtsEngineFamily.ANDROID);
 
     companion object {
-        fun fromName(value: String?) = entries.firstOrNull { it.name == value } ?: SUPERTONIC
+        fun fromName(value: String?) = TtsModelCatalog.models.firstOrNull { it.name == value } ?: SUPERTONIC
     }
 }
 
@@ -24,8 +34,8 @@ data class TtsAdvancedSettings(
     val supertonicSpeaker: Int = 0,
     val supertonicSteps: Int = 8,
     val kokoroSpeaker: Int = 0,
-    val gosiaNoiseScale: Float = 0.667f,
-    val gosiaDurationNoiseScale: Float = 0.8f
+    val vitsNoiseScale: Float = 0.667f,
+    val vitsDurationNoiseScale: Float = 0.8f
 )
 
 internal fun parseTtsLanguageOverrides(entries: Set<String>): Map<String, TtsModel> =
@@ -33,7 +43,7 @@ internal fun parseTtsLanguageOverrides(entries: Set<String>): Map<String, TtsMod
         val parts = entry.split('=', limit = 2)
         val language = parts.firstOrNull()?.takeIf(String::isNotBlank)
         val model = parts.getOrNull(1)?.let { name ->
-            TtsModel.entries.firstOrNull { it.name == name }
+            TtsModelCatalog.models.firstOrNull { it.name == name }
         }
         if (language != null && model != null) language to model else null
     }.toMap()

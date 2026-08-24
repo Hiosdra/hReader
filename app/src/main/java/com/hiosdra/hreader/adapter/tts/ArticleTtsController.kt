@@ -16,6 +16,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceCo
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
+import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.application.tts.TtsLanguages
@@ -39,15 +40,15 @@ import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-class ArticleTtsController(
+class ArticleTtsController internal constructor(
     context: Context,
     private val preferences: TtsPreferences,
-    private val modelManager: TtsModelManager,
+    private val modelManager: TtsModelGateway,
+    private val neuralTts: NeuralTtsEngine,
     private val playbackService: ArticleTtsPlaybackServiceControl
 ) : ArticleTtsPlayer {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val sherpa = SherpaTtsEngine(modelManager)
     private val languageDetector = TtsLanguageDetector(appContext)
     private val _state = MutableStateFlow(ArticleTtsState())
     override val state: StateFlow<ArticleTtsState> = _state.asStateFlow()
@@ -127,7 +128,7 @@ class ArticleTtsController(
                     if (model == TtsModel.ANDROID) {
                         speakWithAndroid(chunks, language)
                     } else {
-                        speakWithSherpa(model, chunks, language)
+                        speakWithNeuralTts(model, chunks, language)
                     }
                 }.onFailure failure@{
                     if (version != playbackVersion) return@failure
@@ -240,26 +241,26 @@ class ArticleTtsController(
         warmReleaseJob?.cancel()
         warmReleaseJob = scope.launch {
             delay(MODEL_WARM_TIMEOUT_MS)
-            withContext(Dispatchers.Default) { sherpa.release() }
+            withContext(Dispatchers.Default) { neuralTts.release() }
             warmReleaseJob = null
         }
     }
 
-    private suspend fun speakWithSherpa(model: TtsModel, chunks: List<String>, language: String) {
+    private suspend fun speakWithNeuralTts(model: TtsModel, chunks: List<String>, language: String) {
         coroutineScope {
             val settings = preferences.getTtsAdvancedSettings()
             val modelPreparation = async(Dispatchers.Default) {
-                sherpa.prepare(model, settings)
+                neuralTts.prepare(model, settings)
             }
             modelPreparation.await()
             val speed = preferences.getTtsSpeed()
             var audio = withContext(Dispatchers.Default) {
-                sherpa.generate(model, chunks.first(), speed, language, settings)
+                neuralTts.generate(model, chunks.first(), speed, language, settings)
             }
             chunks.forEachIndexed { index, _ ->
                 val nextAudio = chunks.getOrNull(index + 1)?.let { nextChunk ->
                     async(Dispatchers.Default) {
-                        sherpa.generate(model, nextChunk, speed, language, settings)
+                        neuralTts.generate(model, nextChunk, speed, language, settings)
                     }
                 }
                 resumeSignal.await()

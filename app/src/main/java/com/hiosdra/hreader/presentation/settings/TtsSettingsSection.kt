@@ -35,6 +35,7 @@ import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.application.tts.TtsLanguages
 import com.hiosdra.hreader.presentation.theme.sectionCardColors
@@ -57,6 +58,7 @@ internal fun TtsSettingsSection(
     var advanced by remember { mutableStateOf(preferences.getTtsAdvancedSettings()) }
     var languageOverrides by remember { mutableStateOf(preferences.getTtsLanguageOverrides()) }
     var languageMenuExpanded by remember { mutableStateOf(false) }
+    val models = TtsModelCatalog.models
 
     Text(
         text = stringResource(R.string.tts_read_aloud),
@@ -69,7 +71,7 @@ internal fun TtsSettingsSection(
         colors = sectionCardColors()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            TtsModel.entries.forEachIndexed { index, model ->
+            models.forEachIndexed { index, model ->
                 val selected = selectedModel == model
                 val status = statuses[model] ?: TtsModelStatus.NotInstalled
                 Row(
@@ -139,7 +141,7 @@ internal fun TtsSettingsSection(
                         }
                     }
                 }
-                if (index != TtsModel.entries.lastIndex) HorizontalDivider()
+                if (index != models.lastIndex) HorizontalDivider()
             }
             HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
             Text(
@@ -341,20 +343,20 @@ private fun AdvancedTtsSettings(
         TtsModel.GOSIA -> {
             AdvancedSlider(
                 label = stringResource(R.string.tts_voice_variation),
-                value = settings.gosiaNoiseScale,
-                displayValue = "%.2f".format(settings.gosiaNoiseScale),
+                value = settings.vitsNoiseScale,
+                displayValue = "%.2f".format(settings.vitsNoiseScale),
                 valueRange = 0f..1f,
                 steps = 19,
-                onValueChange = { onSettingsChange(settings.copy(gosiaNoiseScale = it)) }
+                onValueChange = { onSettingsChange(settings.copy(vitsNoiseScale = it)) }
             )
             AdvancedSlider(
                 label = stringResource(R.string.tts_duration_variation),
-                value = settings.gosiaDurationNoiseScale,
-                displayValue = "%.2f".format(settings.gosiaDurationNoiseScale),
+                value = settings.vitsDurationNoiseScale,
+                displayValue = "%.2f".format(settings.vitsDurationNoiseScale),
                 valueRange = 0f..1f,
                 steps = 19,
                 onValueChange = {
-                    onSettingsChange(settings.copy(gosiaDurationNoiseScale = it))
+                    onSettingsChange(settings.copy(vitsDurationNoiseScale = it))
                 }
             )
         }
