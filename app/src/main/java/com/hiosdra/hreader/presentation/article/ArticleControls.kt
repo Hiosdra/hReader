@@ -60,6 +60,9 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
+import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
+import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.theme.MotionDuration
@@ -352,6 +355,10 @@ private fun ReaderModeOption(
 internal fun ArticleBottomActionBar(
     modifier: Modifier = Modifier,
     state: ArticleTtsState,
+    temporaryModel: TtsModel?,
+    configuredModel: TtsModel,
+    modelStatuses: Map<TtsModel, TtsModelStatus>,
+    onTemporaryModelChange: (TtsModel?) -> Unit,
     entryUrl: String?,
     isOnline: Boolean,
     canUsePaywallBypass: Boolean,
@@ -384,7 +391,14 @@ internal fun ArticleBottomActionBar(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Spacer(modifier = Modifier.weight(1f))
+                ArticleTtsModelSelector(
+                    modifier = Modifier.weight(1f),
+                    temporaryModel = temporaryModel,
+                    configuredModel = configuredModel,
+                    modelStatuses = modelStatuses,
+                    onTemporaryModelChange = onTemporaryModelChange
+                )
+                Spacer(modifier = Modifier.width(4.dp))
                 IconButton(onClick = onToggleSpeech) {
                     Icon(
                         imageVector = if (state.articleId != null) {
@@ -417,6 +431,78 @@ internal fun ArticleBottomActionBar(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArticleTtsModelSelector(
+    modifier: Modifier,
+    temporaryModel: TtsModel?,
+    configuredModel: TtsModel,
+    modelStatuses: Map<TtsModel, TtsModelStatus>,
+    onTemporaryModelChange: (TtsModel?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedModel = temporaryModel ?: configuredModel
+    val availableModels = TtsModelCatalog.models.filter {
+        modelStatuses[it] == TtsModelStatus.Available
+    }
+    val selectedModelName = stringResource(selectedModel.displayNameRes)
+
+    Box(modifier = modifier) {
+        TextButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { expanded = true }
+        ) {
+            Text(
+                text = stringResource(R.string.article_tts_model, selectedModelName),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            val settingsLabel = stringResource(
+                R.string.article_tts_model_use_settings,
+                stringResource(configuredModel.displayNameRes)
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        if (temporaryModel == null) {
+                            stringResource(R.string.tts_voice_selected, settingsLabel)
+                        } else {
+                            settingsLabel
+                        }
+                    )
+                },
+                onClick = {
+                    onTemporaryModelChange(null)
+                    expanded = false
+                }
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            availableModels.forEach { model ->
+                val modelName = stringResource(model.displayNameRes)
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (temporaryModel == model) {
+                                stringResource(R.string.tts_voice_selected, modelName)
+                            } else {
+                                modelName
+                            }
+                        )
+                    },
+                    onClick = {
+                        onTemporaryModelChange(model)
+                        expanded = false
+                    }
+                )
             }
         }
     }

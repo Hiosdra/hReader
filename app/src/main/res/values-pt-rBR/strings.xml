@@ -92,6 +92,8 @@
     <string name="article_web_unavailable_offline">Modo Web indisponível offline</string>
     <string name="article_stop_reading">Parar leitura</string>
     <string name="article_read_aloud">Ler em voz alta</string>
+    <string name="article_tts_model">Voz: %1$s</string>
+    <string name="article_tts_model_use_settings">Usar configuração (%1$s)</string>
     <string name="article_open_original_in_chrome">Abrir página original no Chrome</string>
     <string name="article_open_embedded_media">Abrir mídia incorporada</string>
     <string name="article_open_through_paywall_bypass">Abrir usando o bypass de paywall</string>

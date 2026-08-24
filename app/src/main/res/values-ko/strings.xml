@@ -92,6 +92,8 @@
     <string name="article_web_unavailable_offline">오프라인에서는 웹 모드를 사용할 수 없습니다</string>
     <string name="article_stop_reading">읽기 중지</string>
     <string name="article_read_aloud">소리 내어 읽기</string>
+    <string name="article_tts_model">음성: %1$s</string>
+    <string name="article_tts_model_use_settings">설정 사용(%1$s)</string>
     <string name="article_open_original_in_chrome">Chrome에서 원래 페이지 열기</string>
     <string name="article_open_embedded_media">삽입된 미디어 열기</string>
     <string name="article_open_through_paywall_bypass">페이월 우회로 열기</string>

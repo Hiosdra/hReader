@@ -92,6 +92,8 @@
     <string name="article_web_unavailable_offline">El modo web no está disponible sin conexión</string>
     <string name="article_stop_reading">Detener lectura</string>
     <string name="article_read_aloud">Leer en voz alta</string>
+    <string name="article_tts_model">Voz: %1$s</string>
+    <string name="article_tts_model_use_settings">Usar configuración (%1$s)</string>
     <string name="article_open_original_in_chrome">Abrir página original en Chrome</string>
     <string name="article_open_embedded_media">Abrir contenido multimedia incrustado</string>
     <string name="article_open_through_paywall_bypass">Abrir mediante el desbloqueo de paywall</string>

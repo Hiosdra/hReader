@@ -49,6 +49,8 @@ import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
+import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
+import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
@@ -98,6 +100,7 @@ fun ArticleScreen(
     sessionStartMillis: Long = 0L,
     preferencesManager: AppPreferences,
     paywallBypassService: PaywallBypass,
+    ttsModelManager: TtsModelGateway,
     ttsController: ArticleTtsPlayer,
     viewModel: ArticleViewModel = koinViewModel()
 ) {
@@ -111,6 +114,9 @@ fun ArticleScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val ttsState by ttsController.state.collectAsStateWithLifecycle()
+    val ttsModelStatuses by ttsModelManager.statuses.collectAsStateWithLifecycle()
+    val configuredTtsModel = preferencesManager.getTtsModel()
+    var temporaryTtsModel by remember { mutableStateOf<TtsModel?>(null) }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
     LaunchedEffect(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis) {
@@ -352,6 +358,13 @@ fun ArticleScreen(
                                 }
                             },
                             state = ttsState,
+                            temporaryModel = temporaryTtsModel,
+                            configuredModel = configuredTtsModel,
+                            modelStatuses = ttsModelStatuses,
+                            onTemporaryModelChange = { model ->
+                                if (ttsState.articleId != null) ttsController.stop()
+                                temporaryTtsModel = model
+                            },
                             entryUrl = entry.url.takeIf(String::isNotBlank),
                             isOnline = uiState.isOnline,
                             canUsePaywallBypass = entry.url.isNotBlank() &&
@@ -364,7 +377,8 @@ fun ArticleScreen(
                                         ttsController.play(
                                             articleId = entry.id,
                                             title = entry.title,
-                                            html = viewModel.getContentForEntry(entry.id).orEmpty()
+                                            html = viewModel.getContentForEntry(entry.id).orEmpty(),
+                                            modelOverride = temporaryTtsModel
                                         )
                                     }
                                 }

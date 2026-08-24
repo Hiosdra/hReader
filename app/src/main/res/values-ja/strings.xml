@@ -92,6 +92,8 @@
     <string name="article_web_unavailable_offline">オフラインではウェブモードを利用できません</string>
     <string name="article_stop_reading">読み上げを停止</string>
     <string name="article_read_aloud">音声で読み上げ</string>
+    <string name="article_tts_model">音声: %1$s</string>
+    <string name="article_tts_model_use_settings">設定を使用（%1$s）</string>
     <string name="article_open_original_in_chrome">元のページをChromeで開く</string>
     <string name="article_open_embedded_media">埋め込みメディアを開く</string>
     <string name="article_open_through_paywall_bypass">ペイウォール回避経由で開く</string>

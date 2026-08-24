@@ -71,7 +71,12 @@ class ArticleTtsController internal constructor(
     }
     private var audioFocusRequest: AudioFocusRequest? = null
 
-    override fun play(articleId: Long, title: String, html: String) {
+    override fun play(
+        articleId: Long,
+        title: String,
+        html: String,
+        modelOverride: TtsModel?
+    ) {
         stopPlayback()
         val chunks = TtsTextProcessor.fromHtml(title, html)
         if (chunks.isEmpty()) {
@@ -90,7 +95,7 @@ class ArticleTtsController internal constructor(
         _state.value = ArticleTtsState(
             articleId = articleId,
             title = title,
-            model = preferences.getTtsModel(),
+            model = modelOverride ?: preferences.getTtsModel(),
             isPreparing = true,
             totalChunks = chunks.size
         )
@@ -107,7 +112,7 @@ class ArticleTtsController internal constructor(
                 val language = withContext(Dispatchers.Default) {
                     languageDetector.detect(chunks.take(2).joinToString(" "))
                 }
-                val requestedModel = preferences.getTtsModelForLanguage(language)
+                val requestedModel = modelOverride ?: preferences.getTtsModelForLanguage(language)
                 val available = modelManager.statuses.value[requestedModel] == TtsModelStatus.Available
                 val compatible = TtsLanguages.isCompatible(requestedModel, language)
                 val model = if (
