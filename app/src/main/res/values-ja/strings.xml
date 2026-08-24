@@ -392,6 +392,12 @@
     <string name="tts_model_piper_zenski_name">Piper Żeński</string>
     <string name="tts_model_piper_high_description">ポーランド語のPiper音声 · 35 MBのダウンロード</string>
     <string name="tts_model_piper_medium_description">ポーランド語のPiper音声 · 21 MBのダウンロード</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">英語のPiper音声 · 35 MBのダウンロード</string>
+    <string name="tts_model_kitten_description">英語のKittenTTS音声 · 68 MBのダウンロード</string>
+    <string name="tts_model_matcha_description">英語のMatcha音声 · 131 MBのダウンロード</string>
     <string name="tts_model_android_name">システム音声</string>
     <string name="tts_model_android_description">内蔵音声 · 常に利用可能</string>
     <string name="tts_speech_playback_failed">音声を再生できませんでした。</string>

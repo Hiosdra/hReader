@@ -393,6 +393,12 @@
     <string name="tts_model_piper_zenski_name">Piper Żeński</string>
     <string name="tts_model_piper_high_description">Lehçe Piper sesi · 35 MB indirme</string>
     <string name="tts_model_piper_medium_description">Lehçe Piper sesi · 21 MB indirme</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">İngilizce Piper sesi · 35 MB indirme</string>
+    <string name="tts_model_kitten_description">İngilizce KittenTTS sesi · 68 MB indirme</string>
+    <string name="tts_model_matcha_description">İngilizce Matcha sesi · 131 MB indirme</string>
     <string name="tts_model_android_name">Sistem sesi</string>
     <string name="tts_model_android_description">Yerleşik ses · her zaman kullanılabilir</string>
     <string name="tts_speech_playback_failed">Konuşma oynatılamadı.</string>

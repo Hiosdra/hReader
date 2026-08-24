@@ -4,6 +4,8 @@ enum class TtsEngineFamily {
     SUPERTONIC,
     KOKORO,
     VITS,
+    KITTEN,
+    MATCHA,
     ANDROID
 }
 
@@ -21,6 +23,9 @@ enum class TtsModel(
     PIPER_MC_SPEECH_MEDIUM(false, TtsEngineFamily.VITS),
     PIPER_MESKI_MEDIUM(false, TtsEngineFamily.VITS),
     PIPER_ZENSKI_MEDIUM(false, TtsEngineFamily.VITS),
+    PIPER_LESSAC_HIGH(false, TtsEngineFamily.VITS),
+    KITTEN_MINI(false, TtsEngineFamily.KITTEN),
+    MATCHA_LJSPEECH(false, TtsEngineFamily.MATCHA),
     ANDROID(true, TtsEngineFamily.ANDROID);
 
     companion object {
@@ -41,6 +46,7 @@ data class TtsAdvancedSettings(
     val supertonicSpeaker: Int = 0,
     val supertonicSteps: Int = 8,
     val kokoroSpeaker: Int = 0,
+    val kittenSpeaker: Int = 0,
     val vitsNoiseScale: Float = 0.667f,
     val vitsDurationNoiseScale: Float = 0.8f
 )

@@ -29,6 +29,9 @@ class TtsModelPackageCatalogTest {
         assertEquals("piper-mc-speech-medium", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_MC_SPEECH_MEDIUM))
         assertEquals("piper-meski-medium", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_MESKI_MEDIUM))
         assertEquals("piper-zenski-medium", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_ZENSKI_MEDIUM))
+        assertEquals("piper-lessac-high", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_LESSAC_HIGH))
+        assertEquals("kitten-mini-en-v0_8", TtsModelPackageCatalog.directoryName(TtsModel.KITTEN_MINI))
+        assertEquals("matcha-icefall-en_US-ljspeech", TtsModelPackageCatalog.directoryName(TtsModel.MATCHA_LJSPEECH))
         assertNull(TtsModelPackageCatalog.packageFor(TtsModel.ANDROID))
     }
 
@@ -37,6 +40,14 @@ class TtsModelPackageCatalogTest {
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.SUPERTONIC)?.engineFiles is SherpaModelFiles.Supertonic)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO)?.engineFiles is SherpaModelFiles.Kokoro)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.GOSIA)?.engineFiles is SherpaModelFiles.Vits)
+        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KITTEN_MINI)?.engineFiles is SherpaModelFiles.Kitten)
+        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)?.engineFiles is SherpaModelFiles.Matcha)
+        assertEquals(
+            listOf("vocos-22khz-univ.onnx"),
+            TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)
+                ?.supplementalFiles
+                ?.map(RemoteFile::name)
+        )
         TtsModelCatalog.models
             .filter { it.family == TtsEngineFamily.VITS }
             .forEach { model ->

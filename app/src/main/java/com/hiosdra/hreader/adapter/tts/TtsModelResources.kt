@@ -15,6 +15,9 @@ internal val TtsModel.displayNameRes: Int
         TtsModel.PIPER_MC_SPEECH_MEDIUM -> R.string.tts_model_piper_mc_speech_name
         TtsModel.PIPER_MESKI_MEDIUM -> R.string.tts_model_piper_meski_name
         TtsModel.PIPER_ZENSKI_MEDIUM -> R.string.tts_model_piper_zenski_name
+        TtsModel.PIPER_LESSAC_HIGH -> R.string.tts_model_piper_lessac_high_name
+        TtsModel.KITTEN_MINI -> R.string.tts_model_kitten_mini_name
+        TtsModel.MATCHA_LJSPEECH -> R.string.tts_model_matcha_ljspeech_name
         TtsModel.ANDROID -> R.string.tts_model_android_name
     }
 
@@ -30,5 +33,8 @@ internal val TtsModel.descriptionRes: Int
         TtsModel.PIPER_MC_SPEECH_MEDIUM,
         TtsModel.PIPER_MESKI_MEDIUM,
         TtsModel.PIPER_ZENSKI_MEDIUM -> R.string.tts_model_piper_medium_description
+        TtsModel.PIPER_LESSAC_HIGH -> R.string.tts_model_piper_english_high_description
+        TtsModel.KITTEN_MINI -> R.string.tts_model_kitten_description
+        TtsModel.MATCHA_LJSPEECH -> R.string.tts_model_matcha_description
         TtsModel.ANDROID -> R.string.tts_model_android_description
     }

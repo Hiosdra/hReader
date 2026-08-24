@@ -464,6 +464,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
                 this[ttsSupertonicSpeakerKey] = normalizedSettings.supertonicSpeaker
                 this[ttsSupertonicStepsKey] = normalizedSettings.supertonicSteps
                 this[ttsKokoroSpeakerKey] = normalizedSettings.kokoroSpeaker
+                this[ttsKittenSpeakerKey] = normalizedSettings.kittenSpeaker
                 this[ttsGosiaNoiseScaleKey] = normalizedSettings.vitsNoiseScale
                 this[ttsGosiaDurationNoiseScaleKey] = normalizedSettings.vitsDurationNoiseScale
             }
@@ -599,6 +600,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             supertonicSpeaker = (this[ttsSupertonicSpeakerKey] ?: 0).coerceIn(0, 9),
             supertonicSteps = (this[ttsSupertonicStepsKey] ?: 8).coerceIn(4, 12),
             kokoroSpeaker = (this[ttsKokoroSpeakerKey] ?: 0).coerceIn(0, 102),
+            kittenSpeaker = (this[ttsKittenSpeakerKey] ?: 0).coerceIn(0, 7),
             vitsNoiseScale = (this[ttsGosiaNoiseScaleKey] ?: 0.667f).coerceIn(0f, 1f),
             vitsDurationNoiseScale = (this[ttsGosiaDurationNoiseScaleKey] ?: 0.8f).coerceIn(0f, 1f)
         )
@@ -634,6 +636,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         supertonicSpeaker = supertonicSpeaker.coerceIn(0, 9),
         supertonicSteps = supertonicSteps.coerceIn(4, 12),
         kokoroSpeaker = kokoroSpeaker.coerceIn(0, 102),
+        kittenSpeaker = kittenSpeaker.coerceIn(0, 7),
         vitsNoiseScale = vitsNoiseScale.coerceIn(0f, 1f),
         vitsDurationNoiseScale = vitsDurationNoiseScale.coerceIn(0f, 1f)
     )
@@ -707,6 +710,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val KEY_TTS_SUPERTONIC_SPEAKER = "tts_supertonic_speaker"
         private const val KEY_TTS_SUPERTONIC_STEPS = "tts_supertonic_steps"
         private const val KEY_TTS_KOKORO_SPEAKER = "tts_kokoro_speaker"
+        private const val KEY_TTS_KITTEN_SPEAKER = "tts_kitten_speaker"
         private const val KEY_TTS_GOSIA_NOISE_SCALE = "tts_gosia_noise_scale"
         private const val KEY_TTS_GOSIA_DURATION_NOISE_SCALE = "tts_gosia_duration_noise_scale"
         private const val KEY_OFFLINE_BACKLOG_TARGET = "offline_backlog_target"
@@ -748,6 +752,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private val ttsSupertonicSpeakerKey = intPreferencesKey(KEY_TTS_SUPERTONIC_SPEAKER)
         private val ttsSupertonicStepsKey = intPreferencesKey(KEY_TTS_SUPERTONIC_STEPS)
         private val ttsKokoroSpeakerKey = intPreferencesKey(KEY_TTS_KOKORO_SPEAKER)
+        private val ttsKittenSpeakerKey = intPreferencesKey(KEY_TTS_KITTEN_SPEAKER)
         private val ttsGosiaNoiseScaleKey = floatPreferencesKey(KEY_TTS_GOSIA_NOISE_SCALE)
         private val ttsGosiaDurationNoiseScaleKey = floatPreferencesKey(KEY_TTS_GOSIA_DURATION_NOISE_SCALE)
         private val offlineBacklogTargetKey = intPreferencesKey(KEY_OFFLINE_BACKLOG_TARGET)

@@ -71,19 +71,42 @@ class TtsModelManager(
                 staging.deleteRecursively()
                 staging.mkdirs()
                 if (artifact.files.isEmpty()) {
-                    downloadArchive(model, artifact, archive, staging)
+                    val archiveSize = checkNotNull(artifact.archive).size
+                    downloadArchive(
+                        model = model,
+                        artifact = artifact,
+                        archive = archive,
+                        staging = staging,
+                        progressTotal = archiveSize + artifact.supplementalFiles.sumOf(RemoteFile::size)
+                    )
                 } else {
                     try {
-                        downloadFiles(model, artifact, staging)
+                        downloadFiles(model, artifact.files, staging)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
                         staging.deleteRecursively()
                         staging.mkdirs()
-                        downloadArchive(model, artifact, archive, staging)
+                        downloadArchive(
+                            model = model,
+                            artifact = artifact,
+                            archive = archive,
+                            staging = staging,
+                            progressTotal = checkNotNull(artifact.archive).size
+                        )
                     }
                 }
                 val content = staging.singleFileOrSelf()
+                if (artifact.supplementalFiles.isNotEmpty()) {
+                    val archiveSize = checkNotNull(artifact.archive).size
+                    downloadFiles(
+                        model = model,
+                        files = artifact.supplementalFiles,
+                        staging = content,
+                        progressBase = archiveSize,
+                        progressTotal = archiveSize + artifact.supplementalFiles.sumOf(RemoteFile::size)
+                    )
+                }
                 check(artifact.isComplete(content)) {
                     "Model download is incomplete"
                 }
@@ -101,14 +124,19 @@ class TtsModelManager(
         }
     }
 
-    private suspend fun downloadFiles(model: TtsModel, artifact: TtsModelPackage, staging: File) {
-        val total = artifact.files.sumOf { it.size }
+    private suspend fun downloadFiles(
+        model: TtsModel,
+        files: List<RemoteFile>,
+        staging: File,
+        progressBase: Long = 0L,
+        progressTotal: Long = files.sumOf(RemoteFile::size)
+    ) {
         var downloaded = 0L
-        artifact.files.forEach { remote ->
+        files.forEach { remote ->
             val output = File(staging, remote.name)
             downloadTo(remote.url, output, remote.size) { count ->
                 downloaded += count
-                updateProgress(model, downloaded, total)
+                updateProgress(model, progressBase + downloaded, progressTotal)
             }
             check(output.sha256() == remote.sha256) {
                 "Downloaded ${remote.name} failed integrity check"
@@ -120,13 +148,15 @@ class TtsModelManager(
         model: TtsModel,
         artifact: TtsModelPackage,
         archive: File,
-        staging: File
+        staging: File,
+        progressBase: Long = 0L,
+        progressTotal: Long
     ) {
         val source = checkNotNull(artifact.archive)
         var downloaded = 0L
         downloadTo(source.url, archive, source.size) { count ->
             downloaded += count
-            updateProgress(model, downloaded, source.size)
+            updateProgress(model, progressBase + downloaded, progressTotal)
         }
         check(archive.sha256() == source.sha256) { "Downloaded model failed integrity check" }
         extract(archive, staging)

@@ -393,6 +393,12 @@
     <string name="tts_model_piper_zenski_name">Piper Żeński</string>
     <string name="tts_model_piper_high_description">Voix polonaise Piper · téléchargement de 35 Mo</string>
     <string name="tts_model_piper_medium_description">Voix polonaise Piper · téléchargement de 21 Mo</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">Voix anglaise Piper · téléchargement de 35 Mo</string>
+    <string name="tts_model_kitten_description">Voix anglaise KittenTTS · téléchargement de 68 Mo</string>
+    <string name="tts_model_matcha_description">Voix anglaise Matcha · téléchargement de 131 Mo</string>
     <string name="tts_model_android_name">Voix système</string>
     <string name="tts_model_android_description">Voix intégrée · toujours disponible</string>
     <string name="tts_speech_playback_failed">Échec de la lecture vocale.</string>

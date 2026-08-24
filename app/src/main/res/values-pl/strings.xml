@@ -459,6 +459,12 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="tts_model_piper_zenski_name">Piper Żeński</string>
     <string name="tts_model_piper_high_description">Polski głos Piper · pobranie 35 MB</string>
     <string name="tts_model_piper_medium_description">Polski głos Piper · pobranie 21 MB</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">Angielski głos Piper · pobranie 35 MB</string>
+    <string name="tts_model_kitten_description">Angielski głos KittenTTS · pobranie 68 MB</string>
+    <string name="tts_model_matcha_description">Angielski głos Matcha · pobranie 131 MB</string>
     <string name="tts_model_android_name">Głos systemowy</string>
     <string name="tts_model_android_description">Głos wbudowany · zawsze dostępny</string>
     <string name="tts_speech_playback_failed">Odtwarzanie mowy nie powiodło się.</string>

@@ -396,6 +396,12 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="tts_model_piper_zenski_name">Piper Żeński</string>
     <string name="tts_model_piper_high_description">Voz polaca de Piper · descarga de 35 MB</string>
     <string name="tts_model_piper_medium_description">Voz polaca de Piper · descarga de 21 MB</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">Voz inglesa de Piper · descarga de 35 MB</string>
+    <string name="tts_model_kitten_description">Voz inglesa de KittenTTS · descarga de 68 MB</string>
+    <string name="tts_model_matcha_description">Voz inglesa de Matcha · descarga de 131 MB</string>
     <string name="tts_model_android_name">Voz del sistema</string>
     <string name="tts_model_android_description">Voz integrada · siempre disponible</string>
     <string name="tts_speech_playback_failed">Falló la reproducción de voz.</string>

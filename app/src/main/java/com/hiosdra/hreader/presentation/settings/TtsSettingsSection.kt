@@ -341,6 +341,12 @@ private fun AdvancedTtsSettings(
             range = 0..102,
             onValueChange = { onSettingsChange(settings.copy(kokoroSpeaker = it)) }
         )
+        TtsEngineFamily.KITTEN -> IntegerSetting(
+            label = stringResource(R.string.tts_voice_id),
+            value = settings.kittenSpeaker,
+            range = 0..7,
+            onValueChange = { onSettingsChange(settings.copy(kittenSpeaker = it)) }
+        )
         TtsEngineFamily.VITS -> {
             AdvancedSlider(
                 label = stringResource(R.string.tts_voice_variation),
@@ -361,6 +367,7 @@ private fun AdvancedTtsSettings(
                 }
             )
         }
+        TtsEngineFamily.MATCHA -> Unit
         TtsEngineFamily.ANDROID -> Text(
             text = stringResource(R.string.tts_advanced_not_system),
             style = MaterialTheme.typography.bodySmall,

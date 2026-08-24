@@ -54,6 +54,18 @@ object TtsModelCatalog {
             supportedLanguages = setOf("pl")
         ),
         TtsModelDefinition(
+            model = TtsModel.PIPER_LESSAC_HIGH,
+            supportedLanguages = setOf("en")
+        ),
+        TtsModelDefinition(
+            model = TtsModel.KITTEN_MINI,
+            supportedLanguages = setOf("en")
+        ),
+        TtsModelDefinition(
+            model = TtsModel.MATCHA_LJSPEECH,
+            supportedLanguages = setOf("en")
+        ),
+        TtsModelDefinition(
             model = TtsModel.ANDROID,
             supportedLanguages = emptySet()
         )
