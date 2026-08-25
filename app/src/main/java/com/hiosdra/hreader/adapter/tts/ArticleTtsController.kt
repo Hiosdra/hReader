@@ -18,8 +18,6 @@ import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.tts.TtsModel
-import com.hiosdra.hreader.core.application.tts.TtsModelStatus
-import com.hiosdra.hreader.core.application.tts.TtsLanguages
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -112,18 +110,13 @@ class ArticleTtsController internal constructor(
                 val language = withContext(Dispatchers.Default) {
                     languageDetector.detect(chunks.take(2).joinToString(" "))
                 }
-                val requestedModel = modelOverride ?: preferences.getTtsModelForLanguage(language)
-                val available = modelManager.statuses.value[requestedModel] == TtsModelStatus.Available
-                val compatible = TtsLanguages.isCompatible(requestedModel, language)
-                val model = if (
-                    available &&
-                    compatible &&
-                    Build.SUPPORTED_64_BIT_ABIS.contains("arm64-v8a")
-                ) {
-                    requestedModel
-                } else {
-                    TtsModel.ANDROID
-                }
+                val model = resolveArticleTtsModel(
+                    modelOverride = modelOverride,
+                    settingsModel = preferences.getTtsModelForLanguage(language),
+                    language = language,
+                    statuses = modelManager.statuses.value,
+                    supportsArm64 = Build.SUPPORTED_64_BIT_ABIS.contains("arm64-v8a")
+                )
                 _state.value = _state.value.copy(
                     model = model,
                     isPreparing = true,
