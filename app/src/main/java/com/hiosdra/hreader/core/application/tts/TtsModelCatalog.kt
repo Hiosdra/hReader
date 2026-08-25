@@ -26,34 +26,6 @@ object TtsModelCatalog {
             supportedLanguages = setOf("pl")
         ),
         TtsModelDefinition(
-            model = TtsModel.PIPER_BASS_HIGH,
-            supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
-            model = TtsModel.PIPER_DARKMAN_MEDIUM,
-            supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
-            model = TtsModel.PIPER_JARVIS_MEDIUM,
-            supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
-            model = TtsModel.PIPER_JUSTYNA_MEDIUM,
-            supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
-            model = TtsModel.PIPER_MC_SPEECH_MEDIUM,
-            supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
-            model = TtsModel.PIPER_MESKI_MEDIUM,
-            supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
-            model = TtsModel.PIPER_ZENSKI_MEDIUM,
-            supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
             model = TtsModel.PIPER_LESSAC_HIGH,
             supportedLanguages = setOf("en")
         ),
