@@ -105,6 +105,8 @@
     <string name="article_web_unavailable_offline">Web mode unavailable offline</string>
     <string name="article_stop_reading">Stop reading</string>
     <string name="article_read_aloud">Read aloud</string>
+    <string name="article_tts_model">Voice: %1$s</string>
+    <string name="article_tts_model_use_settings">Use settings (%1$s)</string>
     <string name="article_open_original_in_chrome">Open original page in Chrome</string>
     <string name="article_open_embedded_media">Open embedded media</string>
     <string name="article_open_through_paywall_bypass">Open through paywall bypass</string>
@@ -483,6 +485,12 @@
     <string name="tts_model_kokoro_description">English and Chinese neural voices · 140 MB download</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">Polish neural voice · 21 MB download</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">English Piper voice · 35 MB download</string>
+    <string name="tts_model_kitten_description">English KittenTTS voice · 68 MB download</string>
+    <string name="tts_model_matcha_description">English Matcha voice · 131 MB download</string>
     <string name="tts_model_android_name">System voice</string>
     <string name="tts_model_android_description">Built-in voice · always available</string>
     <string name="tts_speech_playback_failed">Speech playback failed.</string>

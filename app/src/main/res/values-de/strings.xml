@@ -98,6 +98,8 @@
     <string name="article_web_unavailable_offline">Webmodus ist offline nicht verfügbar</string>
     <string name="article_stop_reading">Vorlesen stoppen</string>
     <string name="article_read_aloud">Vorlesen</string>
+    <string name="article_tts_model">Stimme: %1$s</string>
+    <string name="article_tts_model_use_settings">Einstellungen verwenden (%1$s)</string>
     <string name="article_open_original_in_chrome">Originalseite in Chrome öffnen</string>
     <string name="article_open_embedded_media">Eingebettete Medien öffnen</string>
     <string name="article_open_through_paywall_bypass">Über Paywall-Umgehung öffnen</string>
@@ -396,6 +398,12 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="tts_model_kokoro_description">Neuronale Stimmen für Englisch und Chinesisch · 140 MB Download</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">Polnische neuronale Stimme · 21 MB Download</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">Englische Piper-Stimme · 35 MB Download</string>
+    <string name="tts_model_kitten_description">Englische KittenTTS-Stimme · 68 MB Download</string>
+    <string name="tts_model_matcha_description">Englische Matcha-Stimme · 131 MB Download</string>
     <string name="tts_model_android_name">Systemstimme</string>
     <string name="tts_model_android_description">Integrierte Stimme · immer verfügbar</string>
     <string name="tts_speech_playback_failed">Sprachwiedergabe fehlgeschlagen.</string>

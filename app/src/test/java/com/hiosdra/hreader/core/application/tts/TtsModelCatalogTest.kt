@@ -14,17 +14,34 @@ class TtsModelCatalogTest {
     fun `keeps model family separate from model id`() {
         assertEquals(TtsEngineFamily.SUPERTONIC, TtsModelCatalog.definition(TtsModel.SUPERTONIC).model.family)
         assertEquals(TtsEngineFamily.VITS, TtsModelCatalog.definition(TtsModel.GOSIA).model.family)
+        assertEquals(TtsEngineFamily.KITTEN, TtsModelCatalog.definition(TtsModel.KITTEN_MINI).model.family)
+        assertEquals(TtsEngineFamily.MATCHA, TtsModelCatalog.definition(TtsModel.MATCHA_LJSPEECH).model.family)
     }
 
     @Test
     fun `routes languages from catalog definitions`() {
         assertEquals(
-            listOf(TtsModel.SUPERTONIC, TtsModel.GOSIA, TtsModel.ANDROID),
+            listOf(
+                TtsModel.SUPERTONIC,
+                TtsModel.GOSIA,
+                TtsModel.ANDROID
+            ),
             TtsModelCatalog.compatibleModels("PL")
         )
         assertEquals(
             listOf(TtsModel.KOKORO, TtsModel.ANDROID),
             TtsModelCatalog.compatibleModels("zh")
+        )
+        assertEquals(
+            listOf(
+                TtsModel.SUPERTONIC,
+                TtsModel.KOKORO,
+                TtsModel.PIPER_LESSAC_HIGH,
+                TtsModel.KITTEN_MINI,
+                TtsModel.MATCHA_LJSPEECH,
+                TtsModel.ANDROID
+            ),
+            TtsModelCatalog.compatibleModels("en")
         )
     }
 

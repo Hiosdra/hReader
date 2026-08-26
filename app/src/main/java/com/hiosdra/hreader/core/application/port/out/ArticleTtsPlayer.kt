@@ -20,7 +20,12 @@ data class ArticleTtsState(
 
 interface ArticleTtsPlayer {
     val state: StateFlow<ArticleTtsState>
-    fun play(articleId: Long, title: String, html: String)
+    fun play(
+        articleId: Long,
+        title: String,
+        html: String,
+        modelOverride: TtsModel? = null
+    )
     fun stop()
     fun stopFromService()
     fun pause()

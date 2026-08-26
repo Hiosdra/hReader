@@ -92,6 +92,8 @@
     <string name="article_web_unavailable_offline">Mode Web indisponible hors connexion</string>
     <string name="article_stop_reading">Arrêter la lecture</string>
     <string name="article_read_aloud">Lire à voix haute</string>
+    <string name="article_tts_model">Voix : %1$s</string>
+    <string name="article_tts_model_use_settings">Utiliser les réglages (%1$s)</string>
     <string name="article_open_original_in_chrome">Ouvrir la page originale dans Chrome</string>
     <string name="article_open_embedded_media">Ouvrir le contenu multimédia intégré</string>
     <string name="article_open_through_paywall_bypass">Ouvrir via le contournement du paywall</string>
@@ -384,6 +386,12 @@
     <string name="tts_model_kokoro_description">Voix neuronales pour l’anglais et le chinois · téléchargement de 140 Mo</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">Voix neuronale polonaise · téléchargement de 21 Mo</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">Voix anglaise Piper · téléchargement de 35 Mo</string>
+    <string name="tts_model_kitten_description">Voix anglaise KittenTTS · téléchargement de 68 Mo</string>
+    <string name="tts_model_matcha_description">Voix anglaise Matcha · téléchargement de 131 Mo</string>
     <string name="tts_model_android_name">Voix système</string>
     <string name="tts_model_android_description">Voix intégrée · toujours disponible</string>
     <string name="tts_speech_playback_failed">Échec de la lecture vocale.</string>

@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.tts
 
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
+import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -21,6 +22,9 @@ class TtsModelPackageCatalogTest {
         assertEquals("supertonic", TtsModelPackageCatalog.directoryName(TtsModel.SUPERTONIC))
         assertEquals("kokoro", TtsModelPackageCatalog.directoryName(TtsModel.KOKORO))
         assertEquals("gosia", TtsModelPackageCatalog.directoryName(TtsModel.GOSIA))
+        assertEquals("piper-lessac-high", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_LESSAC_HIGH))
+        assertEquals("kitten-mini-en-v0_8", TtsModelPackageCatalog.directoryName(TtsModel.KITTEN_MINI))
+        assertEquals("matcha-icefall-en_US-ljspeech", TtsModelPackageCatalog.directoryName(TtsModel.MATCHA_LJSPEECH))
         assertNull(TtsModelPackageCatalog.packageFor(TtsModel.ANDROID))
     }
 
@@ -29,5 +33,18 @@ class TtsModelPackageCatalogTest {
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.SUPERTONIC)?.engineFiles is SherpaModelFiles.Supertonic)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO)?.engineFiles is SherpaModelFiles.Kokoro)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.GOSIA)?.engineFiles is SherpaModelFiles.Vits)
+        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KITTEN_MINI)?.engineFiles is SherpaModelFiles.Kitten)
+        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)?.engineFiles is SherpaModelFiles.Matcha)
+        assertEquals(
+            listOf("vocos-22khz-univ.onnx"),
+            TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)
+                ?.supplementalFiles
+                ?.map(RemoteFile::name)
+        )
+        TtsModelCatalog.models
+            .filter { it.family == TtsEngineFamily.VITS }
+            .forEach { model ->
+                assertTrue(TtsModelPackageCatalog.packageFor(model)?.engineFiles is SherpaModelFiles.Vits)
+            }
     }
 }

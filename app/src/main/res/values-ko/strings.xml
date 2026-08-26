@@ -92,6 +92,8 @@
     <string name="article_web_unavailable_offline">오프라인에서는 웹 모드를 사용할 수 없습니다</string>
     <string name="article_stop_reading">읽기 중지</string>
     <string name="article_read_aloud">소리 내어 읽기</string>
+    <string name="article_tts_model">음성: %1$s</string>
+    <string name="article_tts_model_use_settings">설정 사용(%1$s)</string>
     <string name="article_open_original_in_chrome">Chrome에서 원래 페이지 열기</string>
     <string name="article_open_embedded_media">삽입된 미디어 열기</string>
     <string name="article_open_through_paywall_bypass">페이월 우회로 열기</string>
@@ -383,6 +385,12 @@
     <string name="tts_model_kokoro_description">영어 및 중국어 신경망 음성 · 140MB 다운로드</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">폴란드어 신경망 음성 · 21MB 다운로드</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">영어 Piper 음성 · 35MB 다운로드</string>
+    <string name="tts_model_kitten_description">영어 KittenTTS 음성 · 68MB 다운로드</string>
+    <string name="tts_model_matcha_description">영어 Matcha 음성 · 131MB 다운로드</string>
     <string name="tts_model_android_name">시스템 음성</string>
     <string name="tts_model_android_description">내장 음성 · 항상 사용 가능</string>
     <string name="tts_speech_playback_failed">음성 재생에 실패했습니다.</string>

@@ -107,6 +107,8 @@
     <string name="article_web_unavailable_offline">Tryb web niedostępny offline</string>
     <string name="article_stop_reading">Zatrzymaj czytanie</string>
     <string name="article_read_aloud">Czytaj na głos</string>
+    <string name="article_tts_model">Głos: %1$s</string>
+    <string name="article_tts_model_use_settings">Użyj ustawień (%1$s)</string>
     <string name="article_open_original_in_chrome">Otwórz oryginalną stronę w Chrome</string>
     <string name="article_open_embedded_media">Otwórz osadzone multimedia</string>
     <string name="article_open_through_paywall_bypass">Otwórz przez obejście paywalla</string>
@@ -450,6 +452,12 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="tts_model_kokoro_description">Angielskie i chińskie głosy neuronowe · pobranie 140 MB</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">Polski głos neuronowy · pobranie 21 MB</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">Angielski głos Piper · pobranie 35 MB</string>
+    <string name="tts_model_kitten_description">Angielski głos KittenTTS · pobranie 68 MB</string>
+    <string name="tts_model_matcha_description">Angielski głos Matcha · pobranie 131 MB</string>
     <string name="tts_model_android_name">Głos systemowy</string>
     <string name="tts_model_android_description">Głos wbudowany · zawsze dostępny</string>
     <string name="tts_speech_playback_failed">Odtwarzanie mowy nie powiodło się.</string>

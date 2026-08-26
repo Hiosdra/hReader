@@ -151,6 +151,7 @@ fun AppNavigation(
                 sessionStartMillis = arguments?.getLong("session") ?: 0L,
                 preferencesManager = preferencesManager,
                 paywallBypassService = paywallBypass,
+                ttsModelManager = ttsModelManager,
                 ttsController = articleTtsPlayer
             )
         }

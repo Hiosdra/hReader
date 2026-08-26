@@ -92,6 +92,8 @@
     <string name="article_web_unavailable_offline">Web modu çevrimdışıyken kullanılamaz</string>
     <string name="article_stop_reading">Okumayı durdur</string>
     <string name="article_read_aloud">Sesli oku</string>
+    <string name="article_tts_model">Ses: %1$s</string>
+    <string name="article_tts_model_use_settings">Ayarları kullan (%1$s)</string>
     <string name="article_open_original_in_chrome">Özgün sayfayı Chrome’da aç</string>
     <string name="article_open_embedded_media">Gömülü medyayı aç</string>
     <string name="article_open_through_paywall_bypass">Paywall atlama ile aç</string>
@@ -384,6 +386,12 @@
     <string name="tts_model_kokoro_description">İngilizce ve Çince için sinirsel sesler · 140 MB indirme</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">Lehçe sinirsel ses · 21 MB indirme</string>
+    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
+    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
+    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_piper_english_high_description">İngilizce Piper sesi · 35 MB indirme</string>
+    <string name="tts_model_kitten_description">İngilizce KittenTTS sesi · 68 MB indirme</string>
+    <string name="tts_model_matcha_description">İngilizce Matcha sesi · 131 MB indirme</string>
     <string name="tts_model_android_name">Sistem sesi</string>
     <string name="tts_model_android_description">Yerleşik ses · her zaman kullanılabilir</string>
     <string name="tts_speech_playback_failed">Konuşma oynatılamadı.</string>

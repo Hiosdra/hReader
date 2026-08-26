@@ -27,6 +27,22 @@ internal sealed interface SherpaModelFiles {
         val tokens: String,
         val dataDir: String
     ) : SherpaModelFiles
+
+    data class Kitten(
+        val model: String,
+        val voices: String,
+        val tokens: String,
+        val dataDir: String
+    ) : SherpaModelFiles
+
+    data class Matcha(
+        val acousticModel: String,
+        val vocoder: String,
+        val lexicon: String,
+        val tokens: String,
+        val dataDir: String,
+        val dictDir: String
+    ) : SherpaModelFiles
 }
 
 internal data class TtsModelPackage(
@@ -35,6 +51,7 @@ internal data class TtsModelPackage(
     val requiredFiles: List<String>,
     val requiredDirectories: List<String> = emptyList(),
     val files: List<RemoteFile> = emptyList(),
+    val supplementalFiles: List<RemoteFile> = emptyList(),
     val archive: RemoteFile? = null
 )
 
@@ -99,6 +116,50 @@ internal object TtsModelPackageCatalog {
                 sha256 = "72acac4c4b031725c41a61b3af0314a3d30e1ec2cd83ee410ea5f9e6d2d9d4fb",
                 size = 21_109_262
             )
+        ),
+        TtsModel.PIPER_LESSAC_HIGH to piperPackage(
+            directoryName = "piper-lessac-high",
+            modelName = "en_US-lessac-high.onnx",
+            archiveName = "vits-piper-en_US-lessac-high-int8.tar.bz2",
+            sha256 = "f06e85ae07ca11adae6d3b8cedff4b600fa1181a354f1f86779866b86b2fdb33",
+            size = 35_022_847
+        ),
+        TtsModel.KITTEN_MINI to TtsModelPackage(
+            directoryName = "kitten-mini-en-v0_8",
+            engineFiles = SherpaModelFiles.Kitten(
+                model = "model.onnx",
+                voices = "voices.bin",
+                tokens = "tokens.txt",
+                dataDir = "espeak-ng-data"
+            ),
+            requiredFiles = listOf("model.onnx", "voices.bin", "tokens.txt"),
+            requiredDirectories = listOf("espeak-ng-data"),
+            archive = RemoteFile(
+                name = "kitten-mini-en-v0_8.tar.bz2",
+                url = "$TTS_RELEASE_ROOT/kitten-mini-en-v0_8.tar.bz2",
+                sha256 = "518f9b130320f690d5b5476df77bde4215fca67773cda16710318e5081234b9d",
+                size = 67_547_594
+            )
+        ),
+        TtsModel.MATCHA_LJSPEECH to TtsModelPackage(
+            directoryName = "matcha-icefall-en_US-ljspeech",
+            engineFiles = SherpaModelFiles.Matcha(
+                acousticModel = "model-steps-3.onnx",
+                vocoder = VOCOS_FILE.name,
+                lexicon = "",
+                tokens = "tokens.txt",
+                dataDir = "espeak-ng-data",
+                dictDir = ""
+            ),
+            requiredFiles = listOf("model-steps-3.onnx", VOCOS_FILE.name, "tokens.txt"),
+            requiredDirectories = listOf("espeak-ng-data"),
+            supplementalFiles = listOf(VOCOS_FILE),
+            archive = RemoteFile(
+                name = "matcha-icefall-en_US-ljspeech.tar.bz2",
+                url = "$TTS_RELEASE_ROOT/matcha-icefall-en_US-ljspeech.tar.bz2",
+                sha256 = "ea75702da7456a8b1874728278a835220dc8a26f4e8bd93c83bf53dc27679845",
+                size = 76_741_121
+            )
         )
     )
 
@@ -107,6 +168,29 @@ internal object TtsModelPackageCatalog {
     fun directoryName(model: TtsModel): String =
         packageFor(model)?.directoryName ?: model.name.lowercase()
 }
+
+private fun piperPackage(
+    directoryName: String,
+    modelName: String,
+    archiveName: String,
+    sha256: String,
+    size: Long
+) = TtsModelPackage(
+    directoryName = directoryName,
+    engineFiles = SherpaModelFiles.Vits(
+        model = modelName,
+        tokens = "tokens.txt",
+        dataDir = "espeak-ng-data"
+    ),
+    requiredFiles = listOf(modelName, "tokens.txt"),
+    requiredDirectories = listOf("espeak-ng-data"),
+    archive = RemoteFile(
+        name = archiveName,
+        url = "$TTS_RELEASE_ROOT/$archiveName",
+        sha256 = sha256,
+        size = size
+    )
+)
 
 internal data class RemoteFile(
     val name: String,
@@ -123,8 +207,17 @@ internal fun TtsModelPackage.isComplete(directory: File): Boolean =
         }
 
 private const val SUPERTONIC_HF_REVISION = "cca5a0e6c96e1d2c720986bf7e75fcc81dee3ae4"
+private const val TTS_RELEASE_ROOT =
+    "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models"
 private const val SUPERTONIC_HF_ROOT =
     "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/$SUPERTONIC_HF_REVISION"
+
+private val VOCOS_FILE = RemoteFile(
+    name = "vocos-22khz-univ.onnx",
+    url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx",
+    sha256 = "0574a135aa1db2de6e181050db2ec528496cacd4a4701fc5d7faf9f9804c0081",
+    size = 53_884_024
+)
 
 private val SUPERTONIC_FILES = listOf(
     RemoteFile(

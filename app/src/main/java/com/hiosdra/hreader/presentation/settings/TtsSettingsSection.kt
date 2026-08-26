@@ -34,6 +34,7 @@ import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
+import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
@@ -315,8 +316,8 @@ private fun AdvancedTtsSettings(
         steps = 9,
         onValueChange = { onSettingsChange(settings.copy(silenceScale = it)) }
     )
-    when (model) {
-        TtsModel.SUPERTONIC -> {
+    when (model.family) {
+        TtsEngineFamily.SUPERTONIC -> {
             IntegerSetting(
                 label = stringResource(R.string.tts_speaker_id),
                 value = settings.supertonicSpeaker,
@@ -334,13 +335,19 @@ private fun AdvancedTtsSettings(
                 }
             )
         }
-        TtsModel.KOKORO -> IntegerSetting(
+        TtsEngineFamily.KOKORO -> IntegerSetting(
             label = stringResource(R.string.tts_voice_id),
             value = settings.kokoroSpeaker,
             range = 0..102,
             onValueChange = { onSettingsChange(settings.copy(kokoroSpeaker = it)) }
         )
-        TtsModel.GOSIA -> {
+        TtsEngineFamily.KITTEN -> IntegerSetting(
+            label = stringResource(R.string.tts_voice_id),
+            value = settings.kittenSpeaker,
+            range = 0..7,
+            onValueChange = { onSettingsChange(settings.copy(kittenSpeaker = it)) }
+        )
+        TtsEngineFamily.VITS -> {
             AdvancedSlider(
                 label = stringResource(R.string.tts_voice_variation),
                 value = settings.vitsNoiseScale,
@@ -360,7 +367,8 @@ private fun AdvancedTtsSettings(
                 }
             )
         }
-        TtsModel.ANDROID -> Text(
+        TtsEngineFamily.MATCHA -> Unit
+        TtsEngineFamily.ANDROID -> Text(
             text = stringResource(R.string.tts_advanced_not_system),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
