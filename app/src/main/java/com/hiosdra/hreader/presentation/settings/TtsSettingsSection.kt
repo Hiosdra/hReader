@@ -368,6 +368,11 @@ private fun AdvancedTtsSettings(
             )
         }
         TtsEngineFamily.MATCHA -> Unit
+        TtsEngineFamily.CHATTERBOX -> Text(
+            text = stringResource(R.string.tts_advanced_not_chatterbox),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         TtsEngineFamily.ANDROID -> Text(
             text = stringResource(R.string.tts_advanced_not_system),
             style = MaterialTheme.typography.bodySmall,

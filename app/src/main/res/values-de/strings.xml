@@ -404,6 +404,9 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="tts_model_piper_english_high_description">Englische Piper-Stimme · 35 MB Download</string>
     <string name="tts_model_kitten_description">Englische KittenTTS-Stimme · 68 MB Download</string>
     <string name="tts_model_matcha_description">Englische Matcha-Stimme · 131 MB Download</string>
+    <string name="tts_model_chatterbox_executorch_name">Chatterbox Multilingual</string>
+    <string name="tts_model_chatterbox_executorch_description">Hochwertige mehrsprachige Stimme · ca. 4,8 GB Download · ExecuTorch-Spike</string>
+    <string name="tts_advanced_not_chatterbox">Chatterbox verwendet seine integrierte Stimme; diese Stimmeinstellungen gelten nicht.</string>
     <string name="tts_model_android_name">Systemstimme</string>
     <string name="tts_model_android_description">Integrierte Stimme · immer verfügbar</string>
     <string name="tts_speech_playback_failed">Sprachwiedergabe fehlgeschlagen.</string>

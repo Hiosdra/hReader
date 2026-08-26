@@ -84,7 +84,8 @@ class TtsModelManager(
                         downloadFiles(model, artifact.files, staging)
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        if (artifact.archive == null) throw e
                         staging.deleteRecursively()
                         staging.mkdirs()
                         downloadArchive(

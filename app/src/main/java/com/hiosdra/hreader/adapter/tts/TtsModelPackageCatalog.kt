@@ -3,7 +3,9 @@ package com.hiosdra.hreader.adapter.tts
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import java.io.File
 
-internal sealed interface SherpaModelFiles {
+internal sealed interface TtsModelFiles
+
+internal sealed interface SherpaModelFiles : TtsModelFiles {
     data class Supertonic(
         val durationPredictor: String,
         val textEncoder: String,
@@ -45,9 +47,15 @@ internal sealed interface SherpaModelFiles {
     ) : SherpaModelFiles
 }
 
+internal data class ChatterboxModelFiles(
+    val tokenizer: String,
+    val conditionals: String,
+    val modules: List<String>
+) : TtsModelFiles
+
 internal data class TtsModelPackage(
     val directoryName: String,
-    val engineFiles: SherpaModelFiles,
+    val engineFiles: TtsModelFiles,
     val requiredFiles: List<String>,
     val requiredDirectories: List<String> = emptyList(),
     val files: List<RemoteFile> = emptyList(),
@@ -160,7 +168,22 @@ internal object TtsModelPackageCatalog {
                 sha256 = "ea75702da7456a8b1874728278a835220dc8a26f4e8bd93c83bf53dc27679845",
                 size = 76_741_121
             )
-        )
+        ),
+        TtsModel.CHATTERBOX_EXECUTORCH to chatterboxPackage()
+    )
+
+    private fun chatterboxPackage() = TtsModelPackage(
+        directoryName = "chatterbox-executorch",
+        engineFiles = ChatterboxModelFiles(
+            tokenizer = CHATTERBOX_TOKENIZER.name,
+            conditionals = CHATTERBOX_CONDITIONALS.name,
+            modules = CHATTERBOX_MODULES.map(RemoteFile::name)
+        ),
+        requiredFiles = listOf(
+            CHATTERBOX_TOKENIZER.name,
+            CHATTERBOX_CONDITIONALS.name
+        ) + CHATTERBOX_MODULES.map(RemoteFile::name),
+        files = listOf(CHATTERBOX_TOKENIZER, CHATTERBOX_CONDITIONALS) + CHATTERBOX_MODULES
     )
 
     fun packageFor(model: TtsModel): TtsModelPackage? = packages[model]
@@ -207,6 +230,8 @@ internal fun TtsModelPackage.isComplete(directory: File): Boolean =
         }
 
 private const val SUPERTONIC_HF_REVISION = "cca5a0e6c96e1d2c720986bf7e75fcc81dee3ae4"
+private const val CHATTERBOX_EXECUTORCH_REVISION = "e444904352a22332a8083d6fb7b9354ee5e96daf"
+private const val CHATTERBOX_DATA_REVISION = "5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18"
 private const val TTS_RELEASE_ROOT =
     "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models"
 private const val SUPERTONIC_HF_ROOT =
@@ -267,5 +292,64 @@ private val SUPERTONIC_FILES = listOf(
         "$SUPERTONIC_HF_ROOT/voice.bin",
         "67d5209b0ee8ce6c74105ffbe12fe6a7628aea3b4ba2fcb308a4a67938a93ce8",
         517_168
+    )
+)
+
+private val CHATTERBOX_TOKENIZER = RemoteFile(
+    name = "grapheme_mtl_merged_expanded_v1.json",
+    url = "https://huggingface.co/ResembleAI/chatterbox/resolve/$CHATTERBOX_DATA_REVISION/grapheme_mtl_merged_expanded_v1.json",
+    sha256 = "69632f47220a788a52ce2661d096453c5655e9bf25289d89a8d832c46ee07dbf",
+    size = 69_989
+)
+
+private val CHATTERBOX_CONDITIONALS = RemoteFile(
+    name = "conds.pt",
+    url = "https://huggingface.co/ResembleAI/chatterbox/resolve/$CHATTERBOX_DATA_REVISION/conds.pt",
+    sha256 = "6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e",
+    size = 107_374
+)
+
+private val CHATTERBOX_MODULES = listOf(
+    RemoteFile(
+        name = "t3_cond_speech_emb.pte",
+        url = "https://huggingface.co/acul3/chatterbox-executorch/resolve/$CHATTERBOX_EXECUTORCH_REVISION/t3_cond_speech_emb.pte",
+        sha256 = "f443eed95cdb990151365c76f5096bce49c42800b81f0c2b76bcdcad574653a0",
+        size = 50_358_400
+    ),
+    RemoteFile(
+        name = "t3_cond_enc.pte",
+        url = "https://huggingface.co/acul3/chatterbox-executorch/resolve/$CHATTERBOX_EXECUTORCH_REVISION/t3_cond_enc.pte",
+        sha256 = "2e953bfa6e9289a7a97ca527592aed0e6d2cb58b29126d5780410455f091ac3d",
+        size = 18_011_520
+    ),
+    RemoteFile(
+        name = "t3_prefill.pte",
+        url = "https://huggingface.co/acul3/chatterbox-executorch/resolve/$CHATTERBOX_EXECUTORCH_REVISION/t3_prefill.pte",
+        sha256 = "721d268943818b5a90530e7dadfae0edb9d3fd0227f93557c2a153ecee675e51",
+        size = 2_116_538_624
+    ),
+    RemoteFile(
+        name = "t3_decode.pte",
+        url = "https://huggingface.co/acul3/chatterbox-executorch/resolve/$CHATTERBOX_EXECUTORCH_REVISION/t3_decode.pte",
+        sha256 = "0704783d9c4c7c621f9f398de40d8fc3829ad2769bca8194505cd86f0aee9ca3",
+        size = 2_098_677_504
+    ),
+    RemoteFile(
+        name = "s3gen_encoder.pte",
+        url = "https://huggingface.co/acul3/chatterbox-executorch/resolve/$CHATTERBOX_EXECUTORCH_REVISION/s3gen_encoder.pte",
+        sha256 = "4f087015bb08526d0689eed1f94baa60761d1777d37b25f7944d6f4944ecce88",
+        size = 185_724_864
+    ),
+    RemoteFile(
+        name = "cfm_step.pte",
+        url = "https://huggingface.co/acul3/chatterbox-executorch/resolve/$CHATTERBOX_EXECUTORCH_REVISION/cfm_step.pte",
+        sha256 = "5ffb90558c0dbada80ac94bd9a6864101cc07826c0f9192dfd0363d190922079",
+        size = 286_434_240
+    ),
+    RemoteFile(
+        name = "hifigan.pte",
+        url = "https://huggingface.co/acul3/chatterbox-executorch/resolve/$CHATTERBOX_EXECUTORCH_REVISION/hifigan.pte",
+        sha256 = "f5239799e82fb2be2aeb63db2de9bef676d2decf7905692a5ccafac7ae3530e2",
+        size = 83_634_944
     )
 )

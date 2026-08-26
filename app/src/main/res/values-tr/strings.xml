@@ -392,6 +392,9 @@
     <string name="tts_model_piper_english_high_description">İngilizce Piper sesi · 35 MB indirme</string>
     <string name="tts_model_kitten_description">İngilizce KittenTTS sesi · 68 MB indirme</string>
     <string name="tts_model_matcha_description">İngilizce Matcha sesi · 131 MB indirme</string>
+    <string name="tts_model_chatterbox_executorch_name">Chatterbox Multilingual</string>
+    <string name="tts_model_chatterbox_executorch_description">Yüksek kaliteli çok dilli ses · yaklaşık 4,8 GB indirme · ExecuTorch spike</string>
+    <string name="tts_advanced_not_chatterbox">Chatterbox yerleşik sesini kullanır; bu ses ayarları uygulanmaz.</string>
     <string name="tts_model_android_name">Sistem sesi</string>
     <string name="tts_model_android_description">Yerleşik ses · her zaman kullanılabilir</string>
     <string name="tts_speech_playback_failed">Konuşma oynatılamadı.</string>

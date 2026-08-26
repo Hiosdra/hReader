@@ -17,8 +17,6 @@ class ChatterboxExecuTorchModelTest {
         assertEquals(24_000, ChatterboxExecuTorchModel.sampleRate)
         assertEquals(
             listOf(
-                "voice_encoder.pte",
-                "xvector_encoder.pte",
                 "t3_cond_speech_emb.pte",
                 "t3_cond_enc.pte",
                 "t3_prefill.pte",
@@ -49,7 +47,7 @@ class ChatterboxExecuTorchModelTest {
         val runtime = ChatterboxExecuTorchRuntime()
 
         assertThrows(IllegalStateException::class.java) {
-            runtime.load(temporaryFolder.newFolder("incomplete"))
+            runtime.load(temporaryFolder.newFolder("incomplete"), 2)
         }
         assertFalse(runtime.isLoaded())
 

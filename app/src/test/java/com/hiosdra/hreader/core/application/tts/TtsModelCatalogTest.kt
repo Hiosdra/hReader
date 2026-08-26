@@ -16,6 +16,10 @@ class TtsModelCatalogTest {
         assertEquals(TtsEngineFamily.VITS, TtsModelCatalog.definition(TtsModel.GOSIA).model.family)
         assertEquals(TtsEngineFamily.KITTEN, TtsModelCatalog.definition(TtsModel.KITTEN_MINI).model.family)
         assertEquals(TtsEngineFamily.MATCHA, TtsModelCatalog.definition(TtsModel.MATCHA_LJSPEECH).model.family)
+        assertEquals(
+            TtsEngineFamily.CHATTERBOX,
+            TtsModelCatalog.definition(TtsModel.CHATTERBOX_EXECUTORCH).model.family
+        )
     }
 
     @Test
@@ -24,12 +28,13 @@ class TtsModelCatalogTest {
             listOf(
                 TtsModel.SUPERTONIC,
                 TtsModel.GOSIA,
+                TtsModel.CHATTERBOX_EXECUTORCH,
                 TtsModel.ANDROID
             ),
             TtsModelCatalog.compatibleModels("PL")
         )
         assertEquals(
-            listOf(TtsModel.KOKORO, TtsModel.ANDROID),
+            listOf(TtsModel.KOKORO, TtsModel.CHATTERBOX_EXECUTORCH, TtsModel.ANDROID),
             TtsModelCatalog.compatibleModels("zh")
         )
         assertEquals(
@@ -39,6 +44,7 @@ class TtsModelCatalogTest {
                 TtsModel.PIPER_LESSAC_HIGH,
                 TtsModel.KITTEN_MINI,
                 TtsModel.MATCHA_LJSPEECH,
+                TtsModel.CHATTERBOX_EXECUTORCH,
                 TtsModel.ANDROID
             ),
             TtsModelCatalog.compatibleModels("en")

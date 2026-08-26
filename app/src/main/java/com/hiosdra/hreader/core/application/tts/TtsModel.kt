@@ -6,6 +6,7 @@ enum class TtsEngineFamily {
     VITS,
     KITTEN,
     MATCHA,
+    CHATTERBOX,
     ANDROID
 }
 
@@ -19,6 +20,7 @@ enum class TtsModel(
     PIPER_LESSAC_HIGH(false, TtsEngineFamily.VITS),
     KITTEN_MINI(false, TtsEngineFamily.KITTEN),
     MATCHA_LJSPEECH(false, TtsEngineFamily.MATCHA),
+    CHATTERBOX_EXECUTORCH(false, TtsEngineFamily.CHATTERBOX),
     ANDROID(true, TtsEngineFamily.ANDROID);
 
     companion object {

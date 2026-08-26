@@ -392,6 +392,9 @@
     <string name="tts_model_piper_english_high_description">Voix anglaise Piper · téléchargement de 35 Mo</string>
     <string name="tts_model_kitten_description">Voix anglaise KittenTTS · téléchargement de 68 Mo</string>
     <string name="tts_model_matcha_description">Voix anglaise Matcha · téléchargement de 131 Mo</string>
+    <string name="tts_model_chatterbox_executorch_name">Chatterbox Multilingual</string>
+    <string name="tts_model_chatterbox_executorch_description">Voix multilingue haute qualité · téléchargement d’environ 4,8 Go · spike ExecuTorch</string>
+    <string name="tts_advanced_not_chatterbox">Chatterbox utilise sa voix intégrée ; ces réglages vocaux ne s’appliquent pas.</string>
     <string name="tts_model_android_name">Voix système</string>
     <string name="tts_model_android_description">Voix intégrée · toujours disponible</string>
     <string name="tts_speech_playback_failed">Échec de la lecture vocale.</string>

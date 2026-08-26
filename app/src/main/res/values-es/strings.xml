@@ -395,6 +395,9 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="tts_model_piper_english_high_description">Voz inglesa de Piper · descarga de 35 MB</string>
     <string name="tts_model_kitten_description">Voz inglesa de KittenTTS · descarga de 68 MB</string>
     <string name="tts_model_matcha_description">Voz inglesa de Matcha · descarga de 131 MB</string>
+    <string name="tts_model_chatterbox_executorch_name">Chatterbox Multilingual</string>
+    <string name="tts_model_chatterbox_executorch_description">Voz multilingüe de alta calidad · descarga de ~4,8 GB · spike de ExecuTorch</string>
+    <string name="tts_advanced_not_chatterbox">Chatterbox usa su voz integrada; estos ajustes de voz no se aplican.</string>
     <string name="tts_model_android_name">Voz del sistema</string>
     <string name="tts_model_android_description">Voz integrada · siempre disponible</string>
     <string name="tts_speech_playback_failed">Falló la reproducción de voz.</string>

@@ -13,7 +13,7 @@ class SupertonicLanguagesTest {
 
     @Test
     fun `skips unsupported detected languages`() {
-        assertEquals("de", TtsLanguages.resolve(listOf("he", "de"), "pl"))
+        assertEquals("de", TtsLanguages.resolve(listOf("xx", "de"), "pl"))
     }
 
     @Test
@@ -23,7 +23,7 @@ class SupertonicLanguagesTest {
 
     @Test
     fun `falls back to english when no language is supported`() {
-        assertEquals("en", TtsLanguages.resolve(listOf("he"), "he"))
+        assertEquals("en", TtsLanguages.resolve(listOf("xx"), "xx"))
     }
 
     @Test
@@ -35,7 +35,7 @@ class SupertonicLanguagesTest {
     fun `routes Chinese to Kokoro without offering Supertonic`() {
         assertEquals("zh", TtsLanguages.resolve(listOf("zh"), "en"))
         assertEquals(
-            listOf(TtsModel.KOKORO, TtsModel.ANDROID),
+            listOf(TtsModel.KOKORO, TtsModel.CHATTERBOX_EXECUTORCH, TtsModel.ANDROID),
             TtsLanguages.compatibleModels("zh")
         )
     }
@@ -49,6 +49,7 @@ class SupertonicLanguagesTest {
                 TtsModel.PIPER_LESSAC_HIGH,
                 TtsModel.KITTEN_MINI,
                 TtsModel.MATCHA_LJSPEECH,
+                TtsModel.CHATTERBOX_EXECUTORCH,
                 TtsModel.ANDROID
             ),
             TtsLanguages.compatibleModels("en")
@@ -61,6 +62,7 @@ class SupertonicLanguagesTest {
             listOf(
                 TtsModel.SUPERTONIC,
                 TtsModel.GOSIA,
+                TtsModel.CHATTERBOX_EXECUTORCH,
                 TtsModel.ANDROID
             ),
             TtsLanguages.compatibleModels("pl")

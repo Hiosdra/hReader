@@ -38,6 +38,13 @@ object TtsModelCatalog {
             supportedLanguages = setOf("en")
         ),
         TtsModelDefinition(
+            model = TtsModel.CHATTERBOX_EXECUTORCH,
+            supportedLanguages = setOf(
+                "ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi", "it",
+                "ja", "ko", "ms", "nl", "no", "pl", "pt", "ru", "sv", "sw", "tr", "zh"
+            )
+        ),
+        TtsModelDefinition(
             model = TtsModel.ANDROID,
             supportedLanguages = emptySet()
         )

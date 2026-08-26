@@ -391,6 +391,9 @@
     <string name="tts_model_piper_english_high_description">영어 Piper 음성 · 35MB 다운로드</string>
     <string name="tts_model_kitten_description">영어 KittenTTS 음성 · 68MB 다운로드</string>
     <string name="tts_model_matcha_description">영어 Matcha 음성 · 131MB 다운로드</string>
+    <string name="tts_model_chatterbox_executorch_name">Chatterbox Multilingual</string>
+    <string name="tts_model_chatterbox_executorch_description">고품질 다국어 음성 · 약 4.8GB 다운로드 · ExecuTorch 스파이크</string>
+    <string name="tts_advanced_not_chatterbox">Chatterbox는 내장 음성을 사용하므로 이 음성 설정은 적용되지 않습니다.</string>
     <string name="tts_model_android_name">시스템 음성</string>
     <string name="tts_model_android_description">내장 음성 · 항상 사용 가능</string>
     <string name="tts_speech_playback_failed">음성 재생에 실패했습니다.</string>

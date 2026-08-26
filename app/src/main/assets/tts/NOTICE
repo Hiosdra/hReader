@@ -5,3 +5,11 @@ Licensed under OpenRAIL-M. The license is included with the model download.
 sherpa-onnx Android runtime
 Copyright (c) 2022-2026 Xiaomi Corporation
 Licensed under the Apache License 2.0.
+
+Chatterbox Multilingual conditioning and tokenizer
+Copyright (c) 2025 Resemble AI
+Licensed under the MIT License.
+
+Chatterbox ExecuTorch export scripts and patches
+Copyright (c) 2025 Resemble AI
+Licensed under the MIT License.

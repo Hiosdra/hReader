@@ -25,6 +25,7 @@ class TtsModelPackageCatalogTest {
         assertEquals("piper-lessac-high", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_LESSAC_HIGH))
         assertEquals("kitten-mini-en-v0_8", TtsModelPackageCatalog.directoryName(TtsModel.KITTEN_MINI))
         assertEquals("matcha-icefall-en_US-ljspeech", TtsModelPackageCatalog.directoryName(TtsModel.MATCHA_LJSPEECH))
+        assertEquals("chatterbox-executorch", TtsModelPackageCatalog.directoryName(TtsModel.CHATTERBOX_EXECUTORCH))
         assertNull(TtsModelPackageCatalog.packageFor(TtsModel.ANDROID))
     }
 
@@ -35,6 +36,10 @@ class TtsModelPackageCatalogTest {
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.GOSIA)?.engineFiles is SherpaModelFiles.Vits)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KITTEN_MINI)?.engineFiles is SherpaModelFiles.Kitten)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)?.engineFiles is SherpaModelFiles.Matcha)
+        assertTrue(
+            TtsModelPackageCatalog.packageFor(TtsModel.CHATTERBOX_EXECUTORCH)?.engineFiles
+                is ChatterboxModelFiles
+        )
         assertEquals(
             listOf("vocos-22khz-univ.onnx"),
             TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)

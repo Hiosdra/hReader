@@ -391,6 +391,9 @@
     <string name="tts_model_piper_english_high_description">英语 Piper 语音 · 下载 35 MB</string>
     <string name="tts_model_kitten_description">英语 KittenTTS 语音 · 下载 68 MB</string>
     <string name="tts_model_matcha_description">英语 Matcha 语音 · 下载 131 MB</string>
+    <string name="tts_model_chatterbox_executorch_name">Chatterbox Multilingual</string>
+    <string name="tts_model_chatterbox_executorch_description">高质量多语言语音 · 下载约 4.8 GB · ExecuTorch spike</string>
+    <string name="tts_advanced_not_chatterbox">Chatterbox 使用内置语音；这些语音设置不适用。</string>
     <string name="tts_model_android_name">系统语音</string>
     <string name="tts_model_android_description">内置语音 · 始终可用</string>
     <string name="tts_speech_playback_failed">语音播放失败。</string>
