@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.preferences
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -523,20 +524,40 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         try {
             migrateSecrets()
             val loaded = secretDataStore.data.first().toSecretState()
+            completeSecretHydration(loaded)
+        } catch (error: CancellationException) {
             synchronized(secretStateLock) {
-                secretState.set(pendingSecretTransforms.fold(loaded) { state, transform ->
+                secretReady.completeExceptionally(error)
+            }
+            throw error
+        } catch (error: Throwable) {
+            Log.e(TAG, "Could not hydrate encrypted preferences; clearing stored secrets", error)
+            try {
+                clearSecretStorage()
+            } catch (cleanupError: CancellationException) {
+                throw cleanupError
+            } catch (cleanupError: Throwable) {
+                Log.e(TAG, "Could not clear encrypted preferences after hydration failure", cleanupError)
+            }
+            synchronized(secretStateLock) {
+                secretState.set(pendingSecretTransforms.fold(SecretState()) { state, transform ->
                     transform(state)
                 })
                 pendingSecretTransforms.clear()
                 secretReady.complete(Unit)
             }
-        } catch (error: Throwable) {
-            synchronized(secretStateLock) {
-                secretReady.completeExceptionally(error)
-            }
-            throw error
         } finally {
             if (!secretReady.isCompleted) secretReady.complete(Unit)
+        }
+    }
+
+    private fun completeSecretHydration(loaded: SecretState) {
+        synchronized(secretStateLock) {
+            secretState.set(pendingSecretTransforms.fold(loaded) { state, transform ->
+                transform(state)
+            })
+            pendingSecretTransforms.clear()
+            secretReady.complete(Unit)
         }
     }
 
@@ -867,6 +888,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val DEFAULT_OFFLINE_BACKLOG_TARGET = 0
         private const val DEFAULT_IMAGE_CACHE_BUDGET_MB = 500
         private const val MIN_SYNC_INTERVAL_MINUTES = 15
+        private const val TAG = "PreferencesManager"
         private const val SECRET_MIGRATION_PREPARED = "prepared"
         private const val SECRET_MIGRATION_COMPLETE = "complete"
 
