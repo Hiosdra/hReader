@@ -15,8 +15,13 @@ private val COLLAPSIBLE_WHITESPACE = Regex("\\s+")
 fun extractArticlePreview(html: String?): String? {
     if (html.isNullOrBlank()) return null
     val text = plainText(html)
-    if (text.isBlank()) return null
+    if (!text.isReadableText()) return null
     return text.take(PREVIEW_MAX_LENGTH)
+}
+
+fun hasReadableArticleText(html: String?): Boolean {
+    if (html.isNullOrBlank()) return false
+    return plainText(html).isReadableText()
 }
 
 fun articlePreviewHtml(preview: String?): String? {
@@ -27,10 +32,14 @@ fun articlePreviewHtml(preview: String?): String? {
 
 private fun plainText(html: String): String {
     val document = runCatching { Jsoup.parse(html) }.getOrNull() ?: return ""
-    document.select("script, style, svg, figure, figcaption, video, audio, source, picture, img")
+    document.select(
+        "script, style, nav, footer, aside, noscript, svg, figure, figcaption, video, audio, source, picture, img"
+    )
         .remove()
     return document.readableText()
 }
+
+private fun String.isReadableText(): Boolean = replace('\u00A0', ' ').isNotBlank()
 
 /**
  * Block elements are separated before the text is collapsed, otherwise a heading runs straight

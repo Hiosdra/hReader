@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.hiosdra.hreader.core.application.ai.AiProvider
+import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
@@ -310,8 +311,8 @@ fun ArticleScreen(
                 RetryableSnackbar(
                     hostState = snackbarHostState,
                     message = message.resolve(),
-                    actionLabel = null,
-                    onAction = {},
+                    actionLabel = stringResource(R.string.action_retry).takeIf { currentEntryId != null },
+                    onAction = { currentEntryId?.let(viewModel::retryContent) },
                     onDismissed = viewModel::clearContentError
                 )
             }
@@ -351,6 +352,15 @@ fun ArticleScreen(
                     )
                 ) {
                     currentEntry?.let { entry ->
+                        val ttsContent = viewModel.getContentForEntry(entry.id)
+                        val contentLoadFinished = entry.id in uiState.content ||
+                            entry.id in uiState.partialContentIds
+                        val ttsContentState = remember(entry.id, ttsContent, contentLoadFinished) {
+                            articleTtsContentState(
+                                content = ttsContent,
+                                contentLoadFinished = contentLoadFinished
+                            )
+                        }
                         ArticleBottomActionBar(
                             modifier = Modifier.onSizeChanged { size ->
                                 if (bottomActionBarHeightPx != size.height) {
@@ -372,14 +382,18 @@ fun ArticleScreen(
                             onToggleSpeech = {
                                 if (ttsState.articleId != null) {
                                     ttsController.stop()
-                                } else {
+                                } else if (ttsContentState == ArticleTtsContentState.AVAILABLE) {
                                     requestNotificationPermission {
-                                        ttsController.play(
-                                            articleId = entry.id,
-                                            title = entry.title,
-                                            html = viewModel.getContentForEntry(entry.id).orEmpty(),
-                                            modelOverride = temporaryTtsModel
-                                        )
+                                        viewModel.getContentForEntry(entry.id)
+                                            ?.takeIf(::hasReadableArticleText)
+                                            ?.let { html ->
+                                                ttsController.play(
+                                                    articleId = entry.id,
+                                                    title = entry.title,
+                                                    html = html,
+                                                    modelOverride = temporaryTtsModel
+                                                )
+                                            }
                                     }
                                 }
                             },
@@ -394,7 +408,9 @@ fun ArticleScreen(
                                     val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
                                     openChromeCustomTab(navController.context, bypassUrl)
                                 }
-                            }
+                            },
+                            contentState = ttsContentState,
+                            onRetryContent = { viewModel.retryContent(entry.id) }
                         )
                     }
                 }

@@ -11,6 +11,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
@@ -76,6 +77,11 @@ class ArticleTtsController internal constructor(
         modelOverride: TtsModel?
     ) {
         stopPlayback()
+        if (!hasReadableArticleText(html)) {
+            _state.value = ArticleTtsState(error = appContext.getString(R.string.tts_no_article_text))
+            scheduleWarmRelease()
+            return
+        }
         val chunks = TtsTextProcessor.fromHtml(title, html)
         if (chunks.isEmpty()) {
             _state.value = ArticleTtsState(error = appContext.getString(R.string.tts_no_article_text))

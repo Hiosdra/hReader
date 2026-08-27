@@ -12,6 +12,7 @@ import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.ai.GemmaModelNotInstalledException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
 import com.hiosdra.hreader.core.application.content.articlePreviewHtml
+import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
@@ -193,10 +194,7 @@ class ArticleViewModel(
     private fun retryPartialContent() {
         val state = _uiState.value
         state.partialContentIds.forEach { entryId ->
-            requestedContentIds.remove(entryId)
-            state.entries.find { it.id == entryId }?.let { entry ->
-                loadArticleText(entry.id, entry.url)
-            }
+            retryContent(entryId)
         }
     }
 
@@ -334,8 +332,8 @@ class ArticleViewModel(
      * Asked for once while the connection state is unchanged. A fallback is retried after the
      * connection returns so it can be upgraded to the full text.
      */
-    private fun loadArticleText(entryId: Long, url: String) {
-        if (_uiState.value.content.containsKey(entryId)) return
+    private fun loadArticleText(entryId: Long, url: String, force: Boolean = false) {
+        if (!force && _uiState.value.content.containsKey(entryId)) return
         if (!requestedContentIds.add(entryId)) return
         viewModelScope.launch {
             try {
@@ -537,6 +535,26 @@ class ArticleViewModel(
     }
 
     fun getOfflinePageForEntry(entryId: Long): OfflinePage? = _uiState.value.offlinePages[entryId]
+
+    fun retryContent(entryId: Long) {
+        val entry = _uiState.value.entries.find { it.id == entryId } ?: return
+        requestedContentIds.remove(entryId)
+        _uiState.update { state ->
+            val currentEntryId = state.entries.getOrNull(state.currentIndex)?.id
+            val hasUsableStoredContent = hasReadableArticleText(state.content[entryId])
+            state.copy(
+                content = if (hasUsableStoredContent) state.content else state.content - entryId,
+                leadImages = if (hasUsableStoredContent) {
+                    state.leadImages
+                } else {
+                    state.leadImages - entryId
+                },
+                partialContentIds = state.partialContentIds - entryId,
+                contentError = if (currentEntryId == entryId) null else state.contentError
+            )
+        }
+        loadArticleText(entry.id, entry.url, force = true)
+    }
 
     fun clearContentError() {
         _uiState.update { it.copy(contentError = null) }

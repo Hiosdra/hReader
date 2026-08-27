@@ -92,6 +92,7 @@
     <string name="article_web_unavailable_offline">オフラインではウェブモードを利用できません</string>
     <string name="article_stop_reading">読み上げを停止</string>
     <string name="article_read_aloud">音声で読み上げ</string>
+    <string name="article_read_aloud_unavailable">この記事には読み上げ可能なテキストがないため、音声読み上げを利用できません。</string>
     <string name="article_tts_model">音声: %1$s</string>
     <string name="article_tts_model_use_settings">設定を使用（%1$s）</string>
     <string name="article_open_original_in_chrome">元のページをChromeで開く</string>

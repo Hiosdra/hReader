@@ -366,7 +366,9 @@ internal fun ArticleBottomActionBar(
     onPauseSpeech: () -> Unit,
     onResumeSpeech: () -> Unit,
     onOpenInChrome: () -> Unit,
-    onBypassPaywall: () -> Unit
+    onBypassPaywall: () -> Unit,
+    contentState: ArticleTtsContentState = ArticleTtsContentState.AVAILABLE,
+    onRetryContent: () -> Unit = {}
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -385,6 +387,32 @@ internal fun ArticleBottomActionBar(
                     onResume = onResumeSpeech
                 )
             }
+            if (state.articleId == null && contentState != ArticleTtsContentState.AVAILABLE) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (contentState == ArticleTtsContentState.LOADING) {
+                                R.string.article_missing_content
+                            } else {
+                                R.string.article_read_aloud_unavailable
+                            }
+                        ),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (contentState == ArticleTtsContentState.UNAVAILABLE) {
+                        TextButton(onClick = onRetryContent) {
+                            Text(stringResource(R.string.action_retry))
+                        }
+                    }
+                }
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -399,7 +427,10 @@ internal fun ArticleBottomActionBar(
                     onTemporaryModelChange = onTemporaryModelChange
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                IconButton(onClick = onToggleSpeech) {
+                IconButton(
+                    onClick = onToggleSpeech,
+                    enabled = state.articleId != null || contentState == ArticleTtsContentState.AVAILABLE
+                ) {
                     Icon(
                         imageVector = if (state.articleId != null) {
                             Icons.Filled.Close
@@ -408,6 +439,10 @@ internal fun ArticleBottomActionBar(
                         },
                         contentDescription = if (state.articleId != null) {
                             stringResource(R.string.article_stop_reading)
+                        } else if (contentState == ArticleTtsContentState.LOADING) {
+                            stringResource(R.string.article_missing_content)
+                        } else if (contentState == ArticleTtsContentState.UNAVAILABLE) {
+                            stringResource(R.string.article_read_aloud_unavailable)
                         } else {
                             stringResource(R.string.article_read_aloud)
                         }

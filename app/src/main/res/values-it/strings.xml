@@ -92,6 +92,7 @@
     <string name="article_web_unavailable_offline">Modalità Web non disponibile offline</string>
     <string name="article_stop_reading">Interrompi lettura</string>
     <string name="article_read_aloud">Leggi ad alta voce</string>
+    <string name="article_read_aloud_unavailable">La lettura ad alta voce non è disponibile perché questo articolo non contiene testo leggibile.</string>
     <string name="article_tts_model">Voce: %1$s</string>
     <string name="article_tts_model_use_settings">Usa impostazioni (%1$s)</string>
     <string name="article_open_original_in_chrome">Apri pagina originale in Chrome</string>
