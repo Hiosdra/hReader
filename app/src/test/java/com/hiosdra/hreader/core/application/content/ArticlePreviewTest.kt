@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.core.application.content
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,6 +39,17 @@ class ArticlePreviewTest {
         assertNull(extractArticlePreview(null))
         assertNull(extractArticlePreview(""))
         assertNull(extractArticlePreview("<img src=\"only-an-image.png\">"))
+    }
+
+    @Test
+    fun `detects whether markup contains readable article text`() {
+        assertTrue(hasReadableArticleText("<p>Article text.</p>"))
+        assertTrue(hasReadableArticleText("<p>  Article text.  </p>"))
+        assertFalse(hasReadableArticleText(null))
+        assertFalse(hasReadableArticleText(" \n\t"))
+        assertFalse(hasReadableArticleText("<p> </p><img src=\"only-an-image.png\">"))
+        assertFalse(hasReadableArticleText("<nav>Menu</nav><footer>Footer</footer>"))
+        assertFalse(hasReadableArticleText("&nbsp;"))
     }
 
     @Test

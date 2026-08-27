@@ -92,6 +92,7 @@
     <string name="article_web_unavailable_offline">离线时无法使用网页模式</string>
     <string name="article_stop_reading">停止朗读</string>
     <string name="article_read_aloud">朗读</string>
+    <string name="article_read_aloud_unavailable">本文没有可朗读的文字，无法使用朗读功能。</string>
     <string name="article_tts_model">语音：%1$s</string>
     <string name="article_tts_model_use_settings">使用设置（%1$s）</string>
     <string name="article_open_original_in_chrome">在 Chrome 中打开原始页面</string>

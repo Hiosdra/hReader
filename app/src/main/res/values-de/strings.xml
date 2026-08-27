@@ -98,6 +98,7 @@
     <string name="article_web_unavailable_offline">Webmodus ist offline nicht verfügbar</string>
     <string name="article_stop_reading">Vorlesen stoppen</string>
     <string name="article_read_aloud">Vorlesen</string>
+    <string name="article_read_aloud_unavailable">Vorlesen ist nicht verfügbar, weil dieser Artikel keinen lesbaren Text enthält.</string>
     <string name="article_tts_model">Stimme: %1$s</string>
     <string name="article_tts_model_use_settings">Einstellungen verwenden (%1$s)</string>
     <string name="article_open_original_in_chrome">Originalseite in Chrome öffnen</string>
