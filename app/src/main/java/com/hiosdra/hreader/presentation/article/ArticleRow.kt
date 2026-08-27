@@ -52,7 +52,9 @@ import java.time.format.FormatStyle
 fun ArticleRow(
     entry: ArticleListEntry,
     onOpen: (Long) -> Unit,
-    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
+    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    isOnline: Boolean = true,
+    localImagePath: String? = null
 ) {
     val checked = entry.isRead
     val locale = LocalLocale.current.platformLocale
@@ -185,6 +187,10 @@ fun ArticleRow(
                                 entryId = entry.id,
                                 imageUrl = entry.imageUrl,
                                 contentDescription = null,
+                                isOnline = isOnline,
+                                localImagePath = localImagePath,
+                                lookupLocalPath = false,
+                                checkRemotePolicy = false,
                                 modifier = Modifier.matchParentSize(),
                                 contentScale = ContentScale.Crop
                             )

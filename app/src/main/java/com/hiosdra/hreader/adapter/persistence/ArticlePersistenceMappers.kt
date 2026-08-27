@@ -50,7 +50,7 @@ internal fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
         siteUrl = feedSiteUrl,
         feedUrl = feedUrl.orEmpty()
     ),
-    imageUrl = enclosures.firstOrNull { it.isImage }?.url,
+    imageUrl = leadImageUrl,
     status = status ?: ArticleStatus.UNREAD,
     isBacklog = backlogFetchedAt != null
 )
@@ -96,6 +96,7 @@ internal fun Entry.toEntity(): ArticleEntity = ArticleEntity(
     feedId = feed.id,
     readingTime = readingTime,
     enclosures = enclosures,
+    leadImageUrl = enclosures.firstOrNull { it.isImage }?.url,
     status = status,
     starred = starred
 )
@@ -106,4 +107,3 @@ internal fun Feed.toArticleFeedEntity(): FeedEntity = FeedEntity(
     siteUrl = siteUrl,
     feedUrl = feedUrl
 )
-

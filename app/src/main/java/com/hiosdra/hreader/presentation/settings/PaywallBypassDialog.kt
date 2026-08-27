@@ -3,6 +3,7 @@ package com.hiosdra.hreader.presentation.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -16,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 
@@ -46,13 +48,17 @@ fun PaywallBypassDialog(
                         leadingContent = {
                             RadioButton(
                                 selected = selected == method,
-                                onClick = { onSelect(method) }
+                                onClick = null
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onSelect(method) }
+                            .selectable(
+                                selected = selected == method,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(method) }
+                            )
                     )
                 }
             }

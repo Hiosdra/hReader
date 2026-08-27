@@ -35,7 +35,7 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleReadingPositio
         ArticlePageSnapshot::class,
         ArticleReadingPosition::class
     ],
-    version = 16
+    version = 18
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

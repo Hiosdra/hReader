@@ -25,6 +25,7 @@ import kotlin.math.roundToInt
 
 private const val CONTENT_HEIGHT_UPDATE_ATTEMPTS = 12
 private const val CONTENT_HEIGHT_UPDATE_DELAY_MS = 100L
+private const val CONTENT_HEIGHT_STABLE_SAMPLES = 2
 
 internal enum class ReaderGestureDirection {
     Horizontal,
@@ -53,6 +54,15 @@ internal fun readerWebViewScrollProgress(
     val maxScrollPx = (contentHeightPx - viewportHeightPx).coerceAtLeast(1f)
     return (scrollY.toFloat() / maxScrollPx).coerceIn(0f, 1f)
 }
+
+internal fun contentHeightIsSettled(
+    previousHeightPx: Int,
+    candidateHeightPx: Int,
+    stableSamples: Int,
+    requiredStableSamples: Int = CONTENT_HEIGHT_STABLE_SAMPLES
+): Boolean = candidateHeightPx > 0 &&
+    candidateHeightPx == previousHeightPx &&
+    stableSamples >= requiredStableSamples
 
 internal class ReaderWebViewScrollProgressReporter(
     private val onChanged: (progress: Float, isScrollable: Boolean, thumbFraction: Float) -> Unit
@@ -165,13 +175,27 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         val update = object : Runnable {
             private var attempts = 0
             private var lastHeight = 0
+            private var stableSamples = 0
+            private var reportedHeight = 0
 
             override fun run() {
                 if (released) return
                 val height = (contentHeight * resources.displayMetrics.density).roundToInt()
-                if (height > 0 && height != lastHeight) {
-                    lastHeight = height
-                    onHeightChanged(height)
+                if (height > 0) {
+                    if (height == lastHeight) {
+                        stableSamples += 1
+                    } else {
+                        lastHeight = height
+                        stableSamples = 1
+                    }
+                    val isFinalAttempt = attempts >= CONTENT_HEIGHT_UPDATE_ATTEMPTS
+                    if (
+                        (contentHeightIsSettled(lastHeight, height, stableSamples) || isFinalAttempt) &&
+                        height != reportedHeight
+                    ) {
+                        reportedHeight = height
+                        onHeightChanged(height)
+                    }
                 }
                 if (attempts < CONTENT_HEIGHT_UPDATE_ATTEMPTS) {
                     attempts += 1

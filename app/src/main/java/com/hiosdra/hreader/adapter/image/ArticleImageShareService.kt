@@ -6,6 +6,7 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,19 +21,27 @@ import java.util.concurrent.TimeUnit
 private const val MAX_SHARED_IMAGE_BYTES = 16L * 1024 * 1024
 private const val MAX_SHARED_IMAGE_FILES = 8
 
-class ArticleImageShareService(context: Context) : ArticleImageSharer {
+class ArticleImageShareService(
+    context: Context,
+    httpClient: OkHttpClient,
+    private val remoteResourcePolicy: RemoteResourcePolicy
+) : ArticleImageSharer {
     private val appContext = context.applicationContext
-    private val imageShareClient = OkHttpClient.Builder()
+    private val imageShareClient = httpClient.newBuilder()
+        .apply { interceptors().clear() }
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .callTimeout(60, TimeUnit.SECONDS)
         .build()
 
     override suspend fun share(title: String?, url: String): Boolean = withContext(Dispatchers.IO) {
+        if (!remoteResourcePolicy.allows(url)) return@withContext false
         try {
             val request = Request.Builder().url(url).build()
             imageShareClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext false
+                if (!response.isSuccessful || !remoteResourcePolicy.allows(response.request.url.toString())) {
+                    return@withContext false
+                }
                 val body = response.body
                 val contentType = body.contentType()?.toString() ?: "image/jpeg"
                 val bytes = body.byteStream().readAtMost(MAX_SHARED_IMAGE_BYTES) ?: return@withContext false

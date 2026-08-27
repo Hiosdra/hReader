@@ -99,9 +99,10 @@ fun OfflinePageWebView(
                                     val url = requestUri.toString()
                                     if (isSameWebOrigin(url, currentPage.value.baseUrl)) return false
                                     val cleanedUrl = cleanUrl(url)
-                                    if (!isAllowedArticleLink(cleanedUrl)) return true
-                                    currentOnLinkClick.value?.invoke(cleanedUrl)
-                                    return currentOnLinkClick.value != null
+                                    if (isAllowedArticleLink(cleanedUrl)) {
+                                        currentOnLinkClick.value?.invoke(cleanedUrl)
+                                    }
+                                    return true
                                 }
 
                                 override fun onPageFinished(view: WebView?, url: String?) {

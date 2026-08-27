@@ -66,11 +66,6 @@ internal fun GemmaSettingsSection(
         }
     }
 
-    Text(
-        text = stringResource(R.string.settings_local_ai),
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,

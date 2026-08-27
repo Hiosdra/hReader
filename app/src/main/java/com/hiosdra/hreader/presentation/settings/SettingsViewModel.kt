@@ -13,6 +13,7 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.core.application.sync.SyncOperationError
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
+import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import com.hiosdra.hreader.presentation.text.UiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class ServerSettingsUiState(
     val backendType: BackendType = BackendType.FRESHRSS,
@@ -105,12 +105,12 @@ class SettingsViewModel(
     private val _offline = MutableStateFlow(currentOfflineSettings())
     val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
     private var offlineAwaitingWork = false
-    private var offlineWorkId: UUID? = null
+    private var offlineWorkId: SyncOperationId? = null
 
     private val _sync = MutableStateFlow(currentSyncSettings())
     val sync: StateFlow<SyncUiState> = _sync.asStateFlow()
     private var resyncAwaitingWork = false
-    private var resyncWorkId: UUID? = null
+    private var resyncWorkId: SyncOperationId? = null
 
     init {
         loadAiModels()
@@ -209,7 +209,7 @@ class SettingsViewModel(
         }
     }
 
-    private fun watchOfflinePreparation(workId: UUID) {
+    private fun watchOfflinePreparation(workId: SyncOperationId) {
         viewModelScope.launch {
             val terminalProgress = settings.observeOfflinePreparation().first { progress ->
                 workId in progress.status.workIds &&
@@ -325,7 +325,7 @@ class SettingsViewModel(
         }
     }
 
-    private fun watchResync(workId: UUID) {
+    private fun watchResync(workId: SyncOperationId) {
         viewModelScope.launch {
             val terminalStatus = settings.observeRequestedSync().first { status ->
                 workId in status.workIds && (
@@ -502,7 +502,7 @@ class SettingsViewModel(
      * there is an account to sync — so finishing setup, or signing back in, has to say so. The
      * first sync is started here too rather than leaving a new install empty for an hour.
      */
-    fun onSetupFinished() {
+    fun onSetupFinished(onFinished: () -> Unit = {}) {
         viewModelScope.launch {
             val writes = runCatchingCancellable { settings.awaitPreferenceWrites() }
             if (writes.isFailure) {
@@ -520,6 +520,7 @@ class SettingsViewModel(
             }
             settings.schedulePeriodicSync()
             settings.syncNow(forceFullSync = true, userVisible = true)
+            onFinished()
         }
     }
 

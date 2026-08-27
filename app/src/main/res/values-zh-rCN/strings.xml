@@ -434,4 +434,27 @@
     <string name="offline_original_pages_download_failed">无法下载原始页面。</string>
     <string name="sync_content_failed">文章同步失败。</string>
     <string name="sync_article_content_failed">无法下载文章内容。</string>
+    <string name="main_scope_unread">未读</string>
+    <string name="main_scope_all">全部</string>
+    <string name="main_scope_starred">已加星标</string>
+    <string name="main_scope_feed">此订阅</string>
+    <string name="main_scope_search">搜索：%1$s</string>
+    <string name="main_clear_filters">清除筛选条件</string>
+    <string name="main_no_unread_articles">此范围内没有未读文章</string>
+    <string name="main_show_all_from_empty">显示所有文章</string>
+    <string name="main_syncing_first_time">正在进行首次同步。文章下载后会显示在这里。</string>
+    <string name="main_sync_failed">无法完成首次同步。</string>
+    <string name="article_starred">已加星标</string>
+    <string name="article_not_starred">未加星标</string>
+    <string name="onboarding_optional_settings">可选设置</string>
+    <string name="onboarding_optional_settings_summary">可稍后配置诊断和 AI 摘要</string>
+    <string name="settings_group_reading_summary">文本显示、语音和链接选项</string>
+    <string name="settings_group_ai_summary">云端摘要和可信度信号</string>
+    <string name="settings_group_local_ai_summary">可选的设备端模型和下载控制</string>
+    <string name="settings_group_privacy_summary">错误报告、性能数据和本地缓存</string>
+    <string name="settings_group_expand">展开部分</string>
+    <string name="settings_group_collapse">收起部分</string>
+    <string name="settings_group_expanded">已展开</string>
+    <string name="settings_group_collapsed">已收起</string>
+    <string name="settings_operation_article_reconciliation">文章协调</string>
 </resources>

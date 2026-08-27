@@ -20,7 +20,7 @@ data class ArticleListItem(
     val publishedAt: Instant,
     val preview: String?,
     val readingTime: Int?,
-    val enclosures: List<Enclosure>,
+    val leadImageUrl: String?,
     val status: ArticleStatus?,
     val starred: Boolean,
     val backlogFetchedAt: Instant?,

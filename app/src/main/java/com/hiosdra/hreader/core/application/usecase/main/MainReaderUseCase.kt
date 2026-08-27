@@ -7,6 +7,9 @@ import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
+import com.hiosdra.hreader.core.application.sync.SyncIntent
+import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
+import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
@@ -36,9 +39,9 @@ class MainReaderUseCase(
 
     suspend fun ensureCacheOwner() = cache.ensureCacheOwner()
 
-    suspend fun refreshArticles() = articles.refreshArticles()
+    fun requestRefresh(): SyncOperationId? = sync.request(SyncIntent.User(userVisible = true))
 
-    fun enqueuePrefetch() = sync.enqueuePrefetch()
+    fun observeSync(): Flow<SyncOperationStatus> = sync.observeRequestedSync()
 
     suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
         articles.unreadIds(feedId, starredOnly)

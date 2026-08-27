@@ -14,6 +14,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -23,9 +24,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import org.koin.compose.koinInject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -45,7 +48,8 @@ fun ArticleWebView(
     onScrollProgress: ((Float) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
-    preferencesManager: AppPreferences = koinInject()
+    preferencesManager: AppPreferences = koinInject(),
+    remoteResourcePolicy: RemoteResourcePolicy = koinInject()
 ) {
     val textColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.onSurface.toArgb())
     val linkColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.primary.toArgb())
@@ -62,6 +66,9 @@ fun ArticleWebView(
     val currentOnScrollProgress = rememberUpdatedState(onScrollProgress)
     val currentOnLinkClick = rememberUpdatedState(onLinkClick)
     val currentOnImageLongClick = rememberUpdatedState(onImageLongClick)
+    val currentRemoteResourcePolicy = rememberUpdatedState(remoteResourcePolicy)
+    val currentAllowNetworkLoads = rememberUpdatedState(allowNetworkLoads)
+    val resourceScope = rememberCoroutineScope()
 
     // Watched rather than read once, so turning the setting on redraws the article already open.
     val bionicReadingEnabled by preferencesManager.observeBionicReadingEnabled()
@@ -155,8 +162,13 @@ fun ArticleWebView(
                                 request: WebResourceRequest?
                             ): WebResourceResponse? {
                                 val url = request?.url?.toString() ?: return null
-                                val localPath = currentLocalImagePaths.value[url] ?: return null
-                                return serveLocalArticleImage(localPath, view?.context?.filesDir)
+                                val localPath = currentLocalImagePaths.value[url]
+                                if (!localPath.isNullOrBlank()) {
+                                    serveLocalArticleImage(localPath, view?.context?.filesDir)?.let { return it }
+                                }
+                                if (!isHttpResource(url)) return null
+                                if (currentRemoteResourcePolicy.value.allows(url)) return null
+                                return blockedResourceResponse()
                             }
 
                             override fun shouldOverrideUrlLoading(
@@ -165,8 +177,17 @@ fun ArticleWebView(
                             ): Boolean {
                                 val url = request?.url?.toString() ?: return false
                                 val cleanedUrl = cleanUrl(url)
-                                if (isAllowedArticleLink(cleanedUrl)) {
+                                if (!isAllowedArticleLink(cleanedUrl)) return true
+                                if (!currentAllowNetworkLoads.value) {
                                     currentOnLinkClick.value?.invoke(cleanedUrl)
+                                    return true
+                                }
+                                val policy = currentRemoteResourcePolicy.value
+                                resourceScope.launch(Dispatchers.IO) {
+                                    if (!policy.allows(cleanedUrl)) return@launch
+                                    withContext(Dispatchers.Main.immediate) {
+                                        currentOnLinkClick.value?.invoke(cleanedUrl)
+                                    }
                                 }
                                 return true
                             }

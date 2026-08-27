@@ -212,7 +212,7 @@ class ArticleViewModel(
                 contentError = if (arrivedAt in state.partialContentIds) {
                     PARTIAL_CONTENT_MESSAGE
                 } else {
-                    state.contentError
+                    null
                 }
             ).trimReaderState(index)
         }

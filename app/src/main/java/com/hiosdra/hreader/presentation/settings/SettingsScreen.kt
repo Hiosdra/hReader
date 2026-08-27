@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -207,55 +209,73 @@ fun SettingsScreen(
             }
 
             item {
-                ReadingSettingsSection(
-                    bionicReadingEnabled = bionicReadingEnabled,
-                    onBionicReadingChange = onToggleBionicReading,
-                    selectedTtsModel = preferencesManager.getTtsModel(),
-                    selectedBypassMethod = selectedBypassMethod,
-                    onOpenTts = { navController?.navigate(Routes.TTS_SETTINGS) },
-                    onOpenBypass = { showBypassDialog = true }
-                )
+                SettingsGroup(
+                    title = stringResource(R.string.settings_reading_experience),
+                    summary = stringResource(R.string.settings_group_reading_summary)
+                ) {
+                    ReadingSettingsSection(
+                        bionicReadingEnabled = bionicReadingEnabled,
+                        onBionicReadingChange = onToggleBionicReading,
+                        selectedTtsModel = preferencesManager.getTtsModel(),
+                        selectedBypassMethod = selectedBypassMethod,
+                        onOpenTts = { navController?.navigate(Routes.TTS_SETTINGS) },
+                        onOpenBypass = { showBypassDialog = true }
+                    )
+                }
             }
 
             item {
-                GemmaSettingsSection(
-                    preferences = preferencesManager,
-                    modelManager = gemmaModelManager,
-                    downloadScheduler = gemmaModelDownloadScheduler,
-                    modelLifecycle = gemmaModelLifecycle,
-                    onRequestNotifications = requestNotificationPermission
-                )
+                SettingsGroup(
+                    title = stringResource(R.string.settings_local_ai),
+                    summary = stringResource(R.string.settings_group_local_ai_summary)
+                ) {
+                    GemmaSettingsSection(
+                        preferences = preferencesManager,
+                        modelManager = gemmaModelManager,
+                        downloadScheduler = gemmaModelDownloadScheduler,
+                        modelLifecycle = gemmaModelLifecycle,
+                        onRequestNotifications = requestNotificationPermission
+                    )
+                }
             }
 
             item {
-                AiSettingsSection(
-                    credibilityScoreEnabled = credibilityScoreEnabled,
-                    onCredibilityScoreChange = onToggleCredibilityScore,
-                    openRouterApiKey = openRouterApiKey,
-                    onOpenRouterApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
-                    aiModels = aiModels,
-                    onOpenModelPicker = { showModelSheet = true }
-                )
+                SettingsGroup(
+                    title = stringResource(R.string.settings_ai_features),
+                    summary = stringResource(R.string.settings_group_ai_summary)
+                ) {
+                    AiSettingsSection(
+                        credibilityScoreEnabled = credibilityScoreEnabled,
+                        onCredibilityScoreChange = onToggleCredibilityScore,
+                        openRouterApiKey = openRouterApiKey,
+                        onOpenRouterApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
+                        aiModels = aiModels,
+                        onOpenModelPicker = { showModelSheet = true }
+                    )
+                }
             }
 
             item {
-                DiagnosticsSettingsSection(
-                    errorReportingEnabled = sentryReportingEnabled,
-                    onErrorReportingChange = onToggleSentryReporting,
-                    onShowPerformance = { showPerformanceDialog = true }
-                )
-            }
-
-            item {
-                LocalDataSection(
-                    state = sync,
-                    canSignOut = serverSettings.hasAllFields,
-                    isBusy = serverSettings.isSwitchingBackend,
-                    onResyncFromScratch = {
-                        requestNotificationPermission(settingsViewModel::resyncFromScratch)
-                    },
-                    onSignOut = { showSignOutDialog = true }
-                )
+                SettingsGroup(
+                    title = stringResource(R.string.settings_privacy_diagnostics),
+                    summary = stringResource(R.string.settings_group_privacy_summary)
+                ) {
+                    DiagnosticsSettingsSection(
+                        errorReportingEnabled = sentryReportingEnabled,
+                        onErrorReportingChange = onToggleSentryReporting,
+                        onShowPerformance = { showPerformanceDialog = true }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LocalDataSection(
+                        state = sync,
+                        canSignOut = serverSettings.hasAllFields,
+                        isBusy = serverSettings.isSwitchingBackend,
+                        onResyncFromScratch = {
+                            requestNotificationPermission(settingsViewModel::resyncFromScratch)
+                        },
+                        onSignOut = { showSignOutDialog = true }
+                    )
+                }
             }
         }
 
@@ -448,6 +468,7 @@ private fun SyncPerformanceRecord.operationLabelRes(): Int = when (operationName
     SyncPerformanceOperation.ARTICLE_CONTENT_PREFETCH.key -> R.string.settings_operation_article_content_prefetch
     SyncPerformanceOperation.ENCLOSURE_IMAGES_DOWNLOAD.key -> R.string.settings_operation_enclosure_images_download
     SyncPerformanceOperation.BATCH_PROCESSING.key -> R.string.settings_operation_batch_processing
+    SyncPerformanceOperation.ARTICLE_RECONCILIATION.key -> R.string.settings_operation_article_reconciliation
     SyncPerformanceOperation.INCREMENTAL_SYNC.key -> R.string.settings_operation_incremental_sync
     SyncPerformanceOperation.FULL_SYNC.key -> R.string.settings_operation_full_sync
     else -> R.string.settings_operation_other

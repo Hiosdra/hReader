@@ -1,31 +1,44 @@
 package com.hiosdra.hreader.presentation.article
 
 import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.koin.compose.koinInject
 
 @Composable
 internal fun RemoteArticleWebView(
     entryId: Long,
     url: String,
     isOnline: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    remoteResourcePolicy: RemoteResourcePolicy = koinInject()
 ) {
     val loadedUrl = remember { mutableStateOf<String?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
@@ -35,8 +48,18 @@ internal fun RemoteArticleWebView(
     var isScrollable by rememberSaveable(entryId) { mutableStateOf(false) }
     var renderProcessError by remember(entryId, url) { mutableStateOf(false) }
     var renderAttempt by remember(entryId, url) { mutableIntStateOf(0) }
+    var resourceAllowed by remember(url, renderAttempt) { mutableStateOf<Boolean?>(null) }
+    val resourceScope = rememberCoroutineScope()
+    val currentIsOnline = rememberUpdatedState(isOnline)
+    LaunchedEffect(url, renderAttempt) {
+        resourceAllowed = withContext(Dispatchers.IO) { remoteResourcePolicy.allows(url) }
+    }
 
-    if (renderProcessError) {
+    if (resourceAllowed == null) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+        }
+    } else if (resourceAllowed == false || renderProcessError) {
         ReaderWebViewError(
             modifier = modifier,
             onRetry = {
@@ -61,6 +84,33 @@ internal fun RemoteArticleWebView(
                             protectVerticalScrollFromPager = true
                             settings.hardenArticleContent()
                             webViewClient = object : WebViewClient() {
+                                override fun shouldInterceptRequest(
+                                    view: WebView?,
+                                    request: WebResourceRequest?
+                                ): WebResourceResponse? {
+                                    val resourceUrl = request?.url?.toString() ?: return null
+                                    if (!isHttpResource(resourceUrl) || remoteResourcePolicy.allows(resourceUrl)) {
+                                        return null
+                                    }
+                                    return blockedResourceResponse()
+                                }
+
+                                override fun shouldOverrideUrlLoading(
+                                    view: WebView?,
+                                    request: WebResourceRequest?
+                                ): Boolean {
+                                    val navigationUrl = request?.url?.toString() ?: return false
+                                    if (!isAllowedArticleLink(navigationUrl) || !currentIsOnline.value) return true
+                                    val targetView = view ?: return true
+                                    resourceScope.launch(Dispatchers.IO) {
+                                        if (!remoteResourcePolicy.allows(navigationUrl)) return@launch
+                                        withContext(Dispatchers.Main.immediate) {
+                                            targetView.loadUrl(navigationUrl)
+                                        }
+                                    }
+                                    return true
+                                }
+
                                 override fun onRenderProcessGone(
                                     view: WebView,
                                     detail: RenderProcessGoneDetail

@@ -314,6 +314,7 @@
     <string name="offline_download_complete">Download offline completato.</string>
     <plurals name="offline_download_complete_missing_images">
         <item quantity="one">Download offline completato — %1$d immagine non è disponibile offline.</item>
+        <item quantity="many">Download offline completato — %1$d immagini non sono disponibili offline.</item>
         <item quantity="other">Download offline completato — %1$d immagini non sono disponibili offline.</item>
     </plurals>
     <string name="offline_download_failed">Download offline non riuscito: %1$s</string>
@@ -435,4 +436,27 @@
     <string name="offline_original_pages_download_failed">Impossibile scaricare le pagine originali.</string>
     <string name="sync_content_failed">Sincronizzazione dell’articolo non riuscita.</string>
     <string name="sync_article_content_failed">Impossibile scaricare il contenuto degli articoli.</string>
+    <string name="main_scope_unread">Non letti</string>
+    <string name="main_scope_all">Tutti</string>
+    <string name="main_scope_starred">Preferiti</string>
+    <string name="main_scope_feed">Questo feed</string>
+    <string name="main_scope_search">Ricerca: %1$s</string>
+    <string name="main_clear_filters">Cancella filtri</string>
+    <string name="main_no_unread_articles">Nessun articolo non letto in questo ambito</string>
+    <string name="main_show_all_from_empty">Mostra tutti gli articoli</string>
+    <string name="main_syncing_first_time">La prima sincronizzazione è in corso. Gli articoli appariranno qui appena scaricati.</string>
+    <string name="main_sync_failed">Non è stato possibile completare la prima sincronizzazione.</string>
+    <string name="article_starred">Preferito</string>
+    <string name="article_not_starred">Non tra i preferiti</string>
+    <string name="onboarding_optional_settings">Impostazioni opzionali</string>
+    <string name="onboarding_optional_settings_summary">Diagnostica e riepiloghi AI possono essere configurati in seguito</string>
+    <string name="settings_group_reading_summary">Visualizzazione del testo, voce e opzioni dei link</string>
+    <string name="settings_group_ai_summary">Riepiloghi cloud e segnali di attendibilità</string>
+    <string name="settings_group_local_ai_summary">Modello facoltativo sul dispositivo e controlli di download</string>
+    <string name="settings_group_privacy_summary">Segnalazioni di errori, dati sulle prestazioni e cache locale</string>
+    <string name="settings_group_expand">Espandi sezione</string>
+    <string name="settings_group_collapse">Comprimi sezione</string>
+    <string name="settings_group_expanded">Espansa</string>
+    <string name="settings_group_collapsed">Compressa</string>
+    <string name="settings_operation_article_reconciliation">Riconciliazione degli articoli</string>
 </resources>

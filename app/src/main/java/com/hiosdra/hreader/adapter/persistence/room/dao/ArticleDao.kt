@@ -19,11 +19,12 @@ import java.time.Instant
 private const val LIST_COLUMNS =
     "a.id AS id, a.title AS title, a.author AS author, a.url AS url, " +
         "a.publishedAt AS publishedAt, a.preview AS preview, a.readingTime AS readingTime, " +
-        "a.enclosures AS enclosures, a.status AS status, a.starred AS starred, " +
+        "a.leadImageUrl AS leadImageUrl, a.status AS status, a.starred AS starred, " +
         "a.backlogFetchedAt AS backlogFetchedAt, a.feedId AS feedId, " +
         "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl"
 
 private const val FROM_ARTICLES_WITH_FEED = "FROM articles a LEFT JOIN feeds f ON f.id = a.feedId"
+private const val FROM_ARTICLES = "FROM articles a"
 
 /**
  * Which articles the list shows.
@@ -88,7 +89,7 @@ interface ArticleDao {
         readStatus: ArticleStatus = ArticleStatus.READ
     ): PagingSource<Int, ArticleListItem>
 
-    @Query("SELECT COUNT(*) $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER")
+    @Query("SELECT COUNT(*) $FROM_ARTICLES WHERE $VISIBILITY_FILTER")
     suspend fun countList(
         feedId: Long?,
         starredOnly: Boolean,
@@ -98,7 +99,7 @@ interface ArticleDao {
     ): Int
 
     @Query(
-        "SELECT COUNT(*) $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+        "SELECT COUNT(*) $FROM_ARTICLES WHERE $VISIBILITY_FILTER " +
             "AND (a.publishedAt < :publishedAt OR " +
             "(a.publishedAt = :publishedAt AND a.id < :articleId))"
     )
@@ -113,7 +114,7 @@ interface ArticleDao {
     ): Int
 
     @Query(
-        "SELECT COUNT(*) $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+        "SELECT COUNT(*) $FROM_ARTICLES WHERE $VISIBILITY_FILTER " +
             "AND a.id = :articleId"
     )
     suspend fun countVisibleArticle(
@@ -129,7 +130,7 @@ interface ArticleDao {
     suspend fun getPublishedAt(articleId: String): Instant?
 
     @Query(
-        "SELECT a.id $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+        "SELECT a.id $FROM_ARTICLES WHERE $VISIBILITY_FILTER " +
             "$LIST_ORDER LIMIT :limit OFFSET :offset"
     )
     suspend fun getListWindow(
@@ -143,7 +144,7 @@ interface ArticleDao {
     ): List<String>
 
     @Query(
-        "SELECT a.id $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+        "SELECT a.id $FROM_ARTICLES WHERE $VISIBILITY_FILTER " +
             "AND (a.publishedAt < :publishedAt OR " +
             "(a.publishedAt = :publishedAt AND a.id < :articleId)) " +
             "ORDER BY a.publishedAt DESC, a.id DESC LIMIT :limit"
@@ -160,7 +161,7 @@ interface ArticleDao {
     ): List<String>
 
     @Query(
-        "SELECT a.id $FROM_ARTICLES_WITH_FEED WHERE $VISIBILITY_FILTER " +
+        "SELECT a.id $FROM_ARTICLES WHERE $VISIBILITY_FILTER " +
             "AND (a.publishedAt > :publishedAt OR " +
             "(a.publishedAt = :publishedAt AND a.id > :articleId)) " +
             "ORDER BY a.publishedAt ASC, a.id ASC LIMIT :limit"
@@ -177,7 +178,7 @@ interface ArticleDao {
     ): List<String>
 
     @Query(
-        "SELECT a.id $FROM_ARTICLES_WITH_FEED " +
+        "SELECT a.id $FROM_ARTICLES " +
             "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
             "AND (:starredOnly = 0 OR a.starred = 1) " +
             "AND (a.status IS NULL OR a.status != :readStatus)"
@@ -338,7 +339,9 @@ interface ArticleDao {
     @Query(
         "SELECT id, url, enclosures FROM articles " +
             "WHERE (status IS NULL OR status != :readStatus) " +
-            "OR backlogFetchedAt IS NOT NULL OR starred = 1"
+            "OR backlogFetchedAt IS NOT NULL OR starred = 1 " +
+            "ORDER BY CASE WHEN (status IS NULL OR status != :readStatus) THEN 0 " +
+            "WHEN starred = 1 THEN 1 ELSE 2 END, publishedAt DESC, id DESC"
     )
     suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
 

@@ -89,9 +89,6 @@ class ArticleContentSyncWorker(
         Log.i(TAG, "Starting ArticleContentSyncWorker")
         return try {
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
-            performOrphanedContentCleanup()
-            backfillPreviews()
-
             val targets = articleRepository.getPrefetchTargets()
             Log.i(TAG, "Found ${targets.size} local unread articles")
 
@@ -102,7 +99,10 @@ class ArticleContentSyncWorker(
 
             // Images first. They are what the list and the opened article show, they are small, and
             // behind an unbounded article-text stage they never ran at all.
-            downloadEnclosureImages(targets)
+            downloadEnclosureImages(
+                targets = targets,
+                downloadAllImages = inputData.getBoolean(KEY_DOWNLOAD_ALL_IMAGES, false)
+            )
             val remaining = prefetchArticleContent(targets)
 
             // Only when the reader asked for the whole cache. A background run leaves the rest to
@@ -147,35 +147,20 @@ class ArticleContentSyncWorker(
         )
     }
 
-    private suspend fun performOrphanedContentCleanup() {
-            syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ORPHANED_CONTENT_CLEANUP) {
-            articleContentRepository.cleanupOrphanedContent()
-        }
-    }
-
     /**
-     * Articles cached before previews were stored have none, and deriving one needs an HTML parser
-     * rather than SQL. Doing it here rather than in the migration keeps the upgrade instant and
-     * spreads the work across the syncs that follow it.
-     */
-    private suspend fun backfillPreviews() {
-        try {
-            articleRepository.backfillMissingPreviews()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w(TAG, "Preview backfill failed: ${e.message}")
-        }
-    }
-
-    /**
-     * Progress is published on a timer rather than per article: the prefetch runs a hundred
-     * downloads at a time, and a WorkManager write per completion would cost more than the work.
+     * Progress is published on a timer rather than per article: the prefetch runs bounded parallel
+     * downloads, and a WorkManager write per completion would cost more than the work.
      *
      * Returns how many articles are still without stored text once this run's slice is done.
      */
     private suspend fun prefetchArticleContent(targets: List<PrefetchTarget>): Int = coroutineScope {
-        val outstanding = articleContentRepository.entriesMissingContent(targets.map { it.id to it.url })
+        val downloadAllImages = inputData.getBoolean(KEY_DOWNLOAD_ALL_IMAGES, false)
+        val targetEntries = targets.map { it.id to it.url }
+        val outstanding = if (downloadAllImages) {
+            articleContentRepository.entriesMissingFullOfflinePreparation(targetEntries)
+        } else {
+            articleContentRepository.entriesMissingContent(targetEntries)
+        }
         val batch = outstanding.take(MAX_ARTICLES_PER_RUN)
         if (batch.isEmpty()) return@coroutineScope 0
 
@@ -194,6 +179,7 @@ class ArticleContentSyncWorker(
                 articleContentRepository.prefetchArticleContent(
                     entries = batch,
                     limit = null,
+                    downloadAllImages = downloadAllImages,
                     onProgress = { completed, _ -> done.set(completed) }
                 )
             }
@@ -230,9 +216,12 @@ class ArticleContentSyncWorker(
      * The budget is what keeps this stage from consuming the run: it goes first so that it is not
      * starved, and stops in time to leave the article bodies their share.
      */
-    private suspend fun downloadEnclosureImages(targets: List<PrefetchTarget>) {
+    private suspend fun downloadEnclosureImages(
+        targets: List<PrefetchTarget>,
+        downloadAllImages: Boolean
+    ) {
         val enclosureImageEntries = targets.mapNotNull { target ->
-            target.imageEnclosureUrls().takeIf { it.isNotEmpty() }?.let { urls ->
+            target.imageEnclosureUrls(downloadAllImages).takeIf { it.isNotEmpty() }?.let { urls ->
                 target.id to urls
             }
         }
@@ -254,5 +243,7 @@ class ArticleContentSyncWorker(
     }
 }
 
-private fun PrefetchTarget.imageEnclosureUrls(): List<String> =
-    enclosures.filter { it.isImage }.map { it.url }
+private fun PrefetchTarget.imageEnclosureUrls(downloadAllImages: Boolean): List<String> {
+    val imageUrls = enclosures.filter { it.isImage }.map { it.url }
+    return if (downloadAllImages) imageUrls else imageUrls.take(1)
+}

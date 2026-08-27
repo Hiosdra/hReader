@@ -123,6 +123,19 @@ class ArticleReconciliationTest {
         assertNull(remote.reconciledWith(local, now).fullContent)
     }
 
+    @Test
+    fun `unchanged remote article produces no persistence difference`() {
+        val local = article(
+            content = "<p>Body</p>",
+            status = ArticleStatus.READ,
+            readAt = now,
+            fullContent = "<p>Full body</p>"
+        )
+        val remote = local.copy()
+
+        assertEquals(local, remote.reconciledWith(local, now))
+    }
+
     private fun article(
         title: String = "Title",
         content: String? = null,

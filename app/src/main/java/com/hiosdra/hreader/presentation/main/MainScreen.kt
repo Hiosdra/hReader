@@ -33,11 +33,13 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +70,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -82,7 +85,7 @@ import com.hiosdra.hreader.presentation.theme.MotionDuration
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(
     navController: NavController,
@@ -408,6 +411,17 @@ fun MainScreen(
                         )
                     }
                 }
+                ArticleScopeBar(
+                    feedId = feedId,
+                    feedTitle = uiState.feedTitle,
+                    searchQuery = uiState.searchQuery,
+                    showReadArticles = uiState.showReadArticles,
+                    starredOnly = uiState.starredOnly,
+                    onShowReadArticles = viewModel::setShowReadArticles,
+                    onToggleStarred = { viewModel.setStarredOnly(!uiState.starredOnly) },
+                    onClearSearch = { viewModel.updateSearchQuery("") },
+                    onLeaveFeed = onLeaveFeed
+                )
             }
         },
         floatingActionButton = {
@@ -449,25 +463,75 @@ fun MainScreen(
                 error = stringResource(R.string.main_could_not_read_stored_articles),
                 hasSearchQuery = uiState.searchQuery.isNotBlank(),
                 starredOnly = uiState.starredOnly,
+                showReadArticles = uiState.showReadArticles,
                 feedId = feedId,
                 onRetry = { articles.retry() },
                 onClearSearch = { viewModel.updateSearchQuery("") },
                 onBrowseFeeds = onOpenSubscriptions,
                 onAddFeed = { navController.navigate(Routes.addFeed()) },
-                onBack = onLeaveFeed
+                onBack = onLeaveFeed,
+                onResetFilters = {
+                    viewModel.setShowReadArticles(false)
+                    viewModel.setStarredOnly(false)
+                    viewModel.updateSearchQuery("")
+                },
+                onShowAllArticles = {
+                    viewModel.setShowReadArticles(true)
+                    viewModel.setStarredOnly(false)
+                    viewModel.updateSearchQuery("")
+                }
             )
+
+            articles.itemCount == 0 && uiState.syncState == com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING ->
+                InitialSyncState(modifier = Modifier.padding(paddingValues))
+
+            articles.itemCount == 0 && uiState.syncState == com.hiosdra.hreader.core.application.sync.SyncOperationState.FAILED ->
+                EmptyState(
+                    modifier = Modifier.padding(paddingValues),
+                    error = stringResource(R.string.main_sync_failed),
+                    hasSearchQuery = uiState.searchQuery.isNotBlank(),
+                    starredOnly = uiState.starredOnly,
+                    showReadArticles = uiState.showReadArticles,
+                    feedId = feedId,
+                    onRetry = viewModel::refreshFromNetwork,
+                    onClearSearch = { viewModel.updateSearchQuery("") },
+                    onBrowseFeeds = onOpenSubscriptions,
+                    onAddFeed = { navController.navigate(Routes.addFeed()) },
+                    onBack = onLeaveFeed,
+                    onResetFilters = {
+                        viewModel.setShowReadArticles(false)
+                        viewModel.setStarredOnly(false)
+                        viewModel.updateSearchQuery("")
+                    },
+                    onShowAllArticles = {
+                        viewModel.setShowReadArticles(true)
+                        viewModel.setStarredOnly(false)
+                        viewModel.updateSearchQuery("")
+                    }
+                )
 
             articles.itemCount == 0 -> EmptyState(
                 modifier = Modifier.padding(paddingValues),
                 error = null,
                 hasSearchQuery = uiState.searchQuery.isNotBlank(),
                 starredOnly = uiState.starredOnly,
+                showReadArticles = uiState.showReadArticles,
                 feedId = feedId,
                 onRetry = viewModel::refreshFromNetwork,
                 onClearSearch = { viewModel.updateSearchQuery("") },
                 onBrowseFeeds = onOpenSubscriptions,
                 onAddFeed = { navController.navigate(Routes.addFeed()) },
-                onBack = onLeaveFeed
+                onBack = onLeaveFeed,
+                onResetFilters = {
+                    viewModel.setShowReadArticles(false)
+                    viewModel.setStarredOnly(false)
+                    viewModel.updateSearchQuery("")
+                },
+                onShowAllArticles = {
+                    viewModel.setShowReadArticles(true)
+                    viewModel.setStarredOnly(false)
+                    viewModel.updateSearchQuery("")
+                }
             )
 
             else -> PullToRefreshBox(
@@ -501,7 +565,8 @@ fun MainScreen(
                             )
                         )
                     },
-                    onCheckedChange = viewModel::updateEntryReadStatus
+                    onCheckedChange = viewModel::updateEntryReadStatus,
+                    isOnline = uiState.isOnline
                 )
             }
         }
@@ -515,12 +580,15 @@ private fun EmptyState(
     error: String?,
     hasSearchQuery: Boolean,
     starredOnly: Boolean,
+    showReadArticles: Boolean,
     feedId: Long?,
     onRetry: () -> Unit,
     onClearSearch: () -> Unit,
     onBrowseFeeds: () -> Unit,
     onAddFeed: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onResetFilters: () -> Unit,
+    onShowAllArticles: () -> Unit
 ) {
     Box(
         modifier = modifier.fillMaxSize(),
@@ -551,11 +619,28 @@ private fun EmptyState(
                     }
                 }
 
-                starredOnly -> Text(
-                    text = stringResource(R.string.main_no_starred_articles),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
+                starredOnly -> {
+                    Text(
+                        text = stringResource(R.string.main_no_starred_articles),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    )
+                    TextButton(onClick = onResetFilters, modifier = Modifier.padding(top = 12.dp)) {
+                        Text(stringResource(R.string.main_clear_filters))
+                    }
+                }
+
+                !showReadArticles -> {
+                    Text(
+                        text = stringResource(R.string.main_no_unread_articles),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                        textAlign = TextAlign.Center
+                    )
+                    Button(onClick = onShowAllArticles, modifier = Modifier.padding(top = 20.dp)) {
+                        Text(stringResource(R.string.main_show_all_from_empty))
+                    }
+                }
 
                 else -> {
                     Text(
@@ -589,6 +674,101 @@ private fun EmptyState(
                         TextButton(onClick = onRetry) { Text(stringResource(R.string.main_refresh_now)) }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InitialSyncState(modifier: Modifier) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(24.dp)
+        ) {
+            CircularProgressIndicator()
+            Text(
+                text = stringResource(R.string.main_syncing_first_time),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ArticleScopeBar(
+    feedId: Long?,
+    feedTitle: String?,
+    searchQuery: String,
+    showReadArticles: Boolean,
+    starredOnly: Boolean,
+    onShowReadArticles: (Boolean) -> Unit,
+    onToggleStarred: () -> Unit,
+    onClearSearch: () -> Unit,
+    onLeaveFeed: () -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        FlowRow(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            FilterChip(
+                selected = !showReadArticles,
+                onClick = { onShowReadArticles(false) },
+                label = { Text(stringResource(R.string.main_scope_unread)) },
+                leadingIcon = {
+                    Icon(Icons.Filled.Done, contentDescription = null)
+                }
+            )
+            FilterChip(
+                selected = showReadArticles,
+                onClick = { onShowReadArticles(true) },
+                label = { Text(stringResource(R.string.main_scope_all)) }
+            )
+            FilterChip(
+                selected = starredOnly,
+                onClick = onToggleStarred,
+                label = { Text(stringResource(R.string.main_scope_starred)) },
+                leadingIcon = {
+                    Icon(Icons.Filled.Star, contentDescription = null)
+                }
+            )
+            if (feedId != null) {
+                AssistChip(
+                    onClick = onLeaveFeed,
+                    label = {
+                        Text(
+                            text = feedTitle ?: stringResource(R.string.main_scope_feed),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                )
+            }
+            if (searchQuery.isNotBlank()) {
+                AssistChip(
+                    onClick = onClearSearch,
+                    label = {
+                        Text(
+                            text = stringResource(R.string.main_scope_search, searchQuery),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Filled.Search, contentDescription = null)
+                    }
+                )
             }
         }
     }

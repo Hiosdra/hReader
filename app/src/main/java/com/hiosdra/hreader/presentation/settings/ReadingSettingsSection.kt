@@ -25,12 +25,6 @@ internal fun ReadingSettingsSection(
     onOpenTts: () -> Unit,
     onOpenBypass: () -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.settings_reading_experience),
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,

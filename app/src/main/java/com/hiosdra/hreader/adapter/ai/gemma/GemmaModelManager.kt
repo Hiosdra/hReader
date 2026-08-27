@@ -30,10 +30,7 @@ class GemmaModelManager(
     client: OkHttpClient
 ) : GemmaModelGateway {
     private val appContext = context.applicationContext
-    private val client = client.newBuilder().apply {
-        interceptors().clear()
-        networkInterceptors().clear()
-    }.build()
+    private val client = client.newBuilder().apply { interceptors().clear() }.build()
     private val modelRoot = File(appContext.filesDir, "ai_models")
     private val modelFile = File(modelRoot, "gemma-4-e2b-it.litertlm")
     private val partialFile = File(modelRoot, "gemma-4-e2b-it.litertlm.download")

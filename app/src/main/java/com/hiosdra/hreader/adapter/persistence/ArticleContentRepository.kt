@@ -54,7 +54,8 @@ class ArticleContentRepository(
          * downloads the images it references. On a large backlog that put thousands of requests in
          * flight at the same time.
          */
-        private const val MAX_CONCURRENT_PREFETCH = 100
+        private const val MAX_CONCURRENT_PREFETCH = 8
+        private const val PREFETCH_BATCH_SIZE = 32
 
         /** Below SQLite's 999 bound-variable ceiling on Android. */
         private const val DELETE_CHUNK = 500
@@ -69,37 +70,77 @@ class ArticleContentRepository(
         entryId: Long,
         url: String,
         allowNetwork: Boolean
+    ): ArticleText = getArticleContent(
+        entryId = entryId,
+        url = url,
+        allowNetwork = allowNetwork,
+        downloadAllImages = true
+    )
+
+    private suspend fun getArticleContent(
+        entryId: Long,
+        url: String,
+        allowNetwork: Boolean,
+        downloadAllImages: Boolean
     ): ArticleText {
         val localContent = articleContentDao.getArticleContent(entryId)
         if (localContent != null && localContent.url == url && localContent.content.isNotBlank()) {
             if (localContent.source == ArticleContentSource.FULL) {
-                return prepareStoredContent(entryId, localContent, allowNetwork)
+                return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages)
             }
 
             if (allowNetwork) {
                 val fullContent = fetchFullContent(entryId, url)
                 if (fullContent != null) {
-                    return storeContent(entryId, url, fullContent, ArticleContentSource.FULL, true)
+                    return storeContent(
+                        entryId,
+                        url,
+                        fullContent,
+                        ArticleContentSource.FULL,
+                        true,
+                        downloadAllImages
+                    )
                 }
             }
 
             val cachedContent = getCachedArticleContent(entryId)
             if (cachedContent?.source == ArticleContentSource.FULL) {
-                return storeContent(entryId, url, cachedContent.content, cachedContent.source, allowNetwork)
+                return storeContent(
+                    entryId,
+                    url,
+                    cachedContent.content,
+                    cachedContent.source,
+                    allowNetwork,
+                    downloadAllImages
+                )
             }
-            return prepareStoredContent(entryId, localContent, allowNetwork)
+            return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages)
         }
 
         if (allowNetwork) {
             val fullContent = fetchFullContent(entryId, url)
             if (fullContent != null) {
-                return storeContent(entryId, url, fullContent, ArticleContentSource.FULL, true)
+                return storeContent(
+                    entryId,
+                    url,
+                    fullContent,
+                    ArticleContentSource.FULL,
+                    true,
+                    downloadAllImages
+                )
             }
         }
 
         val cachedContent = getCachedArticleContent(entryId)
             ?: throw IllegalStateException("No content available for entry $entryId")
-        return storeContent(entryId, url, cachedContent.content, cachedContent.source, allowNetwork)
+        return storeContent(
+            entryId,
+            url,
+            cachedContent.content,
+            cachedContent.source,
+            allowNetwork,
+            downloadAllImages
+        )
     }
 
     private suspend fun fetchFullContent(entryId: Long, url: String): String? {
@@ -116,7 +157,8 @@ class ArticleContentRepository(
     private suspend fun prepareStoredContent(
         entryId: Long,
         stored: ArticleContent,
-        allowNetwork: Boolean
+        allowNetwork: Boolean,
+        downloadAllImages: Boolean
     ): ArticleText {
         val storedImageUrls = stored.imageUrls.toImageUrls()
         val hasImageManifest = stored.imageUrls.isNotEmpty()
@@ -137,8 +179,10 @@ class ArticleContentRepository(
         } else {
             prepare(entryId, stored.content, stored.url)
         }
-        articleImageStore.setExpectedImages(entryId, prepared.imageUrls)
-        if (allowNetwork) scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl)
+        articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
+        if (allowNetwork) {
+            scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl, downloadAllImages)
+        }
         val updated = stored.copy(
             content = prepared.html,
             isPrepared = true,
@@ -154,11 +198,14 @@ class ArticleContentRepository(
         url: String,
         sourceContent: String,
         source: ArticleContentSource,
-        allowNetwork: Boolean
+        allowNetwork: Boolean,
+        downloadAllImages: Boolean
     ): ArticleText {
         val prepared = prepare(entryId, sourceContent, url)
-        articleImageStore.setExpectedImages(entryId, prepared.imageUrls)
-        if (allowNetwork) scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl)
+        articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
+        if (allowNetwork) {
+            scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl, downloadAllImages)
+        }
         articleContentDao.insertArticleContent(
             ArticleContent(
                 entryId = entryId,
@@ -236,6 +283,18 @@ class ArticleContentRepository(
         return entries.filterNot { (entryId, _) -> entryId in full }
     }
 
+    override suspend fun entriesMissingFullOfflinePreparation(
+        entries: List<Pair<Long, String>>
+    ): List<Pair<Long, String>> {
+        val prepared = entries
+            .chunked(DELETE_CHUNK)
+            .flatMap { chunk ->
+                articleContentDao.getFullyImagePreparedEntryIds(chunk.map { it.first })
+            }
+            .toHashSet()
+        return entries.filterNot { (entryId, _) -> entryId in prepared }
+    }
+
     /**
      * [onProgress] is called with the number of articles finished so far — successes and failures
      * alike, since what the reader waiting on "prepare for offline" wants to know is how much of
@@ -244,30 +303,39 @@ class ArticleContentRepository(
     override suspend fun prefetchArticleContent(
         entries: List<Pair<Long, String>>,
         limit: Int?,
+        downloadAllImages: Boolean,
         onProgress: (done: Int, total: Int) -> Unit
     ) = coroutineScope {
         val limitedEntries = if (limit != null) entries.take(limit) else entries
         val total = limitedEntries.size
         val done = AtomicInteger()
-        val deferredResults = limitedEntries.map { (entryId, url) ->
-            async(Dispatchers.IO) {
-                prefetchLimiter.withPermit {
-                    try {
-                        val stored = articleContentDao.getArticleContent(entryId)
-                        if (stored == null || stored.source != ArticleContentSource.FULL) {
-                            getArticleContent(entryId, url)
-                            awaitImageDownloads(entryId)
+        for (batch in limitedEntries.chunked(PREFETCH_BATCH_SIZE)) {
+            val deferredResults = batch.map { (entryId, url) ->
+                async(Dispatchers.IO) {
+                    prefetchLimiter.withPermit {
+                        try {
+                            val stored = articleContentDao.getArticleContent(entryId)
+                            if (downloadAllImages || stored == null || stored.source != ArticleContentSource.FULL) {
+                                getArticleContent(
+                                    entryId = entryId,
+                                    url = url,
+                                    allowNetwork = true,
+                                    downloadAllImages = downloadAllImages
+                                )
+                                awaitImageDownloads(entryId)
+                                if (downloadAllImages) markAllImagesPreparedIfComplete(entryId)
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                         }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to prefetch content for entry $entryId", e)
                     }
+                    onProgress(done.incrementAndGet(), total)
                 }
-                onProgress(done.incrementAndGet(), total)
             }
+            deferredResults.awaitAll()
         }
-        deferredResults.awaitAll()
         Unit
     }
 
@@ -333,9 +401,14 @@ class ArticleContentRepository(
     private suspend fun scheduleImageDownloads(
         entryId: Long,
         imageUrls: List<String>,
-        leadImageUrl: String?
+        leadImageUrl: String?,
+        downloadAllImages: Boolean
     ) {
-        val urls = (listOfNotNull(leadImageUrl) + imageUrls).distinct()
+        val urls = if (downloadAllImages) {
+            (listOfNotNull(leadImageUrl) + imageUrls).distinct()
+        } else {
+            listOfNotNull(leadImageUrl).distinct()
+        }
         if (urls.isEmpty()) return
         imageJobsMutex.withLock {
             if (imageJobs[entryId]?.isActive == true) return@withLock
@@ -358,6 +431,15 @@ class ArticleContentRepository(
         job?.join()
     }
 
+    private suspend fun markAllImagesPreparedIfComplete(entryId: Long) {
+        val content = articleContentDao.getArticleContent(entryId) ?: return
+        val expectedUrls = (content.imageUrls.toImageUrls() + listOfNotNull(content.leadImageUrl)).distinct()
+        val storedUrls = articleImageStore.getLocalImagePaths(entryId).keys
+        if (expectedUrls.all { it in storedUrls }) {
+            articleContentDao.markAllImagesPrepared(entryId)
+        }
+    }
+
     private fun String.toImageUrls(): List<String> =
         takeUnless { it == EMPTY_IMAGE_MANIFEST }
             ?.split(IMAGE_URL_SEPARATOR)
@@ -366,4 +448,11 @@ class ArticleContentRepository(
 
     private fun List<String>.toImageManifest(): String =
         joinToString(IMAGE_URL_SEPARATOR).ifEmpty { EMPTY_IMAGE_MANIFEST }
+
+    private fun PreparedArticle.expectedImageUrls(downloadAllImages: Boolean): List<String> =
+        if (downloadAllImages) {
+            (listOfNotNull(leadImageUrl) + imageUrls).distinct()
+        } else {
+            listOfNotNull(leadImageUrl)
+        }
 }

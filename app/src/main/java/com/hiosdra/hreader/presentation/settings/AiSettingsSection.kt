@@ -23,12 +23,6 @@ internal fun AiSettingsSection(
     aiModels: AiModelsUiState,
     onOpenModelPicker: () -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.settings_ai_features),
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,

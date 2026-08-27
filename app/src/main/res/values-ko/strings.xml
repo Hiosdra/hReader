@@ -434,4 +434,27 @@
     <string name="offline_original_pages_download_failed">원본 페이지를 다운로드하지 못했습니다.</string>
     <string name="sync_content_failed">기사 동기화에 실패했습니다.</string>
     <string name="sync_article_content_failed">기사 콘텐츠를 다운로드할 수 없습니다.</string>
+    <string name="main_scope_unread">읽지 않음</string>
+    <string name="main_scope_all">전체</string>
+    <string name="main_scope_starred">별표 표시</string>
+    <string name="main_scope_feed">이 피드</string>
+    <string name="main_scope_search">검색: %1$s</string>
+    <string name="main_clear_filters">필터 지우기</string>
+    <string name="main_no_unread_articles">이 범위에 읽지 않은 기사가 없습니다</string>
+    <string name="main_show_all_from_empty">모든 기사 보기</string>
+    <string name="main_syncing_first_time">첫 동기화가 진행 중입니다. 다운로드가 완료되면 기사가 여기에 표시됩니다.</string>
+    <string name="main_sync_failed">첫 동기화를 완료하지 못했습니다.</string>
+    <string name="article_starred">별표 표시함</string>
+    <string name="article_not_starred">별표 표시 안 함</string>
+    <string name="onboarding_optional_settings">선택 설정</string>
+    <string name="onboarding_optional_settings_summary">진단 및 AI 요약은 나중에 설정할 수 있습니다</string>
+    <string name="settings_group_reading_summary">텍스트 표시, 음성 및 링크 옵션</string>
+    <string name="settings_group_ai_summary">클라우드 요약 및 신뢰도 신호</string>
+    <string name="settings_group_local_ai_summary">선택적 온디바이스 모델 및 다운로드 제어</string>
+    <string name="settings_group_privacy_summary">오류 보고서, 성능 데이터 및 로컬 캐시</string>
+    <string name="settings_group_expand">섹션 펼치기</string>
+    <string name="settings_group_collapse">섹션 접기</string>
+    <string name="settings_group_expanded">펼침</string>
+    <string name="settings_group_collapsed">접힘</string>
+    <string name="settings_operation_article_reconciliation">기사 조정</string>
 </resources>

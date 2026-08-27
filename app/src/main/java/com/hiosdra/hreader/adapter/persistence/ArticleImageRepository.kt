@@ -37,7 +37,7 @@ class ArticleImageRepository(
     private val articleDao: ArticleDao,
     private val okHttpClient: OkHttpClient,
     private val preferencesManager: SyncPreferences,
-    private val remoteResourcePolicy: RemoteResourcePolicy,
+    private val remoteResourcePolicy: RemoteResourcePolicyAdapter,
     private val fileExists: (String) -> Boolean = { path -> File(path).exists() }
 ) : ArticleImageStore {
     companion object {
@@ -81,6 +81,7 @@ class ArticleImageRepository(
 
     private val cacheBudgetMutex = Mutex()
     private val safeHttpClient = okHttpClient.newBuilder()
+        .apply { interceptors().clear() }
         .addNetworkInterceptor { chain ->
             if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
                 throw IOException("Blocked remote resource URL")
@@ -189,6 +190,22 @@ class ArticleImageRepository(
             }
         }.toMap()
 
+    override suspend fun getLocalImagePaths(entryIds: List<Long>): Map<Long, Map<String, String>> {
+        if (entryIds.isEmpty()) return emptyMap()
+        val images = articleImageDao.getImagesForArticles(entryIds.distinct())
+        val missingImageIds = images.filterNot { image -> fileExists(image.localFilePath) }
+            .map { it.id }
+        missingImageIds.chunked(DELETE_CHUNK).forEach { chunk ->
+            articleImageDao.deleteByIds(chunk)
+        }
+        return images.asSequence()
+            .filter { image -> image.id !in missingImageIds }
+            .groupBy { it.entryId }
+            .mapValues { (_, images) ->
+                images.associate { image -> image.originalUrl to image.localFilePath }
+            }
+    }
+
     override fun observeLocalImagePaths(entryId: Long): Flow<Map<String, String>> =
         articleImageDao.observeImagesForArticle(entryId).map { images ->
             images.mapNotNull { image ->
@@ -201,6 +218,13 @@ class ArticleImageRepository(
         articleImageDao.deleteExpectedImagesForArticle(entryId)
         val expected = imageUrls.distinct().map { url -> ArticleImageManifest(entryId, url) }
         if (expected.isNotEmpty()) articleImageDao.insertExpectedImages(expected)
+    }
+
+    override suspend fun invalidateArticleImages(entryId: Long) = withContext(Dispatchers.IO) {
+        val entryIds = listOf(entryId)
+        articleImageDao.getImagePathsForArticles(entryIds).forEach { path -> File(path).delete() }
+        articleImageDao.deleteImagesForArticles(entryIds)
+        articleImageDao.deleteExpectedImagesForArticles(entryIds)
     }
 
     /**
@@ -246,7 +270,7 @@ class ArticleImageRepository(
      * first. Without it a large backlog fills the device, and offline is exactly when the user
      * cannot free space by re-downloading anything.
      *
-     * Serialized: prefetching runs a hundred downloads at a time and each one asks for this
+     * Serialized: prefetching runs bounded parallel downloads and each one asks for this
      * afterwards. Concurrently, every caller read the same total, walked the same oldest-first list
      * and deleted the same files, cutting the cache to a fraction of its budget — including images
      * downloaded moments earlier for the trip the reader was packing for.

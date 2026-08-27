@@ -9,6 +9,7 @@ enum class SyncPerformanceOperation(val key: String) {
     ARTICLE_CONTENT_PREFETCH("article_content_prefetch"),
     ENCLOSURE_IMAGES_DOWNLOAD("enclosure_images_download"),
     BATCH_PROCESSING("batch_processing"),
+    ARTICLE_RECONCILIATION("article_reconciliation"),
     INCREMENTAL_SYNC("incremental_sync"),
     FULL_SYNC("full_sync")
 }
@@ -19,6 +20,23 @@ data class SyncPerformanceRecord(
     val durationMs: Long,
     val batchSize: Int? = null,
     val totalArticles: Int? = null,
+    val unchangedArticles: Int? = null,
+    val insertedArticles: Int? = null,
+    val updatedArticles: Int? = null,
     val isIncremental: Boolean? = null,
     val lastSyncHoursAgo: Long? = null
 )
+
+data class ArticleSyncStats(
+    val fetched: Int = 0,
+    val unchanged: Int = 0,
+    val inserted: Int = 0,
+    val updated: Int = 0
+) {
+    operator fun plus(other: ArticleSyncStats): ArticleSyncStats = ArticleSyncStats(
+        fetched = fetched + other.fetched,
+        unchanged = unchanged + other.unchanged,
+        inserted = inserted + other.inserted,
+        updated = updated + other.updated
+    )
+}

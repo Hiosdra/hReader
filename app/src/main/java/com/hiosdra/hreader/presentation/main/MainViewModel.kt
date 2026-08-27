@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
+import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -78,6 +80,7 @@ data class MainUiState(
     val starredOnly: Boolean = false,
     val unreadCount: Int = 0,
     val readCount: Int = 0,
+    val syncState: SyncOperationState = SyncOperationState.IDLE,
     val undo: UndoableAction? = null
 )
 
@@ -130,6 +133,11 @@ class MainViewModel(
         viewModelScope.launch {
             reader.isOnline.collect { online ->
                 _uiState.update { it.copy(isOnline = online) }
+            }
+        }
+        viewModelScope.launch {
+            reader.observeSync().collect { status ->
+                _uiState.update { it.copy(syncState = status.state) }
             }
         }
     }
@@ -244,14 +252,34 @@ class MainViewModel(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
+            val operationId = reader.requestRefresh()
+            if (operationId == null) {
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = false,
+                        error = UiText.Resource(R.string.error_refresh_articles)
+                    )
+                }
+                return@launch
+            }
+            _uiState.update {
+                it.copy(
+                    isRefreshing = true,
+                    error = null,
+                    syncState = SyncOperationState.RUNNING
+                )
+            }
             try {
-                reader.refreshArticles()
+                val status = reader.observeSync().first { current ->
+                    operationId in current.workIds && current.state != SyncOperationState.IDLE &&
+                        current.state != SyncOperationState.RUNNING
+                }
                 query.update { it.withSessionRestarted(Instant.now()) }
-                // The refresh brings down the article list; the bodies and images that make those
-                // articles readable offline are what this queues. Without it a pull-to-refresh
-                // right before losing signal left a list of titles and nothing behind them.
-                reader.enqueuePrefetch()
+                if (status.state == SyncOperationState.FAILED ||
+                    status.state == SyncOperationState.CANCELLED
+                ) {
+                    _uiState.update { it.copy(error = UiText.Resource(R.string.error_refresh_articles)) }
+                }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -64,9 +64,9 @@ class ContentSyncWorker(
             repository.refreshArticles(forceFullSync)
         }
 
-        // Only when this worker runs on its own. Callers that chain a prefetch behind it already
-        // have one queued, and enqueueing a second would replace the chained request mid-run.
-        if (!inputData.getBoolean(KEY_PREFETCH_CHAINED, false)) syncScheduler.enqueuePrefetch()
+        if (inputData.getBoolean(KEY_ENQUEUE_PREFETCH, false)) {
+            syncScheduler.enqueuePrefetch()
+        }
 
         Log.i(TAG, "ContentSyncWorker completed successfully")
         Result.success()

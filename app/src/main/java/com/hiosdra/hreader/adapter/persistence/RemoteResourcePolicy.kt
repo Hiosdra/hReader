@@ -1,18 +1,19 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy as RemoteResourcePolicyPort
 import okhttp3.Dns
 import java.net.InetAddress
 import java.net.URI
 import java.net.UnknownHostException
 import java.util.Locale
 
-class RemoteResourcePolicy(
+class RemoteResourcePolicyAdapter(
     private val allowedHosts: () -> Set<String>,
     private val resolveHost: (String) -> List<InetAddress> = { host ->
         InetAddress.getAllByName(host).toList()
     }
-) {
+) : RemoteResourcePolicyPort {
     constructor(preferences: AppPreferences) : this(
         allowedHosts = {
             runCatching {
@@ -24,7 +25,7 @@ class RemoteResourcePolicy(
         }
     )
 
-    fun allows(url: String): Boolean {
+    override fun allows(url: String): Boolean {
         val uri = runCatching { URI(url) }.getOrNull() ?: return false
         if (uri.scheme?.lowercase(Locale.ROOT) !in HTTP_SCHEMES || uri.userInfo != null) return false
         val host = uri.host?.let(::normalizeHost)?.takeIf { it.isNotBlank() } ?: return false
@@ -60,6 +61,24 @@ class RemoteResourcePolicy(
             return false
         }
         val bytes = address
+        if (bytes.size == 4) {
+            val first = bytes[0].toInt() and 0xff
+            val second = bytes[1].toInt() and 0xff
+            val third = bytes[2].toInt() and 0xff
+            return when {
+                first == 0 || first == 10 || first == 127 || first >= 224 -> false
+                first == 100 && second in 64..127 -> false
+                first == 169 && second == 254 -> false
+                first == 172 && second in 16..31 -> false
+                first == 192 && second == 0 -> false
+                first == 192 && second == 2 -> false
+                first == 192 && second == 168 -> false
+                first == 198 && second in 18..19 -> false
+                first == 198 && second == 51 && third == 100 -> false
+                first == 203 && second == 0 && third == 113 -> false
+                else -> true
+            }
+        }
         if (bytes.size != 16) return true
         val mappedIpv4 = bytes.take(10).all { it == 0.toByte() } &&
             bytes[10] == 0xff.toByte() && bytes[11] == 0xff.toByte()
