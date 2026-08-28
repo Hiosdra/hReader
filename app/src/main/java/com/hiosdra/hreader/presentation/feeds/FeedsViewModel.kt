@@ -23,6 +23,8 @@ data class FeedsUiState(
     val error: UiText? = null,
     /** Result of the last delete, rename or import, for a snackbar rather than a dialog. */
     val message: UiText? = null,
+    val messageIsError: Boolean = false,
+    val messageCanRetry: Boolean = false,
     val isBusy: Boolean = false,
     val isOnline: Boolean = true
 )
@@ -43,6 +45,7 @@ class FeedsViewModel(
      */
     private var rowOrder: Map<Long, Int> = emptyMap()
     private var resettleRows = true
+    private var retryAction: (() -> Unit)? = null
 
     init {
         loadFeeds()
@@ -131,7 +134,8 @@ class FeedsViewModel(
                     UiText.Resource(R.string.feeds_unsubscribed, listOf(title))
                 }
             },
-            failure = { _ -> UiText.Resource(R.string.feeds_unsubscribe_error) }
+            failure = { _ -> UiText.Resource(R.string.feeds_unsubscribe_error) },
+            retry = { deleteFeed(feedId) }
         ) { feeds.deleteFeed(feedId) }
     }
 
@@ -139,7 +143,8 @@ class FeedsViewModel(
         val trimmed = title.trim()
         if (trimmed.isBlank()) return
         runFeedAction(
-            failure = { _ -> UiText.Resource(R.string.feeds_rename_error) }
+            failure = { _ -> UiText.Resource(R.string.feeds_rename_error) },
+            retry = { renameFeed(feedId, trimmed) }
         ) { feeds.renameFeed(feedId, trimmed) }
     }
 
@@ -172,21 +177,45 @@ class FeedsViewModel(
      * storage picker returned; the view model owns what to say about the outcome.
      */
     suspend fun exportOpmlTo(title: String, write: suspend (String) -> Boolean) {
+        retryAction = null
         val opml = runCatchingCancellable { feeds.exportOpml(title) }
             .onFailure { Log.w("FeedsViewModel", "OPML export failed", it) }
             .getOrNull()
         val written = opml != null && write(opml)
         _uiState.value = _uiState.value.copy(
-            message = UiText.Resource(if (written) R.string.feeds_exported else R.string.feeds_file_write_failed)
+            message = UiText.Resource(if (written) R.string.feeds_exported else R.string.feeds_file_write_failed),
+            messageIsError = !written,
+            messageCanRetry = false
         )
     }
 
     fun reportUnreadableFile() {
-        _uiState.value = _uiState.value.copy(message = UiText.Resource(R.string.feeds_file_read_failed))
+        retryAction = null
+        _uiState.value = _uiState.value.copy(
+            message = UiText.Resource(R.string.feeds_file_read_failed),
+            messageIsError = true,
+            messageCanRetry = false
+        )
     }
 
     fun dismissMessage() {
-        _uiState.value = _uiState.value.copy(message = null)
+        retryAction = null
+        _uiState.value = _uiState.value.copy(
+            message = null,
+            messageIsError = false,
+            messageCanRetry = false
+        )
+    }
+
+    fun retryLastAction() {
+        val retry = retryAction ?: return
+        retryAction = null
+        _uiState.value = _uiState.value.copy(
+            message = null,
+            messageIsError = false,
+            messageCanRetry = false
+        )
+        retry()
     }
 
     fun nextFeedId(currentFeedId: Long): Long? {
@@ -202,18 +231,34 @@ class FeedsViewModel(
     private fun <T> runFeedAction(
         success: ((T) -> UiText)? = null,
         failure: (Throwable) -> UiText,
+        retry: (() -> Unit)? = null,
         action: suspend () -> T
     ) {
         if (!feeds.isOnline.value) {
-            _uiState.value = _uiState.value.copy(message = UiText.Resource(R.string.feeds_need_connection))
+            retryAction = null
+            _uiState.value = _uiState.value.copy(
+                message = UiText.Resource(R.string.feeds_need_connection),
+                messageIsError = true,
+                messageCanRetry = false
+            )
             return
         }
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isBusy = true, message = null)
+            retryAction = null
+            _uiState.value = _uiState.value.copy(
+                isBusy = true,
+                message = null,
+                messageIsError = false,
+                messageCanRetry = false
+            )
             val result = runCatchingCancellable { action() }
+            val failed = result.isFailure
+            retryAction = retry.takeIf { failed }
             _uiState.value = _uiState.value.copy(
                 isBusy = false,
-                message = feedActionUiText(result, success, failure)
+                message = feedActionUiText(result, success, failure),
+                messageIsError = failed,
+                messageCanRetry = failed && retry != null
             )
             if (result.isSuccess) loadFeeds()
         }

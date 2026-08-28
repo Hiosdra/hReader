@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -162,17 +163,46 @@ fun SubscriptionsPanel(
         // A drawer has no scaffold to hang a snackbar on, so what an import or an unsubscribe did
         // is said in place, where the list it changed is.
         uiState.message?.let { message ->
-            Text(
-                text = message.resolve(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            val messageColor = if (uiState.messageIsError) {
+                MaterialTheme.colorScheme.onErrorContainer
+            } else {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            }
+            val messageBackground = if (uiState.messageIsError) {
+                MaterialTheme.colorScheme.errorContainer
+            } else {
+                MaterialTheme.colorScheme.secondaryContainer
+            }
+            Row(
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .background(messageBackground)
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
+                    .padding(start = 12.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = message.resolve(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = messageColor,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 8.dp)
+                )
+                if (uiState.messageCanRetry) {
+                    TextButton(onClick = viewModel::retryLastAction) {
+                        Text(stringResource(R.string.action_retry), color = messageColor)
+                    }
+                }
+                IconButton(onClick = viewModel::dismissMessage) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.action_dismiss),
+                        tint = messageColor
+                    )
+                }
+            }
         }
         if (!isOnline) {
             Text(

@@ -17,11 +17,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -32,14 +37,20 @@ import androidx.navigation.NavController
 import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.service.cleanUrl
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: FeedsViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val feed = uiState.feeds.find { it.id == feedId }
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val copiedMessage = stringResource(R.string.article_copied)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(feed?.title ?: stringResource(R.string.feeds_detail_title), style = MaterialTheme.typography.titleMedium) },
@@ -58,9 +69,33 @@ fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: Feed
                 .padding(16.dp)
         ) {
             if (feed != null) {
-                FeedAddress(label = stringResource(R.string.feeds_site_url), value = feed.siteUrl)
+                FeedAddress(
+                    label = stringResource(R.string.feeds_site_url),
+                    value = feed.siteUrl,
+                    onCopy = {
+                        copyUrl(context, feed.siteUrl.orEmpty())
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = copiedMessage,
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                FeedAddress(label = stringResource(R.string.feeds_feed_url), value = feed.feedUrl)
+                FeedAddress(
+                    label = stringResource(R.string.feeds_feed_url),
+                    value = feed.feedUrl,
+                    onCopy = {
+                        copyUrl(context, feed.feedUrl.orEmpty())
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = copiedMessage,
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+                )
             } else {
                 Text(text = stringResource(R.string.feeds_not_found), color = MaterialTheme.colorScheme.error)
             }
@@ -69,9 +104,8 @@ fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: Feed
 }
 
 @Composable
-private fun FeedAddress(label: String, value: String?) {
+private fun FeedAddress(label: String, value: String?, onCopy: () -> Unit) {
     val displayedValue = value ?: stringResource(R.string.label_not_available)
-    val context = LocalContext.current
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
         Text(
             text = stringResource(R.string.feeds_label_value, label, displayedValue),
@@ -81,9 +115,10 @@ private fun FeedAddress(label: String, value: String?) {
             modifier = Modifier.weight(1f)
         )
         if (!value.isNullOrBlank()) {
-            TextButton(onClick = { copyUrl(context, value) }) {
+            TextButton(onClick = onCopy) {
                 Text(stringResource(R.string.action_copy_url))
             }
+            val context = LocalContext.current
             TextButton(onClick = { openChromeCustomTab(context, cleanUrl(value)) }) {
                 Text(stringResource(R.string.action_open_url))
             }
