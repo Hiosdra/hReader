@@ -15,7 +15,7 @@ object Routes {
      * It used to carry every article id inline: a few thousand cached articles made a route string
      * tens of kilobytes long, which then travels into the saved instance state on every rotation.
      */
-    const val ARTICLE = "article?feedId={feedId}&startId={startId}&starred={starred}" +
+    const val ARTICLE = "article?feedId={feedId}&startId={startId}" +
         "&includeRead={includeRead}&session={session}"
     const val SETTINGS = "settings"
     const val TTS_SETTINGS = "settings/tts"
@@ -32,11 +32,10 @@ object Routes {
     fun article(
         feedId: Long?,
         startArticleId: Long,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStartMillis: Long
     ): String = "article?feedId=${feedId ?: FEED_ID_NONE}&startId=$startArticleId" +
-        "&starred=$starredOnly&includeRead=$includeRead&session=$sessionStartMillis"
+        "&includeRead=$includeRead&session=$sessionStartMillis"
 
     fun feed(feedId: Long): String = "feed/$feedId"
 }

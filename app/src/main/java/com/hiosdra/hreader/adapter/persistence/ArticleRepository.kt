@@ -87,14 +87,14 @@ class ArticleRepository(
         radius: Int
     ): ArticleListWindow = queryRepository.listWindow(query, articleId, radius)
 
-    override suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
-        queryRepository.unreadIds(feedId, starredOnly)
+    override suspend fun unreadIds(feedId: Long?): List<Long> =
+        queryRepository.unreadIds(feedId)
 
-    override fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
-        queryRepository.observeUnreadCount(feedId, starredOnly)
+    override fun observeUnreadCount(feedId: Long?): Flow<Int> =
+        queryRepository.observeUnreadCount(feedId)
 
-    override fun observeReadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
-        queryRepository.observeReadCount(feedId, starredOnly)
+    override fun observeReadCount(feedId: Long?): Flow<Int> =
+        queryRepository.observeReadCount(feedId)
 
     override fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
         queryRepository.getArticlesByIds(ids)
@@ -105,7 +105,6 @@ class ArticleRepository(
         // Local changes go up before the server state comes down, so reconciliation below can
         // treat the backend as authoritative without discarding anything the user just did.
         pushPendingStatuses()
-        pushPendingStars()
 
         val useIncrementalSync = !forceFullSync && shouldUseIncrementalSync(syncStartTime)
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
@@ -348,15 +347,6 @@ class ArticleRepository(
         }
     }
 
-    private suspend fun pushPendingStars() {
-        val pending = articleDao.getPendingStars()
-        if (pending.isEmpty()) return
-        Log.i(TAG, "Pushing ${pending.size} queued stars")
-        pending.groupBy { it.starred }.forEach { (starred, queued) ->
-            pushStarOrLeaveQueued(queued.map { it.id }, starred)
-        }
-    }
-
     /**
      * A failed push is not an error the caller has to handle: the change stays queued and the next
      * sync tries again. Cancellation is not a failure and has to keep propagating.
@@ -375,19 +365,6 @@ class ArticleRepository(
         }
     }
 
-    private suspend fun pushStarOrLeaveQueued(articleIds: List<String>, starred: Boolean) {
-        try {
-            articleIds.chunked(STATUS_UPDATE_CHUNK).forEach { chunk ->
-                api.updateEntriesStarred(chunk.map { it.toLong() }, starred)
-                articleDao.clearStarredPendingSync(chunk, starred)
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w(TAG, "Star push failed; queued for the next sync: ${e.message}")
-        }
-    }
-
     override suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus) {
         mutationRepository.updateReadStatus(articleIds, newStatus)
     }
@@ -398,10 +375,6 @@ class ArticleRepository(
 
     override suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long> =
         mutationRepository.idsStillReadSince(articleIds, readBefore)
-
-    override suspend fun updateStarred(articleId: Long, starred: Boolean) {
-        mutationRepository.updateStarred(articleId, starred)
-    }
 
     /**
      * Articles only carry a preview from the version that introduced the column, so everything

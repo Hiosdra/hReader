@@ -30,7 +30,6 @@ private const val JSON_OUTPUT = "json"
 private const val OLDEST_FIRST = "o"
 private const val NEWEST_FIRST = "n"
 private const val READ_STATE = "user/-/state/com.google/read"
-private const val STARRED_STATE = "user/-/state/com.google/starred"
 private const val EDIT_ACTION = "edit"
 private const val UNSUBSCRIBE_ACTION = "unsubscribe"
 private const val FEED_STREAM_PREFIX = "feed/"
@@ -124,11 +123,6 @@ class FreshRssBackend(
         editTag(entryIds, READ_STATE, add = status == ArticleStatus.READ)
     }
 
-    override suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean) {
-        if (entryIds.isEmpty()) return
-        editTag(entryIds, STARRED_STATE, add = starred)
-    }
-
     private suspend fun editTag(entryIds: List<Long>, state: String, add: Boolean) {
         withRetries {
             apiService.editTag(
@@ -199,8 +193,7 @@ private fun StreamItem.toEntry(id: Long): Entry {
         feed = origin.toFeed(),
         readingTime = body?.let { estimateReadingTimeMinutes(it) },
         enclosures = enclosure.toEnclosures(),
-        status = if (categories.any { it == READ_STATE }) ArticleStatus.READ else ArticleStatus.UNREAD,
-        starred = categories.any { it == STARRED_STATE }
+        status = if (categories.any { it == READ_STATE }) ArticleStatus.READ else ArticleStatus.UNREAD
     )
 }
 

@@ -117,10 +117,139 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
     }
 }
 
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_BEFORE_DELETE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_AFTER_UPDATE")
+        db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_articles_fts_AFTER_INSERT")
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_reading_positions_v19` (
+                `articleId` TEXT NOT NULL,
+                `progress` REAL NOT NULL,
+                PRIMARY KEY(`articleId`)
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `article_reading_positions_v19`(`articleId`, `progress`)
+            SELECT `articleId`, `progress` FROM `article_reading_positions`
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE `article_reading_positions`")
+
+        db.execSQL(
+            """
+            CREATE TABLE `articles_v19` (
+                `id` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
+                `author` TEXT,
+                `url` TEXT NOT NULL,
+                `publishedAt` INTEGER NOT NULL,
+                `content` TEXT,
+                `fullContent` TEXT,
+                `preview` TEXT,
+                `feedId` INTEGER NOT NULL,
+                `readingTime` INTEGER,
+                `enclosures` TEXT NOT NULL,
+                `leadImageUrl` TEXT,
+                `status` TEXT,
+                `pendingSync` INTEGER NOT NULL,
+                `readAt` INTEGER,
+                `backlogFetchedAt` INTEGER,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `articles_v19`(
+                `rowid`, `id`, `title`, `author`, `url`, `publishedAt`, `content`, `fullContent`,
+                `preview`, `feedId`, `readingTime`, `enclosures`, `leadImageUrl`, `status`,
+                `pendingSync`, `readAt`, `backlogFetchedAt`
+            )
+            SELECT
+                `rowid`, `id`, `title`, `author`, `url`, `publishedAt`, `content`, `fullContent`,
+                `preview`, `feedId`, `readingTime`, `enclosures`, `leadImageUrl`, `status`,
+                `pendingSync`, `readAt`, `backlogFetchedAt`
+            FROM `articles`
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE `articles`")
+        db.execSQL("ALTER TABLE `articles_v19` RENAME TO `articles`")
+
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_articles_feedId` ON `articles` (`feedId`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_articles_status` ON `articles` (`status`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_articles_publishedAt` ON `articles` (`publishedAt`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_articles_pendingSync` ON `articles` (`pendingSync`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_articles_feedId_publishedAt_id` " +
+                "ON `articles` (`feedId`, `publishedAt`, `id`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_articles_status_publishedAt_id` " +
+                "ON `articles` (`status`, `publishedAt`, `id`)"
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE `article_reading_positions` (
+                `articleId` TEXT NOT NULL,
+                `progress` REAL NOT NULL,
+                PRIMARY KEY(`articleId`),
+                FOREIGN KEY(`articleId`) REFERENCES `articles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO `article_reading_positions`(`articleId`, `progress`)
+            SELECT `articleId`, `progress` FROM `article_reading_positions_v19`
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE `article_reading_positions_v19`")
+
+        db.execSQL(
+            "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_UPDATE " +
+                "BEFORE UPDATE ON `articles` BEGIN DELETE FROM `articles_fts` " +
+                "WHERE `docid`=OLD.`rowid`; END"
+        )
+        db.execSQL(
+            "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_BEFORE_DELETE " +
+                "BEFORE DELETE ON `articles` BEGIN DELETE FROM `articles_fts` " +
+                "WHERE `docid`=OLD.`rowid`; END"
+        )
+        db.execSQL(
+            "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_AFTER_UPDATE " +
+                "AFTER UPDATE ON `articles` BEGIN INSERT INTO `articles_fts`" +
+                "(`docid`, `title`, `author`, `content`, `fullContent`) VALUES " +
+                "(NEW.`rowid`, NEW.`title`, NEW.`author`, NEW.`content`, NEW.`fullContent`); END"
+        )
+        db.execSQL(
+            "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_articles_fts_AFTER_INSERT " +
+                "AFTER INSERT ON `articles` BEGIN INSERT INTO `articles_fts`" +
+                "(`docid`, `title`, `author`, `content`, `fullContent`) VALUES " +
+                "(NEW.`rowid`, NEW.`title`, NEW.`author`, NEW.`content`, NEW.`fullContent`); END"
+        )
+    }
+}
+
 val APP_MIGRATIONS = arrayOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
-    MIGRATION_17_18
+    MIGRATION_17_18,
+    MIGRATION_18_19
 )
 
 private const val ENCLOSURE_RECORD_SEPARATOR = "\u001e"

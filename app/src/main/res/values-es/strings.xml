@@ -45,11 +45,9 @@
     <string name="action_sign_out">Cerrar sesión</string>
     <string name="action_switch_and_clear_data">Cambiar y borrar datos</string>
     <string name="main_all_articles">Todos los artículos</string>
-    <string name="main_starred_articles">Artículos favoritos</string>
     <string name="main_feeds">Fuentes</string>
     <string name="main_close_search">Cerrar búsqueda</string>
     <string name="main_show_all_articles">Mostrar todos los artículos</string>
-    <string name="main_show_starred_articles">Mostrar artículos favoritos</string>
     <string name="main_unread_only">Solo no leídos</string>
     <string name="main_show_read_articles">Mostrar artículos leídos (%1$d)</string>
     <string name="main_title_with_unread_count">%1$s  •  %2$d</string>
@@ -60,7 +58,6 @@
     <string name="main_could_not_read_stored_articles">No se pudieron leer los artículos guardados</string>
     <string name="main_offline_refresh">Sin conexión — conecta una red para actualizar.</string>
     <string name="main_nothing_matches_search">No hay coincidencias</string>
-    <string name="main_no_starred_articles">Aún no hay artículos favoritos</string>
     <string name="main_no_articles">Aún no hay artículos</string>
     <string name="main_no_feed_articles">No hay artículos para esta fuente</string>
     <string name="main_browse_subscriptions">Explorar suscripciones</string>
@@ -76,8 +73,6 @@
     <plurals name="main_marked_articles_read"><item quantity="one">%1$d artículo marcado como leído</item><item quantity="many">%1$d artículos marcados como leídos</item><item quantity="other">%1$d artículos marcados como leídos</item></plurals>
     <string name="article_position">Artículo %1$d de %2$d</string>
     <string name="article_no_content">No hay contenido disponible</string>
-    <string name="article_remove_star">Quitar de favoritos</string>
-    <string name="article_star">Añadir a favoritos</string>
     <string name="article_decrease_text_size">Reducir tamaño del texto</string>
     <string name="article_reset_text_size">Restablecer tamaño del texto (%1$d%%)</string>
     <string name="article_increase_text_size">Aumentar tamaño del texto</string>
@@ -441,7 +436,6 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="sync_article_content_failed">No se pudo descargar el contenido de los artículos.</string>
     <string name="main_scope_unread">No leídos</string>
     <string name="main_scope_all">Todos</string>
-    <string name="main_scope_starred">Favoritos</string>
     <string name="main_scope_feed">Este feed</string>
     <string name="main_scope_search">Búsqueda: %1$s</string>
     <string name="main_clear_filters">Borrar filtros</string>
@@ -449,8 +443,6 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="main_show_all_from_empty">Mostrar todos los artículos</string>
     <string name="main_syncing_first_time">La primera sincronización está en curso. Los artículos aparecerán aquí en cuanto se descarguen.</string>
     <string name="main_sync_failed">No se pudo completar la primera sincronización.</string>
-    <string name="article_starred">Con estrella</string>
-    <string name="article_not_starred">Sin estrella</string>
     <string name="onboarding_optional_settings">Ajustes opcionales</string>
     <string name="onboarding_optional_settings_summary">Los diagnósticos y los resúmenes de IA se pueden configurar más tarde</string>
     <string name="settings_group_reading_summary">Visualización del texto, voz y opciones de enlaces</string>

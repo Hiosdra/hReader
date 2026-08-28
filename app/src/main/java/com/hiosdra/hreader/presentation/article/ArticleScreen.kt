@@ -115,7 +115,6 @@ fun ArticleScreen(
     navController: NavHostController,
     feedId: Long?,
     startArticleId: Long,
-    starredOnly: Boolean = false,
     includeRead: Boolean = false,
     sessionStartMillis: Long = 0L,
     readerPreferences: ReaderPreferences,
@@ -145,8 +144,8 @@ fun ArticleScreen(
     var temporaryTtsModel by remember { mutableStateOf<TtsModel?>(null) }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
-    LaunchedEffect(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis) {
-        viewModel.openList(feedId, startArticleId, starredOnly, includeRead, sessionStartMillis)
+    LaunchedEffect(feedId, startArticleId, includeRead, sessionStartMillis) {
+        viewModel.openList(feedId, startArticleId, includeRead, sessionStartMillis)
     }
 
     val currentOfflinePageAvailable = uiState.entries
@@ -216,7 +215,6 @@ fun ArticleScreen(
                 isWebViewMode = isWebViewMode,
                 canUseWebView = uiState.isOnline ||
                     (currentEntry?.id?.let { uiState.offlinePages.containsKey(it) } == true),
-                isStarred = currentEntry?.starred == true,
                 isRead = currentEntry?.isRead == true,
                 textScale = textScale,
                 onDecreaseTextScale = {
@@ -227,9 +225,6 @@ fun ArticleScreen(
                 onIncreaseTextScale = {
                     textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
                         .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
-                },
-                onToggleStar = {
-                    currentEntry?.let { entry -> viewModel.setStarred(entry.id, !entry.starred) }
                 },
                 onToggleRead = {
                     currentEntry?.let { entry ->

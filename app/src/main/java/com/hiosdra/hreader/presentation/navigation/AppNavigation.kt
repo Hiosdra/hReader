@@ -176,7 +176,6 @@ fun AppNavigation(
             arguments = listOf(
                 navArgument("feedId") { type = NavType.LongType; defaultValue = Routes.FEED_ID_NONE },
                 navArgument("startId") { type = NavType.LongType },
-                navArgument("starred") { type = NavType.BoolType; defaultValue = false },
                 navArgument("includeRead") { type = NavType.BoolType; defaultValue = false },
                 navArgument("session") { type = NavType.LongType; defaultValue = 0L }
             )
@@ -187,7 +186,6 @@ fun AppNavigation(
                 navController = navController,
                 feedId = rawFeedId.takeIf { it != Routes.FEED_ID_NONE },
                 startArticleId = arguments?.getLong("startId") ?: 0L,
-                starredOnly = arguments?.getBoolean("starred") ?: false,
                 includeRead = arguments?.getBoolean("includeRead") ?: false,
                 sessionStartMillis = arguments?.getLong("session") ?: 0L,
                 readerPreferences = readerPreferences,

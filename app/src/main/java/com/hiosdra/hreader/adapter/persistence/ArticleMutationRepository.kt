@@ -29,10 +29,6 @@ internal class ArticleMutationRepository(
             .chunked(LOCAL_UPDATE_CHUNK)
             .flatMap { articleDao.getIdsReadNoLaterThan(it, readBefore) }
             .toArticleIds("an undo")
-
-    override suspend fun updateStarred(articleId: Long, starred: Boolean) {
-        articleDao.updateStarredForIds(listOf(articleId.toString()), starred)
-    }
 }
 
 internal fun List<String>.toArticleIds(what: String): List<Long> {

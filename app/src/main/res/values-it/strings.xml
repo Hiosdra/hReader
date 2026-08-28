@@ -45,11 +45,9 @@
     <string name="action_sign_out">Esci</string>
     <string name="action_switch_and_clear_data">Cambia e cancella dati</string>
     <string name="main_all_articles">Tutti gli articoli</string>
-    <string name="main_starred_articles">Articoli preferiti</string>
     <string name="main_feeds">Feed</string>
     <string name="main_close_search">Chiudi ricerca</string>
     <string name="main_show_all_articles">Mostra tutti gli articoli</string>
-    <string name="main_show_starred_articles">Mostra articoli preferiti</string>
     <string name="main_unread_only">Solo non letti</string>
     <string name="main_show_read_articles">Mostra articoli letti (%1$d)</string>
     <string name="main_title_with_unread_count">%1$s  •  %2$d</string>
@@ -60,7 +58,6 @@
     <string name="main_could_not_read_stored_articles">Impossibile leggere gli articoli salvati</string>
     <string name="main_offline_refresh">Offline — connettiti a una rete per aggiornare.</string>
     <string name="main_nothing_matches_search">Nessun risultato per questa ricerca</string>
-    <string name="main_no_starred_articles">Nessun articolo preferito</string>
     <string name="main_no_articles">Nessun articolo</string>
     <string name="main_no_feed_articles">Nessun articolo per questo feed</string>
     <string name="main_browse_subscriptions">Sfoglia abbonamenti</string>
@@ -76,8 +73,6 @@
     <plurals name="main_marked_articles_read"><item quantity="one">%1$d articolo segnato come letto</item><item quantity="many">%1$d articoli segnati come letti</item><item quantity="other">%1$d articoli segnati come letti</item></plurals>
     <string name="article_position">Articolo %1$d di %2$d</string>
     <string name="article_no_content">Nessun contenuto disponibile</string>
-    <string name="article_remove_star">Rimuovi dai preferiti</string>
-    <string name="article_star">Aggiungi ai preferiti</string>
     <string name="article_decrease_text_size">Riduci dimensione testo</string>
     <string name="article_reset_text_size">Reimposta dimensione testo (%1$d%%)</string>
     <string name="article_increase_text_size">Aumenta dimensione testo</string>
@@ -438,7 +433,6 @@
     <string name="sync_article_content_failed">Impossibile scaricare il contenuto degli articoli.</string>
     <string name="main_scope_unread">Non letti</string>
     <string name="main_scope_all">Tutti</string>
-    <string name="main_scope_starred">Preferiti</string>
     <string name="main_scope_feed">Questo feed</string>
     <string name="main_scope_search">Ricerca: %1$s</string>
     <string name="main_clear_filters">Cancella filtri</string>
@@ -446,8 +440,6 @@
     <string name="main_show_all_from_empty">Mostra tutti gli articoli</string>
     <string name="main_syncing_first_time">La prima sincronizzazione è in corso. Gli articoli appariranno qui appena scaricati.</string>
     <string name="main_sync_failed">Non è stato possibile completare la prima sincronizzazione.</string>
-    <string name="article_starred">Preferito</string>
-    <string name="article_not_starred">Non tra i preferiti</string>
     <string name="onboarding_optional_settings">Impostazioni opzionali</string>
     <string name="onboarding_optional_settings_summary">Diagnostica e riepiloghi AI possono essere configurati in seguito</string>
     <string name="settings_group_reading_summary">Visualizzazione del testo, voce e opzioni dei link</string>

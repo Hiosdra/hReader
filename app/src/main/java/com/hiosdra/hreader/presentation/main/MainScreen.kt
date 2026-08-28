@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
@@ -196,10 +195,7 @@ internal fun MainScreen(
                 }
                 TopAppBar(
                     title = {
-                        val listTitle = uiState.feedTitle
-                            ?: stringResource(
-                                if (uiState.starredOnly) R.string.main_starred_articles else R.string.main_all_articles
-                            )
+                        val listTitle = uiState.feedTitle ?: stringResource(R.string.main_all_articles)
                         Text(
                             if (unreadCount > 0) {
                                 stringResource(R.string.main_title_with_unread_count, listTitle, unreadCount)
@@ -304,28 +300,6 @@ internal fun MainScreen(
                                     .clip(MaterialTheme.shapes.small)
                                     .background(MaterialTheme.colorScheme.surfaceContainer)
                             ) {
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            stringResource(
-                                                if (uiState.starredOnly) R.string.main_show_all_articles
-                                                else R.string.main_show_starred_articles
-                                            ),
-                                            style = MaterialTheme.typography.labelLarge
-                                        )
-                                    },
-                                    onClick = {
-                                        expanded.value = false
-                                        viewModel.setStarredOnly(!uiState.starredOnly)
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Filled.Star,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                )
                                 if (uiState.readCount > 0 || uiState.showReadArticles) {
                                     DropdownMenuItem(
                                         text = {
@@ -442,9 +416,7 @@ internal fun MainScreen(
                     feedTitle = uiState.feedTitle,
                     searchQuery = uiState.searchQuery,
                     showReadArticles = uiState.showReadArticles,
-                    starredOnly = uiState.starredOnly,
                     onShowReadArticles = viewModel::setShowReadArticles,
-                    onToggleStarred = { viewModel.setStarredOnly(!uiState.starredOnly) },
                     onClearSearch = { viewModel.updateSearchQuery("") },
                     onLeaveFeed = onLeaveFeed
                 )
@@ -492,7 +464,6 @@ internal fun MainScreen(
                 modifier = Modifier.padding(paddingValues),
                 error = stringResource(R.string.main_could_not_read_stored_articles),
                 hasSearchQuery = uiState.searchQuery.isNotBlank(),
-                starredOnly = uiState.starredOnly,
                 showReadArticles = uiState.showReadArticles,
                 feedId = feedId,
                 onRetry = { articles.retry() },
@@ -500,14 +471,8 @@ internal fun MainScreen(
                 onBrowseFeeds = onOpenSubscriptions,
                 onAddFeed = { navController.navigate(Routes.addFeed()) },
                 onBack = onLeaveFeed,
-                onResetFilters = {
-                    viewModel.setShowReadArticles(false)
-                    viewModel.setStarredOnly(false)
-                    viewModel.updateSearchQuery("")
-                },
                 onShowAllArticles = {
                     viewModel.setShowReadArticles(true)
-                    viewModel.setStarredOnly(false)
                     viewModel.updateSearchQuery("")
                 }
             )
@@ -520,7 +485,6 @@ internal fun MainScreen(
                     modifier = Modifier.padding(paddingValues),
                     error = stringResource(R.string.main_sync_failed),
                     hasSearchQuery = uiState.searchQuery.isNotBlank(),
-                    starredOnly = uiState.starredOnly,
                     showReadArticles = uiState.showReadArticles,
                     feedId = feedId,
                     onRetry = viewModel::refreshFromNetwork,
@@ -528,14 +492,8 @@ internal fun MainScreen(
                     onBrowseFeeds = onOpenSubscriptions,
                     onAddFeed = { navController.navigate(Routes.addFeed()) },
                     onBack = onLeaveFeed,
-                    onResetFilters = {
-                        viewModel.setShowReadArticles(false)
-                        viewModel.setStarredOnly(false)
-                        viewModel.updateSearchQuery("")
-                    },
                     onShowAllArticles = {
                         viewModel.setShowReadArticles(true)
-                        viewModel.setStarredOnly(false)
                         viewModel.updateSearchQuery("")
                     }
                 )
@@ -544,7 +502,6 @@ internal fun MainScreen(
                 modifier = Modifier.padding(paddingValues),
                 error = null,
                 hasSearchQuery = uiState.searchQuery.isNotBlank(),
-                starredOnly = uiState.starredOnly,
                 showReadArticles = uiState.showReadArticles,
                 feedId = feedId,
                 onRetry = viewModel::refreshFromNetwork,
@@ -552,14 +509,8 @@ internal fun MainScreen(
                 onBrowseFeeds = onOpenSubscriptions,
                 onAddFeed = { navController.navigate(Routes.addFeed()) },
                 onBack = onLeaveFeed,
-                onResetFilters = {
-                    viewModel.setShowReadArticles(false)
-                    viewModel.setStarredOnly(false)
-                    viewModel.updateSearchQuery("")
-                },
                 onShowAllArticles = {
                     viewModel.setShowReadArticles(true)
-                    viewModel.setStarredOnly(false)
                     viewModel.updateSearchQuery("")
                 }
             )
@@ -589,7 +540,6 @@ internal fun MainScreen(
                             Routes.article(
                                 feedId = query.feedId,
                                 startArticleId = articleId,
-                                starredOnly = query.starredOnly,
                                 includeRead = query.includeRead,
                                 sessionStartMillis = query.sessionStart.toEpochMilli()
                             )
@@ -657,7 +607,6 @@ private fun EmptyState(
     modifier: Modifier,
     error: String?,
     hasSearchQuery: Boolean,
-    starredOnly: Boolean,
     showReadArticles: Boolean,
     feedId: Long?,
     onRetry: () -> Unit,
@@ -665,7 +614,6 @@ private fun EmptyState(
     onBrowseFeeds: () -> Unit,
     onAddFeed: () -> Unit,
     onBack: () -> Unit,
-    onResetFilters: () -> Unit,
     onShowAllArticles: () -> Unit
 ) {
     Box(
@@ -694,17 +642,6 @@ private fun EmptyState(
                     )
                     Button(onClick = onClearSearch, modifier = Modifier.padding(top = 20.dp)) {
                         Text(stringResource(R.string.main_clear_search))
-                    }
-                }
-
-                starredOnly -> {
-                    Text(
-                        text = stringResource(R.string.main_no_starred_articles),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                    )
-                    TextButton(onClick = onResetFilters, modifier = Modifier.padding(top = 12.dp)) {
-                        Text(stringResource(R.string.main_clear_filters))
                     }
                 }
 
@@ -785,9 +722,7 @@ private fun ArticleScopeBar(
     feedTitle: String?,
     searchQuery: String,
     showReadArticles: Boolean,
-    starredOnly: Boolean,
     onShowReadArticles: (Boolean) -> Unit,
-    onToggleStarred: () -> Unit,
     onClearSearch: () -> Unit,
     onLeaveFeed: () -> Unit
 ) {
@@ -812,14 +747,6 @@ private fun ArticleScopeBar(
                 selected = showReadArticles,
                 onClick = { onShowReadArticles(true) },
                 label = { Text(stringResource(R.string.main_scope_all)) }
-            )
-            FilterChip(
-                selected = starredOnly,
-                onClick = onToggleStarred,
-                label = { Text(stringResource(R.string.main_scope_starred)) },
-                leadingIcon = {
-                    Icon(Icons.Filled.Star, contentDescription = null)
-                }
             )
             if (feedId != null) {
                 AssistChip(

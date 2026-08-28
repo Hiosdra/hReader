@@ -102,9 +102,6 @@ class ArticleReaderUseCase(
         articleMutations.updateReadStatus(entryId.toString(), status)
     }
 
-    suspend fun updateStarred(entryId: Long, starred: Boolean) =
-        articleMutations.updateStarred(entryId, starred)
-
     suspend fun saveReadingProgress(entryId: Long, progress: Float) = positions.saveProgress(entryId, progress)
 
     suspend fun clearReadingProgress(entryId: Long) = positions.deleteProgress(entryId)

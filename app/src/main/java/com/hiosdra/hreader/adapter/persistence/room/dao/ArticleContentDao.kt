@@ -64,7 +64,7 @@ interface ArticleContentDao {
         "SELECT COUNT(*) FROM article_contents c INNER JOIN articles a " +
             "ON a.id = CAST(c.entryId AS TEXT) WHERE c.source = :source AND " +
             "((a.status IS NULL OR a.status != 'READ') OR " +
-            "a.backlogFetchedAt IS NOT NULL OR a.starred = 1)"
+            "a.backlogFetchedAt IS NOT NULL)"
     )
     fun observeOfflineContentCount(source: ArticleContentSource): Flow<Int>
 }

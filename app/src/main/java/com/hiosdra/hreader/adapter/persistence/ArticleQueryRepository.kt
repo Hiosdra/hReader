@@ -36,14 +36,12 @@ internal class ArticleQueryRepository(
             if (match == null) {
                 articleDao.pageArticles(
                     feedId = query.feedId,
-                    starredOnly = query.starredOnly,
                     includeRead = query.includeRead,
                     sessionStart = query.sessionStart
                 )
             } else {
                 articleDao.pageSearchResults(
                     feedId = query.feedId,
-                    starredOnly = query.starredOnly,
                     includeRead = query.includeRead,
                     sessionStart = query.sessionStart,
                     ftsQuery = match,
@@ -79,7 +77,6 @@ internal class ArticleQueryRepository(
     ): ArticleListWindow {
         val totalCount = articleDao.countList(
             feedId = query.feedId,
-            starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
         )
@@ -91,14 +88,12 @@ internal class ArticleQueryRepository(
         val selectedArticleIsVisible = publishedAt != null && articleDao.countVisibleArticle(
             articleId = articleId.toString(),
             feedId = query.feedId,
-            starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
         ) > 0
         if (!selectedArticleIsVisible) {
             val ids = articleDao.getListWindow(
                 feedId = query.feedId,
-                starredOnly = query.starredOnly,
                 includeRead = query.includeRead,
                 sessionStart = query.sessionStart,
                 limit = (radius * 2 + 1).coerceAtLeast(1),
@@ -116,7 +111,6 @@ internal class ArticleQueryRepository(
             articleId = articleId.toString(),
             publishedAt = publishedAt,
             feedId = query.feedId,
-            starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
         ).coerceIn(0, (totalCount - 1).coerceAtLeast(0))
@@ -124,7 +118,6 @@ internal class ArticleQueryRepository(
             articleId = articleId.toString(),
             publishedAt = publishedAt,
             feedId = query.feedId,
-            starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart,
             limit = radius.coerceAtLeast(0)
@@ -133,7 +126,6 @@ internal class ArticleQueryRepository(
             articleId = articleId.toString(),
             publishedAt = publishedAt,
             feedId = query.feedId,
-            starredOnly = query.starredOnly,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart,
             limit = radius.coerceAtLeast(0)
@@ -148,14 +140,14 @@ internal class ArticleQueryRepository(
         )
     }
 
-    override suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
-        articleDao.getUnreadIds(feedId, starredOnly).toArticleIds("the unread set")
+    override suspend fun unreadIds(feedId: Long?): List<Long> =
+        articleDao.getUnreadIds(feedId).toArticleIds("the unread set")
 
-    override fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
-        articleDao.observeUnreadCountFor(feedId, starredOnly)
+    override fun observeUnreadCount(feedId: Long?): Flow<Int> =
+        articleDao.observeUnreadCountFor(feedId)
 
-    override fun observeReadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
-        articleDao.observeReadCountFor(feedId, starredOnly)
+    override fun observeReadCount(feedId: Long?): Flow<Int> =
+        articleDao.observeReadCountFor(feedId)
 
     override fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
         articleDao.getArticlesWithFeedByIds(ids.map { it.toString() }).map { rows ->

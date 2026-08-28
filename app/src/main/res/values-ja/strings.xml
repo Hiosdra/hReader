@@ -45,11 +45,9 @@
     <string name="action_sign_out">ログアウト</string>
     <string name="action_switch_and_clear_data">切り替えてデータを消去</string>
     <string name="main_all_articles">すべての記事</string>
-    <string name="main_starred_articles">スター付きの記事</string>
     <string name="main_feeds">フィード</string>
     <string name="main_close_search">検索を閉じる</string>
     <string name="main_show_all_articles">すべての記事を表示</string>
-    <string name="main_show_starred_articles">スター付きの記事を表示</string>
     <string name="main_unread_only">未読のみ</string>
     <string name="main_show_read_articles">既読の記事を表示（%1$d）</string>
     <string name="main_title_with_unread_count">%1$s  •  %2$d</string>
@@ -60,7 +58,6 @@
     <string name="main_could_not_read_stored_articles">保存された記事を読み込めませんでした</string>
     <string name="main_offline_refresh">オフラインです。更新するにはネットワークに接続してください。</string>
     <string name="main_nothing_matches_search">検索結果がありません</string>
-    <string name="main_no_starred_articles">スター付きの記事はまだありません</string>
     <string name="main_no_articles">記事はまだありません</string>
     <string name="main_no_feed_articles">このフィードの記事はありません</string>
     <string name="main_browse_subscriptions">購読を閲覧</string>
@@ -76,8 +73,6 @@
     <plurals name="main_marked_articles_read"><item quantity="other">%1$d 件の記事を既読にしました</item></plurals>
     <string name="article_position">記事 %1$d / %2$d</string>
     <string name="article_no_content">利用できる内容がありません</string>
-    <string name="article_remove_star">スターを外す</string>
-    <string name="article_star">記事にスターを付ける</string>
     <string name="article_decrease_text_size">文字を小さくする</string>
     <string name="article_reset_text_size">文字サイズをリセット（%1$d%%）</string>
     <string name="article_increase_text_size">文字を大きくする</string>
@@ -436,7 +431,6 @@
     <string name="sync_article_content_failed">記事の内容をダウンロードできませんでした。</string>
     <string name="main_scope_unread">未読</string>
     <string name="main_scope_all">すべて</string>
-    <string name="main_scope_starred">スター付き</string>
     <string name="main_scope_feed">このフィード</string>
     <string name="main_scope_search">検索: %1$s</string>
     <string name="main_clear_filters">フィルターをクリア</string>
@@ -444,8 +438,6 @@
     <string name="main_show_all_from_empty">すべての記事を表示</string>
     <string name="main_syncing_first_time">初回同期を実行中です。ダウンロードが完了すると記事がここに表示されます。</string>
     <string name="main_sync_failed">初回同期を完了できませんでした。</string>
-    <string name="article_starred">スター付き</string>
-    <string name="article_not_starred">スターなし</string>
     <string name="onboarding_optional_settings">任意設定</string>
     <string name="onboarding_optional_settings_summary">診断とAI要約は後で設定できます</string>
     <string name="settings_group_reading_summary">テキスト表示、音声、リンクのオプション</string>

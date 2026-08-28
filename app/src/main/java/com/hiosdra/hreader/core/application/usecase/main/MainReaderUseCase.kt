@@ -32,11 +32,9 @@ class MainReaderUseCase(
 
     fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> = articles.pageArticles(query)
 
-    fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
-        articles.observeUnreadCount(feedId, starredOnly)
+    fun observeUnreadCount(feedId: Long?): Flow<Int> = articles.observeUnreadCount(feedId)
 
-    fun observeReadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
-        articles.observeReadCount(feedId, starredOnly)
+    fun observeReadCount(feedId: Long?): Flow<Int> = articles.observeReadCount(feedId)
 
     suspend fun getFeed(feedId: Long): Feed? = articles.getFeed(feedId)
 
@@ -50,8 +48,7 @@ class MainReaderUseCase(
 
     fun observeOfflinePreparation(): Flow<OfflinePreparationProgress> = sync.observeOfflinePreparation()
 
-    suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
-        articles.unreadIds(feedId, starredOnly)
+    suspend fun unreadIds(feedId: Long?): List<Long> = articles.unreadIds(feedId)
 
     suspend fun updateReadStatus(articleIds: List<Long>, read: Boolean) = articleMutations.updateReadStatus(
         articleIds.map(Long::toString),

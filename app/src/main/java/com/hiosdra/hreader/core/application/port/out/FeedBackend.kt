@@ -38,8 +38,6 @@ interface FeedBackend {
 
     suspend fun updateEntriesStatus(entryIds: List<Long>, status: ArticleStatus)
 
-    suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean)
-
     suspend fun fetchFullContent(entryId: Long, articleUrl: String? = null): String?
 
     suspend fun verifyConnection(): Int

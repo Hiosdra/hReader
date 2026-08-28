@@ -91,22 +91,6 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
         withRetries { apiService.updateEntriesStatus(UpdateEntriesStatusRequest(entryIds, status.toWire())) }
     }
 
-    /**
-     * The endpoint flips the stored value rather than setting it, so what the server currently
-     * holds is read first and the flip is only sent when it disagrees with [starred].
-     *
-     * Sending it unconditionally inverted the star whenever the server already agreed: two local
-     * toggles that cancel each other out still leave one queued change, and a star set from another
-     * client arrives the same way. The read is idempotent and retried; the flip is neither, so a
-     * timeout on it leaves the change queued for the next sync, which now sees the true state.
-     */
-    override suspend fun updateEntriesStarred(entryIds: List<Long>, starred: Boolean) {
-        entryIds.forEach { entryId ->
-            val current = withRetries { apiService.getEntry(entryId).starred }
-            if (current != starred) apiService.toggleBookmark(entryId)
-        }
-    }
-
     override suspend fun fetchFullContent(entryId: Long, articleUrl: String?): String? =
         withRetries { apiService.fetchOriginalContent(entryId).content.takeIf { it.isNotBlank() } }
 
@@ -155,8 +139,7 @@ internal fun MinifluxEntry.toDomain(): Entry = Entry(
     feed = feed.toDomain(),
     readingTime = readingTime,
     enclosures = enclosures.mapNotNull { it.toDomain() },
-    status = status.toArticleStatus(),
-    starred = starred
+    status = status.toArticleStatus()
 )
 
 private fun MinifluxFeed?.toDomain(): Feed = Feed(
