@@ -135,6 +135,11 @@ android {
     }
 }
 
+composeCompiler {
+    reportsDestination = layout.buildDirectory.dir("compose_compiler")
+    metricsDestination = layout.buildDirectory.dir("compose_metrics")
+}
+
 // Configure KSP to export Room schemas
 ksp {
     arg("room.incremental", "true")

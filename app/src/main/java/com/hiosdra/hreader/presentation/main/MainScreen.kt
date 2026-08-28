@@ -76,11 +76,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
-import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
-import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.presentation.navigation.Routes
+import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.article.ArticleListGrouped
 import com.hiosdra.hreader.presentation.components.ArticleListSkeleton
 import com.hiosdra.hreader.presentation.text.resolve
@@ -89,16 +87,14 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun MainScreen(
+internal fun MainScreen(
     navController: NavController,
     onOpenSubscriptions: () -> Unit,
     onLeaveFeed: () -> Unit = {},
     onFeedMarkedRead: (Long) -> Unit = {},
     feedId: Long? = null,
     viewModel: MainViewModel,
-    articleImageLoader: ArticleImageLoader,
-    coilImageLoader: CoilImageLoader,
-    remoteResourcePolicy: RemoteResourcePolicy
+    imageDependencies: ArticleImageDependencies
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val articles = viewModel.articles.collectAsLazyPagingItems()
@@ -440,7 +436,11 @@ fun MainScreen(
                 )
             ) {
                 ExtendedFloatingActionButton(
-                    onClick = { viewModel.markAllAsRead(onFeedMarkedRead) },
+                    onClick = {
+                        if (!uiState.isBulkReadStateUpdating) {
+                            viewModel.markAllAsRead(onFeedMarkedRead)
+                        }
+                    },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { Icon(Icons.Filled.Done, contentDescription = null) },
@@ -571,9 +571,9 @@ fun MainScreen(
                         )
                     },
                     onCheckedChange = viewModel::updateEntryReadStatus,
-                    imageLoader = articleImageLoader,
-                    coilImageLoader = coilImageLoader,
-                    remoteResourcePolicy = remoteResourcePolicy,
+                    imageDependencies = imageDependencies,
+                    readStateAnimationEnabled = !uiState.isBulkReadStateUpdating &&
+                        uiState.syncState != com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING,
                     isOnline = uiState.isOnline
                 )
             }
