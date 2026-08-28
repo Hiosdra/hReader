@@ -126,10 +126,7 @@ internal fun ArticleContent(
     val density = LocalDensity.current
     val minimumWebViewHeightPx = with(density) { 240.dp.roundToPx() }
     val safeWebContentHeightPx = safeArticleWebViewHeightPx(webContentHeightPx)
-    val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(
-        contentHeightPx = webContentHeightPx,
-        viewportHeightPx = articleViewportHeightPx
-    )
+    val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(webContentHeightPx)
     val webViewHeightPx = if (webViewNeedsInternalScroll) {
         articleViewportHeightPx.coerceAtLeast(minimumWebViewHeightPx)
     } else {

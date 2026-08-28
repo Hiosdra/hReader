@@ -82,23 +82,12 @@ internal const val READING_POSITION_SAMPLE_MILLIS = 400L
 // Compose packs layout dimensions into 18 bits. Keep a margin below the 262143 px
 // representable maximum because Modifier.height converts Dp back to integer pixels.
 internal const val MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX = 262_000
-internal const val ARTICLE_WEB_VIEW_INTERNAL_SCROLL_VIEWPORT_MULTIPLIER = 4
 
 internal fun safeArticleWebViewHeightPx(contentHeightPx: Int): Int =
     contentHeightPx.coerceIn(0, MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX)
 
 internal fun articleWebViewNeedsInternalScroll(contentHeightPx: Int): Boolean =
     contentHeightPx > MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX
-
-internal fun articleWebViewNeedsInternalScroll(
-    contentHeightPx: Int,
-    viewportHeightPx: Int
-): Boolean {
-    if (contentHeightPx <= 0) return false
-    if (contentHeightPx > MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX) return true
-    val viewportLimit = viewportHeightPx.toLong() * ARTICLE_WEB_VIEW_INTERNAL_SCROLL_VIEWPORT_MULTIPLIER
-    return viewportHeightPx > 0 && contentHeightPx.toLong() > viewportLimit
-}
 
 internal fun articleWebViewRestoreScrollY(
     progress: Float,
