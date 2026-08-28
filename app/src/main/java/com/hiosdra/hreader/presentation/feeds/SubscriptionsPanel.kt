@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.OutputStream
 import kotlin.text.Charsets.UTF_8
 
 /** Exporters disagree on the OPML media type, so the picker cannot be narrowed to one. */
@@ -374,9 +375,18 @@ private fun RenameFeedDialog(feed: Feed, onConfirm: (String) -> Unit, onDismiss:
 private suspend fun writeTo(context: android.content.Context, uri: Uri, opml: String): Boolean =
     withContext(Dispatchers.IO) {
         runCatchingCancellable {
-            context.contentResolver.openOutputStream(uri)?.use { it.write(opml.toByteArray()) }
-        }.isSuccess
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                writeOpml(output, opml)
+            } ?: false
+        }.getOrDefault(false)
     }
+
+internal fun writeOpml(output: OutputStream?, opml: String): Boolean {
+    if (output == null) return false
+    return runCatching {
+        output.write(opml.toByteArray(UTF_8))
+    }.isSuccess
+}
 
 private fun java.io.InputStream.readBoundedText(maxBytes: Long): String {
     val output = ByteArrayOutputStream()

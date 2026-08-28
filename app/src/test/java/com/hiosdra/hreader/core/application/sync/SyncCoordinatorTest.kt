@@ -1,7 +1,7 @@
 package com.hiosdra.hreader.core.application.sync
 
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -76,10 +76,10 @@ class SyncCoordinatorTest {
             )
         )
 
-        assertEquals(true, plan.forceFullSync)
-        assertEquals(true, plan.expedited)
-        assertEquals(true, plan.ignoreQuietHours)
-        assertEquals(true, plan.userVisible)
+        assertTrue(plan.forceFullSync)
+        assertTrue(plan.expedited)
+        assertTrue(plan.ignoreQuietHours)
+        assertTrue(plan.userVisible)
         assertFalse(plan.offlinePreparation)
     }
 }

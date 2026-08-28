@@ -26,10 +26,8 @@ import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
 
 private const val TAG = "ArticleRepository"
 

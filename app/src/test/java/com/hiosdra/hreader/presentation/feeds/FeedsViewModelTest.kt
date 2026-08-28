@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.presentation.feeds
 
 import com.hiosdra.hreader.core.domain.model.Feed
+import java.io.ByteArrayOutputStream
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -166,6 +167,22 @@ class FeedsViewModelTest {
         )
 
         assertEquals("Could not rename: server rejected it", message)
+    }
+}
+
+class OpmlExportTest {
+
+    @Test
+    fun `missing output stream is reported as a failed write`() {
+        assertFalse(writeOpml(null, "<opml/>"))
+    }
+
+    @Test
+    fun `opml is written as utf8`() {
+        val output = ByteArrayOutputStream()
+
+        assertTrue(writeOpml(output, "zażółć"))
+        assertEquals("zażółć", output.toString(Charsets.UTF_8.name()))
     }
 }
 
