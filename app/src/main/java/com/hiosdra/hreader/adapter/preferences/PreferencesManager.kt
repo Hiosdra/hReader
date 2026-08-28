@@ -185,7 +185,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
     override fun setOpenRouterApiKey(apiKey: String) {
         updateSecrets(
             transform = { it.copy(openRouterApiKey = apiKey) },
-            write = { writeSecret(openRouterApiKey, apiKey) }
+            write = { writeSecret(openRouterApiKeyKey, apiKey) }
         )
     }
 
@@ -522,7 +522,6 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
 
     private suspend fun hydrateSecrets() {
         try {
-            migrateSecrets()
             val loaded = secretDataStore.data.first().toSecretState()
             completeSecretHydration(loaded)
         } catch (error: CancellationException) {
@@ -561,79 +560,18 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         }
     }
 
-    private suspend fun migrateSecrets() {
-        val loaded = secretDataStore.data.first()
-        val legacyValueCount = legacySecretKeys.count { key ->
-            loaded[key]?.isNullOrBlank() == false
-        }
-        val encryptedValueCount = encryptedSecretKeys.count { key ->
-            loaded[key]?.isNullOrBlank() == false
-        }
-        if (legacyValueCount == 0 && encryptedValueCount == 0) return
-
-        val values = try {
-            secretDefinitions.mapNotNull { definition ->
-                val legacy = loaded[definition.legacyKey]
-                val encrypted = loaded[definition.encryptedKey]
-                when {
-                    encrypted != null -> definition to secretCipher.decrypt(encrypted)
-                    !legacy.isNullOrBlank() -> definition to legacy
-                    else -> null
-                }
-            }.toMap()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Throwable) {
-            clearSecretStorage()
-            return
-        }
-
-        if (legacyValueCount > 0) {
-            secretDataStore.edit { preferences ->
-                values.forEach { (definition, value) ->
-                    preferences[definition.encryptedKey] = secretCipher.encrypt(value)
-                }
-                preferences[secretMigrationStateKey] = SECRET_MIGRATION_PREPARED
-            }
-            val verified = runCatching {
-                val prepared = secretDataStore.data.first()
-                values.all { (definition, expected) ->
-                    prepared[definition.encryptedKey]?.let(secretCipher::decrypt) == expected
-                }
-            }.getOrDefault(false)
-            if (!verified) {
-                clearSecretStorage()
-                return
-            }
-            secretDataStore.edit { preferences ->
-                secretDefinitions.forEach { definition -> preferences.remove(definition.legacyKey) }
-                preferences[secretMigrationStateKey] = SECRET_MIGRATION_COMPLETE
-            }
-        } else if (values.size != encryptedValueCount) {
-            clearSecretStorage()
-        }
-    }
-
     private suspend fun clearSecretStorage() {
-        secretDataStore.edit { preferences ->
-            legacySecretKeys.forEach(preferences::remove)
-            encryptedSecretKeys.forEach(preferences::remove)
-            preferences.remove(secretMigrationStateKey)
-        }
+        secretDataStore.edit { preferences -> secretKeys.forEach(preferences::remove) }
     }
 
     private fun MutablePreferences.writeSecret(
-        legacyKey: Preferences.Key<String>,
+        key: Preferences.Key<String>,
         value: String
     ) {
-        val encryptedKey = secretDefinitions.first { it.legacyKey == legacyKey }.encryptedKey
         if (value.isBlank()) {
-            remove(encryptedKey)
-            remove(legacyKey)
+            remove(key)
         } else {
-            this[encryptedKey] = secretCipher.encrypt(value)
-            remove(legacyKey)
-            this[secretMigrationStateKey] = SECRET_MIGRATION_COMPLETE
+            this[key] = secretCipher.encrypt(value)
         }
     }
 
@@ -716,12 +654,11 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         freshRssUsername = readSecret(freshRssUsernameKey),
         freshRssApiPassword = readSecret(freshRssApiPasswordKey),
         minifluxApiToken = readSecret(minifluxApiTokenKey),
-        openRouterApiKey = readSecret(openRouterApiKey)
+        openRouterApiKey = readSecret(openRouterApiKeyKey)
     )
 
-    private fun Preferences.readSecret(legacyKey: Preferences.Key<String>): String {
-        val encryptedKey = secretDefinitions.first { it.legacyKey == legacyKey }.encryptedKey
-        return this[encryptedKey]?.let { encoded ->
+    private fun Preferences.readSecret(key: Preferences.Key<String>): String {
+        return this[key]?.let { encoded ->
             runCatching { secretCipher.decrypt(encoded) }.getOrDefault("")
         }.orEmpty()
     }
@@ -798,11 +735,11 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val SECRETS_FILE = "hreader_secrets"
         private const val KEY_BACKEND_TYPE = "backend_type"
         private const val KEY_FRESHRSS_SERVER_URL = "freshrss_server_url"
-        private const val KEY_FRESHRSS_USERNAME = "freshrss_username"
-        private const val KEY_FRESHRSS_API_PASSWORD = "freshrss_api_password"
+        private const val KEY_FRESHRSS_USERNAME = "freshrss_username_encrypted_v1"
+        private const val KEY_FRESHRSS_API_PASSWORD = "freshrss_api_password_encrypted_v1"
         private const val KEY_MINIFLUX_SERVER_URL = "miniflux_server_url"
-        private const val KEY_MINIFLUX_API_TOKEN = "miniflux_api_token"
-        private const val KEY_OPENROUTER_API_KEY = "openrouter_api_key"
+        private const val KEY_MINIFLUX_API_TOKEN = "miniflux_api_token_encrypted_v1"
+        private const val KEY_OPENROUTER_API_KEY = "openrouter_api_key_encrypted_v1"
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_SENTRY_REPORTING_ENABLED = "sentry_reporting_enabled"
@@ -843,12 +780,13 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private val freshRssUsernameKey = stringPreferencesKey(KEY_FRESHRSS_USERNAME)
         private val freshRssApiPasswordKey = stringPreferencesKey(KEY_FRESHRSS_API_PASSWORD)
         private val minifluxApiTokenKey = stringPreferencesKey(KEY_MINIFLUX_API_TOKEN)
-        private val openRouterApiKey = stringPreferencesKey(KEY_OPENROUTER_API_KEY)
-        private val freshRssUsernameEncryptedKey = stringPreferencesKey("${KEY_FRESHRSS_USERNAME}_encrypted_v1")
-        private val freshRssApiPasswordEncryptedKey = stringPreferencesKey("${KEY_FRESHRSS_API_PASSWORD}_encrypted_v1")
-        private val minifluxApiTokenEncryptedKey = stringPreferencesKey("${KEY_MINIFLUX_API_TOKEN}_encrypted_v1")
-        private val openRouterApiKeyEncryptedKey = stringPreferencesKey("${KEY_OPENROUTER_API_KEY}_encrypted_v1")
-        private val secretMigrationStateKey = stringPreferencesKey("secret_migration_state")
+        private val openRouterApiKeyKey = stringPreferencesKey(KEY_OPENROUTER_API_KEY)
+        private val secretKeys = listOf(
+            freshRssUsernameKey,
+            freshRssApiPasswordKey,
+            minifluxApiTokenKey,
+            openRouterApiKeyKey
+        )
         private val paywallBypassMethodKey = stringPreferencesKey(KEY_PAYWALL_BYPASS_METHOD)
         private val bionicReadingEnabledKey = booleanPreferencesKey(KEY_BIONIC_READING_ENABLED)
         private val sentryReportingEnabledKey = booleanPreferencesKey(KEY_SENTRY_REPORTING_ENABLED)
@@ -889,22 +827,6 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val DEFAULT_IMAGE_CACHE_BUDGET_MB = 500
         private const val MIN_SYNC_INTERVAL_MINUTES = 15
         private const val TAG = "PreferencesManager"
-        private const val SECRET_MIGRATION_PREPARED = "prepared"
-        private const val SECRET_MIGRATION_COMPLETE = "complete"
-
-        private val secretDefinitions = listOf(
-            SecretDefinition(freshRssUsernameKey, freshRssUsernameEncryptedKey),
-            SecretDefinition(freshRssApiPasswordKey, freshRssApiPasswordEncryptedKey),
-            SecretDefinition(minifluxApiTokenKey, minifluxApiTokenEncryptedKey),
-            SecretDefinition(openRouterApiKey, openRouterApiKeyEncryptedKey)
-        )
-        private val legacySecretKeys = secretDefinitions.map { it.legacyKey }
-        private val encryptedSecretKeys = secretDefinitions.map { it.encryptedKey }
-
-        private data class SecretDefinition(
-            val legacyKey: Preferences.Key<String>,
-            val encryptedKey: Preferences.Key<String>
-        )
 
         private data class WriteRequest(
             val transform: suspend MutablePreferences.() -> Unit,
