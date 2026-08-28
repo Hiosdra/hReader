@@ -9,7 +9,7 @@ import androidx.work.workDataOf
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.entrypoint.notification.AppNotificationFactory
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
-import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
@@ -24,7 +24,7 @@ private const val MAX_RUN_ATTEMPTS = 5
 class ContentSyncWorker(
     appContext: Context,
     params: WorkerParameters,
-    private val repository: ArticleStore,
+    private val repository: ArticleSyncStore,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val syncScheduler: SyncRequester,
     private val preferencesManager: SyncPreferences,

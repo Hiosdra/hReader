@@ -3,7 +3,8 @@ package com.hiosdra.hreader.core.application.usecase.main
 import androidx.paging.PagingData
 import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
-import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
+import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
@@ -19,7 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import java.time.Instant
 
 class MainReaderUseCase(
-    private val articles: ArticleStore,
+    private val articles: ArticleQueryStore,
+    private val articleMutations: ArticleMutationStore,
     private val cache: CacheStore,
     private val aiModels: AiModelCatalog,
     private val sync: SyncRequester,
@@ -46,13 +48,13 @@ class MainReaderUseCase(
     suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
         articles.unreadIds(feedId, starredOnly)
 
-    suspend fun updateReadStatus(articleIds: List<Long>, read: Boolean) = articles.updateReadStatus(
+    suspend fun updateReadStatus(articleIds: List<Long>, read: Boolean) = articleMutations.updateReadStatus(
         articleIds.map(Long::toString),
         if (read) ArticleStatus.READ else ArticleStatus.UNREAD
     )
 
     suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long> =
-        articles.idsStillReadSince(articleIds, readBefore)
+        articleMutations.idsStillReadSince(articleIds, readBefore)
 
     suspend fun checkSelectedAiModel(): SelectedModelStatus = aiModels.checkSelectedModel()
 }

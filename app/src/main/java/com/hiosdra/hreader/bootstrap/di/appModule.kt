@@ -50,6 +50,10 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
+import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
+import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
+import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
@@ -121,6 +125,10 @@ val appModule = module {
     single { get<AppDatabase>().articleReadingPositionDao() }
     single { ArticleRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
     single<ArticleStore> { get<ArticleRepository>() }
+    single<ArticleQueryStore> { get<ArticleRepository>() }
+    single<ArticleMutationStore> { get<ArticleRepository>() }
+    single<ArticleSyncStore> { get<ArticleRepository>() }
+    single<ArticleMaintenanceStore> { get<ArticleRepository>() }
     single { ArticleImageRepository(androidApplication(), get(), get(), get(), get(), get()) }
     single<ArticleImageStore> { get<ArticleImageRepository>() }
     single<coil3.ImageLoader> {
@@ -229,7 +237,8 @@ val appModule = module {
     single<SyncRequester> { get<SyncScheduler>() }
     single {
         ArticleReaderUseCase(
-            articles = get<ArticleStore>(),
+            articles = get<ArticleQueryStore>(),
+            articleMutations = get<ArticleMutationStore>(),
             positions = get<ArticleReadingPositionStore>(),
             content = get<ArticleContentStore>(),
             pages = get<ArticlePageStore>(),
@@ -244,7 +253,8 @@ val appModule = module {
     }
     single {
         MainReaderUseCase(
-            articles = get<ArticleStore>(),
+            articles = get<ArticleQueryStore>(),
+            articleMutations = get<ArticleMutationStore>(),
             cache = get<CacheStore>(),
             aiModels = get<AiModelCatalog>(),
             sync = get<SyncRequester>(),
