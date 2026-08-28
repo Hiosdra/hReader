@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +47,7 @@ fun ArticleWebView(
     onScrollProgress: ((Float) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
-    preferencesManager: AppPreferences,
+    readerPreferences: ReaderPreferences,
     remoteResourcePolicy: RemoteResourcePolicy
 ) {
     val textColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.onSurface.toArgb())
@@ -70,8 +70,8 @@ fun ArticleWebView(
     val resourceScope = rememberCoroutineScope()
 
     // Watched rather than read once, so turning the setting on redraws the article already open.
-    val bionicReadingEnabled by preferencesManager.observeBionicReadingEnabled()
-        .collectAsStateWithLifecycle(initialValue = preferencesManager.getBionicReadingEnabled())
+    val bionicReadingEnabled by readerPreferences.observeBionicReadingEnabled()
+        .collectAsStateWithLifecycle(initialValue = readerPreferences.getBionicReadingEnabled())
     var processedContent by remember(articleContent) { mutableStateOf(articleContent) }
     androidx.compose.runtime.LaunchedEffect(
         articleContent,

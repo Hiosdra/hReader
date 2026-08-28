@@ -30,9 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
+import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import com.hiosdra.hreader.core.application.tts.TtsModel
@@ -46,7 +46,7 @@ import kotlin.math.roundToInt
 
 @Composable
 internal fun TtsSettingsSection(
-    preferences: AppPreferences,
+    preferences: TtsPreferences,
     modelManager: TtsModelGateway,
     downloadScheduler: TtsModelDownloadRequester,
     onRequestNotifications: (() -> Unit) -> Unit

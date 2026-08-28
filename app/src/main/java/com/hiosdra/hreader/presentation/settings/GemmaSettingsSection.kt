@@ -30,7 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.GemmaBackend
 import com.hiosdra.hreader.core.application.ai.GemmaModelStatus
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun GemmaSettingsSection(
-    preferences: AppPreferences,
+    preferences: AiPreferences,
     modelManager: GemmaModelGateway,
     downloadScheduler: GemmaModelDownloadRequester,
     modelLifecycle: GemmaModelLifecycle,

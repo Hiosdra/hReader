@@ -26,13 +26,18 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
+import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.presentation.feeds.FeedDetailScreen
@@ -40,7 +45,6 @@ import com.hiosdra.hreader.presentation.feeds.FeedsViewModel
 import com.hiosdra.hreader.presentation.feeds.SubscriptionsDrawer
 import com.hiosdra.hreader.presentation.feeds.rememberSubscriptionsDrawerState
 import com.hiosdra.hreader.presentation.feeds.add.AddFeedScreen
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.presentation.main.MainScreen
 import com.hiosdra.hreader.presentation.main.MainViewModel
 import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
@@ -57,7 +61,11 @@ import org.koin.compose.koinInject
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     entryPoint: EntryPoint = EntryPoint.ArticleList,
-    preferencesManager: AppPreferences = koinInject(),
+    backendPreferences: BackendPreferences = koinInject(),
+    readerPreferences: ReaderPreferences = koinInject(),
+    ttsPreferences: TtsPreferences = koinInject(),
+    aiPreferences: AiPreferences = koinInject(),
+    performancePreferences: PerformancePreferences = koinInject(),
     errorReporter: ErrorReporter = koinInject(),
     ttsModelManager: TtsModelGateway = koinInject(),
     ttsModelDownloadScheduler: TtsModelDownloadRequester = koinInject(),
@@ -73,7 +81,7 @@ fun AppNavigation(
     articleImageDownloader: ArticleImageDownloader = koinInject(),
     networkStatus: NetworkStatus = koinInject()
 ) {
-    val configured = remember { preferencesManager.hasBackendCredentials() }
+    val configured = remember { backendPreferences.hasBackendCredentials() }
     val startDestination = remember(entryPoint) {
         when {
             !configured -> Routes.SERVER_SETUP
@@ -182,7 +190,8 @@ fun AppNavigation(
                 starredOnly = arguments?.getBoolean("starred") ?: false,
                 includeRead = arguments?.getBoolean("includeRead") ?: false,
                 sessionStartMillis = arguments?.getLong("session") ?: 0L,
-                preferencesManager = preferencesManager,
+                readerPreferences = readerPreferences,
+                ttsPreferences = ttsPreferences,
                 paywallBypassService = paywallBypass,
                 ttsModelManager = ttsModelManager,
                 ttsController = articleTtsPlayer,
@@ -214,7 +223,10 @@ fun AppNavigation(
         composable(Routes.SETTINGS) { _ ->
             SettingsScreen(
                 navController = navController,
-                preferencesManager = preferencesManager,
+                readerPreferences = readerPreferences,
+                ttsPreferences = ttsPreferences,
+                aiPreferences = aiPreferences,
+                performancePreferences = performancePreferences,
                 errorReportingManager = errorReporter,
                 gemmaModelManager = gemmaModelManager,
                 gemmaModelDownloadScheduler = gemmaModelDownloadScheduler,
@@ -230,7 +242,7 @@ fun AppNavigation(
         composable(Routes.TTS_SETTINGS) {
             TtsSettingsScreen(
                 navController = navController,
-                preferencesManager = preferencesManager,
+                ttsPreferences = ttsPreferences,
                 ttsModelManager = ttsModelManager,
                 ttsModelDownloadScheduler = ttsModelDownloadScheduler
             )

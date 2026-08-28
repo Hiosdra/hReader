@@ -47,11 +47,11 @@ import androidx.compose.ui.window.Dialog
 import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.AiProvider
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
@@ -85,7 +85,7 @@ internal fun ArticleContent(
     remoteResourcePolicy: RemoteResourcePolicy,
     imageSharer: ArticleImageSharer,
     imageDownloader: ArticleImageDownloader,
-    preferencesManager: AppPreferences,
+    readerPreferences: ReaderPreferences,
     localImagePaths: Map<String, String> = emptyMap(),
     isOnline: Boolean = true,
     aiOverview: String? = null,
@@ -344,7 +344,7 @@ internal fun ArticleContent(
                             }
                         },
                         onImageLongClick = { url -> imageActionsUrl = url },
-                        preferencesManager = preferencesManager,
+                        readerPreferences = readerPreferences,
                         remoteResourcePolicy = remoteResourcePolicy
                     )
                 }

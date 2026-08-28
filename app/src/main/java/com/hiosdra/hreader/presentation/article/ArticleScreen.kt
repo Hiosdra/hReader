@@ -51,14 +51,15 @@ import androidx.navigation.NavHostController
 import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.content.hasReadableArticleText
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
+import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.core.domain.service.cleanUrl
@@ -117,7 +118,8 @@ fun ArticleScreen(
     starredOnly: Boolean = false,
     includeRead: Boolean = false,
     sessionStartMillis: Long = 0L,
-    preferencesManager: AppPreferences,
+    readerPreferences: ReaderPreferences,
+    ttsPreferences: TtsPreferences,
     paywallBypassService: PaywallBypass,
     ttsModelManager: TtsModelGateway,
     ttsController: ArticleTtsPlayer,
@@ -139,7 +141,7 @@ fun ArticleScreen(
 
     val ttsState by ttsController.state.collectAsStateWithLifecycle()
     val ttsModelStatuses by ttsModelManager.statuses.collectAsStateWithLifecycle()
-    val configuredTtsModel = preferencesManager.getTtsModel()
+    val configuredTtsModel = ttsPreferences.getTtsModel()
     var temporaryTtsModel by remember { mutableStateOf<TtsModel?>(null) }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
@@ -298,7 +300,7 @@ fun ArticleScreen(
                         readingProgressForEntry = { entryId -> viewModel.getReadingProgressForEntry(entryId) },
                         onReadingProgressChanged = viewModel::saveReadingProgress,
                         onReadingCompleted = viewModel::clearReadingProgress,
-                        preferencesManager = preferencesManager,
+                        readerPreferences = readerPreferences,
                         articleImageLoader = articleImageLoader,
                         coilImageLoader = coilImageLoader,
                         remoteResourcePolicy = remoteResourcePolicy,
@@ -436,7 +438,7 @@ fun ArticleScreen(
                             },
                             onBypassPaywall = {
                                 if (entry.url.isNotBlank()) {
-                                    val bypassMethod = preferencesManager.getPaywallBypassMethod()
+                                    val bypassMethod = readerPreferences.getPaywallBypassMethod()
                                     val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
                                     openChromeCustomTab(navController.context, bypassUrl)
                                 }
