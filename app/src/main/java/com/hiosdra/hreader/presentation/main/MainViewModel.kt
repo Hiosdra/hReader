@@ -44,7 +44,6 @@ private const val TAG = "MainViewModel"
 private const val SEARCH_DEBOUNCE_MILLIS = 250L
 
 private const val KEY_SHOW_READ = "show_read_articles"
-private const val KEY_STARRED_ONLY = "starred_only"
 private const val KEY_SEARCH_QUERY = "search_query"
 
 /**
@@ -80,7 +79,6 @@ data class MainUiState(
      * definition.
      */
     val showReadArticles: Boolean = false,
-    val starredOnly: Boolean = false,
     val unreadCount: Int = 0,
     val readCount: Int = 0,
     val syncState: SyncOperationState = SyncOperationState.IDLE,
@@ -98,7 +96,6 @@ class MainViewModel(
         MainUiState(
             isOnline = reader.isOnline.value,
             showReadArticles = savedStateHandle[KEY_SHOW_READ] ?: false,
-            starredOnly = savedStateHandle[KEY_STARRED_ONLY] ?: false,
             searchQuery = savedStateHandle[KEY_SEARCH_QUERY] ?: ""
         )
     )
@@ -106,7 +103,6 @@ class MainViewModel(
 
     private val query = MutableStateFlow(
         ArticleListQuery(
-            starredOnly = _uiState.value.starredOnly,
             includeRead = _uiState.value.showReadArticles,
             searchQuery = _uiState.value.searchQuery
         )
@@ -191,12 +187,12 @@ class MainViewModel(
      */
     private fun observeCounts() {
         readyQuery
-            .map { it.feedId to it.starredOnly }
+            .map { it.feedId }
             .distinctUntilChanged()
-            .flatMapLatest { (feedId, starredOnly) ->
+            .flatMapLatest { feedId ->
                 combine(
-                    reader.observeUnreadCount(feedId, starredOnly),
-                    reader.observeReadCount(feedId, starredOnly)
+                    reader.observeUnreadCount(feedId),
+                    reader.observeReadCount(feedId)
                 ) { unread, read -> unread to read }
             }
             .onEach { (unread, read) ->
@@ -221,13 +217,6 @@ class MainViewModel(
         savedStateHandle[KEY_SHOW_READ] = show
         _uiState.update { it.copy(showReadArticles = show) }
         query.update { it.withIncludeRead(show) }
-    }
-
-    fun setStarredOnly(starredOnly: Boolean) {
-        if (_uiState.value.starredOnly == starredOnly) return
-        savedStateHandle[KEY_STARRED_ONLY] = starredOnly
-        _uiState.update { it.copy(starredOnly = starredOnly) }
-        query.update { it.withStarredOnly(starredOnly, Instant.now()) }
     }
 
     fun dismissAiModelWarning() {
@@ -347,7 +336,7 @@ class MainViewModel(
             try {
                 // Only what this actually changes. Sweeping in the already-read ones would push a
                 // no-op update for every article the cache holds.
-                val ids = runCatchingCancellable { reader.unreadIds(current.feedId, current.starredOnly) }
+                val ids = runCatchingCancellable { reader.unreadIds(current.feedId) }
                     .getOrElse {
                         Log.w(TAG, "Could not read the unread set", it)
                         return@launch

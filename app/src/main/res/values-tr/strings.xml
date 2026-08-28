@@ -45,11 +45,9 @@
     <string name="action_sign_out">Çıkış yap</string>
     <string name="action_switch_and_clear_data">Değiştir ve verileri temizle</string>
     <string name="main_all_articles">Tüm makaleler</string>
-    <string name="main_starred_articles">Yıldızlı makaleler</string>
     <string name="main_feeds">Akışlar</string>
     <string name="main_close_search">Aramayı kapat</string>
     <string name="main_show_all_articles">Tüm makaleleri göster</string>
-    <string name="main_show_starred_articles">Yıldızlı makaleleri göster</string>
     <string name="main_unread_only">Yalnızca okunmamış</string>
     <string name="main_show_read_articles">Okunmuş makaleleri göster (%1$d)</string>
     <string name="main_title_with_unread_count">%1$s  •  %2$d</string>
@@ -60,7 +58,6 @@
     <string name="main_could_not_read_stored_articles">Kayıtlı makaleler okunamadı</string>
     <string name="main_offline_refresh">Çevrimdışısınız — yenilemek için bir ağa bağlanın.</string>
     <string name="main_nothing_matches_search">Bu aramayla eşleşen bir şey yok</string>
-    <string name="main_no_starred_articles">Henüz yıldızlı makale yok</string>
     <string name="main_no_articles">Henüz makale yok</string>
     <string name="main_no_feed_articles">Bu akışta makale yok</string>
     <string name="main_browse_subscriptions">Aboneliklere göz at</string>
@@ -76,8 +73,6 @@
     <plurals name="main_marked_articles_read"><item quantity="one">%1$d makale okundu olarak işaretlendi</item><item quantity="other">%1$d makale okundu olarak işaretlendi</item></plurals>
     <string name="article_position">%2$d makaleden %1$d.</string>
     <string name="article_no_content">Kullanılabilir içerik yok</string>
-    <string name="article_remove_star">Yıldızı kaldır</string>
-    <string name="article_star">Makaleye yıldız ekle</string>
     <string name="article_decrease_text_size">Metin boyutunu küçült</string>
     <string name="article_reset_text_size">Metin boyutunu sıfırla (%1$d%%)</string>
     <string name="article_increase_text_size">Metin boyutunu büyüt</string>
@@ -437,7 +432,6 @@
     <string name="sync_article_content_failed">Makale içeriği indirilemedi.</string>
     <string name="main_scope_unread">Okunmamış</string>
     <string name="main_scope_all">Tümü</string>
-    <string name="main_scope_starred">Yıldızlı</string>
     <string name="main_scope_feed">Bu akış</string>
     <string name="main_scope_search">Arama: %1$s</string>
     <string name="main_clear_filters">Filtreleri temizle</string>
@@ -445,8 +439,6 @@
     <string name="main_show_all_from_empty">Tüm makaleleri göster</string>
     <string name="main_syncing_first_time">İlk senkronizasyon çalışıyor. Makaleler indirildikçe burada görünecek.</string>
     <string name="main_sync_failed">İlk senkronizasyon tamamlanamadı.</string>
-    <string name="article_starred">Yıldızlı</string>
-    <string name="article_not_starred">Yıldızsız</string>
     <string name="onboarding_optional_settings">İsteğe bağlı ayarlar</string>
     <string name="onboarding_optional_settings_summary">Tanılama ve yapay zekâ özetleri daha sonra yapılandırılabilir</string>
     <string name="settings_group_reading_summary">Metin görünümü, ses ve bağlantı seçenekleri</string>

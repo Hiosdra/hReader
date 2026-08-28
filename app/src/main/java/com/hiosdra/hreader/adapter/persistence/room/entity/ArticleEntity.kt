@@ -14,9 +14,7 @@ import java.time.Instant
         Index("status"),
         Index("publishedAt"),
         Index("pendingSync"),
-        Index("starredPendingSync"),
         Index(value = ["feedId", "publishedAt", "id"]),
-        Index(value = ["starred", "publishedAt", "id"]),
         Index(value = ["status", "publishedAt", "id"])
     ]
 )
@@ -38,9 +36,6 @@ data class ArticleEntity(
     val enclosures: List<Enclosure>,
     val leadImageUrl: String? = null,
     val status: ArticleStatus? = ArticleStatus.UNREAD,
-    val starred: Boolean = false,
-    /** A star toggled locally that the backend has not accepted yet. Mirrors [pendingSync]. */
-    val starredPendingSync: Boolean = false,
     /**
      * A [status] change made locally that the backend has not accepted yet. It survives sync
      * reconciliation and is pushed again on the next run, so reading offline is not lost.

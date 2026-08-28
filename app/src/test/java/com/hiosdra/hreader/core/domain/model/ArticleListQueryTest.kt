@@ -28,14 +28,6 @@ class ArticleListQueryTest {
     }
 
     @Test
-    fun `switching to starred starts a new visit`() {
-        val starred = query.withStarredOnly(starredOnly = true, now = later)
-
-        assertEquals(true, starred.starredOnly)
-        assertEquals(later, starred.sessionStart)
-    }
-
-    @Test
     fun `showing read articles keeps the visit going`() {
         val widened = query.withIncludeRead(true)
 
@@ -71,6 +63,5 @@ class ArticleListQueryTest {
     fun `repeating a value never restarts the visit`() {
         assertSame(query, query.withIncludeRead(false))
         assertSame(query, query.withSearch(""))
-        assertSame(query, query.withStarredOnly(starredOnly = false, now = later))
     }
 }

@@ -22,7 +22,6 @@ data class ArticleListItem(
     val readingTime: Int?,
     val leadImageUrl: String?,
     val status: ArticleStatus?,
-    val starred: Boolean,
     val backlogFetchedAt: Instant?,
     val feedId: Long,
     val feedTitle: String?,
@@ -41,7 +40,6 @@ data class ArticleReaderItem(
     val readingTime: Int?,
     val enclosures: List<Enclosure>,
     val status: ArticleStatus?,
-    val starred: Boolean,
     val backlogFetchedAt: Instant?,
     val feedId: Long,
     val feedTitle: String?,
@@ -53,12 +51,6 @@ data class ArticleReaderItem(
 data class ArticleBody(
     val id: String,
     val content: String?
-)
-
-/** Stars queued for the backend, the starred counterpart of [PendingStatus]. */
-data class PendingStar(
-    val id: String,
-    val starred: Boolean
 )
 
 /**

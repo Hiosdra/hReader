@@ -49,11 +49,9 @@
     <string name="action_switch_and_clear_data">Przełącz i wyczyść dane</string>
 
     <string name="main_all_articles">Wszystkie artykuły</string>
-    <string name="main_starred_articles">Ulubione artykuły</string>
     <string name="main_feeds">Kanały</string>
     <string name="main_close_search">Zamknij wyszukiwanie</string>
     <string name="main_show_all_articles">Pokaż wszystkie artykuły</string>
-    <string name="main_show_starred_articles">Pokaż ulubione artykuły</string>
     <string name="main_unread_only">Tylko nieprzeczytane</string>
     <string name="main_show_read_articles">Pokaż przeczytane artykuły (%1$d)</string>
     <string name="main_title_with_unread_count">%1$s  •  %2$d</string>
@@ -61,7 +59,6 @@
     <string name="main_search_articles">Szukaj artykułów</string>
     <string name="main_scope_unread">Nieprzeczytane</string>
     <string name="main_scope_all">Wszystkie</string>
-    <string name="main_scope_starred">Ulubione</string>
     <string name="main_scope_feed">Ten kanał</string>
     <string name="main_scope_search">Wyszukiwanie: %1$s</string>
     <string name="main_clear_filters">Wyczyść filtry</string>
@@ -75,7 +72,6 @@
     <string name="main_could_not_read_stored_articles">Nie można odczytać zapisanych artykułów</string>
     <string name="main_offline_refresh">Brak połączenia — połącz się z siecią, aby odświeżyć.</string>
     <string name="main_nothing_matches_search">Nic nie pasuje do wyszukiwania</string>
-    <string name="main_no_starred_articles">Brak ulubionych artykułów</string>
     <string name="main_no_unread_articles">Brak nieprzeczytanych artykułów w tym zakresie</string>
     <string name="main_show_all_from_empty">Pokaż wszystkie artykuły</string>
     <string name="main_no_articles">Brak artykułów</string>
@@ -101,10 +97,6 @@
 
     <string name="article_position">Artykuł %1$d z %2$d</string>
     <string name="article_no_content">Brak dostępnej treści</string>
-    <string name="article_remove_star">Usuń z ulubionych</string>
-    <string name="article_star">Dodaj do ulubionych</string>
-    <string name="article_starred">W ulubionych</string>
-    <string name="article_not_starred">Nie jest w ulubionych</string>
     <string name="article_decrease_text_size">Zmniejsz rozmiar tekstu</string>
     <string name="article_reset_text_size">Przywróć rozmiar tekstu (%1$d%%)</string>
     <string name="article_increase_text_size">Zwiększ rozmiar tekstu</string>

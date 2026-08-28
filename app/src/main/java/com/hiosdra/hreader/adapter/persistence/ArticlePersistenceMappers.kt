@@ -23,18 +23,13 @@ internal fun ArticleEntity.reconciledWith(local: ArticleEntity?, now: Instant): 
     val merged = if (local != null && local.pendingSync) {
         copy(status = local.status, pendingSync = true)
     } else this
-    // A star waiting to be pushed outranks what the backend reports, for the same reason a read
-    // state does: the backend has not been told about it yet.
-    val starPending = local?.starredPendingSync == true
     val readAt = if (merged.status == ArticleStatus.READ) local?.readAt ?: now else null
     // A freshly fetched entity never knows it was downloaded as backlog, so the local marker is
     // carried over; losing it would expose the article to full-sync reconciliation.
     return merged.copy(
         fullContent = local?.fullContent?.takeIf { local.url == url && local.content == content },
         readAt = readAt,
-        backlogFetchedAt = local?.backlogFetchedAt,
-        starred = if (starPending) local.starred else merged.starred,
-        starredPendingSync = starPending
+        backlogFetchedAt = local?.backlogFetchedAt
     )
 }
 
@@ -72,7 +67,6 @@ internal fun ArticleReaderItem.toEntry(): Entry = Entry(
     readingTime = readingTime,
     enclosures = enclosures,
     status = status ?: ArticleStatus.UNREAD,
-    starred = starred,
     isBacklog = backlogFetchedAt != null
 )
 
@@ -97,8 +91,7 @@ internal fun Entry.toEntity(): ArticleEntity = ArticleEntity(
     readingTime = readingTime,
     enclosures = enclosures,
     leadImageUrl = enclosures.firstOrNull { it.isImage }?.url,
-    status = status,
-    starred = starred
+    status = status
 )
 
 internal fun Feed.toArticleFeedEntity(): FeedEntity = FeedEntity(

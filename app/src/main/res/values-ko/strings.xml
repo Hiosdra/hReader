@@ -45,11 +45,9 @@
     <string name="action_sign_out">로그아웃</string>
     <string name="action_switch_and_clear_data">전환하고 데이터 지우기</string>
     <string name="main_all_articles">모든 기사</string>
-    <string name="main_starred_articles">별표 표시한 기사</string>
     <string name="main_feeds">피드</string>
     <string name="main_close_search">검색 닫기</string>
     <string name="main_show_all_articles">모든 기사 표시</string>
-    <string name="main_show_starred_articles">별표 표시한 기사 표시</string>
     <string name="main_unread_only">읽지 않은 항목만</string>
     <string name="main_show_read_articles">읽은 기사 표시(%1$d)</string>
     <string name="main_title_with_unread_count">%1$s  •  %2$d</string>
@@ -60,7 +58,6 @@
     <string name="main_could_not_read_stored_articles">저장된 기사를 읽을 수 없습니다</string>
     <string name="main_offline_refresh">오프라인입니다. 새로고침하려면 네트워크에 연결하세요.</string>
     <string name="main_nothing_matches_search">검색 결과가 없습니다</string>
-    <string name="main_no_starred_articles">아직 별표 표시한 기사가 없습니다</string>
     <string name="main_no_articles">아직 기사가 없습니다</string>
     <string name="main_no_feed_articles">이 피드에 기사가 없습니다</string>
     <string name="main_browse_subscriptions">구독 둘러보기</string>
@@ -76,8 +73,6 @@
     <plurals name="main_marked_articles_read"><item quantity="other">기사 %1$d개를 읽음으로 표시했습니다</item></plurals>
     <string name="article_position">기사 %1$d/%2$d</string>
     <string name="article_no_content">사용할 수 있는 콘텐츠가 없습니다</string>
-    <string name="article_remove_star">별표 삭제</string>
-    <string name="article_star">기사에 별표 표시</string>
     <string name="article_decrease_text_size">텍스트 크기 줄이기</string>
     <string name="article_reset_text_size">텍스트 크기 재설정(%1$d%%)</string>
     <string name="article_increase_text_size">텍스트 크기 키우기</string>
@@ -436,7 +431,6 @@
     <string name="sync_article_content_failed">기사 콘텐츠를 다운로드할 수 없습니다.</string>
     <string name="main_scope_unread">읽지 않음</string>
     <string name="main_scope_all">전체</string>
-    <string name="main_scope_starred">별표 표시</string>
     <string name="main_scope_feed">이 피드</string>
     <string name="main_scope_search">검색: %1$s</string>
     <string name="main_clear_filters">필터 지우기</string>
@@ -444,8 +438,6 @@
     <string name="main_show_all_from_empty">모든 기사 보기</string>
     <string name="main_syncing_first_time">첫 동기화가 진행 중입니다. 다운로드가 완료되면 기사가 여기에 표시됩니다.</string>
     <string name="main_sync_failed">첫 동기화를 완료하지 못했습니다.</string>
-    <string name="article_starred">별표 표시함</string>
-    <string name="article_not_starred">별표 표시 안 함</string>
     <string name="onboarding_optional_settings">선택 설정</string>
     <string name="onboarding_optional_settings_summary">진단 및 AI 요약은 나중에 설정할 수 있습니다</string>
     <string name="settings_group_reading_summary">텍스트 표시, 음성 및 링크 옵션</string>

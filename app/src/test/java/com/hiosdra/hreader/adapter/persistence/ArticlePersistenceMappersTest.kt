@@ -27,7 +27,6 @@ class ArticlePersistenceMappersTest {
             readingTime = 3,
             leadImageUrl = "https://example.com/image",
             status = null,
-            starred = false,
             backlogFetchedAt = Instant.EPOCH,
             feedId = 7L,
             feedTitle = null,
@@ -57,7 +56,6 @@ class ArticlePersistenceMappersTest {
             readingTime = 3,
             enclosures = emptyList(),
             status = ArticleStatus.READ,
-            starred = true,
             backlogFetchedAt = null,
             feedId = 7L,
             feedTitle = "Feed",
@@ -68,7 +66,6 @@ class ArticlePersistenceMappersTest {
         assertEquals(42L, entry.id)
         assertEquals("Preview", entry.preview)
         assertEquals(ArticleStatus.READ, entry.status)
-        assertTrue(entry.starred)
         assertNull(entry.content)
         assertEquals("Feed", entry.feed.title)
         assertFalse(entry.isBacklog)

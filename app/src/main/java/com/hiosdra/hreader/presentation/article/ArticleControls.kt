@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -78,13 +77,11 @@ internal fun ArticleTopBar(
     listSize: Int,
     isWebViewMode: Boolean,
     canUseWebView: Boolean,
-    isStarred: Boolean,
     isRead: Boolean,
     textScale: Float,
     onDecreaseTextScale: () -> Unit,
     onResetTextScale: () -> Unit,
     onIncreaseTextScale: () -> Unit,
-    onToggleStar: () -> Unit,
     onToggleRead: () -> Unit,
     onBack: () -> Unit,
     onToggleWebView: () -> Unit,
@@ -126,11 +123,6 @@ internal fun ArticleTopBar(
                 )
                 ReadStatusButton(isRead = isRead, onToggleRead = onToggleRead)
             }
-            StarButton(isStarred = isStarred, onToggleStar = onToggleStar)
-            // Outside the branch above: an entry that carries no address can still be starred, and
-            // that is the one action here which is about the article rather than about its page.
-            // The menu sits inside a box around its own button, or it anchors to a zero-width slot
-            // after it and opens adrift of the edge it belongs to.
             Box {
                 IconButton(onClick = { overflowExpanded.value = true }) {
                     Icon(
@@ -205,35 +197,6 @@ internal fun ArticleTopBar(
     )
 }
 
-@Composable
-private fun StarButton(
-    isStarred: Boolean,
-    onToggleStar: () -> Unit
-) {
-    val actionDescription = stringResource(
-        if (isStarred) R.string.article_remove_star else R.string.article_star
-    )
-    val stateDescription = stringResource(
-        if (isStarred) R.string.article_starred else R.string.article_not_starred
-    )
-    IconButton(
-        onClick = onToggleStar,
-        modifier = Modifier.semantics {
-            contentDescription = actionDescription
-            this.stateDescription = stateDescription
-        }
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Star,
-            contentDescription = null,
-            tint = if (isStarred) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
-        )
-    }
-}
 @Composable
 private fun ReadStatusButton(
     isRead: Boolean,

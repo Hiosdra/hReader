@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -125,7 +125,7 @@ internal fun ArticleMetadata(
                     label = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Filled.Star,
+                                Icons.Filled.Info,
                                 contentDescription = stringResource(R.string.article_ai_summary),
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
@@ -197,7 +197,7 @@ internal fun ArticleMetadata(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
-                                Icons.Filled.Star,
+                                Icons.Filled.Info,
                                 contentDescription = stringResource(R.string.article_ai_summary),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)

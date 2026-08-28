@@ -58,18 +58,6 @@ interface MinifluxApiService {
         @Body request: UpdateFeedRequest
     ): MinifluxFeed
 
-    /** One entry as the server currently holds it, for deciding whether a bookmark needs flipping. */
-    @GET("v1/entries/{entryId}")
-    suspend fun getEntry(
-        @Path("entryId") entryId: Long
-    ): MinifluxEntry
-
-    /** Miniflux has no "set" for bookmarks, only a per-entry flip of whatever is stored. */
-    @PUT("v1/entries/{entryId}/bookmark")
-    suspend fun toggleBookmark(
-        @Path("entryId") entryId: Long
-    )
-
     @POST("v1/discover")
     suspend fun discoverFeeds(
         @Body request: DiscoverRequest

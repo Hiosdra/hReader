@@ -426,7 +426,6 @@ class ArticleViewModel(
     fun openList(
         feedId: Long?,
         startArticleId: Long,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStartMillis: Long
     ) {
@@ -439,7 +438,6 @@ class ArticleViewModel(
                 val window = reader.getArticleListWindow(
                     ArticleListQuery(
                         feedId = feedId,
-                        starredOnly = starredOnly,
                         includeRead = includeRead,
                         sessionStart = Instant.ofEpochMilli(sessionStartMillis)
                     ),
@@ -481,15 +479,6 @@ class ArticleViewModel(
                 )
             }
             loadAround(_uiState.value.currentIndex)
-        }
-    }
-
-    fun setStarred(entryId: Long, starred: Boolean) {
-        _uiState.update { state ->
-            state.copy(entries = state.entries.map { if (it.id == entryId) it.copy(starred = starred) else it })
-        }
-        viewModelScope.launch {
-            runCatchingCancellable { reader.updateStarred(entryId, starred) }
         }
     }
 

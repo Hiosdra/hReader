@@ -28,7 +28,7 @@ hReader may store locally:
 - the FreshRSS username and API password, or the Miniflux API token;
 - the optional OpenRouter API key;
 - app settings, including the crash-reporting setting;
-- synchronized feeds, titles, authors, dates, links, article content, images, and read/star state;
+- synchronized feeds, titles, authors, dates, links, article content, images, and read state;
 - locally generated article summaries and credibility-analysis results.
 
 This data is stored in the app's private storage area. The file containing login credentials and the
@@ -39,7 +39,7 @@ app's settings, by clearing the app's data, or by uninstalling hReader.
 
 The user chooses the FreshRSS or Miniflux instance to which hReader connects. The application
 sends that instance the data required by the selected protocol, including credentials or a token,
-sync requests, subscription data, article metadata and content, and read/star state changes.
+sync requests, subscription data, article metadata and content, and read state changes.
 
 Documentation for the protocols used:
 

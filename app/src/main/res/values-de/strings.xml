@@ -45,11 +45,9 @@
     <string name="action_sign_out">Abmelden</string>
     <string name="action_switch_and_clear_data">Wechseln und Daten löschen</string>
     <string name="main_all_articles">Alle Artikel</string>
-    <string name="main_starred_articles">Markierte Artikel</string>
     <string name="main_feeds">Feeds</string>
     <string name="main_close_search">Suche schließen</string>
     <string name="main_show_all_articles">Alle Artikel anzeigen</string>
-    <string name="main_show_starred_articles">Markierte Artikel anzeigen</string>
     <string name="main_unread_only">Nur ungelesene</string>
     <string name="main_show_read_articles">Gelesene Artikel anzeigen (%1$d)</string>
     <string name="main_title_with_unread_count">%1$s  •  %2$d</string>
@@ -63,7 +61,6 @@
     <string name="main_could_not_read_stored_articles">Gespeicherte Artikel konnten nicht gelesen werden</string>
     <string name="main_offline_refresh">Offline — zum Aktualisieren mit einem Netzwerk verbinden.</string>
     <string name="main_nothing_matches_search">Keine passenden Ergebnisse</string>
-    <string name="main_no_starred_articles">Noch keine markierten Artikel</string>
     <string name="main_no_articles">Noch keine Artikel</string>
     <string name="main_no_feed_articles">Keine Artikel für diesen Feed</string>
     <string name="main_browse_subscriptions">Abonnements durchsuchen</string>
@@ -82,8 +79,6 @@
     </plurals>
     <string name="article_position">Artikel %1$d von %2$d</string>
     <string name="article_no_content">Kein Inhalt verfügbar</string>
-    <string name="article_remove_star">Markierung entfernen</string>
-    <string name="article_star">Artikel markieren</string>
     <string name="article_decrease_text_size">Text verkleinern</string>
     <string name="article_reset_text_size">Textgröße zurücksetzen (%1$d%%)</string>
     <string name="article_increase_text_size">Text vergrößern</string>
@@ -449,7 +444,6 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="sync_article_content_failed">Artikelinhalte konnten nicht heruntergeladen werden.</string>
     <string name="main_scope_unread">Ungelesen</string>
     <string name="main_scope_all">Alle</string>
-    <string name="main_scope_starred">Markiert</string>
     <string name="main_scope_feed">Dieser Feed</string>
     <string name="main_scope_search">Suche: %1$s</string>
     <string name="main_clear_filters">Filter löschen</string>
@@ -457,8 +451,6 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="main_show_all_from_empty">Alle Artikel anzeigen</string>
     <string name="main_syncing_first_time">Die erste Synchronisierung läuft. Artikel erscheinen hier, sobald sie heruntergeladen sind.</string>
     <string name="main_sync_failed">Die erste Synchronisierung konnte nicht abgeschlossen werden.</string>
-    <string name="article_starred">Markiert</string>
-    <string name="article_not_starred">Nicht markiert</string>
     <string name="onboarding_optional_settings">Optionale Einstellungen</string>
     <string name="onboarding_optional_settings_summary">Diagnose und KI-Zusammenfassungen können später eingerichtet werden</string>
     <string name="settings_group_reading_summary">Textanzeige, Sprache und Linkoptionen</string>

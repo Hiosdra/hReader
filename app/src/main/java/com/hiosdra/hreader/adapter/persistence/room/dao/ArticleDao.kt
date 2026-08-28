@@ -9,7 +9,6 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleListItem
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleReaderItem
 import com.hiosdra.hreader.adapter.persistence.room.entity.FeedUnreadCount
-import com.hiosdra.hreader.adapter.persistence.room.entity.PendingStar
 import com.hiosdra.hreader.adapter.persistence.room.entity.PendingStatus
 import com.hiosdra.hreader.adapter.persistence.room.entity.PrefetchTarget
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
@@ -19,7 +18,7 @@ import java.time.Instant
 private const val LIST_COLUMNS =
     "a.id AS id, a.title AS title, a.author AS author, a.url AS url, " +
         "a.publishedAt AS publishedAt, a.preview AS preview, a.readingTime AS readingTime, " +
-        "a.leadImageUrl AS leadImageUrl, a.status AS status, a.starred AS starred, " +
+        "a.leadImageUrl AS leadImageUrl, a.status AS status, " +
         "a.backlogFetchedAt AS backlogFetchedAt, a.feedId AS feedId, " +
         "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl"
 
@@ -36,7 +35,6 @@ private const val FROM_ARTICLES = "FROM articles a"
  */
 private const val VISIBILITY_FILTER =
     "(:feedId IS NULL OR a.feedId = :feedId) " +
-        "AND (:starredOnly = 0 OR a.starred = 1) " +
         "AND (:includeRead = 1 OR (a.status IS NULL OR a.status != :readStatus) " +
         "OR (a.readAt IS NOT NULL AND a.readAt >= :sessionStart))"
 
@@ -65,7 +63,6 @@ interface ArticleDao {
     )
     fun pageArticles(
         feedId: Long?,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
         readStatus: ArticleStatus = ArticleStatus.READ
@@ -81,7 +78,6 @@ interface ArticleDao {
     )
     fun pageSearchResults(
         feedId: Long?,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
         ftsQuery: String,
@@ -92,7 +88,6 @@ interface ArticleDao {
     @Query("SELECT COUNT(*) $FROM_ARTICLES WHERE $VISIBILITY_FILTER")
     suspend fun countList(
         feedId: Long?,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
         readStatus: ArticleStatus = ArticleStatus.READ
@@ -107,7 +102,6 @@ interface ArticleDao {
         articleId: String,
         publishedAt: Instant,
         feedId: Long?,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
         readStatus: ArticleStatus = ArticleStatus.READ
@@ -120,7 +114,6 @@ interface ArticleDao {
     suspend fun countVisibleArticle(
         articleId: String,
         feedId: Long?,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
         readStatus: ArticleStatus = ArticleStatus.READ
@@ -135,7 +128,6 @@ interface ArticleDao {
     )
     suspend fun getListWindow(
         feedId: Long?,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
         limit: Int,
@@ -153,7 +145,6 @@ interface ArticleDao {
         articleId: String,
         publishedAt: Instant,
         feedId: Long?,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
         limit: Int,
@@ -170,7 +161,6 @@ interface ArticleDao {
         articleId: String,
         publishedAt: Instant,
         feedId: Long?,
-        starredOnly: Boolean,
         includeRead: Boolean,
         sessionStart: Instant,
         limit: Int,
@@ -180,12 +170,10 @@ interface ArticleDao {
     @Query(
         "SELECT a.id $FROM_ARTICLES " +
             "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND (:starredOnly = 0 OR a.starred = 1) " +
             "AND (a.status IS NULL OR a.status != :readStatus)"
     )
     suspend fun getUnreadIds(
         feedId: Long?,
-        starredOnly: Boolean,
         readStatus: ArticleStatus = ArticleStatus.READ
     ): List<String>
 
@@ -196,30 +184,27 @@ interface ArticleDao {
     @Query(
         "SELECT COUNT(*) FROM articles a " +
             "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND (:starredOnly = 0 OR a.starred = 1) " +
             "AND (a.status IS NULL OR a.status != :readStatus)"
     )
     fun observeUnreadCountFor(
         feedId: Long?,
-        starredOnly: Boolean,
         readStatus: ArticleStatus = ArticleStatus.READ
     ): Flow<Int>
 
     @Query(
         "SELECT COUNT(*) FROM articles a " +
             "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND (:starredOnly = 0 OR a.starred = 1) AND a.status = :readStatus"
+            "AND a.status = :readStatus"
     )
     fun observeReadCountFor(
         feedId: Long?,
-        starredOnly: Boolean,
         readStatus: ArticleStatus = ArticleStatus.READ
     ): Flow<Int>
 
     @Query(
         "SELECT a.id AS id, a.title AS title, a.author AS author, a.url AS url, " +
             "a.publishedAt AS publishedAt, a.preview AS preview, a.readingTime AS readingTime, " +
-            "a.enclosures AS enclosures, a.status AS status, a.starred AS starred, " +
+            "a.enclosures AS enclosures, a.status AS status, " +
             "a.backlogFetchedAt AS backlogFetchedAt, a.feedId AS feedId, " +
             "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl " +
             "$FROM_ARTICLES_WITH_FEED " +
@@ -290,25 +275,14 @@ interface ArticleDao {
         readStatus: ArticleStatus = ArticleStatus.READ
     ): List<String>
 
-    @Query("UPDATE articles SET starred = :starred, starredPendingSync = 1 WHERE id IN (:ids)")
-    suspend fun updateStarredForIds(ids: List<String>, starred: Boolean)
-
-    @Query("UPDATE articles SET starredPendingSync = 0 WHERE id IN (:ids) AND starred = :pushedStarred")
-    suspend fun clearStarredPendingSync(ids: List<String>, pushedStarred: Boolean)
-
-    @Query("SELECT id, starred FROM articles WHERE starredPendingSync = 1")
-    suspend fun getPendingStars(): List<PendingStar>
-
     /**
      * Backlog articles are excluded: they were downloaded to stock up for a trip, not because the
      * backend returned them as unread, so the reconciliation that drops "no longer returned" rows
-     * would delete every one of them on the next full sync. Starred articles are excluded for the
-     * same reason — a star is a request to keep the article around.
+     * would delete every one of them on the next full sync.
      */
     @Query(
         "SELECT id FROM articles WHERE (status IS NULL OR status != :readStatus) " +
-            "AND pendingSync = 0 AND starredPendingSync = 0 " +
-            "AND backlogFetchedAt IS NULL AND starred = 0"
+            "AND pendingSync = 0 AND backlogFetchedAt IS NULL"
     )
     suspend fun getSyncedUnreadIds(readStatus: ArticleStatus = ArticleStatus.READ): List<String>
 
@@ -321,10 +295,8 @@ interface ArticleDao {
     @Query("DELETE FROM articles WHERE feedId IN (:feedIds)")
     suspend fun deleteByFeedIds(feedIds: List<Long>)
 
-    /** A starred article is kept past its retention window: the star is what asks for that. */
     @Query(
         "DELETE FROM articles WHERE status = :readStatus AND pendingSync = 0 " +
-            "AND starredPendingSync = 0 AND starred = 0 " +
             "AND readAt IS NOT NULL AND readAt < :readBefore"
     )
     suspend fun deleteArticlesReadBefore(
@@ -339,9 +311,9 @@ interface ArticleDao {
     @Query(
         "SELECT id, url, enclosures FROM articles " +
             "WHERE (status IS NULL OR status != :readStatus) " +
-            "OR backlogFetchedAt IS NOT NULL OR starred = 1 " +
+            "OR backlogFetchedAt IS NOT NULL " +
             "ORDER BY CASE WHEN (status IS NULL OR status != :readStatus) THEN 0 " +
-            "WHEN starred = 1 THEN 1 ELSE 2 END, publishedAt DESC, id DESC"
+            "ELSE 1 END, publishedAt DESC, id DESC"
     )
     suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
 
@@ -362,7 +334,7 @@ interface ArticleDao {
 
     @Query(
         "SELECT COUNT(*) FROM articles WHERE (status IS NULL OR status != 'READ') " +
-            "OR backlogFetchedAt IS NOT NULL OR starred = 1"
+            "OR backlogFetchedAt IS NOT NULL"
     )
     fun observeOfflineTargetCount(): Flow<Int>
 

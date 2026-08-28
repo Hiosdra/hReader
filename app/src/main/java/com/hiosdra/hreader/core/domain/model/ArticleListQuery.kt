@@ -12,7 +12,6 @@ import java.time.Instant
  */
 data class ArticleListQuery(
     val feedId: Long? = null,
-    val starredOnly: Boolean = false,
     val includeRead: Boolean = false,
     val searchQuery: String = "",
     val sessionStart: Instant = Instant.now()
@@ -24,9 +23,6 @@ data class ArticleListQuery(
      */
     fun withFeed(feedId: Long?, now: Instant): ArticleListQuery =
         if (feedId == this.feedId) this else copy(feedId = feedId, sessionStart = now)
-
-    fun withStarredOnly(starredOnly: Boolean, now: Instant): ArticleListQuery =
-        if (starredOnly == this.starredOnly) this else copy(starredOnly = starredOnly, sessionStart = now)
 
     /**
      * Showing read articles does not restart the visit: the reader is widening what is on screen,

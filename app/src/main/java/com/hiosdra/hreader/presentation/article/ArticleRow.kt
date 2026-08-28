@@ -210,8 +210,6 @@ internal fun ArticleRow(
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                // Read state is the only thing a row acts on. Starring belongs to the article the
-                // reader has actually opened, where there is room to say what it means.
                 Checkbox(
                     checked = checked,
                     onCheckedChange = { onCheckedChange(entry.id, it) },
