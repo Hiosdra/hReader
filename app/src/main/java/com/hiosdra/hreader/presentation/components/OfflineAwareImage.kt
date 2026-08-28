@@ -18,7 +18,6 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.koin.compose.koinInject
 
 @Composable
 fun OfflineAwareImage(
@@ -33,9 +32,9 @@ fun OfflineAwareImage(
     localImagePath: String? = null,
     lookupLocalPath: Boolean = true,
     checkRemotePolicy: Boolean = true,
-    articleImageLoader: ArticleImageLoader = koinInject(),
-    coilImageLoader: CoilImageLoader = koinInject(),
-    remoteResourcePolicy: RemoteResourcePolicy = koinInject(),
+    articleImageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy,
 ) {
     var localImageUrl by remember(entryId, imageUrl, localImagePath) {
         mutableStateOf(localImagePath?.let { "file://$it" })

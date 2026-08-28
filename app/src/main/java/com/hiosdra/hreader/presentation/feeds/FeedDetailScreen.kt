@@ -32,11 +32,10 @@ import androidx.navigation.NavController
 import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.service.cleanUrl
-import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeedDetailScreen(feedId: Long, viewModel: FeedsViewModel = koinViewModel(), navController: NavController) {
+fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: FeedsViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val feed = uiState.feeds.find { it.id == feedId }
 

@@ -16,10 +16,21 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import coil3.ImageLoader as CoilImageLoader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
 
 @Composable
-fun ZoomableImage(entryId: Long, url: String, isOnline: Boolean, onDismiss: () -> Unit) {
+fun ZoomableImage(
+    entryId: Long,
+    url: String,
+    isOnline: Boolean,
+    articleImageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy,
+    onDismiss: () -> Unit
+) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
@@ -49,6 +60,9 @@ fun ZoomableImage(entryId: Long, url: String, isOnline: Boolean, onDismiss: () -
                 imageUrl = url,
                 contentDescription = null,
                 isOnline = isOnline,
+                articleImageLoader = articleImageLoader,
+                coilImageLoader = coilImageLoader,
+                remoteResourcePolicy = remoteResourcePolicy,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(

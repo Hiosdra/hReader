@@ -31,11 +31,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
-import org.koin.compose.koinInject
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -53,8 +54,10 @@ fun ArticleListGrouped(
     listState: LazyListState,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    imageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy,
     isOnline: Boolean = true,
-    imageLoader: ArticleImageLoader = koinInject()
 ) {
     val snapshot = items.itemSnapshotList.items
     val imageRequests = remember(snapshot) {
@@ -111,6 +114,9 @@ fun ArticleListGrouped(
                     endExclusive = separatorIndex,
                     onOpen = onOpen,
                     onCheckedChange = onCheckedChange,
+                    articleImageLoader = imageLoader,
+                    coilImageLoader = coilImageLoader,
+                    remoteResourcePolicy = remoteResourcePolicy,
                     isOnline = isOnline,
                     localImagePaths = localImagePaths
                 )
@@ -130,6 +136,9 @@ fun ArticleListGrouped(
                 endExclusive = snapshot.size,
                 onOpen = onOpen,
                 onCheckedChange = onCheckedChange,
+                articleImageLoader = imageLoader,
+                coilImageLoader = coilImageLoader,
+                remoteResourcePolicy = remoteResourcePolicy,
                 isOnline = isOnline,
                 localImagePaths = localImagePaths
             )
@@ -181,6 +190,9 @@ private fun LazyListScope.articleRange(
     endExclusive: Int,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    articleImageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy,
     isOnline: Boolean,
     localImagePaths: Map<Long, Map<String, String>>
 ) {
@@ -197,6 +209,9 @@ private fun LazyListScope.articleRange(
                 onOpen = onOpen,
                 onCheckedChange = onCheckedChange,
                 isOnline = isOnline,
+                articleImageLoader = articleImageLoader,
+                coilImageLoader = coilImageLoader,
+                remoteResourcePolicy = remoteResourcePolicy,
                 localImagePath = item.entry.imageUrl?.let { localImagePaths[item.entry.id]?.get(it) }
             )
 

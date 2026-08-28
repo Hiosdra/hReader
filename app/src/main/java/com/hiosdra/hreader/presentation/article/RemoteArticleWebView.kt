@@ -30,7 +30,6 @@ import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.koin.compose.koinInject
 
 @Composable
 internal fun RemoteArticleWebView(
@@ -38,7 +37,7 @@ internal fun RemoteArticleWebView(
     url: String,
     isOnline: Boolean,
     modifier: Modifier = Modifier,
-    remoteResourcePolicy: RemoteResourcePolicy = koinInject()
+    remoteResourcePolicy: RemoteResourcePolicy
 ) {
     val loadedUrl = remember { mutableStateOf<String?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }

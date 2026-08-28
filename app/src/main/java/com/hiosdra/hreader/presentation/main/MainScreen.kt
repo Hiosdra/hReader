@@ -76,14 +76,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
+import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.article.ArticleListGrouped
 import com.hiosdra.hreader.presentation.components.ArticleListSkeleton
 import com.hiosdra.hreader.presentation.text.resolve
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 import kotlinx.coroutines.launch
-import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -93,7 +95,10 @@ fun MainScreen(
     onLeaveFeed: () -> Unit = {},
     onFeedMarkedRead: (Long) -> Unit = {},
     feedId: Long? = null,
-    viewModel: MainViewModel = koinViewModel()
+    viewModel: MainViewModel,
+    articleImageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val articles = viewModel.articles.collectAsLazyPagingItems()
@@ -566,6 +571,9 @@ fun MainScreen(
                         )
                     },
                     onCheckedChange = viewModel::updateEntryReadStatus,
+                    imageLoader = articleImageLoader,
+                    coilImageLoader = coilImageLoader,
+                    remoteResourcePolicy = remoteResourcePolicy,
                     isOnline = uiState.isOnline
                 )
             }

@@ -62,8 +62,6 @@ import com.hiosdra.hreader.core.domain.service.displayUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.getKoin
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlin.text.Charsets.UTF_8
@@ -80,12 +78,11 @@ fun SubscriptionsPanel(
     onFeedDetails: (Long) -> Unit,
     onAddFeed: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: FeedsViewModel = koinViewModel()
+    viewModel: FeedsViewModel,
+    networkStatus: NetworkStatus
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val koin = getKoin()
-    val networkMonitor = remember { koin.get<NetworkStatus>() }
-    val isOnline by networkMonitor.isOnline.collectAsStateWithLifecycle()
+    val isOnline by networkStatus.isOnline.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val opmlTitle = stringResource(R.string.feeds_opml_title)

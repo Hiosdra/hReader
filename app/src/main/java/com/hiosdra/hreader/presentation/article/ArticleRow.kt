@@ -38,7 +38,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
@@ -53,6 +56,9 @@ fun ArticleRow(
     entry: ArticleListEntry,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    articleImageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy,
     isOnline: Boolean = true,
     localImagePath: String? = null
 ) {
@@ -188,6 +194,9 @@ fun ArticleRow(
                                 imageUrl = entry.imageUrl,
                                 contentDescription = null,
                                 isOnline = isOnline,
+                                articleImageLoader = articleImageLoader,
+                                coilImageLoader = coilImageLoader,
+                                remoteResourcePolicy = remoteResourcePolicy,
                                 localImagePath = localImagePath,
                                 lookupLocalPath = false,
                                 checkRemotePolicy = false,

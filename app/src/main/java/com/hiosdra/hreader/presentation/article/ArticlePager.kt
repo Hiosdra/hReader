@@ -18,8 +18,14 @@ import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import com.hiosdra.hreader.core.application.ai.AiProvider
+import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
+import coil3.ImageLoader as CoilImageLoader
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -37,6 +43,12 @@ internal fun ArticlePager(
     readingProgressForEntry: (Long) -> Float?,
     onReadingProgressChanged: (Long, Float) -> Unit,
     onReadingCompleted: (Long) -> Unit,
+    preferencesManager: AppPreferences,
+    articleImageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy,
+    articleImageSharer: ArticleImageSharer,
+    articleImageDownloader: ArticleImageDownloader,
     localImagePaths: Map<Long, Map<String, String>> = emptyMap(),
     isOnline: Boolean = true,
     aiOverviews: Map<Long, String> = emptyMap(),
@@ -88,6 +100,7 @@ internal fun ArticlePager(
                             entryId = entry.id,
                             url = entry.url,
                             isOnline = isOnline,
+                            remoteResourcePolicy = remoteResourcePolicy,
                             modifier = webViewModifier
                         )
                     }
@@ -104,6 +117,12 @@ internal fun ArticlePager(
                         savedReadingProgress = readingProgressForEntry(entry.id),
                         onReadingProgressChanged = onReadingProgressChanged,
                         onReadingCompleted = onReadingCompleted,
+                        preferencesManager = preferencesManager,
+                        articleImageLoader = articleImageLoader,
+                        coilImageLoader = coilImageLoader,
+                        remoteResourcePolicy = remoteResourcePolicy,
+                        imageSharer = articleImageSharer,
+                        imageDownloader = articleImageDownloader,
                         localImagePaths = localImagePaths[entry.id].orEmpty(),
                         isOnline = isOnline,
                         aiOverview = aiOverviews[entry.id],

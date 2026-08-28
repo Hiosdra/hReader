@@ -37,7 +37,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.text.resolve
-import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,10 +44,10 @@ fun AddFeedScreen(
     navController: NavController,
     /** A URL shared into the app from elsewhere, so the field is already filled in. */
     initialUrl: String? = null,
+    addFeedViewModel: AddFeedViewModel,
     onFeedAdded: () -> Unit = {},
     onNavigateBack: () -> Unit = { navController.popBackStack() }
 ) {
-    val addFeedViewModel: AddFeedViewModel = koinViewModel()
     val uiState by addFeedViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(initialUrl) {

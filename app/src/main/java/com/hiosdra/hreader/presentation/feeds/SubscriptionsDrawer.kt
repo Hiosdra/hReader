@@ -9,6 +9,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import kotlinx.coroutines.launch
 
 private val SheetShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
@@ -25,6 +26,7 @@ fun SubscriptionsDrawer(
     onFeedDetails: (Long) -> Unit,
     onAddFeed: () -> Unit,
     viewModel: FeedsViewModel,
+    networkStatus: NetworkStatus,
     gesturesEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -47,7 +49,8 @@ fun SubscriptionsDrawer(
                     onSelectFeed = { feedId -> closeThen { onSelectFeed(feedId) } },
                     onFeedDetails = { feedId -> closeThen { onFeedDetails(feedId) } },
                     onAddFeed = { closeThen(onAddFeed) },
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    networkStatus = networkStatus
                 )
             }
         },

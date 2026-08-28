@@ -48,11 +48,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.domain.model.isRead
@@ -64,7 +69,6 @@ import com.hiosdra.hreader.presentation.theme.MotionDuration
 import com.hiosdra.hreader.R
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
-import org.koin.androidx.compose.koinViewModel
 
 internal const val MIN_ARTICLE_TEXT_SCALE = 0.85f
 internal const val MAX_ARTICLE_TEXT_SCALE = 1.35f
@@ -117,7 +121,12 @@ fun ArticleScreen(
     paywallBypassService: PaywallBypass,
     ttsModelManager: TtsModelGateway,
     ttsController: ArticleTtsPlayer,
-    viewModel: ArticleViewModel = koinViewModel()
+    articleImageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy,
+    articleImageSharer: ArticleImageSharer,
+    articleImageDownloader: ArticleImageDownloader,
+    viewModel: ArticleViewModel
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(initialPage = 0) { uiState.entries.size }
@@ -289,6 +298,12 @@ fun ArticleScreen(
                         readingProgressForEntry = { entryId -> viewModel.getReadingProgressForEntry(entryId) },
                         onReadingProgressChanged = viewModel::saveReadingProgress,
                         onReadingCompleted = viewModel::clearReadingProgress,
+                        preferencesManager = preferencesManager,
+                        articleImageLoader = articleImageLoader,
+                        coilImageLoader = coilImageLoader,
+                        remoteResourcePolicy = remoteResourcePolicy,
+                        articleImageSharer = articleImageSharer,
+                        articleImageDownloader = articleImageDownloader,
                         localImagePaths = uiState.localImagePaths,
                         isOnline = uiState.isOnline,
                         aiOverviews = uiState.aiOverviews,

@@ -50,7 +50,6 @@ import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperati
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.theme.sectionCardColors
-import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +61,7 @@ fun SettingsScreen(
     gemmaModelManager: GemmaModelGateway,
     gemmaModelDownloadScheduler: GemmaModelDownloadRequester,
     gemmaModelLifecycle: GemmaModelLifecycle,
-    settingsViewModel: SettingsViewModel = koinViewModel()
+    settingsViewModel: SettingsViewModel
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsStateWithLifecycle()
