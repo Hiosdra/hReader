@@ -133,14 +133,31 @@ internal fun ArticleContent(
         safeWebContentHeightPx.coerceAtLeast(minimumWebViewHeightPx)
     }
     val webViewHeight = with(density) { webViewHeightPx.toDp() }
-    val scrollbarMetrics by remember(articleScrollState, webViewNeedsInternalScroll) {
+    val webViewMaxScrollPx = (webContentHeightPx - webViewHeightPx).coerceAtLeast(0)
+    val scrollbarMetrics by remember(
+        articleScrollState,
+        webViewNeedsInternalScroll,
+        webViewMaxScrollPx
+    ) {
         derivedStateOf {
             if (webViewNeedsInternalScroll) {
-                val maxScrollPx = (webContentHeightPx - webViewHeightPx).coerceAtLeast(0)
+                val totalScrollRangePx = articleScrollRangePx(
+                    outerMaxScrollPx = articleScrollState.maxValue,
+                    webViewMaxScrollPx = webViewMaxScrollPx
+                )
+                val scrollOffsetPx = articleCombinedScrollOffset(
+                    outerScrollPx = articleScrollState.value,
+                    outerMaxScrollPx = articleScrollState.maxValue,
+                    webViewScrollY = articleScrollOffset(webViewScrollProgress, webViewMaxScrollPx),
+                    webViewMaxScrollPx = webViewMaxScrollPx
+                )
+                val contentSizePx = (articleViewportHeightPx.toLong() + totalScrollRangePx)
+                    .coerceAtMost(Int.MAX_VALUE.toLong())
+                    .toInt()
                 verticalScrollbarMetrics(
-                    viewportSizePx = webViewHeightPx,
-                    contentSizePx = webContentHeightPx,
-                    scrollOffsetPx = articleScrollOffset(webViewScrollProgress, maxScrollPx)
+                    viewportSizePx = articleViewportHeightPx,
+                    contentSizePx = contentSizePx,
+                    scrollOffsetPx = scrollOffsetPx
                 )
             } else {
                 val contentSizePx = (articleViewportHeightPx.toLong() + articleScrollState.maxValue)
@@ -159,6 +176,19 @@ internal fun ArticleContent(
     val latestOnReadingCompleted = rememberUpdatedState(onReadingCompleted)
     val contentFingerprint = readableArticleContent.hashCode()
     val contentPositionKey = contentFingerprint xor if (webViewNeedsInternalScroll) Int.MIN_VALUE else 0
+    val currentArticleProgress = {
+        if (webViewNeedsInternalScroll) {
+            articleCombinedScrollProgress(
+                outerScrollPx = articleScrollState.value,
+                outerMaxScrollPx = articleScrollState.maxValue,
+                webViewScrollY = articleScrollOffset(webViewScrollProgress, webViewMaxScrollPx),
+                webViewMaxScrollPx = webViewMaxScrollPx
+            ) to (articleScrollRangePx(articleScrollState.maxValue, webViewMaxScrollPx) > 0)
+        } else {
+            val maxValue = articleScrollState.maxValue
+            articleScrollProgress(articleScrollState.value, maxValue) to (maxValue > 0)
+        }
+    }
 
     LaunchedEffect(
         entry.id,
@@ -183,11 +213,14 @@ internal fun ArticleContent(
         }
 
         if (webViewNeedsInternalScroll) {
-            webViewRestoreScrollY = articleWebViewRestoreScrollY(
+            val outerMaxScrollPx = snapshotFlow { articleScrollState.maxValue }.first { it > 0 }
+            val scrollPosition = articleScrollPositionForProgress(
                 progress = progress,
-                contentHeightPx = webContentHeightPx,
-                viewportHeightPx = webViewHeightPx
+                outerMaxScrollPx = outerMaxScrollPx,
+                webViewMaxScrollPx = webViewMaxScrollPx
             )
+            articleScrollState.scrollTo(scrollPosition.outerScrollPx)
+            webViewRestoreScrollY = scrollPosition.webViewScrollY
         } else {
             val maxValue = snapshotFlow { articleScrollState.maxValue }.first { it > 0 }
             articleScrollState.scrollTo(articleScrollOffset(progress, maxValue))
@@ -195,17 +228,10 @@ internal fun ArticleContent(
         restoredContentPositionKey = contentPositionKey
     }
 
-    LaunchedEffect(entry.id, readingPositionLoaded, webViewNeedsInternalScroll) {
+    LaunchedEffect(entry.id, readingPositionLoaded, webViewNeedsInternalScroll, webViewMaxScrollPx) {
         if (!readingPositionLoaded) return@LaunchedEffect
         readingCompletionReported = false
-        snapshotFlow {
-            if (webViewNeedsInternalScroll) {
-                webViewScrollProgress to true
-            } else {
-                val maxValue = articleScrollState.maxValue
-                articleScrollProgress(articleScrollState.value, maxValue) to (maxValue > 0)
-            }
-        }
+        snapshotFlow { currentArticleProgress() }
             .filter { (_, ready) -> ready }
             .sample(READING_POSITION_SAMPLE_MILLIS)
             .collect { (progress, _) ->
@@ -221,16 +247,11 @@ internal fun ArticleContent(
             }
     }
 
-    DisposableEffect(entry.id, webViewNeedsInternalScroll) {
+    DisposableEffect(entry.id, webViewNeedsInternalScroll, webViewMaxScrollPx) {
         onDispose {
             if (!latestReadingPositionLoaded.value) return@onDispose
-            val maxValue = articleScrollState.maxValue
-            if (!webViewNeedsInternalScroll && maxValue <= 0) return@onDispose
-            val progress = if (webViewNeedsInternalScroll) {
-                webViewScrollProgress
-            } else {
-                articleScrollProgress(articleScrollState.value, maxValue)
-            }
+            val (progress, ready) = currentArticleProgress()
+            if (!ready) return@onDispose
             if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
                 latestOnReadingCompleted.value(entry.id)
             } else {
@@ -329,6 +350,9 @@ internal fun ArticleContent(
                         localImagePaths = localImagePaths,
                         textScale = textScale,
                         scrollEnabled = webViewNeedsInternalScroll,
+                        onParentScrollDelta = if (webViewNeedsInternalScroll) {
+                            { deltaY -> articleScrollState.dispatchRawDelta(deltaY) }
+                        } else null,
                         restoreScrollY = webViewRestoreScrollY,
                         onScrollProgress = { progress -> webViewScrollProgress = progress },
                         onContentHeightChanged = { height -> webContentHeightPx = height },

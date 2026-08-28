@@ -22,6 +22,55 @@ class ArticleScrollProgressTest {
     }
 
     @Test
+    fun `forward WebView gesture is offered to the article header first`() {
+        assertEquals(
+            140f,
+            articleHeaderScrollDeltaForWebViewGesture(deltaY = 140f, webViewScrollY = 80),
+            0f
+        )
+    }
+
+    @Test
+    fun `reverse WebView gesture uses body before revealing the header`() {
+        assertEquals(
+            0f,
+            articleHeaderScrollDeltaForWebViewGesture(deltaY = -40f, webViewScrollY = 80),
+            0f
+        )
+        assertEquals(
+            -20f,
+            articleHeaderScrollDeltaForWebViewGesture(deltaY = -100f, webViewScrollY = 80),
+            0f
+        )
+    }
+
+    @Test
+    fun `combined progress includes outer and WebView scroll`() {
+        assertEquals(
+            0.5f,
+            articleCombinedScrollProgress(
+                outerScrollPx = 100,
+                outerMaxScrollPx = 200,
+                webViewScrollY = 400,
+                webViewMaxScrollPx = 800
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `saved progress is split between outer and WebView scroll`() {
+        assertEquals(
+            ArticleScrollPosition(outerScrollPx = 200, webViewScrollY = 300),
+            articleScrollPositionForProgress(
+                progress = 0.5f,
+                outerMaxScrollPx = 200,
+                webViewMaxScrollPx = 800
+            )
+        )
+    }
+
+    @Test
     fun `scrollbar is absent when content fits the viewport`() {
         assertNull(
             verticalScrollbarMetrics(

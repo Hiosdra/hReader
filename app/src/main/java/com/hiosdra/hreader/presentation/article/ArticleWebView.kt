@@ -41,6 +41,7 @@ fun ArticleWebView(
     localImagePaths: Map<String, String> = emptyMap(),
     textScale: Float = 1f,
     scrollEnabled: Boolean = true,
+    onParentScrollDelta: ((Float) -> Float)? = null,
     onContentHeightChanged: ((Int) -> Unit)? = null,
     restoreScrollY: Int = 0,
     onScrollYChanged: ((Int) -> Unit)? = null,
@@ -59,6 +60,7 @@ fun ArticleWebView(
     // built once with the WebView, while the downloaded images arrive with the article body.
     val currentLocalImagePaths = rememberUpdatedState(localImagePaths)
     val currentScrollEnabled = rememberUpdatedState(scrollEnabled)
+    val currentOnParentScrollDelta = rememberUpdatedState(onParentScrollDelta)
     val currentOnContentHeightChanged = rememberUpdatedState(onContentHeightChanged)
     val currentRestoreScrollY = rememberUpdatedState(restoreScrollY)
     val currentOnScrollYChanged = rememberUpdatedState(onScrollYChanged)
@@ -129,6 +131,7 @@ fun ArticleWebView(
                             }
                         }
                         allowScroll = currentScrollEnabled.value
+                        this.onParentScrollDelta = currentOnParentScrollDelta.value
                         settings.hardenArticleContent()
                         settings.defaultFontSize = 16
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
@@ -253,6 +256,7 @@ fun ArticleWebView(
                         }
                     }
                     webView.allowScroll = currentScrollEnabled.value
+                    webView.onParentScrollDelta = currentOnParentScrollDelta.value
                     webView.protectVerticalScrollFromPager = webView.allowScroll
                     webView.isVerticalScrollBarEnabled = false
                     webView.isHorizontalScrollBarEnabled = false
