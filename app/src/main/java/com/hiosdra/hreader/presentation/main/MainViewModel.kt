@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
+import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
+import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
+import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
@@ -81,6 +84,7 @@ data class MainUiState(
     val unreadCount: Int = 0,
     val readCount: Int = 0,
     val syncState: SyncOperationState = SyncOperationState.IDLE,
+    val offlinePreparation: OfflinePreparationProgress = OfflinePreparationProgress(),
     val isBulkReadStateUpdating: Boolean = false,
     val undo: UndoableAction? = null
 )
@@ -139,6 +143,11 @@ class MainViewModel(
         viewModelScope.launch {
             reader.observeSync().collect { status ->
                 _uiState.update { it.copy(syncState = status.state) }
+            }
+        }
+        viewModelScope.launch {
+            reader.observeOfflinePreparation().collect { progress ->
+                _uiState.update { it.copy(offlinePreparation = progress) }
             }
         }
     }
@@ -289,6 +298,32 @@ class MainViewModel(
                 _uiState.update { it.copy(isRefreshing = false) }
             }
         }
+    }
+
+    fun prepareForOffline(): Boolean {
+        if (!_uiState.value.isOnline) {
+            _uiState.update { it.copy(error = UiText.Resource(R.string.error_need_connection_refresh)) }
+            return false
+        }
+        val operationId = reader.prepareForOffline()
+        if (operationId == null) {
+            _uiState.update { it.copy(error = UiText.Resource(R.string.error_refresh_articles)) }
+            return false
+        }
+        _uiState.update {
+            it.copy(
+                error = null,
+                offlinePreparation = OfflinePreparationProgress(
+                    isRunning = true,
+                    status = SyncOperationStatus(
+                        state = SyncOperationState.RUNNING,
+                        workIds = setOf(operationId)
+                    ),
+                    stage = OfflinePreparationStage.SYNCING
+                )
+            )
+        }
+        return true
     }
 
     fun dismissError() {

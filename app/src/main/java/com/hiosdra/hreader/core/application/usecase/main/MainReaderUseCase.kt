@@ -9,6 +9,7 @@ import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.sync.SyncIntent
+import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
@@ -44,6 +45,10 @@ class MainReaderUseCase(
     fun requestRefresh(): SyncOperationId? = sync.request(SyncIntent.User(userVisible = true))
 
     fun observeSync(): Flow<SyncOperationStatus> = sync.observeRequestedSync()
+
+    fun prepareForOffline(): SyncOperationId? = sync.prepareForOffline()
+
+    fun observeOfflinePreparation(): Flow<OfflinePreparationProgress> = sync.observeOfflinePreparation()
 
     suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
         articles.unreadIds(feedId, starredOnly)

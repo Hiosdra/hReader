@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -42,6 +43,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -77,6 +79,8 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
+import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.article.ArticleListGrouped
@@ -115,6 +119,7 @@ internal fun MainScreen(
     val undoActionLabel = stringResource(R.string.action_undo)
     val retryActionLabel = stringResource(R.string.action_retry)
     val offlineRefreshMessage = stringResource(R.string.main_offline_refresh)
+    val offlineStartedMessage = stringResource(R.string.offline_downloading)
 
     BackHandler(enabled = searchActive.value) {
         searchActive.value = false
@@ -185,6 +190,9 @@ internal fun MainScreen(
                         onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                         onDismiss = viewModel::dismissAiModelWarning
                     )
+                }
+                if (uiState.offlinePreparation.isRunning) {
+                    OfflinePreparationProgressBanner(uiState.offlinePreparation)
                 }
                 TopAppBar(
                     title = {
@@ -343,6 +351,23 @@ internal fun MainScreen(
                                         }
                                     )
                                 }
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.offline_download_reading),
+                                            style = MaterialTheme.typography.labelLarge
+                                        )
+                                    },
+                                    onClick = {
+                                        expanded.value = false
+                                        if (viewModel.prepareForOffline()) {
+                                            snackbarScope.launch {
+                                                snackbarHostState.showSnackbar(offlineStartedMessage)
+                                            }
+                                        }
+                                    },
+                                    enabled = uiState.isOnline && !uiState.offlinePreparation.isRunning
+                                )
                                 DropdownMenuItem(
                                     text = {
                                         Text(stringResource(R.string.main_settings), style = MaterialTheme.typography.labelLarge)
@@ -576,6 +601,51 @@ internal fun MainScreen(
                         uiState.syncState != com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING,
                     isOnline = uiState.isOnline
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfflinePreparationProgressBanner(progress: OfflinePreparationProgress) {
+    val count = if (progress.total > 0) {
+        stringResource(R.string.offline_progress_count, progress.done, progress.total)
+    } else {
+        ""
+    }
+    val label = when (progress.stage) {
+        OfflinePreparationStage.SYNCING -> stringResource(R.string.offline_syncing_articles)
+        OfflinePreparationStage.DOWNLOADING_CONTENT ->
+            stringResource(R.string.offline_downloading_content, count)
+        OfflinePreparationStage.ARCHIVING_PAGES ->
+            stringResource(R.string.offline_saving_pages, count)
+        OfflinePreparationStage.IDLE -> if (progress.isFullOffline) {
+            stringResource(R.string.offline_downloading_full_pages)
+        } else {
+            stringResource(R.string.offline_downloading)
+        }
+    }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            if (progress.total > 0) {
+                LinearProgressIndicator(
+                    progress = { (progress.done.toFloat() / progress.total).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }
