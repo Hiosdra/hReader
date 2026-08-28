@@ -10,7 +10,7 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.entrypoint.notification.AppNotificationFactory
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
-import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
@@ -39,7 +39,7 @@ internal fun shouldRetryFullPageSync(
 class FullPageSyncWorker(
     appContext: Context,
     params: WorkerParameters,
-    private val articleRepository: ArticleStore,
+    private val articleRepository: ArticleMaintenanceStore,
     private val articlePageRepository: ArticlePageStore,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val preferencesManager: SyncPreferences,

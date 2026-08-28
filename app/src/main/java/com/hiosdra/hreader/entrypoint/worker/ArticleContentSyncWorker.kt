@@ -10,7 +10,7 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.entrypoint.notification.AppNotificationFactory
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
-import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
@@ -50,7 +50,7 @@ private const val IMAGE_CHUNK = 50
 class ArticleContentSyncWorker(
     appContext: Context,
     params: WorkerParameters,
-    private val articleRepository: ArticleStore,
+    private val articleRepository: ArticleMaintenanceStore,
     private val articleContentRepository: ArticleContentStore,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val preferencesManager: SyncPreferences,

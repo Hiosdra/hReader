@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -62,10 +63,9 @@ import com.hiosdra.hreader.core.domain.service.displayUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.getKoin
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.OutputStream
 import kotlin.text.Charsets.UTF_8
 
 /** Exporters disagree on the OPML media type, so the picker cannot be narrowed to one. */
@@ -80,12 +80,11 @@ fun SubscriptionsPanel(
     onFeedDetails: (Long) -> Unit,
     onAddFeed: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: FeedsViewModel = koinViewModel()
+    viewModel: FeedsViewModel,
+    networkStatus: NetworkStatus
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val koin = getKoin()
-    val networkMonitor = remember { koin.get<NetworkStatus>() }
-    val isOnline by networkMonitor.isOnline.collectAsStateWithLifecycle()
+    val isOnline by networkStatus.isOnline.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val opmlTitle = stringResource(R.string.feeds_opml_title)
@@ -165,17 +164,46 @@ fun SubscriptionsPanel(
         // A drawer has no scaffold to hang a snackbar on, so what an import or an unsubscribe did
         // is said in place, where the list it changed is.
         uiState.message?.let { message ->
-            Text(
-                text = message.resolve(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            val messageColor = if (uiState.messageIsError) {
+                MaterialTheme.colorScheme.onErrorContainer
+            } else {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            }
+            val messageBackground = if (uiState.messageIsError) {
+                MaterialTheme.colorScheme.errorContainer
+            } else {
+                MaterialTheme.colorScheme.secondaryContainer
+            }
+            Row(
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .background(messageBackground)
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
+                    .padding(start = 12.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = message.resolve(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = messageColor,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 8.dp)
+                )
+                if (uiState.messageCanRetry) {
+                    TextButton(onClick = viewModel::retryLastAction) {
+                        Text(stringResource(R.string.action_retry), color = messageColor)
+                    }
+                }
+                IconButton(onClick = viewModel::dismissMessage) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.action_dismiss),
+                        tint = messageColor
+                    )
+                }
+            }
         }
         if (!isOnline) {
             Text(
@@ -347,9 +375,18 @@ private fun RenameFeedDialog(feed: Feed, onConfirm: (String) -> Unit, onDismiss:
 private suspend fun writeTo(context: android.content.Context, uri: Uri, opml: String): Boolean =
     withContext(Dispatchers.IO) {
         runCatchingCancellable {
-            context.contentResolver.openOutputStream(uri)?.use { it.write(opml.toByteArray()) }
-        }.isSuccess
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                writeOpml(output, opml)
+            } ?: false
+        }.getOrDefault(false)
     }
+
+internal fun writeOpml(output: OutputStream?, opml: String): Boolean {
+    if (output == null) return false
+    return runCatching {
+        output.write(opml.toByteArray(UTF_8))
+    }.isSuccess
+}
 
 private fun java.io.InputStream.readBoundedText(maxBytes: Long): String {
     val output = ByteArrayOutputStream()

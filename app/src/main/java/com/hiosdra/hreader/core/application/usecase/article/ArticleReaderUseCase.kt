@@ -7,9 +7,10 @@ import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleListWindow
+import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
-import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
@@ -23,7 +24,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 class ArticleReaderUseCase(
-    private val articles: ArticleStore,
+    private val articles: ArticleQueryStore,
+    private val articleMutations: ArticleMutationStore,
     private val positions: ArticleReadingPositionStore,
     private val content: ArticleContentStore,
     private val pages: ArticlePageStore,
@@ -97,10 +99,11 @@ class ArticleReaderUseCase(
     ): Map<Long, CredibilityReport> = credibility.getCached(ids, modelId)
 
     suspend fun updateReadStatus(entryId: Long, status: ArticleStatus) {
-        articles.updateReadStatus(entryId.toString(), status)
+        articleMutations.updateReadStatus(entryId.toString(), status)
     }
 
-    suspend fun updateStarred(entryId: Long, starred: Boolean) = articles.updateStarred(entryId, starred)
+    suspend fun updateStarred(entryId: Long, starred: Boolean) =
+        articleMutations.updateStarred(entryId, starred)
 
     suspend fun saveReadingProgress(entryId: Long, progress: Float) = positions.saveProgress(entryId, progress)
 

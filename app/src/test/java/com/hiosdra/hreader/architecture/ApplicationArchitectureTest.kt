@@ -26,4 +26,40 @@ class ApplicationArchitectureTest {
             .resideInAnyPackage("com.hiosdra.hreader.adapter..")
             .check(productionClasses)
     }
+
+    @Test
+    fun applicationLayerShouldNotDependOnRoomOrWorkManager() {
+        noClasses()
+            .that().resideInAPackage("com.hiosdra.hreader.core.application..")
+            .should().dependOnClassesThat()
+            .resideInAnyPackage("androidx.room..", "androidx.work..")
+            .check(productionClasses)
+    }
+
+    @Test
+    fun applicationConsumersShouldUseNarrowArticlePorts() {
+        noClasses()
+            .that().resideInAnyPackage(
+                "com.hiosdra.hreader.core.application.usecase..",
+                "com.hiosdra.hreader.entrypoint.worker.."
+            )
+            .should().dependOnClassesThat()
+            .haveFullyQualifiedName("com.hiosdra.hreader.core.application.port.out.ArticleStore")
+            .check(productionClasses)
+    }
+
+    @Test
+    fun outerLayersShouldNotDependOnRoomDetails() {
+        noClasses()
+            .that().resideInAnyPackage(
+                "com.hiosdra.hreader.core..",
+                "com.hiosdra.hreader.presentation..",
+                "com.hiosdra.hreader.entrypoint.."
+            )
+            .should().dependOnClassesThat()
+            .resideInAnyPackage(
+                "com.hiosdra.hreader.adapter.persistence.room.."
+            )
+            .check(productionClasses)
+    }
 }

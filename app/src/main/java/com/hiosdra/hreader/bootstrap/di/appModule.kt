@@ -3,9 +3,7 @@ package com.hiosdra.hreader.bootstrap.di
 import androidx.room.Room
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
-import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_15_16
-import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_16_17
-import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_17_18
+import com.hiosdra.hreader.adapter.persistence.room.APP_MIGRATIONS
 import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
@@ -50,6 +48,10 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
+import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
+import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
+import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
@@ -105,7 +107,7 @@ val appModule = module {
                 androidApplication(),
                 AppDatabase::class.java,
                 "hreader-db"
-            ).addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+            ).addMigrations(*APP_MIGRATIONS)
             .fallbackToDestructiveMigration(false)
             .build()
     }
@@ -121,6 +123,10 @@ val appModule = module {
     single { get<AppDatabase>().articleReadingPositionDao() }
     single { ArticleRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
     single<ArticleStore> { get<ArticleRepository>() }
+    single<ArticleQueryStore> { get<ArticleRepository>() }
+    single<ArticleMutationStore> { get<ArticleRepository>() }
+    single<ArticleSyncStore> { get<ArticleRepository>() }
+    single<ArticleMaintenanceStore> { get<ArticleRepository>() }
     single { ArticleImageRepository(androidApplication(), get(), get(), get(), get(), get()) }
     single<ArticleImageStore> { get<ArticleImageRepository>() }
     single<coil3.ImageLoader> {
@@ -229,7 +235,8 @@ val appModule = module {
     single<SyncRequester> { get<SyncScheduler>() }
     single {
         ArticleReaderUseCase(
-            articles = get<ArticleStore>(),
+            articles = get<ArticleQueryStore>(),
+            articleMutations = get<ArticleMutationStore>(),
             positions = get<ArticleReadingPositionStore>(),
             content = get<ArticleContentStore>(),
             pages = get<ArticlePageStore>(),
@@ -244,7 +251,8 @@ val appModule = module {
     }
     single {
         MainReaderUseCase(
-            articles = get<ArticleStore>(),
+            articles = get<ArticleQueryStore>(),
+            articleMutations = get<ArticleMutationStore>(),
             cache = get<CacheStore>(),
             aiModels = get<AiModelCatalog>(),
             sync = get<SyncRequester>(),

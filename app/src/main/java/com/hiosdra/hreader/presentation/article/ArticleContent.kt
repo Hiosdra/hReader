@@ -44,10 +44,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.AiProvider
-import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
@@ -62,7 +66,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.FlowPreview
-import org.koin.compose.koinInject
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -77,6 +80,12 @@ internal fun ArticleContent(
     savedReadingProgress: Float?,
     onReadingProgressChanged: (Long, Float) -> Unit,
     onReadingCompleted: (Long) -> Unit,
+    articleImageLoader: ArticleImageLoader,
+    coilImageLoader: CoilImageLoader,
+    remoteResourcePolicy: RemoteResourcePolicy,
+    imageSharer: ArticleImageSharer,
+    imageDownloader: ArticleImageDownloader,
+    readerPreferences: ReaderPreferences,
     localImagePaths: Map<String, String> = emptyMap(),
     isOnline: Boolean = true,
     aiOverview: String? = null,
@@ -89,8 +98,6 @@ internal fun ArticleContent(
     isAnalyzingCredibility: Boolean = false,
     onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
 ) {
-    val imageSharer: ArticleImageSharer = koinInject()
-    val imageDownloader: ArticleImageDownloader = koinInject()
     val locale = LocalLocale.current.platformLocale
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
     val dateText = remember(entry.publishedAt, locale) { formatArticleDate(entry.publishedAt, locale) }
@@ -303,6 +310,9 @@ internal fun ArticleContent(
                             imageUrl = mainImageUrl,
                             contentDescription = null,
                             isOnline = isOnline,
+                            articleImageLoader = articleImageLoader,
+                            coilImageLoader = coilImageLoader,
+                            remoteResourcePolicy = remoteResourcePolicy,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(16f / 9f)
@@ -333,7 +343,9 @@ internal fun ArticleContent(
                                 Toast.makeText(context, offlineLinkCopiedMessage, Toast.LENGTH_SHORT).show()
                             }
                         },
-                        onImageLongClick = { url -> imageActionsUrl = url }
+                        onImageLongClick = { url -> imageActionsUrl = url },
+                        readerPreferences = readerPreferences,
+                        remoteResourcePolicy = remoteResourcePolicy
                     )
                 }
             }
@@ -398,7 +410,14 @@ internal fun ArticleContent(
     val zoomUrl = zoomImageUrl
     if (zoomUrl != null) {
         Dialog(onDismissRequest = { zoomImageUrl = null }) {
-            ZoomableImage(entryId = entry.id, url = zoomUrl, isOnline = isOnline) { zoomImageUrl = null }
+            ZoomableImage(
+                entryId = entry.id,
+                url = zoomUrl,
+                isOnline = isOnline,
+                articleImageLoader = articleImageLoader,
+                coilImageLoader = coilImageLoader,
+                remoteResourcePolicy = remoteResourcePolicy
+            ) { zoomImageUrl = null }
         }
     }
 }

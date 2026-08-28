@@ -6,7 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
-import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import kotlinx.coroutines.CancellationException
@@ -17,7 +17,7 @@ private const val PREVIEW_BACKFILL_LIMIT = 250
 class CacheMaintenanceWorker(
     appContext: Context,
     params: WorkerParameters,
-    private val articleRepository: ArticleStore,
+    private val articleRepository: ArticleMaintenanceStore,
     private val articleContentRepository: ArticleContentStore,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val errorReportingManager: ErrorReporter

@@ -34,8 +34,7 @@ import androidx.paging.compose.LazyPagingItems
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
-import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
-import org.koin.compose.koinInject
+import com.hiosdra.hreader.core.domain.model.isRead
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -47,16 +46,24 @@ private const val DAY_CONTENT_TYPE = "day"
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ArticleListGrouped(
+internal fun ArticleListGrouped(
     items: LazyPagingItems<ArticleListItem>,
     modifier: Modifier,
     listState: LazyListState,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    imageDependencies: ArticleImageDependencies,
+    readStateAnimationEnabled: Boolean,
     isOnline: Boolean = true,
-    imageLoader: ArticleImageLoader = koinInject()
 ) {
     val snapshot = items.itemSnapshotList.items
+    val locale = LocalLocale.current.platformLocale
+    val timeFormatter = remember(locale) {
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+            .withLocale(locale)
+            .withZone(ZoneId.systemDefault())
+    }
+    val unknownFeedTitle = stringResource(R.string.article_unknown_feed)
     val imageRequests = remember(snapshot) {
         snapshot.mapNotNull { item ->
             (item as? ArticleListItem.Article)?.entry?.let { entry ->
@@ -67,7 +74,7 @@ fun ArticleListGrouped(
     var localImagePaths by remember { mutableStateOf<Map<Long, Map<String, String>>>(emptyMap()) }
     LaunchedEffect(imageRequests) {
         val ids = imageRequests.map { it.first }
-        localImagePaths = imageLoader.getLocalImagePaths(ids)
+        localImagePaths = imageDependencies.articleImageLoader.getLocalImagePaths(ids)
     }
     val separatorIndices = remember(snapshot) {
         snapshot.mapIndexedNotNull { index, item ->
@@ -111,6 +118,10 @@ fun ArticleListGrouped(
                     endExclusive = separatorIndex,
                     onOpen = onOpen,
                     onCheckedChange = onCheckedChange,
+                    imageDependencies = imageDependencies,
+                    readStateAnimationEnabled = readStateAnimationEnabled,
+                    timeFormatter = timeFormatter,
+                    unknownFeedTitle = unknownFeedTitle,
                     isOnline = isOnline,
                     localImagePaths = localImagePaths
                 )
@@ -130,6 +141,10 @@ fun ArticleListGrouped(
                 endExclusive = snapshot.size,
                 onOpen = onOpen,
                 onCheckedChange = onCheckedChange,
+                imageDependencies = imageDependencies,
+                readStateAnimationEnabled = readStateAnimationEnabled,
+                timeFormatter = timeFormatter,
+                unknownFeedTitle = unknownFeedTitle,
                 isOnline = isOnline,
                 localImagePaths = localImagePaths
             )
@@ -181,6 +196,10 @@ private fun LazyListScope.articleRange(
     endExclusive: Int,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    imageDependencies: ArticleImageDependencies,
+    readStateAnimationEnabled: Boolean,
+    timeFormatter: DateTimeFormatter,
+    unknownFeedTitle: String,
     isOnline: Boolean,
     localImagePaths: Map<Long, Map<String, String>>
 ) {
@@ -193,9 +212,11 @@ private fun LazyListScope.articleRange(
         val index = start + offset
         when (val item = pagingItems[index]) {
             is ArticleListItem.Article -> ArticleRow(
-                entry = item.entry,
+                entry = item.entry.toArticleRowModel(timeFormatter, unknownFeedTitle),
                 onOpen = onOpen,
                 onCheckedChange = onCheckedChange,
+                imageDependencies = imageDependencies,
+                readStateAnimationEnabled = readStateAnimationEnabled,
                 isOnline = isOnline,
                 localImagePath = item.entry.imageUrl?.let { localImagePaths[item.entry.id]?.get(it) }
             )
@@ -205,6 +226,19 @@ private fun LazyListScope.articleRange(
         }
     }
 }
+
+private fun ArticleListEntry.toArticleRowModel(
+    timeFormatter: DateTimeFormatter,
+    unknownFeedTitle: String
+): ArticleRowModel = ArticleRowModel(
+    id = id,
+    title = title,
+    preview = preview,
+    feedTitle = feed.title.ifBlank { unknownFeedTitle },
+    publishedTime = timeFormatter.format(publishedAt),
+    imageUrl = imageUrl,
+    isRead = isRead
+)
 
 private fun itemKey(item: ArticleListItem): String = when (item) {
     is ArticleListItem.Article -> "article-${item.entry.id}"

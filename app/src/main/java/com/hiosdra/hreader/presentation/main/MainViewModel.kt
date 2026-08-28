@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
+import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
+import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
+import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
@@ -81,6 +84,8 @@ data class MainUiState(
     val unreadCount: Int = 0,
     val readCount: Int = 0,
     val syncState: SyncOperationState = SyncOperationState.IDLE,
+    val offlinePreparation: OfflinePreparationProgress = OfflinePreparationProgress(),
+    val isBulkReadStateUpdating: Boolean = false,
     val undo: UndoableAction? = null
 )
 
@@ -138,6 +143,11 @@ class MainViewModel(
         viewModelScope.launch {
             reader.observeSync().collect { status ->
                 _uiState.update { it.copy(syncState = status.state) }
+            }
+        }
+        viewModelScope.launch {
+            reader.observeOfflinePreparation().collect { progress ->
+                _uiState.update { it.copy(offlinePreparation = progress) }
             }
         }
     }
@@ -290,6 +300,32 @@ class MainViewModel(
         }
     }
 
+    fun prepareForOffline(): Boolean {
+        if (!_uiState.value.isOnline) {
+            _uiState.update { it.copy(error = UiText.Resource(R.string.error_need_connection_refresh)) }
+            return false
+        }
+        val operationId = reader.prepareForOffline()
+        if (operationId == null) {
+            _uiState.update { it.copy(error = UiText.Resource(R.string.error_refresh_articles)) }
+            return false
+        }
+        _uiState.update {
+            it.copy(
+                error = null,
+                offlinePreparation = OfflinePreparationProgress(
+                    isRunning = true,
+                    status = SyncOperationStatus(
+                        state = SyncOperationState.RUNNING,
+                        workIds = setOf(operationId)
+                    ),
+                    stage = OfflinePreparationStage.SYNCING
+                )
+            )
+        }
+        return true
+    }
+
     fun dismissError() {
         _uiState.update { it.copy(error = null) }
     }
@@ -304,38 +340,44 @@ class MainViewModel(
      * put anything right when the answer was wrong.
      */
     fun markAllAsRead(onMarkedAsRead: (Long) -> Unit = {}) {
+        if (_uiState.value.isBulkReadStateUpdating) return
+        _uiState.update { it.copy(isBulkReadStateUpdating = true) }
         val current = query.value
         viewModelScope.launch {
-            // Only what this actually changes. Sweeping in the already-read ones would push a
-            // no-op update for every article the cache holds.
-            val ids = runCatchingCancellable { reader.unreadIds(current.feedId, current.starredOnly) }
-                .getOrElse {
-                    Log.w(TAG, "Could not read the unread set", it)
-                    return@launch
-            }
-            if (ids.isEmpty()) return@launch
-
-            applyReadStatus(
-                ids,
-                read = true,
-                onSuccess = {
-                    _uiState.update {
-                        it.copy(
-                            undo = UndoableAction(
-                                id = System.currentTimeMillis(),
-                                message = UiText.Plural(
-                                    id = R.plurals.main_marked_articles_read,
-                                    count = ids.size,
-                                    args = listOf(ids.size)
-                                ),
-                                articleIds = ids,
-                                markedAt = Instant.now()
-                            )
-                        )
+            try {
+                // Only what this actually changes. Sweeping in the already-read ones would push a
+                // no-op update for every article the cache holds.
+                val ids = runCatchingCancellable { reader.unreadIds(current.feedId, current.starredOnly) }
+                    .getOrElse {
+                        Log.w(TAG, "Could not read the unread set", it)
+                        return@launch
                     }
-                    current.feedId?.let(onMarkedAsRead)
-                }
-            )
+                if (ids.isEmpty()) return@launch
+
+                persistReadStatus(
+                    entryIds = ids,
+                    read = true,
+                    onSuccess = {
+                        _uiState.update {
+                            it.copy(
+                                undo = UndoableAction(
+                                    id = System.currentTimeMillis(),
+                                    message = UiText.Plural(
+                                        id = R.plurals.main_marked_articles_read,
+                                        count = ids.size,
+                                        args = listOf(ids.size)
+                                    ),
+                                    articleIds = ids,
+                                    markedAt = Instant.now()
+                                )
+                            )
+                        }
+                        current.feedId?.let(onMarkedAsRead)
+                    }
+                )
+            } finally {
+                _uiState.update { it.copy(isBulkReadStateUpdating = false) }
+            }
         }
     }
 
@@ -366,9 +408,17 @@ class MainViewModel(
      */
     private fun applyReadStatus(entryIds: List<Long>, read: Boolean, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
-            runCatchingCancellable { reader.updateReadStatus(entryIds, read) }
-                .onFailure { Log.w(TAG, "Could not store read state for ${entryIds.size} articles", it) }
-                .onSuccess { onSuccess() }
+            persistReadStatus(entryIds, read, onSuccess)
         }
+    }
+
+    private suspend fun persistReadStatus(
+        entryIds: List<Long>,
+        read: Boolean,
+        onSuccess: () -> Unit = {}
+    ) {
+        runCatchingCancellable { reader.updateReadStatus(entryIds, read) }
+            .onFailure { Log.w(TAG, "Could not store read state for ${entryIds.size} articles", it) }
+            .onSuccess { onSuccess() }
     }
 }

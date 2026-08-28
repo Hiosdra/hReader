@@ -5,6 +5,22 @@ import org.junit.Test
 
 class PresentationArchitectureTest {
     @Test
+    fun featurePresentationShouldNotResolveDependenciesFromKoin() {
+        noClasses()
+            .that().resideInAnyPackage(
+                "com.hiosdra.hreader.presentation.article..",
+                "com.hiosdra.hreader.presentation.components..",
+                "com.hiosdra.hreader.presentation.feeds..",
+                "com.hiosdra.hreader.presentation.main..",
+                "com.hiosdra.hreader.presentation.onboarding..",
+                "com.hiosdra.hreader.presentation.settings.."
+            )
+            .should().dependOnClassesThat()
+            .resideInAnyPackage("org.koin..")
+            .check(productionClasses)
+    }
+
+    @Test
     fun presentationShouldDependOnPortsAndUseCasesNotAdapters() {
         noClasses()
             .that().resideInAPackage("com.hiosdra.hreader.presentation..")
@@ -51,6 +67,15 @@ class PresentationArchitectureTest {
             .that().resideInAPackage("com.hiosdra.hreader.presentation..")
             .should().dependOnClassesThat()
             .resideInAnyPackage("okhttp3..", "retrofit2..", "org.json..")
+            .check(productionClasses)
+    }
+
+    @Test
+    fun presentationShouldUseCapabilityPreferencePorts() {
+        noClasses()
+            .that().resideInAPackage("com.hiosdra.hreader.presentation..")
+            .should().dependOnClassesThat()
+            .haveFullyQualifiedName("com.hiosdra.hreader.core.application.port.out.AppPreferences")
             .check(productionClasses)
     }
 }

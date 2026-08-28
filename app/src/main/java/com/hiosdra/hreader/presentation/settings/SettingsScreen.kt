@@ -40,29 +40,34 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
+import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.theme.sectionCardColors
-import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController? = null,
     onSignedOut: () -> Unit = {},
-    preferencesManager: AppPreferences,
+    readerPreferences: ReaderPreferences,
+    ttsPreferences: TtsPreferences,
+    aiPreferences: AiPreferences,
+    performancePreferences: PerformancePreferences,
     errorReportingManager: ErrorReporter,
     gemmaModelManager: GemmaModelGateway,
     gemmaModelDownloadScheduler: GemmaModelDownloadRequester,
     gemmaModelLifecycle: GemmaModelLifecycle,
-    settingsViewModel: SettingsViewModel = koinViewModel()
+    settingsViewModel: SettingsViewModel
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsStateWithLifecycle()
@@ -70,9 +75,9 @@ fun SettingsScreen(
     val offline by settingsViewModel.offline.collectAsStateWithLifecycle()
     val sync by settingsViewModel.sync.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
-    var selectedBypassMethod by remember { mutableStateOf(preferencesManager.getPaywallBypassMethod()) }
-    var bionicReadingEnabled by remember { mutableStateOf(preferencesManager.getBionicReadingEnabled()) }
-    var credibilityScoreEnabled by remember { mutableStateOf(preferencesManager.getCredibilityScoreEnabled()) }
+    var selectedBypassMethod by remember { mutableStateOf(readerPreferences.getPaywallBypassMethod()) }
+    var bionicReadingEnabled by remember { mutableStateOf(readerPreferences.getBionicReadingEnabled()) }
+    var credibilityScoreEnabled by remember { mutableStateOf(readerPreferences.getCredibilityScoreEnabled()) }
     var sentryReportingEnabled by remember { mutableStateOf(errorReportingManager.isEnabled()) }
     var showPerformanceDialog by remember { mutableStateOf(false) }
     var showBypassDialog by remember { mutableStateOf(false) }
@@ -81,11 +86,11 @@ fun SettingsScreen(
 
     val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
         bionicReadingEnabled = enabled
-        preferencesManager.setBionicReadingEnabled(enabled)
+        readerPreferences.setBionicReadingEnabled(enabled)
     }
     val onToggleCredibilityScore: (Boolean) -> Unit = { enabled ->
         credibilityScoreEnabled = enabled
-        preferencesManager.setCredibilityScoreEnabled(enabled)
+        readerPreferences.setCredibilityScoreEnabled(enabled)
     }
     val onToggleSentryReporting: (Boolean) -> Unit = { enabled ->
         sentryReportingEnabled = enabled
@@ -216,7 +221,7 @@ fun SettingsScreen(
                     ReadingSettingsSection(
                         bionicReadingEnabled = bionicReadingEnabled,
                         onBionicReadingChange = onToggleBionicReading,
-                        selectedTtsModel = preferencesManager.getTtsModel(),
+                        selectedTtsModel = ttsPreferences.getTtsModel(),
                         selectedBypassMethod = selectedBypassMethod,
                         onOpenTts = { navController?.navigate(Routes.TTS_SETTINGS) },
                         onOpenBypass = { showBypassDialog = true }
@@ -230,7 +235,7 @@ fun SettingsScreen(
                     summary = stringResource(R.string.settings_group_local_ai_summary)
                 ) {
                     GemmaSettingsSection(
-                        preferences = preferencesManager,
+                        preferences = aiPreferences,
                         modelManager = gemmaModelManager,
                         downloadScheduler = gemmaModelDownloadScheduler,
                         modelLifecycle = gemmaModelLifecycle,
@@ -292,7 +297,7 @@ fun SettingsScreen(
                 selected = selectedBypassMethod,
                 onSelect = { method ->
                     selectedBypassMethod = method
-                    preferencesManager.setPaywallBypassMethod(method)
+                    readerPreferences.setPaywallBypassMethod(method)
                     showBypassDialog = false
                 },
                 onDismiss = { showBypassDialog = false }
@@ -313,9 +318,9 @@ fun SettingsScreen(
         }
         if (showPerformanceDialog) {
             PerformanceInfoDialog(
-                performanceRecords = preferencesManager.getSyncPerformanceRecords(),
+                performanceRecords = performancePreferences.getSyncPerformanceRecords(),
                 onDismiss = { showPerformanceDialog = false },
-                onClearRecords = { preferencesManager.clearSyncPerformanceRecords() }
+                onClearRecords = { performancePreferences.clearSyncPerformanceRecords() }
             )
         }
         if (showSignOutDialog) {

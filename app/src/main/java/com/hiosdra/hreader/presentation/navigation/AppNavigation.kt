@@ -19,13 +19,25 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import coil3.ImageLoader as CoilImageLoader
+import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.article.ArticleScreen
+import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
+import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
+import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.presentation.feeds.FeedDetailScreen
@@ -33,8 +45,8 @@ import com.hiosdra.hreader.presentation.feeds.FeedsViewModel
 import com.hiosdra.hreader.presentation.feeds.SubscriptionsDrawer
 import com.hiosdra.hreader.presentation.feeds.rememberSubscriptionsDrawerState
 import com.hiosdra.hreader.presentation.feeds.add.AddFeedScreen
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.presentation.main.MainScreen
+import com.hiosdra.hreader.presentation.main.MainViewModel
 import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.presentation.settings.SettingsScreen
 import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
@@ -49,7 +61,11 @@ import org.koin.compose.koinInject
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     entryPoint: EntryPoint = EntryPoint.ArticleList,
-    preferencesManager: AppPreferences = koinInject(),
+    backendPreferences: BackendPreferences = koinInject(),
+    readerPreferences: ReaderPreferences = koinInject(),
+    ttsPreferences: TtsPreferences = koinInject(),
+    aiPreferences: AiPreferences = koinInject(),
+    performancePreferences: PerformancePreferences = koinInject(),
     errorReporter: ErrorReporter = koinInject(),
     ttsModelManager: TtsModelGateway = koinInject(),
     ttsModelDownloadScheduler: TtsModelDownloadRequester = koinInject(),
@@ -57,15 +73,32 @@ fun AppNavigation(
     gemmaModelDownloadScheduler: GemmaModelDownloadRequester = koinInject(),
     gemmaModelLifecycle: GemmaModelLifecycle = koinInject(),
     paywallBypass: PaywallBypass = koinInject(),
-    articleTtsPlayer: ArticleTtsPlayer = koinInject()
+    articleTtsPlayer: ArticleTtsPlayer = koinInject(),
+    articleImageLoader: ArticleImageLoader = koinInject(),
+    coilImageLoader: CoilImageLoader = koinInject(),
+    remoteResourcePolicy: RemoteResourcePolicy = koinInject(),
+    articleImageSharer: ArticleImageSharer = koinInject(),
+    articleImageDownloader: ArticleImageDownloader = koinInject(),
+    networkStatus: NetworkStatus = koinInject()
 ) {
-    val configured = remember { preferencesManager.hasBackendCredentials() }
+    val configured = remember { backendPreferences.hasBackendCredentials() }
     val startDestination = remember(entryPoint) {
         when {
             !configured -> Routes.SERVER_SETUP
             entryPoint is EntryPoint.AddFeed -> Routes.addFeed(entryPoint.url)
             else -> Routes.MAIN
         }
+    }
+    val articleImageDependencies = remember(
+        articleImageLoader,
+        coilImageLoader,
+        remoteResourcePolicy
+    ) {
+        ArticleImageDependencies(
+            articleImageLoader = articleImageLoader,
+            coilImageLoader = coilImageLoader,
+            remoteResourcePolicy = remoteResourcePolicy
+        )
     }
     NavHost(
         navController = navController,
@@ -101,6 +134,7 @@ fun AppNavigation(
     ) {
         composable(Routes.SERVER_SETUP) {
             ServerSetupScreen(
+                settingsViewModel = koinViewModel(),
                 errorReportingManager = errorReporter,
                 onSetupFinished = {
                     navController.navigate(Routes.MAIN) {
@@ -110,7 +144,13 @@ fun AppNavigation(
             )
         }
         composable(Routes.MAIN) {
-            MainWithSubscriptions(navController = navController)
+            MainWithSubscriptions(
+                navController = navController,
+                mainViewModel = koinViewModel(),
+                feedsViewModel = koinViewModel(),
+                networkStatus = networkStatus,
+                imageDependencies = articleImageDependencies
+            )
         }
         composable(
             route = Routes.ADD_FEED,
@@ -121,6 +161,7 @@ fun AppNavigation(
             AddFeedScreen(
                 navController = navController,
                 initialUrl = backStackEntry.arguments?.getString("url"),
+                addFeedViewModel = koinViewModel(),
                 onNavigateBack = {
                     if (!navController.popBackStack()) {
                         navController.navigate(Routes.MAIN) {
@@ -149,10 +190,17 @@ fun AppNavigation(
                 starredOnly = arguments?.getBoolean("starred") ?: false,
                 includeRead = arguments?.getBoolean("includeRead") ?: false,
                 sessionStartMillis = arguments?.getLong("session") ?: 0L,
-                preferencesManager = preferencesManager,
+                readerPreferences = readerPreferences,
+                ttsPreferences = ttsPreferences,
                 paywallBypassService = paywallBypass,
                 ttsModelManager = ttsModelManager,
-                ttsController = articleTtsPlayer
+                ttsController = articleTtsPlayer,
+                articleImageLoader = articleImageLoader,
+                coilImageLoader = coilImageLoader,
+                remoteResourcePolicy = remoteResourcePolicy,
+                articleImageSharer = articleImageSharer,
+                articleImageDownloader = articleImageDownloader,
+                viewModel = koinViewModel()
             )
         }
         composable(
@@ -163,7 +211,11 @@ fun AppNavigation(
         ) { backStackEntry ->
             val feedId = backStackEntry.arguments?.getLong("feedId")
             if (feedId != null) {
-                FeedDetailScreen(feedId = feedId, navController = navController)
+                FeedDetailScreen(
+                    feedId = feedId,
+                    navController = navController,
+                    viewModel = koinViewModel()
+                )
             } else {
                 Text(text = stringResource(R.string.feeds_not_found))
             }
@@ -171,11 +223,15 @@ fun AppNavigation(
         composable(Routes.SETTINGS) { _ ->
             SettingsScreen(
                 navController = navController,
-                preferencesManager = preferencesManager,
+                readerPreferences = readerPreferences,
+                ttsPreferences = ttsPreferences,
+                aiPreferences = aiPreferences,
+                performancePreferences = performancePreferences,
                 errorReportingManager = errorReporter,
                 gemmaModelManager = gemmaModelManager,
                 gemmaModelDownloadScheduler = gemmaModelDownloadScheduler,
                 gemmaModelLifecycle = gemmaModelLifecycle,
+                settingsViewModel = koinViewModel(),
                 onSignedOut = {
                     navController.navigate(Routes.SERVER_SETUP) {
                         popUpTo(Routes.MAIN) { inclusive = true }
@@ -186,7 +242,7 @@ fun AppNavigation(
         composable(Routes.TTS_SETTINGS) {
             TtsSettingsScreen(
                 navController = navController,
-                preferencesManager = preferencesManager,
+                ttsPreferences = ttsPreferences,
                 ttsModelManager = ttsModelManager,
                 ttsModelDownloadScheduler = ttsModelDownloadScheduler
             )
@@ -201,10 +257,15 @@ fun AppNavigation(
  * all items. Leaving a feed is a state change instead, and both of them make it.
  */
 @Composable
-private fun MainWithSubscriptions(navController: NavHostController) {
+private fun MainWithSubscriptions(
+    navController: NavHostController,
+    mainViewModel: MainViewModel,
+    feedsViewModel: FeedsViewModel,
+    networkStatus: NetworkStatus,
+    imageDependencies: ArticleImageDependencies
+) {
     val drawerState = rememberSubscriptionsDrawerState()
     val scope = rememberCoroutineScope()
-    val feedsViewModel: FeedsViewModel = koinViewModel()
     var selectedFeedId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     BackHandler(enabled = selectedFeedId != null) { selectedFeedId = null }
@@ -222,12 +283,15 @@ private fun MainWithSubscriptions(navController: NavHostController) {
         onFeedDetails = { navController.navigate(Routes.feed(it)) },
         onAddFeed = { navController.navigate(Routes.addFeed()) },
         viewModel = feedsViewModel,
+        networkStatus = networkStatus,
         gesturesEnabled = true
     ) {
         MainScreen(
             navController = navController,
             onOpenSubscriptions = { scope.launch { drawerState.open() } },
             feedId = selectedFeedId,
+            viewModel = mainViewModel,
+            imageDependencies = imageDependencies,
             onLeaveFeed = { selectedFeedId = null },
             onFeedMarkedRead = onFeedMarkedRead
         )

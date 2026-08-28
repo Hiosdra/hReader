@@ -19,19 +19,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
+import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
-import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TtsSettingsScreen(
     navController: NavController? = null,
-    preferencesManager: AppPreferences = koinInject(),
-    ttsModelManager: TtsModelGateway = koinInject(),
-    ttsModelDownloadScheduler: TtsModelDownloadRequester = koinInject()
+    ttsPreferences: TtsPreferences,
+    ttsModelManager: TtsModelGateway,
+    ttsModelDownloadScheduler: TtsModelDownloadRequester
 ) {
     val requestNotificationPermission = rememberNotificationPermissionRequest()
     Scaffold(
@@ -67,7 +66,7 @@ fun TtsSettingsScreen(
         ) {
             item {
                 TtsSettingsSection(
-                    preferences = preferencesManager,
+                    preferences = ttsPreferences,
                     modelManager = ttsModelManager,
                     downloadScheduler = ttsModelDownloadScheduler,
                     onRequestNotifications = requestNotificationPermission
