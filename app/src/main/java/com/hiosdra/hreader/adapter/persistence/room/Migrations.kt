@@ -117,5 +117,11 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
     }
 }
 
+val APP_MIGRATIONS = arrayOf(
+    MIGRATION_15_16,
+    MIGRATION_16_17,
+    MIGRATION_17_18
+)
+
 private const val ENCLOSURE_RECORD_SEPARATOR = "\u001e"
 private const val ENCLOSURE_FIELD_SEPARATOR = "\u001f"

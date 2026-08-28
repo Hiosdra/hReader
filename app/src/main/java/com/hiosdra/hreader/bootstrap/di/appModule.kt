@@ -3,9 +3,7 @@ package com.hiosdra.hreader.bootstrap.di
 import androidx.room.Room
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
-import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_15_16
-import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_16_17
-import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_17_18
+import com.hiosdra.hreader.adapter.persistence.room.APP_MIGRATIONS
 import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
@@ -109,7 +107,7 @@ val appModule = module {
                 androidApplication(),
                 AppDatabase::class.java,
                 "hreader-db"
-            ).addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+            ).addMigrations(*APP_MIGRATIONS)
             .fallbackToDestructiveMigration(false)
             .build()
     }

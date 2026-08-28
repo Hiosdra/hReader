@@ -69,4 +69,13 @@ class PresentationArchitectureTest {
             .resideInAnyPackage("okhttp3..", "retrofit2..", "org.json..")
             .check(productionClasses)
     }
+
+    @Test
+    fun presentationShouldUseCapabilityPreferencePorts() {
+        noClasses()
+            .that().resideInAPackage("com.hiosdra.hreader.presentation..")
+            .should().dependOnClassesThat()
+            .haveFullyQualifiedName("com.hiosdra.hreader.core.application.port.out.AppPreferences")
+            .check(productionClasses)
+    }
 }
