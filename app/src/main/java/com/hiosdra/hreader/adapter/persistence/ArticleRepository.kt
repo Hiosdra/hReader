@@ -1,15 +1,9 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import android.util.Log
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import androidx.paging.insertSeparators
-import androidx.paging.map
 import androidx.room.withTransaction
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
-import com.hiosdra.hreader.adapter.persistence.room.buildFtsMatchQuery
-import com.hiosdra.hreader.adapter.persistence.room.buildLikePattern
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
@@ -47,7 +41,6 @@ private const val STATUS_UPDATE_CHUNK = 200
  * on Android is 999. "Mark all as read" over a large backlog reaches that on its own.
  */
 private const val DELETE_CHUNK = 500
-private const val LOCAL_UPDATE_CHUNK = 400
 
 private val INCREMENTAL_SYNC_WINDOW: Duration = Duration.ofHours(24)
 
@@ -74,18 +67,6 @@ private const val MAX_BACKLOG_PAGES = 25
  */
 private const val MAX_SYNC_PAGES = 200
 
-/**
- * A page is a little over a screenful, so scrolling stays ahead of the reader without loading the
- * cache back into memory. Placeholders are off: the list groups rows by publication day, and a
- * header cannot be derived from a row that is not there yet.
- */
-private val PAGING_CONFIG = PagingConfig(
-    pageSize = 40,
-    prefetchDistance = 20,
-    maxSize = 200,
-    enablePlaceholders = false
-)
-
 class ArticleRepository(
     private val articleDao: ArticleDao,
     private val articleContentDao: ArticleContentDao,
@@ -96,142 +77,29 @@ class ArticleRepository(
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val articleImageStore: ArticleImageStore
 ) : ArticleStore {
-    /**
-     * The article list, filtered and searched in SQLite and read a page at a time. All three used
-     * to happen in the view model over the whole cache: every article body in memory, scanned again
-     * on each keystroke.
-     */
-    override fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> {
-        val match = buildFtsMatchQuery(query.searchQuery.trim())
-        return Pager(PAGING_CONFIG) {
-            if (match == null) {
-                articleDao.pageArticles(
-                    feedId = query.feedId,
-                    starredOnly = query.starredOnly,
-                    includeRead = query.includeRead,
-                    sessionStart = query.sessionStart
-                )
-            } else {
-                articleDao.pageSearchResults(
-                    feedId = query.feedId,
-                    starredOnly = query.starredOnly,
-                    includeRead = query.includeRead,
-                    sessionStart = query.sessionStart,
-                    ftsQuery = match,
-                    titleQuery = buildLikePattern(query.searchQuery)
-                )
-            }
-        }.flow
-            .map { page -> page.map { ArticleListItem.Article(it.toListEntry()) } }
-            .map { page ->
-                page.insertSeparators { before, after ->
-                    val afterArticle = when (after) {
-                        is ArticleListItem.Article -> after.entry
-                        else -> return@insertSeparators null
-                    }
-                    val beforeDate = when (before) {
-                        is ArticleListItem.Article -> before.entry.publishedAt
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate()
-                        else -> null
-                    }
-                    val afterDate = afterArticle.publishedAt
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
-                    if (beforeDate != afterDate) ArticleListItem.DayHeader(afterDate) else null
-                }
-            }
-    }
+    private val queryRepository = ArticleQueryRepository(articleDao, feedDao)
+    private val mutationRepository = ArticleMutationRepository(articleDao)
+
+    override fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> =
+        queryRepository.pageArticles(query)
 
     override suspend fun listWindow(
         query: ArticleListQuery,
         articleId: Long,
         radius: Int
-    ): ArticleListWindow {
-        val totalCount = articleDao.countList(
-            feedId = query.feedId,
-            starredOnly = query.starredOnly,
-            includeRead = query.includeRead,
-            sessionStart = query.sessionStart
-        )
-        if (totalCount == 0) {
-            return ArticleListWindow(emptyList(), 0, 0, 0)
-        }
-
-        val publishedAt = articleDao.getPublishedAt(articleId.toString())
-        val selectedArticleIsVisible = publishedAt != null && articleDao.countVisibleArticle(
-            articleId = articleId.toString(),
-            feedId = query.feedId,
-            starredOnly = query.starredOnly,
-            includeRead = query.includeRead,
-            sessionStart = query.sessionStart
-        ) > 0
-        if (!selectedArticleIsVisible) {
-            val ids = articleDao.getListWindow(
-                feedId = query.feedId,
-                starredOnly = query.starredOnly,
-                includeRead = query.includeRead,
-                sessionStart = query.sessionStart,
-                limit = (radius * 2 + 1).coerceAtLeast(1),
-                offset = 0
-            ).toArticleIds("the reader's fallback window")
-            return ArticleListWindow(
-                ids = ids,
-                totalCount = totalCount,
-                windowStartIndex = 0,
-                currentIndex = 0
-            )
-        }
-
-        val currentPosition = articleDao.countArticlesBefore(
-            articleId = articleId.toString(),
-            publishedAt = publishedAt,
-            feedId = query.feedId,
-            starredOnly = query.starredOnly,
-            includeRead = query.includeRead,
-            sessionStart = query.sessionStart
-        ).coerceIn(0, (totalCount - 1).coerceAtLeast(0))
-        val before = articleDao.getListWindowBefore(
-            articleId = articleId.toString(),
-            publishedAt = publishedAt,
-            feedId = query.feedId,
-            starredOnly = query.starredOnly,
-            includeRead = query.includeRead,
-            sessionStart = query.sessionStart,
-            limit = radius.coerceAtLeast(0)
-        ).asReversed()
-        val after = articleDao.getListWindowAfter(
-            articleId = articleId.toString(),
-            publishedAt = publishedAt,
-            feedId = query.feedId,
-            starredOnly = query.starredOnly,
-            includeRead = query.includeRead,
-            sessionStart = query.sessionStart,
-            limit = radius.coerceAtLeast(0)
-        )
-        val ids = (before + articleId.toString() + after).toArticleIds("the reader's window")
-        val windowStart = currentPosition - before.size
-        return ArticleListWindow(
-            ids = ids,
-            totalCount = totalCount,
-            windowStartIndex = windowStart,
-            currentIndex = before.size.coerceIn(0, (ids.size - 1).coerceAtLeast(0))
-        )
-    }
+    ): ArticleListWindow = queryRepository.listWindow(query, articleId, radius)
 
     override suspend fun unreadIds(feedId: Long?, starredOnly: Boolean): List<Long> =
-        articleDao.getUnreadIds(feedId, starredOnly).toArticleIds("the unread set")
+        queryRepository.unreadIds(feedId, starredOnly)
 
     override fun observeUnreadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
-        articleDao.observeUnreadCountFor(feedId, starredOnly)
+        queryRepository.observeUnreadCount(feedId, starredOnly)
 
     override fun observeReadCount(feedId: Long?, starredOnly: Boolean): Flow<Int> =
-        articleDao.observeReadCountFor(feedId, starredOnly)
+        queryRepository.observeReadCount(feedId, starredOnly)
 
     override fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
-        articleDao.getArticlesWithFeedByIds(ids.map { it.toString() }).map { rows ->
-            rows.map { it.toEntry() }
-        }
+        queryRepository.getArticlesByIds(ids)
 
     override suspend fun refreshArticles(forceFullSync: Boolean) {
         val syncStartTime = System.currentTimeMillis()
@@ -523,32 +391,18 @@ class ArticleRepository(
     }
 
     override suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus) {
-        if (articleIds.isEmpty()) return
-        // Queued first: if the push fails (offline, server down) the next sync picks it up.
-        val readAt = Instant.now().takeIf { newStatus == ArticleStatus.READ }
-        articleIds.chunked(LOCAL_UPDATE_CHUNK).forEach { chunk ->
-            articleDao.updateStatusForIds(chunk, newStatus, readAt)
-        }
+        mutationRepository.updateReadStatus(articleIds, newStatus)
     }
 
     override suspend fun updateReadStatus(articleId: String, newStatus: ArticleStatus) {
-        updateReadStatus(listOf(articleId), newStatus)
+        mutationRepository.updateReadStatus(articleId, newStatus)
     }
 
-    /**
-     * Of [articleIds], those still read and stamped no later than [readBefore]. What a bulk "mark
-     * as read" may take back: an article the reader has opened since carries a later stamp, and
-     * reverting that one too would undo something they did on purpose.
-     */
     override suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long> =
-        articleIds.map { it.toString() }
-            .chunked(LOCAL_UPDATE_CHUNK)
-            .flatMap { articleDao.getIdsReadNoLaterThan(it, readBefore) }
-            .toArticleIds("an undo")
+        mutationRepository.idsStillReadSince(articleIds, readBefore)
 
     override suspend fun updateStarred(articleId: Long, starred: Boolean) {
-        val ids = listOf(articleId.toString())
-        articleDao.updateStarredForIds(ids, starred)
+        mutationRepository.updateStarred(articleId, starred)
     }
 
     /**
@@ -583,7 +437,7 @@ class ArticleRepository(
             }
         }
 
-    override suspend fun getFeed(feedId: Long): Feed? = feedDao.getFeedById(feedId)?.toArticleFeed()
+    override suspend fun getFeed(feedId: Long): Feed? = queryRepository.getFeed(feedId)
 
     suspend fun refreshArticles() = refreshArticles(forceFullSync = false)
 
@@ -592,16 +446,4 @@ class ArticleRepository(
     companion object {
         internal const val PREVIEW_BACKFILL_LIMIT = 500
     }
-}
-
-/**
- * The stored ids as the rest of the app uses them. The column is text because that is what both
- * backends hand over, but every value written to it is the decimal form of a [Long], so a token
- * that will not parse is a broken invariant rather than an article to be quietly left out of the
- * list — which is what dropping it silently looked like from the outside.
- */
-private fun List<String>.toArticleIds(what: String): List<Long> {
-    val ids = mapNotNull { it.toLongOrNull() }
-    if (ids.size != size) Log.w(TAG, "Ignored ${size - ids.size} unreadable article ids in $what")
-    return ids
 }
