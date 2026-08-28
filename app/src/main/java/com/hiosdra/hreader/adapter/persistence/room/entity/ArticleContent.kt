@@ -20,5 +20,6 @@ data class ArticleContent(
     val isPrepared: Boolean = false,
     /** The picture to show above the article, null when the body already carries it. */
     val leadImageUrl: String? = null,
-    val imageUrls: String = ""
+    val imageUrls: String = "",
+    val allImagesPrepared: Boolean = false
 )

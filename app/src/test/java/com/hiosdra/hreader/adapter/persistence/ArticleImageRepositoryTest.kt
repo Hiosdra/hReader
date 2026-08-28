@@ -35,7 +35,7 @@ class ArticleImageRepositoryTest {
         articleDao,
         okHttpClient,
         preferencesManager,
-        RemoteResourcePolicy(allowedHosts = { setOf("example.com") })
+        RemoteResourcePolicyAdapter(allowedHosts = { setOf("example.com") })
     ) { path ->
         path == "/tmp/image.jpg" || path == "/tmp/orphan.jpg"
     }
@@ -58,6 +58,37 @@ class ArticleImageRepositoryTest {
         coEvery { articleImageDao.getImageForArticleByUrl(entryId, imageUrl) } returns null
         val result = repo.getLocalImagePath(entryId, imageUrl)
         assertNull(result)
+    }
+
+    @Test
+    fun getLocalImagePaths_batchRemovesMissingFiles() = runBlocking {
+        val existing = ArticleImage(
+            "existing",
+            1L,
+            "https://example.com/image.jpg",
+            "/tmp/image.jpg",
+            "image/jpeg",
+            Instant.now(),
+            123
+        )
+        val missing = ArticleImage(
+            "missing",
+            2L,
+            "https://example.com/missing.jpg",
+            "/tmp/missing.jpg",
+            "image/jpeg",
+            Instant.now(),
+            456
+        )
+        coEvery { articleImageDao.getImagesForArticles(listOf(1L, 2L)) } returns listOf(existing, missing)
+
+        val result = repo.getLocalImagePaths(listOf(1L, 2L))
+
+        assertEquals(
+            mapOf(1L to mapOf("https://example.com/image.jpg" to "/tmp/image.jpg")),
+            result
+        )
+        coVerify { articleImageDao.deleteByIds(listOf("missing")) }
     }
 
     @Test

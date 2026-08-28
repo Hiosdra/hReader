@@ -61,6 +61,12 @@
     <string name="main_title_with_unread_count">%1$s  •  %2$d</string>
     <string name="main_settings">Settings</string>
     <string name="main_search_articles">Search articles</string>
+    <string name="main_scope_unread">Unread</string>
+    <string name="main_scope_all">All</string>
+    <string name="main_scope_starred">Starred</string>
+    <string name="main_scope_feed">This feed</string>
+    <string name="main_scope_search">Search: %1$s</string>
+    <string name="main_clear_filters">Clear filters</string>
     <string name="main_clear_search">Clear search</string>
     <plurals name="main_mark_articles_read">
         <item quantity="one">Mark %1$d article as read</item>
@@ -70,12 +76,16 @@
     <string name="main_offline_refresh">Offline — connect to a network to refresh.</string>
     <string name="main_nothing_matches_search">Nothing matches that search</string>
     <string name="main_no_starred_articles">No starred articles yet</string>
+    <string name="main_no_unread_articles">No unread articles in this scope</string>
+    <string name="main_show_all_from_empty">Show all articles</string>
     <string name="main_no_articles">No articles yet</string>
     <string name="main_no_feed_articles">No articles for this feed</string>
     <string name="main_browse_subscriptions">Browse subscriptions</string>
     <string name="main_back_to_all_articles">Back to all articles</string>
     <string name="main_add_subscription">Add subscription</string>
     <string name="main_refresh_now">Refresh now</string>
+    <string name="main_syncing_first_time">Your first sync is running. Articles will appear here as soon as they are downloaded.</string>
+    <string name="main_sync_failed">The first sync could not be completed.</string>
     <string name="main_offline_banner">Offline — showing downloaded articles. Anything you read syncs when you are back online.</string>
     <string name="main_ai_model_unavailable_title">AI model unavailable</string>
     <string name="main_ai_model_unavailable_message">The selected AI model %1$s is unavailable. Download it or pick another model in Settings.</string>
@@ -91,6 +101,8 @@
     <string name="article_no_content">No content available</string>
     <string name="article_remove_star">Remove star</string>
     <string name="article_star">Star article</string>
+    <string name="article_starred">Starred</string>
+    <string name="article_not_starred">Not starred</string>
     <string name="article_decrease_text_size">Decrease text size</string>
     <string name="article_reset_text_size">Reset text size (%1$d%%)</string>
     <string name="article_increase_text_size">Increase text size</string>
@@ -238,6 +250,8 @@
     <string name="onboarding_description">hReader syncs with your own FreshRSS or Miniflux instance. Choose the server type, enter its address, and paste the %1$s from %2$s.</string>
     <string name="onboarding_start_reading">Start reading</string>
     <string name="onboarding_continue_without_testing">Continue without testing</string>
+    <string name="onboarding_optional_settings">Optional settings</string>
+    <string name="onboarding_optional_settings_summary">Diagnostics and AI summaries can be configured later</string>
     <string name="backend_freshrss">FreshRSS (experimental)</string>
     <string name="backend_miniflux">Miniflux</string>
     <string name="backend_freshrss_secret_label">API password</string>
@@ -252,9 +266,11 @@
     <string name="settings_sync">Sync</string>
     <string name="settings_offline_reading">Offline reading</string>
     <string name="settings_reading_experience">Reading experience</string>
+    <string name="settings_group_reading_summary">Text display, voice and link options</string>
     <string name="settings_bionic_reading">Bionic Reading</string>
     <string name="settings_bionic_reading_description">Highlight portions of words for faster reading</string>
     <string name="settings_ai_features">AI features</string>
+    <string name="settings_group_ai_summary">Cloud summaries and credibility signals</string>
     <string name="settings_show_credibility_chip">Show verification signals</string>
     <string name="settings_credibility_description">Adds a chip to every article with AI signals about sourcing, tone and balance</string>
     <string name="settings_rating_meaning">How to read the signals:</string>
@@ -267,6 +283,7 @@
     <string name="article_ai_cloud_credibility_confirmation">The article text will leave this device and be sent to the selected OpenRouter provider to produce verification signals. Continue?</string>
     <string name="article_ai_cloud_confirm">Send and continue</string>
     <string name="settings_local_ai">Local AI</string>
+    <string name="settings_group_local_ai_summary">Optional on-device model and download controls</string>
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">Runs on this device through LiteRT-LM. The article text is not sent to a cloud provider.</string>
     <string name="ai_model_size">Download size: %.1f GB</string>
@@ -294,6 +311,11 @@
     <string name="settings_model">Model</string>
     <string name="settings_model_missing">The selected model is unavailable. Download it or pick another one.</string>
     <string name="settings_privacy_diagnostics">Privacy &amp; diagnostics</string>
+    <string name="settings_group_privacy_summary">Error reports, performance data and local cache</string>
+    <string name="settings_group_expand">Expand section</string>
+    <string name="settings_group_collapse">Collapse section</string>
+    <string name="settings_group_expanded">Expanded</string>
+    <string name="settings_group_collapsed">Collapsed</string>
     <string name="settings_local_data">Local data</string>
     <string name="settings_show_performance">Show performance info</string>
     <string name="settings_sign_out_title">Clear downloaded data and sign out</string>
@@ -311,6 +333,7 @@
     <string name="settings_operation_article_content_prefetch">Article content prefetch</string>
     <string name="settings_operation_enclosure_images_download">Enclosure images download</string>
     <string name="settings_operation_batch_processing">Batch processing</string>
+    <string name="settings_operation_article_reconciliation">Article reconciliation</string>
     <string name="settings_operation_incremental_sync">Incremental sync</string>
     <string name="settings_operation_full_sync">Full sync</string>
     <string name="settings_operation_other">Other sync operation</string>

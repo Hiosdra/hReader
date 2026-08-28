@@ -47,6 +47,7 @@ import androidx.compose.ui.window.Dialog
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
+import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
@@ -89,6 +90,7 @@ internal fun ArticleContent(
     onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
 ) {
     val imageSharer: ArticleImageSharer = koinInject()
+    val imageDownloader: ArticleImageDownloader = koinInject()
     val locale = LocalLocale.current.platformLocale
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
     val dateText = remember(entry.publishedAt, locale) { formatArticleDate(entry.publishedAt, locale) }
@@ -103,6 +105,7 @@ internal fun ArticleContent(
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
+    var imageDownloadUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val articleLinkLabel = stringResource(R.string.article_link)
     val offlineLinkCopiedMessage = stringResource(R.string.article_offline_link_copied)
@@ -111,15 +114,27 @@ internal fun ArticleContent(
     val sharingRequiresConnectionMessage = stringResource(R.string.article_sharing_requires_connection)
     val preparingImageMessage = stringResource(R.string.article_preparing_image)
     val imageSharingFailedMessage = stringResource(R.string.article_image_sharing_failed)
+    val imageDownloadedMessage = stringResource(R.string.article_downloading)
+    val imageDownloadFailedMessage = stringResource(R.string.article_download_failed)
+    val density = LocalDensity.current
+    val minimumWebViewHeightPx = with(density) { 240.dp.roundToPx() }
     val safeWebContentHeightPx = safeArticleWebViewHeightPx(webContentHeightPx)
-    val webViewHeight = with(LocalDensity.current) { safeWebContentHeightPx.toDp() }
-    val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(webContentHeightPx)
+    val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(
+        contentHeightPx = webContentHeightPx,
+        viewportHeightPx = articleViewportHeightPx
+    )
+    val webViewHeightPx = if (webViewNeedsInternalScroll) {
+        articleViewportHeightPx.coerceAtLeast(minimumWebViewHeightPx)
+    } else {
+        safeWebContentHeightPx.coerceAtLeast(minimumWebViewHeightPx)
+    }
+    val webViewHeight = with(density) { webViewHeightPx.toDp() }
     val scrollbarMetrics by remember(articleScrollState, webViewNeedsInternalScroll) {
         derivedStateOf {
             if (webViewNeedsInternalScroll) {
-                val maxScrollPx = (webContentHeightPx - safeWebContentHeightPx).coerceAtLeast(0)
+                val maxScrollPx = (webContentHeightPx - webViewHeightPx).coerceAtLeast(0)
                 verticalScrollbarMetrics(
-                    viewportSizePx = safeWebContentHeightPx,
+                    viewportSizePx = webViewHeightPx,
                     contentSizePx = webContentHeightPx,
                     scrollOffsetPx = articleScrollOffset(webViewScrollProgress, maxScrollPx)
                 )
@@ -167,7 +182,7 @@ internal fun ArticleContent(
             webViewRestoreScrollY = articleWebViewRestoreScrollY(
                 progress = progress,
                 contentHeightPx = webContentHeightPx,
-                viewportHeightPx = safeWebContentHeightPx
+                viewportHeightPx = webViewHeightPx
             )
         } else {
             val maxValue = snapshotFlow { articleScrollState.maxValue }.first { it > 0 }
@@ -287,6 +302,7 @@ internal fun ArticleContent(
                             entryId = entry.id,
                             imageUrl = mainImageUrl,
                             contentDescription = null,
+                            isOnline = isOnline,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(16f / 9f)
@@ -345,7 +361,7 @@ internal fun ArticleContent(
             },
             onDownload = {
                 if (isOnline) {
-                    enqueueImageDownload(context, actionsUrl)
+                    imageDownloadUrl = actionsUrl
                 } else {
                     Toast.makeText(context, downloadingRequiresConnectionMessage, Toast.LENGTH_SHORT).show()
                 }
@@ -361,6 +377,15 @@ internal fun ArticleContent(
             }
         )
     }
+    val downloadTarget = imageDownloadUrl
+    if (downloadTarget != null) {
+        LaunchedEffect(downloadTarget) {
+            val downloaded = imageDownloader.download(downloadTarget)
+            val message = if (downloaded) imageDownloadedMessage else imageDownloadFailedMessage
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            imageDownloadUrl = null
+        }
+    }
     val shareTarget = imageShareUrl
     if (shareTarget != null) {
         LaunchedEffect(shareTarget) {
@@ -373,7 +398,7 @@ internal fun ArticleContent(
     val zoomUrl = zoomImageUrl
     if (zoomUrl != null) {
         Dialog(onDismissRequest = { zoomImageUrl = null }) {
-            ZoomableImage(entryId = entry.id, url = zoomUrl) { zoomImageUrl = null }
+            ZoomableImage(entryId = entry.id, url = zoomUrl, isOnline = isOnline) { zoomImageUrl = null }
         }
     }
 }

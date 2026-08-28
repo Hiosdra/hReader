@@ -35,7 +35,7 @@ class ArticlePageRepository(
     private val snapshotDao: ArticlePageSnapshotDao,
     private val articleDao: ArticleDao,
     httpClient: OkHttpClient,
-    private val remoteResourcePolicy: RemoteResourcePolicy
+    private val remoteResourcePolicy: RemoteResourcePolicyAdapter
 ) : ArticlePageStore {
     companion object {
         const val OFFLINE_PAGE_HOST = "offline.hreader.local"
@@ -61,6 +61,7 @@ class ArticlePageRepository(
     private val pagesDirectory = File(context.filesDir, "article_pages").apply { mkdirs() }
     private val pageLimiter = Semaphore(4)
     private val safeHttpClient = httpClient.newBuilder()
+        .apply { interceptors().clear() }
         .addNetworkInterceptor { chain ->
             if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
                 throw IOException("Blocked remote resource URL")
@@ -148,7 +149,7 @@ class ArticlePageRepository(
             pageDirectory(snapshot.entryId, snapshot.directoryPath)
                 ?.resolve(INDEX_FILE)
                 ?.isFile == true
-        }
+        }.filterNot { snapshot -> hasTemporaryPageDirectory(snapshot.entryId) }
         invalidSnapshots.mapNotNull { snapshot ->
             pageDirectory(snapshot.entryId, snapshot.directoryPath)
         }.forEach(File::deleteRecursively)
@@ -170,11 +171,20 @@ class ArticlePageRepository(
         }.toSet()
         pagesDirectory.listFiles()
             ?.filterNot { file ->
-                runCatching { file.canonicalPath in referencedDirectories }.getOrDefault(true)
+                isTemporaryPageDirectory(file) ||
+                    runCatching { file.canonicalPath in referencedDirectories }.getOrDefault(true)
             }
             ?.forEach(File::deleteRecursively)
         Unit
     }
+
+    private fun hasTemporaryPageDirectory(entryId: Long): Boolean =
+        pagesDirectory.listFiles()?.any { file ->
+            file.name.startsWith(".staging-$entryId-") || file.name.startsWith(".backup-$entryId-")
+        } == true
+
+    private fun isTemporaryPageDirectory(file: File): Boolean =
+        file.name.startsWith(".staging-") || file.name.startsWith(".backup-")
 
     private fun pageDirectory(entryId: Long, path: String): File? {
         val root = runCatching { pagesDirectory.canonicalFile }.getOrNull() ?: return null

@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.IntSize
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
 
 @Composable
-fun ZoomableImage(entryId: Long, url: String, onDismiss: () -> Unit) {
+fun ZoomableImage(entryId: Long, url: String, isOnline: Boolean, onDismiss: () -> Unit) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
@@ -48,6 +48,7 @@ fun ZoomableImage(entryId: Long, url: String, onDismiss: () -> Unit) {
                 entryId = entryId,
                 imageUrl = url,
                 contentDescription = null,
+                isOnline = isOnline,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(

@@ -22,6 +22,24 @@ interface ArticleContentDao {
     )
     suspend fun getContentEntryIds(source: ArticleContentSource): List<Long>
 
+    @Query(
+        "SELECT entryId FROM article_contents " +
+            "WHERE entryId IN (:entryIds) AND source = :source AND allImagesPrepared = 1"
+    )
+    suspend fun getFullyImagePreparedEntryIds(
+        entryIds: List<Long>,
+        source: ArticleContentSource = ArticleContentSource.FULL
+    ): List<Long>
+
+    @Query(
+        "UPDATE article_contents SET allImagesPrepared = 1 " +
+            "WHERE entryId = :entryId AND source = :source"
+    )
+    suspend fun markAllImagesPrepared(
+        entryId: Long,
+        source: ArticleContentSource = ArticleContentSource.FULL
+    )
+
     @Query("DELETE FROM article_contents")
     suspend fun clearAll()
 

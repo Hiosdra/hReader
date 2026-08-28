@@ -5,6 +5,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
+import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
@@ -26,7 +27,8 @@ class ArticleRepositoryWindowTest {
         api = mockk<FeedBackend>(relaxed = true),
         db = mockk<AppDatabase>(relaxed = true),
         preferencesManager = mockk<SyncPreferences>(relaxed = true),
-        syncPerformanceLogger = mockk<SyncPerformanceTracker>(relaxed = true)
+        syncPerformanceLogger = mockk<SyncPerformanceTracker>(relaxed = true),
+        articleImageStore = mockk<ArticleImageStore>(relaxed = true)
     )
     private val selectedAt = Instant.parse("2026-08-22T12:00:00Z")
     private val query = ArticleListQuery(sessionStart = Instant.parse("2026-08-22T00:00:00Z"))

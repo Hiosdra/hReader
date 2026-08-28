@@ -434,4 +434,27 @@
     <string name="offline_original_pages_download_failed">元のページをダウンロードできませんでした。</string>
     <string name="sync_content_failed">記事の同期に失敗しました。</string>
     <string name="sync_article_content_failed">記事の内容をダウンロードできませんでした。</string>
+    <string name="main_scope_unread">未読</string>
+    <string name="main_scope_all">すべて</string>
+    <string name="main_scope_starred">スター付き</string>
+    <string name="main_scope_feed">このフィード</string>
+    <string name="main_scope_search">検索: %1$s</string>
+    <string name="main_clear_filters">フィルターをクリア</string>
+    <string name="main_no_unread_articles">この範囲に未読の記事はありません</string>
+    <string name="main_show_all_from_empty">すべての記事を表示</string>
+    <string name="main_syncing_first_time">初回同期を実行中です。ダウンロードが完了すると記事がここに表示されます。</string>
+    <string name="main_sync_failed">初回同期を完了できませんでした。</string>
+    <string name="article_starred">スター付き</string>
+    <string name="article_not_starred">スターなし</string>
+    <string name="onboarding_optional_settings">任意設定</string>
+    <string name="onboarding_optional_settings_summary">診断とAI要約は後で設定できます</string>
+    <string name="settings_group_reading_summary">テキスト表示、音声、リンクのオプション</string>
+    <string name="settings_group_ai_summary">クラウド要約と信頼性シグナル</string>
+    <string name="settings_group_local_ai_summary">任意の端末内モデルとダウンロード設定</string>
+    <string name="settings_group_privacy_summary">エラーレポート、パフォーマンスデータ、ローカルキャッシュ</string>
+    <string name="settings_group_expand">セクションを展開</string>
+    <string name="settings_group_collapse">セクションを折りたたむ</string>
+    <string name="settings_group_expanded">展開済み</string>
+    <string name="settings_group_collapsed">折りたたみ済み</string>
+    <string name="settings_operation_article_reconciliation">記事の照合</string>
 </resources>

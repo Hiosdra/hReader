@@ -14,7 +14,10 @@ import java.time.Instant
         Index("status"),
         Index("publishedAt"),
         Index("pendingSync"),
-        Index("starredPendingSync")
+        Index("starredPendingSync"),
+        Index(value = ["feedId", "publishedAt", "id"]),
+        Index(value = ["starred", "publishedAt", "id"]),
+        Index(value = ["status", "publishedAt", "id"])
     ]
 )
 data class ArticleEntity(
@@ -33,6 +36,7 @@ data class ArticleEntity(
     val feedId: Long,
     val readingTime: Int?,
     val enclosures: List<Enclosure>,
+    val leadImageUrl: String? = null,
     val status: ArticleStatus? = ArticleStatus.UNREAD,
     val starred: Boolean = false,
     /** A star toggled locally that the backend has not accepted yet. Mirrors [pendingSync]. */

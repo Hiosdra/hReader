@@ -1,10 +1,8 @@
 package com.hiosdra.hreader.presentation.article
 
-import android.app.DownloadManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.Environment
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -20,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import com.hiosdra.hreader.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,28 +66,4 @@ internal fun copyTextToClipboard(context: Context, label: String, text: String) 
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
     Toast.makeText(context, context.getString(R.string.article_copied), Toast.LENGTH_SHORT).show()
-}
-
-internal fun enqueueImageDownload(context: Context, url: String) {
-    val started = runCatching {
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val request = DownloadManager.Request(url.toUri())
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeImageFileName(url))
-        dm.enqueue(request)
-    }.isSuccess
-    val message = context.getString(if (started) R.string.article_downloading else R.string.article_download_failed)
-    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-}
-
-private fun safeImageFileName(url: String, extension: String = ""): String {
-    val segment = runCatching { url.toUri().lastPathSegment }.getOrNull().orEmpty()
-    val sanitized = segment
-        .substringAfterLast('/')
-        .substringAfterLast('\\')
-        .replace(Regex("[^A-Za-z0-9._-]"), "_")
-        .trimStart('.')
-        .take(80)
-    val base = sanitized.ifBlank { "image_${System.currentTimeMillis()}" }
-    return if (extension.isEmpty() || base.endsWith(extension, ignoreCase = true)) base else base + extension
 }

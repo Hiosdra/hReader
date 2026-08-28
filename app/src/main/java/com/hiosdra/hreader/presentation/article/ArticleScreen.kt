@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,7 +25,9 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -74,12 +77,23 @@ internal const val READING_POSITION_SAMPLE_MILLIS = 400L
 // Compose packs layout dimensions into 18 bits. Keep a margin below the 262143 px
 // representable maximum because Modifier.height converts Dp back to integer pixels.
 internal const val MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX = 262_000
+internal const val ARTICLE_WEB_VIEW_INTERNAL_SCROLL_VIEWPORT_MULTIPLIER = 4
 
 internal fun safeArticleWebViewHeightPx(contentHeightPx: Int): Int =
     contentHeightPx.coerceIn(0, MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX)
 
 internal fun articleWebViewNeedsInternalScroll(contentHeightPx: Int): Boolean =
     contentHeightPx > MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX
+
+internal fun articleWebViewNeedsInternalScroll(
+    contentHeightPx: Int,
+    viewportHeightPx: Int
+): Boolean {
+    if (contentHeightPx <= 0) return false
+    if (contentHeightPx > MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX) return true
+    val viewportLimit = viewportHeightPx.toLong() * ARTICLE_WEB_VIEW_INTERNAL_SCROLL_VIEWPORT_MULTIPLIER
+    return viewportHeightPx > 0 && contentHeightPx.toLong() > viewportLimit
+}
 
 internal fun articleWebViewRestoreScrollY(
     progress: Float,
@@ -308,13 +322,16 @@ fun ArticleScreen(
 
             // What is missing offline, said out loud rather than left as an empty screen.
             uiState.contentError?.let { message ->
-                RetryableSnackbar(
-                    hostState = snackbarHostState,
-                    message = message.resolve(),
-                    actionLabel = stringResource(R.string.action_retry).takeIf { currentEntryId != null },
-                    onAction = { currentEntryId?.let(viewModel::retryContent) },
-                    onDismissed = viewModel::clearContentError
-                )
+                if (currentEntryId != null) {
+                    ArticleContentErrorBanner(
+                        message = message.resolve(),
+                        onRetry = { viewModel.retryContent(currentEntryId) },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = bottomActionBarHeight + 8.dp)
+                            .navigationBarsPadding()
+                    )
+                }
             }
 
             uiState.scoreError?.let { error ->
@@ -414,6 +431,37 @@ fun ArticleScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArticleContentErrorBanner(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        tonalElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = message,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            TextButton(onClick = onRetry) {
+                Text(stringResource(R.string.action_retry), color = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
     }

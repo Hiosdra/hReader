@@ -12,10 +12,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.DefaultAlpha
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.ImageLoader as CoilImageLoader
 import coil3.compose.AsyncImage
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
-import com.hiosdra.hreader.core.application.port.out.NetworkStatus
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 @Composable
@@ -27,18 +29,34 @@ fun OfflineAwareImage(
     contentScale: ContentScale = ContentScale.Fit,
     alpha: Float = DefaultAlpha,
     colorFilter: ColorFilter? = null,
-    imageLoader: ArticleImageLoader = koinInject(),
-    networkMonitor: NetworkStatus = koinInject()
+    isOnline: Boolean = true,
+    localImagePath: String? = null,
+    lookupLocalPath: Boolean = true,
+    checkRemotePolicy: Boolean = true,
+    articleImageLoader: ArticleImageLoader = koinInject(),
+    coilImageLoader: CoilImageLoader = koinInject(),
+    remoteResourcePolicy: RemoteResourcePolicy = koinInject(),
 ) {
-    val isOnline by networkMonitor.isOnline.collectAsStateWithLifecycle()
-    var resolvedImageUrl by remember(entryId, imageUrl) { mutableStateOf<String?>(null) }
+    var localImageUrl by remember(entryId, imageUrl, localImagePath) {
+        mutableStateOf(localImagePath?.let { "file://$it" })
+    }
+    var remoteImageAllowed by remember(entryId, imageUrl) { mutableStateOf(false) }
 
-    LaunchedEffect(entryId, imageUrl, isOnline) {
-        resolvedImageUrl = imageLoader.getImageModel(entryId, imageUrl, isOnline)
+    LaunchedEffect(entryId, imageUrl, localImagePath, lookupLocalPath, checkRemotePolicy, isOnline) {
+        localImageUrl = when {
+            localImagePath != null -> "file://$localImagePath"
+            lookupLocalPath -> articleImageLoader.getImageModel(entryId, imageUrl, allowNetwork = false)
+            else -> null
+        }
+        remoteImageAllowed = localImagePath != null ||
+            (isOnline && (!checkRemotePolicy || withContext(Dispatchers.IO) {
+                remoteResourcePolicy.allows(imageUrl)
+            }))
     }
 
     AsyncImage(
-        model = resolvedImageUrl,
+        model = localImageUrl ?: imageUrl.takeIf { isOnline && remoteImageAllowed },
+        imageLoader = coilImageLoader,
         contentDescription = contentDescription,
         modifier = modifier,
         contentScale = contentScale,

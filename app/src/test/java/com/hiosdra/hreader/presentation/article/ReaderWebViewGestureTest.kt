@@ -27,4 +27,11 @@ class ReaderWebViewGestureTest {
             readerGestureDirection(deltaX = 48f, deltaY = 20f, touchSlop = 8f)
         )
     }
+
+    @Test
+    fun `content height waits for two equal measurements`() {
+        assertEquals(false, contentHeightIsSettled(0, 1200, 1))
+        assertEquals(true, contentHeightIsSettled(1200, 1200, 2))
+        assertEquals(false, contentHeightIsSettled(1200, 1400, 2))
+    }
 }

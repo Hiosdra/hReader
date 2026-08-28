@@ -31,6 +31,7 @@ import com.hiosdra.hreader.presentation.components.rememberNotificationPermissio
 import com.hiosdra.hreader.presentation.settings.BackendServerFields
 import com.hiosdra.hreader.presentation.settings.OpenRouterKeyField
 import com.hiosdra.hreader.presentation.settings.SettingsViewModel
+import com.hiosdra.hreader.presentation.settings.SettingsGroup
 import com.hiosdra.hreader.presentation.settings.secretHintRes
 import com.hiosdra.hreader.presentation.settings.secretLabelRes
 import com.hiosdra.hreader.presentation.theme.sectionCardColors
@@ -79,14 +80,6 @@ fun ServerSetupScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            ErrorReportingPreferenceCard(
-                enabled = sentryReportingEnabled,
-                onEnabledChange = { enabled ->
-                    sentryReportingEnabled = enabled
-                    errorReportingManager.setEnabled(enabled)
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
@@ -106,22 +99,36 @@ fun ServerSetupScreen(
                     modifier = Modifier.padding(16.dp)
                 )
             }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                colors = sectionCardColors()
+            SettingsGroup(
+                title = stringResource(R.string.onboarding_optional_settings),
+                summary = stringResource(R.string.onboarding_optional_settings_summary)
             ) {
-                OpenRouterKeyField(
-                    apiKey = openRouterApiKey,
-                    onApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
-                    modifier = Modifier.padding(16.dp)
+                ErrorReportingPreferenceCard(
+                    enabled = sentryReportingEnabled,
+                    onEnabledChange = { enabled ->
+                        sentryReportingEnabled = enabled
+                        errorReportingManager.setEnabled(enabled)
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = sectionCardColors()
+                ) {
+                    OpenRouterKeyField(
+                        apiKey = openRouterApiKey,
+                        onApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
             }
             TextButton(
                 onClick = {
                     requestNotificationPermission {
-                        settingsViewModel.onSetupFinished()
-                        onSetupFinished()
+                        settingsViewModel.onSetupFinished(onSetupFinished)
                     }
                 },
                 enabled = serverSettings.hasAllFields,

@@ -315,4 +315,27 @@ class ArticleContentRepositoryTest {
         assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
         coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
     }
+
+    @Test
+    fun `full offline preparation skips content already marked complete`() = runBlocking {
+        val secondEntryId = 8L
+        coEvery {
+            articleContentDao.getFullyImagePreparedEntryIds(
+                listOf(entryId, secondEntryId),
+                ArticleContentSource.FULL
+            )
+        } returns listOf(entryId)
+
+        val missing = repository.entriesMissingFullOfflinePreparation(
+            listOf(
+                entryId to articleUrl,
+                secondEntryId to "https://example.com/posts/two"
+            )
+        )
+
+        assertEquals(
+            listOf(secondEntryId to "https://example.com/posts/two"),
+            missing
+        )
+    }
 }

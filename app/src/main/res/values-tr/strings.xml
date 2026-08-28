@@ -435,4 +435,27 @@
     <string name="offline_original_pages_download_failed">Özgün sayfalar indirilemedi.</string>
     <string name="sync_content_failed">Makale senkronize edilemedi.</string>
     <string name="sync_article_content_failed">Makale içeriği indirilemedi.</string>
+    <string name="main_scope_unread">Okunmamış</string>
+    <string name="main_scope_all">Tümü</string>
+    <string name="main_scope_starred">Yıldızlı</string>
+    <string name="main_scope_feed">Bu akış</string>
+    <string name="main_scope_search">Arama: %1$s</string>
+    <string name="main_clear_filters">Filtreleri temizle</string>
+    <string name="main_no_unread_articles">Bu kapsamda okunmamış makale yok</string>
+    <string name="main_show_all_from_empty">Tüm makaleleri göster</string>
+    <string name="main_syncing_first_time">İlk senkronizasyon çalışıyor. Makaleler indirildikçe burada görünecek.</string>
+    <string name="main_sync_failed">İlk senkronizasyon tamamlanamadı.</string>
+    <string name="article_starred">Yıldızlı</string>
+    <string name="article_not_starred">Yıldızsız</string>
+    <string name="onboarding_optional_settings">İsteğe bağlı ayarlar</string>
+    <string name="onboarding_optional_settings_summary">Tanılama ve yapay zekâ özetleri daha sonra yapılandırılabilir</string>
+    <string name="settings_group_reading_summary">Metin görünümü, ses ve bağlantı seçenekleri</string>
+    <string name="settings_group_ai_summary">Bulut özetleri ve güvenilirlik sinyalleri</string>
+    <string name="settings_group_local_ai_summary">İsteğe bağlı cihaz içi model ve indirme denetimleri</string>
+    <string name="settings_group_privacy_summary">Hata raporları, performans verileri ve yerel önbellek</string>
+    <string name="settings_group_expand">Bölümü genişlet</string>
+    <string name="settings_group_collapse">Bölümü daralt</string>
+    <string name="settings_group_expanded">Genişletildi</string>
+    <string name="settings_group_collapsed">Daraltıldı</string>
+    <string name="settings_operation_article_reconciliation">Makale uzlaştırma</string>
 </resources>

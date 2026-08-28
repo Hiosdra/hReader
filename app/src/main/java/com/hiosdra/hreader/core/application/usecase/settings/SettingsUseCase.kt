@@ -9,6 +9,7 @@ import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
+import com.hiosdra.hreader.core.application.sync.SyncIntent
 import com.hiosdra.hreader.core.domain.model.BackendType
 
 class SettingsUseCase(
@@ -61,8 +62,8 @@ class SettingsUseCase(
     fun observeOfflineReadiness() = offlineReadiness.observe()
     fun observeOfflinePreparation() = sync.observeOfflinePreparation()
     fun observeRequestedSync() = sync.observeRequestedSync()
-    fun prepareForOffline() = sync.prepareForOffline()
-    fun prepareFullOffline() = sync.prepareFullOffline()
+    fun prepareForOffline() = sync.request(SyncIntent.PrepareOffline)
+    fun prepareFullOffline() = sync.request(SyncIntent.PrepareFullOffline)
     fun schedulePeriodicSync() = sync.schedulePeriodicSync()
     suspend fun cancelAllSync() = sync.cancelAllSync()
     suspend fun cancelAndClearBackendData() {
@@ -70,9 +71,9 @@ class SettingsUseCase(
         cache.clearBackendData()
     }
     suspend fun awaitPreferenceWrites() = preferenceWrites?.awaitWrites()
-    fun resyncNow() = sync.resyncNow()
+    fun resyncNow() = sync.request(SyncIntent.Resync)
     fun syncNow(forceFullSync: Boolean, userVisible: Boolean) =
-        sync.syncNow(forceFullSync = forceFullSync, userVisible = userVisible)
+        sync.request(SyncIntent.User(forceFullSync, userVisible))
 
     suspend fun ensureCacheOwner() = cache.ensureCacheOwner()
     suspend fun ensureCacheOwnerWhenConfigured() = cache.ensureCacheOwnerWhenConfigured()

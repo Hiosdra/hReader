@@ -17,6 +17,9 @@ interface ArticleImageDao {
     @Query("SELECT * FROM article_images WHERE entryId = :entryId")
     suspend fun getImagesForArticle(entryId: Long): List<ArticleImage>
 
+    @Query("SELECT * FROM article_images WHERE entryId IN (:entryIds)")
+    suspend fun getImagesForArticles(entryIds: List<Long>): List<ArticleImage>
+
     @Query("SELECT * FROM article_images")
     suspend fun getAllImages(): List<ArticleImage>
 

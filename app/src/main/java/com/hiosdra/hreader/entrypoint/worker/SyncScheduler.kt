@@ -24,6 +24,10 @@ import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
+import com.hiosdra.hreader.core.application.sync.SyncCoordinator
+import com.hiosdra.hreader.core.application.sync.SyncIntent
+import com.hiosdra.hreader.core.application.sync.SyncOperationId
+import com.hiosdra.hreader.core.application.sync.SyncPlan
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,11 +40,11 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 private const val CONTENT_SYNC_WORK = "ContentSyncWorker"
 private const val SYNC_PIPELINE_WORK = "SyncPipeline"
+private const val MAINTENANCE_WORK = "SyncMaintenance"
 private const val OFFLINE_PREPARATION_TAG = "OfflinePreparation"
 private const val FULL_OFFLINE_PREPARATION_TAG = "FullOfflinePreparation"
 private const val OFFLINE_SYNC_STAGE_TAG = "OfflineSyncStage"
@@ -51,7 +55,8 @@ private const val BACKOFF_DELAY_SECONDS = 30L
 private const val CHAINED_SYNC_THROTTLE_MILLIS = 2 * 60 * 1000L
 
 internal const val KEY_FORCE_FULL_SYNC = "force_full_sync"
-internal const val KEY_PREFETCH_CHAINED = "prefetch_chained"
+internal const val KEY_ENQUEUE_PREFETCH = "enqueue_prefetch"
+internal const val KEY_DOWNLOAD_ALL_IMAGES = "download_all_images"
 internal const val KEY_IGNORE_QUIET_HOURS = "ignore_quiet_hours"
 internal const val KEY_DRAIN_REMAINING = "drain_remaining"
 internal const val KEY_PROGRESS_DONE = "progress_done"
@@ -80,7 +85,8 @@ class SyncScheduler(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val workManagerProvider: (Context) -> WorkManager = { appContext ->
         WorkManager.getInstance(appContext)
-    }
+    },
+    private val syncCoordinator: SyncCoordinator = SyncCoordinator()
 ) : SyncRequester {
     private var connectivityObservationStarted = false
 
@@ -143,6 +149,7 @@ class SyncScheduler(
      * configuring an account again brings it back without waiting for the next launch.
      */
     override fun schedulePeriodicSync() {
+        enqueueMaintenance()
         if (!backendPreferences.hasBackendCredentials()) {
             workManager.cancelUniqueWork(CONTENT_SYNC_WORK)
             return
@@ -154,6 +161,11 @@ class SyncScheduler(
         )
             .setConstraints(networkConstraints())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
+            .setInputData(
+                Data.Builder()
+                    .putBoolean(KEY_ENQUEUE_PREFETCH, true)
+                    .build()
+            )
             .build()
         // UPDATE rather than KEEP so installs that registered this worker without constraints pick
         // the new ones up instead of keeping the old registration forever. It is also what applies
@@ -170,62 +182,58 @@ class SyncScheduler(
      * regularly fired against the previous article set and re-fetched nothing useful.
      */
     override fun enqueuePrefetch() {
-        workManager.enqueueUniqueWork(
+        workManager.beginUniqueWork(
             SYNC_PIPELINE_WORK,
             ExistingWorkPolicy.KEEP,
             prefetchRequest()
-        )
+        ).then(maintenanceRequest()).enqueue()
     }
 
     /**
      * A sync the reader has just asked for by doing something — switching backend, finishing setup
      * — rather than one the clock asked for. Unthrottled, because it answers an action.
      */
-    override fun syncNow(
-        forceFullSync: Boolean,
-        userVisible: Boolean,
-        operationTitle: String?
-    ): UUID? {
+    override fun request(intent: SyncIntent): SyncOperationId? {
         if (!backendPreferences.hasBackendCredentials()) return null
-        val resolvedOperationTitle = operationTitle ?: context.getString(R.string.notification_sync_title)
-        val syncWork = syncRequest(
-            forceFullSync = forceFullSync,
-            expedited = userVisible,
-            ignoreQuietHours = userVisible,
-            userVisible = userVisible,
-            operationTitle = resolvedOperationTitle
-        )
-        workManager
-            .beginUniqueWork(
-                SYNC_PIPELINE_WORK,
-                ExistingWorkPolicy.REPLACE,
-                syncWork
-            )
-            .then(
-                prefetchRequest(
-                    expedited = userVisible,
-                    ignoreQuietHours = userVisible,
-                    userVisible = userVisible,
-                    operationTitle = resolvedOperationTitle,
-                    offlinePreparation = false
-                )
-            )
-            .enqueue()
-        return syncWork.id
+        val plan = syncCoordinator.plan(intent)
+        val defaultTitleRes = when (intent) {
+            SyncIntent.Resync -> R.string.notification_resync_title
+            SyncIntent.PrepareOffline -> R.string.notification_offline_title
+            SyncIntent.PrepareFullOffline -> R.string.notification_full_offline_title
+            else -> R.string.notification_sync_title
+        }
+        val policy = if (intent == SyncIntent.Background) {
+            ExistingWorkPolicy.KEEP
+        } else {
+            ExistingWorkPolicy.REPLACE
+        }
+        val title = (intent as? SyncIntent.User)?.operationTitle
+            ?: context.getString(defaultTitleRes)
+        return enqueuePlan(plan, title, policy)
     }
 
-    override fun resyncNow(): UUID? = syncNow(
-        forceFullSync = true,
-        userVisible = true,
-        operationTitle = context.getString(R.string.notification_resync_title)
-    )
+    private fun enqueuePlan(
+        plan: SyncPlan,
+        operationTitle: String,
+        policy: ExistingWorkPolicy
+    ): SyncOperationId {
+        val syncWork = syncRequest(plan, operationTitle)
+        var continuation = workManager
+            .beginUniqueWork(SYNC_PIPELINE_WORK, policy, syncWork)
+            .then(prefetchRequest(plan, operationTitle))
+        if (plan.includeFullPages) {
+            continuation = continuation.then(fullPageRequest(plan, operationTitle))
+        }
+        continuation.then(maintenanceRequest()).enqueue()
+        return SyncOperationId(syncWork.id)
+    }
 
     override fun observeRequestedSync(): Flow<SyncOperationStatus> =
         observeSyncPipeline().map { it.status }
 
     /** Stops everything in flight. What is queued has no account left to run against. */
     override suspend fun cancelAllSync() {
-        listOf(CONTENT_SYNC_WORK, SYNC_PIPELINE_WORK).forEach { workName ->
+        listOf(CONTENT_SYNC_WORK, SYNC_PIPELINE_WORK, MAINTENANCE_WORK).forEach { workName ->
             workManager.cancelUniqueWork(workName).await()
             withContext(Dispatchers.IO) {
                 workManager.getWorkInfosForUniqueWorkFlow(workName).first { infos ->
@@ -244,93 +252,7 @@ class SyncScheduler(
         if (now - syncPreferences.getLastChainedSyncTimestamp() < CHAINED_SYNC_THROTTLE_MILLIS) return
         syncPreferences.setLastChainedSyncTimestamp(now)
 
-        workManager
-            .beginUniqueWork(SYNC_PIPELINE_WORK, ExistingWorkPolicy.KEEP, syncRequest(forceFullSync = false))
-            .then(prefetchRequest())
-            .enqueue()
-    }
-
-    /**
-     * A full sync followed by a prefetch of everything, for the reader about to lose connectivity.
-     * Forced full rather than incremental: an incremental run right after a recent sync would
-     * fetch nothing, which is the opposite of what "prepare for offline" is asked to do.
-     *
-     * Expedited and exempt from quiet hours, because someone is standing in front of the screen
-     * waiting for it. As ordinary background work it could sit queued past the train leaving.
-     *
-     * This is also the one caller that asks the prefetch to keep going until the queue is empty.
-     * A run downloads a bounded number of articles so that it finishes inside the time WorkManager
-     * allows; here the reader has asked for the whole cache, so what a run leaves over is worth
-     * another run rather than the next hour's.
-     */
-    override fun prepareForOffline(): UUID? {
-        if (!backendPreferences.hasBackendCredentials()) return null
-        val syncWork = syncRequest(
-            forceFullSync = true,
-            expedited = true,
-            ignoreQuietHours = true,
-            userVisible = true,
-            operationTitle = context.getString(R.string.notification_offline_title),
-            offlinePreparation = true
-        )
-        workManager
-            .beginUniqueWork(
-                SYNC_PIPELINE_WORK,
-                ExistingWorkPolicy.REPLACE,
-                syncWork
-            )
-            .then(
-                prefetchRequest(
-                    expedited = true,
-                    ignoreQuietHours = true,
-                    drainRemaining = true,
-                    userVisible = true,
-                    operationTitle = context.getString(R.string.notification_offline_title),
-                    offlinePreparation = true
-                )
-            )
-            .enqueue()
-        return syncWork.id
-    }
-
-    override fun prepareFullOffline(): UUID? {
-        if (!backendPreferences.hasBackendCredentials()) return null
-        val syncWork = syncRequest(
-            forceFullSync = true,
-            expedited = true,
-            ignoreQuietHours = true,
-            userVisible = true,
-            operationTitle = context.getString(R.string.notification_full_offline_title),
-            offlinePreparation = true,
-            fullOfflinePreparation = true
-        )
-        workManager
-            .beginUniqueWork(
-                SYNC_PIPELINE_WORK,
-                ExistingWorkPolicy.REPLACE,
-                syncWork
-            )
-            .then(
-                prefetchRequest(
-                    expedited = true,
-                    ignoreQuietHours = true,
-                    drainRemaining = true,
-                    userVisible = true,
-                    operationTitle = context.getString(R.string.notification_full_offline_title),
-                    offlinePreparation = true,
-                    fullOfflinePreparation = true
-                )
-            )
-            .then(
-                fullPageRequest(
-                    expedited = true,
-                    ignoreQuietHours = true,
-                    userVisible = true,
-                    operationTitle = context.getString(R.string.notification_full_offline_title)
-                )
-            )
-            .enqueue()
-        return syncWork.id
+        request(SyncIntent.Background)
     }
 
     /**
@@ -366,92 +288,100 @@ class SyncScheduler(
         }
 
     private fun syncRequest(
-        forceFullSync: Boolean,
-        expedited: Boolean = false,
-        ignoreQuietHours: Boolean = false,
-        userVisible: Boolean = false,
-        operationTitle: String = context.getString(R.string.notification_sync_title),
-        offlinePreparation: Boolean = false,
-        fullOfflinePreparation: Boolean = false
+        plan: SyncPlan,
+        operationTitle: String
     ) = OneTimeWorkRequestBuilder<ContentSyncWorker>()
         .setConstraints(networkConstraints())
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
         .setInputData(
             Data.Builder()
-                .putBoolean(KEY_FORCE_FULL_SYNC, forceFullSync)
-                .putBoolean(KEY_PREFETCH_CHAINED, true)
-                .putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours)
-                .putBoolean(KEY_USER_VISIBLE, userVisible)
+                .putBoolean(KEY_FORCE_FULL_SYNC, plan.forceFullSync)
+                .putBoolean(KEY_ENQUEUE_PREFETCH, false)
+                .putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
+                .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
                 .putString(KEY_OPERATION_TITLE, operationTitle)
                 .build()
         )
         .apply {
-            if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            if (offlinePreparation) {
+            if (plan.expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            if (plan.offlinePreparation) {
                 addTag(OFFLINE_PREPARATION_TAG)
                 addTag(OFFLINE_SYNC_STAGE_TAG)
             }
-            if (fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
+            if (plan.fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
         }
         .build()
 
+    private fun maintenanceRequest() =
+        OneTimeWorkRequestBuilder<CacheMaintenanceWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiresStorageNotLow(true)
+                    .setRequiresBatteryNotLow(true)
+                    .build()
+            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
+            .build()
+
+    private fun enqueueMaintenance() {
+        workManager.enqueueUniqueWork(
+            MAINTENANCE_WORK,
+            ExistingWorkPolicy.KEEP,
+            maintenanceRequest()
+        )
+    }
+
     private fun prefetchRequest(
-        expedited: Boolean = false,
-        ignoreQuietHours: Boolean = false,
-        drainRemaining: Boolean = false,
-        userVisible: Boolean = false,
-        operationTitle: String = context.getString(R.string.notification_sync_title),
-        offlinePreparation: Boolean = false,
-        fullOfflinePreparation: Boolean = false
+        plan: SyncPlan = syncCoordinator.plan(SyncIntent.Periodic),
+        operationTitle: String = context.getString(R.string.notification_sync_title)
     ) =
         OneTimeWorkRequestBuilder<ArticleContentSyncWorker>()
             .setConstraints(
                 networkConstraints(
                     avoidLowStorage = true,
-                    avoidLowBattery = !expedited
+                    avoidLowBattery = !plan.expedited
                 )
             )
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
             .setInputData(
                 Data.Builder()
-                    .putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours)
-                    .putBoolean(KEY_DRAIN_REMAINING, drainRemaining)
-                    .putBoolean(KEY_USER_VISIBLE, userVisible)
+                    .putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
+                    .putBoolean(KEY_DRAIN_REMAINING, plan.drainRemaining)
+                    .putBoolean(KEY_DOWNLOAD_ALL_IMAGES, plan.fullOfflinePreparation)
+                    .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
                     .putString(KEY_OPERATION_TITLE, operationTitle)
                     .build()
             )
             .apply {
-                if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                if (offlinePreparation) {
+                if (plan.expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                if (plan.offlinePreparation) {
                     addTag(OFFLINE_PREPARATION_TAG)
                     addTag(OFFLINE_CONTENT_STAGE_TAG)
                 }
-                if (fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
+                if (plan.fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
             }
             .build()
 
     private fun fullPageRequest(
-        expedited: Boolean,
-        ignoreQuietHours: Boolean,
-        userVisible: Boolean,
+        plan: SyncPlan,
         operationTitle: String
     ) = OneTimeWorkRequestBuilder<FullPageSyncWorker>()
         .setConstraints(
             networkConstraints(
                 avoidLowStorage = true,
-                avoidLowBattery = !expedited
+                avoidLowBattery = !plan.expedited
             )
         )
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
         .setInputData(
             Data.Builder()
-                .putBoolean(KEY_IGNORE_QUIET_HOURS, ignoreQuietHours)
-                .putBoolean(KEY_USER_VISIBLE, userVisible)
+                .putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
+                .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
                 .putString(KEY_OPERATION_TITLE, operationTitle)
                 .build()
         )
         .apply {
-            if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            if (plan.expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             addTag(OFFLINE_PREPARATION_TAG)
             addTag(FULL_OFFLINE_PREPARATION_TAG)
             addTag(OFFLINE_PAGES_STAGE_TAG)
@@ -460,7 +390,7 @@ class SyncScheduler(
 }
 
 internal fun operationStatus(infos: List<WorkInfo>): SyncOperationStatus {
-    val workIds = infos.map { it.id }.toSet()
+    val workIds = infos.map { SyncOperationId(it.id) }.toSet()
     if (infos.isEmpty()) return SyncOperationStatus(workIds = workIds)
     val failed = infos.firstOrNull { it.state == WorkInfo.State.FAILED }
     if (failed != null) {

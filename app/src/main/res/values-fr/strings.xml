@@ -314,6 +314,7 @@
     <string name="offline_download_complete">Téléchargement hors connexion terminé.</string>
     <plurals name="offline_download_complete_missing_images">
         <item quantity="one">Téléchargement hors connexion terminé — %1$d image n’est pas disponible hors connexion.</item>
+        <item quantity="many">Téléchargement hors connexion terminé — %1$d images ne sont pas disponibles hors connexion.</item>
         <item quantity="other">Téléchargement hors connexion terminé — %1$d images ne sont pas disponibles hors connexion.</item>
     </plurals>
     <string name="offline_download_failed">Échec du téléchargement hors connexion : %1$s</string>
@@ -435,4 +436,27 @@
     <string name="offline_original_pages_download_failed">Impossible de télécharger les pages originales.</string>
     <string name="sync_content_failed">Échec de la synchronisation de l’article.</string>
     <string name="sync_article_content_failed">Impossible de télécharger le contenu des articles.</string>
+    <string name="main_scope_unread">Non lus</string>
+    <string name="main_scope_all">Tous</string>
+    <string name="main_scope_starred">Favoris</string>
+    <string name="main_scope_feed">Ce flux</string>
+    <string name="main_scope_search">Recherche : %1$s</string>
+    <string name="main_clear_filters">Effacer les filtres</string>
+    <string name="main_no_unread_articles">Aucun article non lu dans cette portée</string>
+    <string name="main_show_all_from_empty">Afficher tous les articles</string>
+    <string name="main_syncing_first_time">La première synchronisation est en cours. Les articles apparaîtront ici dès qu’ils seront téléchargés.</string>
+    <string name="main_sync_failed">La première synchronisation n’a pas pu être terminée.</string>
+    <string name="article_starred">Favori</string>
+    <string name="article_not_starred">Pas dans les favoris</string>
+    <string name="onboarding_optional_settings">Paramètres facultatifs</string>
+    <string name="onboarding_optional_settings_summary">Les diagnostics et les résumés IA peuvent être configurés plus tard</string>
+    <string name="settings_group_reading_summary">Affichage du texte, voix et options des liens</string>
+    <string name="settings_group_ai_summary">Résumés cloud et signaux de crédibilité</string>
+    <string name="settings_group_local_ai_summary">Modèle facultatif sur l’appareil et contrôles de téléchargement</string>
+    <string name="settings_group_privacy_summary">Rapports d’erreur, données de performance et cache local</string>
+    <string name="settings_group_expand">Développer la section</string>
+    <string name="settings_group_collapse">Réduire la section</string>
+    <string name="settings_group_expanded">Développée</string>
+    <string name="settings_group_collapsed">Réduite</string>
+    <string name="settings_operation_article_reconciliation">Réconciliation des articles</string>
 </resources>

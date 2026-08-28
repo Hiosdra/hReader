@@ -20,10 +20,12 @@ import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
+import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticleListWindow
 import com.hiosdra.hreader.core.application.port.out.ENTRIES_PAGE_LIMIT
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
+import com.hiosdra.hreader.core.application.observability.ArticleSyncStats
 import com.hiosdra.hreader.core.application.content.extractArticlePreview
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
@@ -91,7 +93,8 @@ class ArticleRepository(
     private val api: FeedBackend,
     private val db: AppDatabase,
     private val preferencesManager: SyncPreferences,
-    private val syncPerformanceLogger: SyncPerformanceTracker
+    private val syncPerformanceLogger: SyncPerformanceTracker,
+    private val articleImageStore: ArticleImageStore
 ) : ArticleStore {
     /**
      * The article list, filtered and searched in SQLite and read a page at a time. All three used
@@ -242,6 +245,7 @@ class ArticleRepository(
         syncPerformanceLogger.logSyncMode(useIncrementalSync, getLastSyncTime().takeIf { it > 0 })
 
         val fetchedIds = mutableSetOf<String>()
+        var syncStats = ArticleSyncStats()
         // Whether the backend ran out of pages, as opposed to [MAX_SYNC_PAGES] cutting the walk
         // short. Only the first case leaves [fetchedIds] holding the server's whole answer, which
         // is the one thing the reconciliation below assumes about it.
@@ -254,7 +258,7 @@ class ArticleRepository(
                 if (page.entries.isNotEmpty()) {
                     // Persisting per page keeps memory flat regardless of backlog size and leaves
                     // partial progress behind if the sync is interrupted.
-                    persistPage(page.entries)
+                    syncStats += persistPage(page.entries)
                     fetchedIds += page.entries.map { it.id.toString() }
                 }
                 cursor = page.cursor
@@ -285,6 +289,7 @@ class ArticleRepository(
         topUpOfflineBacklog()
 
         syncPerformanceLogger.logBatchInfo(ENTRIES_PAGE_LIMIT, fetchedIds.size)
+        syncPerformanceLogger.logArticleSyncStats(syncStats)
         preferencesManager.setLastSyncTimestamp(syncStartTime)
     }
 
@@ -348,13 +353,23 @@ class ArticleRepository(
         }
     }
 
-    private suspend fun persistPage(entries: List<Entry>) {
+    private suspend fun persistPage(entries: List<Entry>): ArticleSyncStats {
         val feeds = entries.associate { it.feed.id to it.feed.toArticleFeedEntity() }.values.toList()
         val articles = entries.map { it.toEntity() }
-        db.withTransaction {
+        val result = db.withTransaction {
             feedDao.insertFeeds(feeds)
             insertArticlesPreservingPendingStatus(articles)
         }
+        for (entryId in result.invalidatedEntryIds) {
+            try {
+                articleImageStore.invalidateArticleImages(entryId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not invalidate cached images for entry " + entryId + ": " + e.message)
+            }
+        }
+        return result.stats
     }
 
     private suspend fun reconcileFeeds() {
@@ -398,18 +413,49 @@ class ArticleRepository(
             api.getUnreadEntries(limit = limit, cursor = cursor)
         }
 
-    private suspend fun insertArticlesPreservingPendingStatus(fetchedArticles: List<ArticleEntity>) {
+    private suspend fun insertArticlesPreservingPendingStatus(
+        fetchedArticles: List<ArticleEntity>
+    ): PagePersistenceResult {
         val existingArticles = articleDao.getArticlesImmediate(fetchedArticles.map { it.id }).associateBy { it.id }
         val now = Instant.now()
-        fetchedArticles.mapNotNull { fetched ->
+        val reconciled = fetchedArticles.map { fetched ->
+            fetched to fetched.reconciledWith(existingArticles[fetched.id], now)
+        }
+        val changed = reconciled.filter { (fetched, merged) ->
+            existingArticles[fetched.id] != merged
+        }
+        val invalidatedEntryIds = reconciled.mapNotNull { (fetched, _) ->
             val local = existingArticles[fetched.id] ?: return@mapNotNull null
-            fetched.id.toLongOrNull()
-                ?.takeIf { local.url != fetched.url || local.content != fetched.content }
-        }.chunked(DELETE_CHUNK).forEach { changedEntryIds ->
+                fetched.id.toLongOrNull()
+                ?.takeIf {
+                    local.url != fetched.url ||
+                        local.content != fetched.content ||
+                        local.enclosures != fetched.enclosures ||
+                        local.leadImageUrl != fetched.leadImageUrl
+                }
+        }
+        invalidatedEntryIds.chunked(DELETE_CHUNK).forEach { changedEntryIds ->
             articleContentDao.deleteArticlesContent(changedEntryIds)
         }
-        articleDao.insertArticles(fetchedArticles.map { it.reconciledWith(existingArticles[it.id], now) })
+        if (changed.isNotEmpty()) {
+            articleDao.insertArticles(changed.map { it.second })
+        }
+        val inserted = changed.count { (fetched, _) -> existingArticles[fetched.id] == null }
+        return PagePersistenceResult(
+            stats = ArticleSyncStats(
+                fetched = fetchedArticles.size,
+                unchanged = fetchedArticles.size - changed.size,
+                inserted = inserted,
+                updated = changed.size - inserted
+            ),
+            invalidatedEntryIds = invalidatedEntryIds
+        )
     }
+
+    private data class PagePersistenceResult(
+        val stats: ArticleSyncStats,
+        val invalidatedEntryIds: List<Long>
+    )
 
     /**
      * A full sync only asks for unread entries, so anything read or deleted elsewhere simply stops

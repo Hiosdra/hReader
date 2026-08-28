@@ -87,7 +87,7 @@ class SyncSchedulerTest {
                 any<OneTimeWorkRequest>()
             )
         }
-        verify(exactly = 1) { workContinuation.then(any<OneTimeWorkRequest>()) }
+        verify(exactly = 2) { workContinuation.then(any<OneTimeWorkRequest>()) }
         assertTrue(request.captured.tags.none { it == "FullOfflinePreparation" })
     }
 
@@ -97,7 +97,8 @@ class SyncSchedulerTest {
 
         verify { workManager.cancelUniqueWork("ContentSyncWorker") }
         verify { workManager.cancelUniqueWork("SyncPipeline") }
-        verify(exactly = 2) { workManager.cancelUniqueWork(any()) }
+        verify { workManager.cancelUniqueWork("SyncMaintenance") }
+        verify(exactly = 3) { workManager.cancelUniqueWork(any()) }
     }
 
     @Test
@@ -116,7 +117,7 @@ class SyncSchedulerTest {
     @Test
     fun resync_expeditesEveryStage() {
         val syncRequest = slot<OneTimeWorkRequest>()
-        val prefetchRequest = slot<OneTimeWorkRequest>()
+        val stageRequests = mutableListOf<OneTimeWorkRequest>()
 
         every {
             workManager.beginUniqueWork(
@@ -125,18 +126,18 @@ class SyncSchedulerTest {
                 capture(syncRequest)
             )
         } returns workContinuation
-        every { workContinuation.then(capture(prefetchRequest)) } returns workContinuation
+        every { workContinuation.then(capture(stageRequests)) } returns workContinuation
 
         assertNotNull(scheduler.resyncNow())
 
         assertTrue(syncRequest.captured.workSpec.expedited)
-        assertTrue(prefetchRequest.captured.workSpec.expedited)
+        assertTrue(stageRequests.first().workSpec.expedited)
     }
 
     @Test
     fun regularSync_doesNotBecomeExpedited() {
         val syncRequest = slot<OneTimeWorkRequest>()
-        val prefetchRequest = slot<OneTimeWorkRequest>()
+        val stageRequests = mutableListOf<OneTimeWorkRequest>()
 
         every {
             workManager.beginUniqueWork(
@@ -145,12 +146,12 @@ class SyncSchedulerTest {
                 capture(syncRequest)
             )
         } returns workContinuation
-        every { workContinuation.then(capture(prefetchRequest)) } returns workContinuation
+        every { workContinuation.then(capture(stageRequests)) } returns workContinuation
 
         assertNotNull(scheduler.syncNow())
 
         assertFalse(syncRequest.captured.workSpec.expedited)
-        assertFalse(prefetchRequest.captured.workSpec.expedited)
+        assertFalse(stageRequests.first().workSpec.expedited)
     }
 
     @Test
@@ -168,7 +169,7 @@ class SyncSchedulerTest {
         assertNotNull(scheduler.prepareFullOffline())
 
         assertTrue(request.captured.tags.contains("FullOfflinePreparation"))
-        verify(exactly = 2) { workContinuation.then(any<OneTimeWorkRequest>()) }
+        verify(exactly = 3) { workContinuation.then(any<OneTimeWorkRequest>()) }
     }
 
     @Test

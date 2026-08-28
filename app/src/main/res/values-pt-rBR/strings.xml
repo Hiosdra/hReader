@@ -314,6 +314,7 @@
     <string name="offline_download_complete">Download offline concluído.</string>
     <plurals name="offline_download_complete_missing_images">
         <item quantity="one">Download offline concluído — %1$d imagem não está disponível offline.</item>
+        <item quantity="many">Download offline concluído — %1$d imagens não estão disponíveis offline.</item>
         <item quantity="other">Download offline concluído — %1$d imagens não estão disponíveis offline.</item>
     </plurals>
     <string name="offline_download_failed">Falha no download offline: %1$s</string>
@@ -435,4 +436,27 @@
     <string name="offline_original_pages_download_failed">Não foi possível baixar as páginas originais.</string>
     <string name="sync_content_failed">Falha ao sincronizar o artigo.</string>
     <string name="sync_article_content_failed">Não foi possível baixar o conteúdo dos artigos.</string>
+    <string name="main_scope_unread">Não lidos</string>
+    <string name="main_scope_all">Todos</string>
+    <string name="main_scope_starred">Favoritos</string>
+    <string name="main_scope_feed">Este feed</string>
+    <string name="main_scope_search">Pesquisa: %1$s</string>
+    <string name="main_clear_filters">Limpar filtros</string>
+    <string name="main_no_unread_articles">Não há artigos não lidos neste escopo</string>
+    <string name="main_show_all_from_empty">Mostrar todos os artigos</string>
+    <string name="main_syncing_first_time">A primeira sincronização está em andamento. Os artigos aparecerão aqui assim que forem baixados.</string>
+    <string name="main_sync_failed">Não foi possível concluir a primeira sincronização.</string>
+    <string name="article_starred">Favorito</string>
+    <string name="article_not_starred">Não favorito</string>
+    <string name="onboarding_optional_settings">Configurações opcionais</string>
+    <string name="onboarding_optional_settings_summary">Diagnóstico e resumos de IA podem ser configurados depois</string>
+    <string name="settings_group_reading_summary">Exibição de texto, voz e opções de links</string>
+    <string name="settings_group_ai_summary">Resumos na nuvem e sinais de credibilidade</string>
+    <string name="settings_group_local_ai_summary">Modelo opcional no dispositivo e controles de download</string>
+    <string name="settings_group_privacy_summary">Relatórios de erros, dados de desempenho e cache local</string>
+    <string name="settings_group_expand">Expandir seção</string>
+    <string name="settings_group_collapse">Recolher seção</string>
+    <string name="settings_group_expanded">Expandida</string>
+    <string name="settings_group_collapsed">Recolhida</string>
+    <string name="settings_operation_article_reconciliation">Reconciliação de artigos</string>
 </resources>

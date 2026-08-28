@@ -66,7 +66,6 @@ class FullPageSyncWorker(
 
         return try {
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
-            articlePageRepository.cleanupOrphanedPages()
             val targets = articleRepository.getPrefetchTargets()
             val outstanding = articlePageRepository.entriesMissingPages(
                 targets.map { it.id to it.url }

@@ -447,4 +447,27 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="offline_original_pages_download_failed">Originalseiten konnten nicht heruntergeladen werden.</string>
     <string name="sync_content_failed">Artikelsynchronisierung fehlgeschlagen.</string>
     <string name="sync_article_content_failed">Artikelinhalte konnten nicht heruntergeladen werden.</string>
+    <string name="main_scope_unread">Ungelesen</string>
+    <string name="main_scope_all">Alle</string>
+    <string name="main_scope_starred">Markiert</string>
+    <string name="main_scope_feed">Dieser Feed</string>
+    <string name="main_scope_search">Suche: %1$s</string>
+    <string name="main_clear_filters">Filter löschen</string>
+    <string name="main_no_unread_articles">Keine ungelesenen Artikel in diesem Bereich</string>
+    <string name="main_show_all_from_empty">Alle Artikel anzeigen</string>
+    <string name="main_syncing_first_time">Die erste Synchronisierung läuft. Artikel erscheinen hier, sobald sie heruntergeladen sind.</string>
+    <string name="main_sync_failed">Die erste Synchronisierung konnte nicht abgeschlossen werden.</string>
+    <string name="article_starred">Markiert</string>
+    <string name="article_not_starred">Nicht markiert</string>
+    <string name="onboarding_optional_settings">Optionale Einstellungen</string>
+    <string name="onboarding_optional_settings_summary">Diagnose und KI-Zusammenfassungen können später eingerichtet werden</string>
+    <string name="settings_group_reading_summary">Textanzeige, Sprache und Linkoptionen</string>
+    <string name="settings_group_ai_summary">Cloud-Zusammenfassungen und Glaubwürdigkeitssignale</string>
+    <string name="settings_group_local_ai_summary">Optionales Gerätemodell und Download-Einstellungen</string>
+    <string name="settings_group_privacy_summary">Fehlerberichte, Leistungsdaten und lokaler Cache</string>
+    <string name="settings_group_expand">Abschnitt erweitern</string>
+    <string name="settings_group_collapse">Abschnitt einklappen</string>
+    <string name="settings_group_expanded">Erweitert</string>
+    <string name="settings_group_collapsed">Eingeklappt</string>
+    <string name="settings_operation_article_reconciliation">Artikelabgleich</string>
 </resources>

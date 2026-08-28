@@ -34,6 +34,12 @@ class ArticleWebViewHeightTest {
     }
 
     @Test
+    fun `long content uses a bounded viewport before the Compose height limit`() {
+        assertFalse(articleWebViewNeedsInternalScroll(3_999, 1_000))
+        assertTrue(articleWebViewNeedsInternalScroll(4_001, 1_000))
+    }
+
+    @Test
     fun `non-positive content height maps to zero`() {
         assertEquals(0, safeArticleWebViewHeightPx(0))
         assertEquals(0, safeArticleWebViewHeightPx(-1))

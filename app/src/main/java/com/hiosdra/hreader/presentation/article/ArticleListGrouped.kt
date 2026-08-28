@@ -20,7 +20,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLocale
@@ -31,6 +34,8 @@ import androidx.paging.compose.LazyPagingItems
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import org.koin.compose.koinInject
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -47,9 +52,23 @@ fun ArticleListGrouped(
     modifier: Modifier,
     listState: LazyListState,
     onOpen: (Long) -> Unit,
-    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
+    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    isOnline: Boolean = true,
+    imageLoader: ArticleImageLoader = koinInject()
 ) {
     val snapshot = items.itemSnapshotList.items
+    val imageRequests = remember(snapshot) {
+        snapshot.mapNotNull { item ->
+            (item as? ArticleListItem.Article)?.entry?.let { entry ->
+                entry.imageUrl?.let { imageUrl -> entry.id to imageUrl }
+            }
+        }
+    }
+    var localImagePaths by remember { mutableStateOf<Map<Long, Map<String, String>>>(emptyMap()) }
+    LaunchedEffect(imageRequests) {
+        val ids = imageRequests.map { it.first }
+        localImagePaths = imageLoader.getLocalImagePaths(ids)
+    }
     val separatorIndices = remember(snapshot) {
         snapshot.mapIndexedNotNull { index, item ->
             index.takeIf { item is ArticleListItem.DayHeader }
@@ -91,7 +110,9 @@ fun ArticleListGrouped(
                     start = rangeStart,
                     endExclusive = separatorIndex,
                     onOpen = onOpen,
-                    onCheckedChange = onCheckedChange
+                    onCheckedChange = onCheckedChange,
+                    isOnline = isOnline,
+                    localImagePaths = localImagePaths
                 )
                 val separator = snapshot[separatorIndex] as ArticleListItem.DayHeader
                 stickyHeader(
@@ -108,7 +129,9 @@ fun ArticleListGrouped(
                 start = rangeStart,
                 endExclusive = snapshot.size,
                 onOpen = onOpen,
-                onCheckedChange = onCheckedChange
+                onCheckedChange = onCheckedChange,
+                isOnline = isOnline,
+                localImagePaths = localImagePaths
             )
             when (val append = items.loadState.append) {
                 is LoadState.Loading -> item(key = "append-spinner") {
@@ -157,7 +180,9 @@ private fun LazyListScope.articleRange(
     start: Int,
     endExclusive: Int,
     onOpen: (Long) -> Unit,
-    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit
+    onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    isOnline: Boolean,
+    localImagePaths: Map<Long, Map<String, String>>
 ) {
     if (start >= endExclusive) return
     items(
@@ -170,7 +195,9 @@ private fun LazyListScope.articleRange(
             is ArticleListItem.Article -> ArticleRow(
                 entry = item.entry,
                 onOpen = onOpen,
-                onCheckedChange = onCheckedChange
+                onCheckedChange = onCheckedChange,
+                isOnline = isOnline,
+                localImagePath = item.entry.imageUrl?.let { localImagePaths[item.entry.id]?.get(it) }
             )
 
             is ArticleListItem.DayHeader -> DayHeader(item.date)

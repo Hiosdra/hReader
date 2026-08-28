@@ -4,12 +4,14 @@ import androidx.room.Room
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
 import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_15_16
+import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_16_17
+import com.hiosdra.hreader.adapter.persistence.room.MIGRATION_17_18
 import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
 import com.hiosdra.hreader.adapter.persistence.ArticlePageRepository
 import com.hiosdra.hreader.adapter.persistence.CacheDataCleaner
-import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicy
+import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleRepository
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
@@ -17,6 +19,7 @@ import com.hiosdra.hreader.adapter.persistence.OfflineReadinessRepository
 import com.hiosdra.hreader.adapter.paywall.PaywallBypassService
 import com.hiosdra.hreader.adapter.preferences.PreferencesManager
 import com.hiosdra.hreader.adapter.image.ArticleImageShareService
+import com.hiosdra.hreader.adapter.image.ArticleImageDownloadService
 import com.hiosdra.hreader.adapter.persistence.FeedRepository
 import com.hiosdra.hreader.adapter.persistence.CacheOwnershipCoordinator
 import com.hiosdra.hreader.adapter.tts.ArticleTtsController
@@ -42,6 +45,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
+import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
@@ -61,6 +65,7 @@ import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
 import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.SentryPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
@@ -75,6 +80,7 @@ import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
 import com.hiosdra.hreader.entrypoint.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.ContentSyncWorker
+import com.hiosdra.hreader.entrypoint.worker.CacheMaintenanceWorker
 import com.hiosdra.hreader.entrypoint.worker.FullPageSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadScheduler
 import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadWorker
@@ -86,6 +92,7 @@ import org.koin.androidx.workmanager.dsl.worker
 import org.koin.core.qualifier.named
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -98,7 +105,7 @@ val appModule = module {
                 androidApplication(),
                 AppDatabase::class.java,
                 "hreader-db"
-            ).addMigrations(MIGRATION_15_16)
+            ).addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
             .fallbackToDestructiveMigration(false)
             .build()
     }
@@ -109,12 +116,23 @@ val appModule = module {
     single { get<AppDatabase>().articleCredibilityDao() }
     single { get<AppDatabase>().articleAiOverviewDao() }
     single { get<AppDatabase>().articlePageSnapshotDao() }
-    single { RemoteResourcePolicy(get<AppPreferences>()) }
+    single { RemoteResourcePolicyAdapter(get<AppPreferences>()) }
+    single<RemoteResourcePolicy> { get<RemoteResourcePolicyAdapter>() }
     single { get<AppDatabase>().articleReadingPositionDao() }
-    single { ArticleRepository(get(), get(), get(), get(), get(), get(), get()) }
+    single { ArticleRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
     single<ArticleStore> { get<ArticleRepository>() }
     single { ArticleImageRepository(androidApplication(), get(), get(), get(), get(), get()) }
     single<ArticleImageStore> { get<ArticleImageRepository>() }
+    single<coil3.ImageLoader> {
+        val okHttpClient = get<okhttp3.OkHttpClient>().newBuilder()
+            .apply { interceptors().clear() }
+            .build()
+        coil3.ImageLoader.Builder(androidApplication())
+            .components {
+                add(OkHttpNetworkFetcherFactory(okHttpClient))
+            }
+            .build()
+    }
     single { CredibilityRepository(get(), get()) }
     single<CredibilityStore> { get<CredibilityRepository>() }
     single {
@@ -191,9 +209,12 @@ val appModule = module {
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }
     single { SyncPerformanceLogger(get()) }
     single<SyncPerformanceTracker> { get<SyncPerformanceLogger>() }
-    single { ImageLoader(get<ArticleImageStore>()) }
+    single { ImageLoader(get<ArticleImageStore>(), get()) }
     single<ArticleImageLoader> { get<ImageLoader>() }
-    single<ArticleImageSharer> { ArticleImageShareService(androidApplication()) }
+    single<ArticleImageSharer> { ArticleImageShareService(androidApplication(), get(), get()) }
+    single<ArticleImageDownloader> {
+        ArticleImageDownloadService(androidApplication(), get(), get())
+    }
     single { NetworkMonitor(androidApplication()) }
     single<NetworkStatus> { get<NetworkMonitor>() }
     single {
@@ -246,6 +267,7 @@ val appModule = module {
     }
     worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get()) }
     worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }

@@ -25,10 +25,7 @@ class ArticlePersistenceMappersTest {
             publishedAt = Instant.EPOCH,
             preview = "Preview",
             readingTime = 3,
-            enclosures = listOf(
-                Enclosure("https://example.com/file", "application/pdf"),
-                Enclosure("https://example.com/image", "image/jpeg")
-            ),
+            leadImageUrl = "https://example.com/image",
             status = null,
             starred = false,
             backlogFetchedAt = Instant.EPOCH,

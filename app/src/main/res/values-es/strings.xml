@@ -317,6 +317,7 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="offline_download_complete">Descarga sin conexión completada.</string>
     <plurals name="offline_download_complete_missing_images">
         <item quantity="one">Descarga sin conexión completada — %1$d imagen no está disponible sin conexión.</item>
+        <item quantity="many">Descarga sin conexión completada — %1$d imágenes no están disponibles sin conexión.</item>
         <item quantity="other">Descarga sin conexión completada — %1$d imágenes no están disponibles sin conexión.</item>
     </plurals>
     <string name="offline_download_failed">Descarga sin conexión fallida: %1$s</string>
@@ -438,4 +439,27 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="offline_original_pages_download_failed">No se pudieron descargar las páginas originales.</string>
     <string name="sync_content_failed">Falló la sincronización de artículos.</string>
     <string name="sync_article_content_failed">No se pudo descargar el contenido de los artículos.</string>
+    <string name="main_scope_unread">No leídos</string>
+    <string name="main_scope_all">Todos</string>
+    <string name="main_scope_starred">Favoritos</string>
+    <string name="main_scope_feed">Este feed</string>
+    <string name="main_scope_search">Búsqueda: %1$s</string>
+    <string name="main_clear_filters">Borrar filtros</string>
+    <string name="main_no_unread_articles">No hay artículos sin leer en este ámbito</string>
+    <string name="main_show_all_from_empty">Mostrar todos los artículos</string>
+    <string name="main_syncing_first_time">La primera sincronización está en curso. Los artículos aparecerán aquí en cuanto se descarguen.</string>
+    <string name="main_sync_failed">No se pudo completar la primera sincronización.</string>
+    <string name="article_starred">Con estrella</string>
+    <string name="article_not_starred">Sin estrella</string>
+    <string name="onboarding_optional_settings">Ajustes opcionales</string>
+    <string name="onboarding_optional_settings_summary">Los diagnósticos y los resúmenes de IA se pueden configurar más tarde</string>
+    <string name="settings_group_reading_summary">Visualización del texto, voz y opciones de enlaces</string>
+    <string name="settings_group_ai_summary">Resúmenes en la nube y señales de credibilidad</string>
+    <string name="settings_group_local_ai_summary">Modelo opcional en el dispositivo y controles de descarga</string>
+    <string name="settings_group_privacy_summary">Informes de errores, datos de rendimiento y caché local</string>
+    <string name="settings_group_expand">Expandir sección</string>
+    <string name="settings_group_collapse">Contraer sección</string>
+    <string name="settings_group_expanded">Expandida</string>
+    <string name="settings_group_collapsed">Contraída</string>
+    <string name="settings_operation_article_reconciliation">Conciliación de artículos</string>
 </resources>

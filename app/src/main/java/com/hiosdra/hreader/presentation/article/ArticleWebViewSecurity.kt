@@ -2,6 +2,7 @@ package com.hiosdra.hreader.presentation.article
 
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.net.URI
@@ -53,6 +54,16 @@ internal fun isFileWithinDirectory(path: String, directory: File): Boolean {
     val file = runCatching { File(path).canonicalFile }.getOrNull() ?: return false
     return file.isFile && file.path.startsWith(root.path + File.separator)
 }
+
+internal fun blockedResourceResponse(): WebResourceResponse = WebResourceResponse(
+    "text/plain",
+    "UTF-8",
+    ByteArrayInputStream(ByteArray(0))
+)
+
+internal fun isHttpResource(url: String): Boolean = runCatching {
+    URI(url).scheme?.lowercase() in setOf("http", "https")
+}.getOrDefault(false)
 
 private fun URI.effectivePort(): Int = port.takeIf { it >= 0 } ?: when (scheme?.lowercase()) {
     "http" -> 80

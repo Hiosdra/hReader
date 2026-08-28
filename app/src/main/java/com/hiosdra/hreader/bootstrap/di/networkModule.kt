@@ -25,12 +25,14 @@ import com.hiosdra.hreader.adapter.backend.freshrss.GoogleReaderAuthenticator
 import com.hiosdra.hreader.adapter.backend.miniflux.MinifluxApiService
 import com.hiosdra.hreader.adapter.backend.miniflux.MinifluxAuthInterceptor
 import com.hiosdra.hreader.adapter.backend.miniflux.MinifluxBackend
+import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -73,6 +75,7 @@ val networkModule = module {
         }
     }
     single<OkHttpClient> {
+        val resourcePolicy = get<RemoteResourcePolicyAdapter>()
         OkHttpClient.Builder()
             // OkHttp defaults to a 10s read timeout, which a self-hosted backend serving a page of
             // 200 entries with full content routinely exceeds. No callTimeout on purpose: it also
@@ -85,6 +88,14 @@ val networkModule = module {
             .addInterceptor(get<MinifluxAuthInterceptor>())
             .addInterceptor(get<BackendUrlInterceptor>())
             .addInterceptor(get<HttpLoggingInterceptor>())
+            .addNetworkInterceptor { chain ->
+                val request = chain.request()
+                if (!resourcePolicy.allows(request.url.toString())) {
+                    throw java.io.IOException("Blocked remote resource URL")
+                }
+                chain.proceed(request)
+            }
+            .dns(resourcePolicy.dns())
             .build()
     }
     single<Moshi> {
