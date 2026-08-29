@@ -19,13 +19,14 @@ private const val WIRE_VERSION = "v1"
 private const val IV_BYTES = 12
 
 internal class SecretCipher(
-    private val keyProvider: () -> SecretKey,
+    private val existingKeyProvider: () -> SecretKey,
+    private val keyGenerator: () -> SecretKey = existingKeyProvider,
     private val random: SecureRandom = SecureRandom()
 ) {
     fun encrypt(value: String): String {
         val iv = ByteArray(IV_BYTES).also(random::nextBytes)
         val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, keyProvider(), GCMParameterSpec(GCM_TAG_BITS, iv))
+        cipher.init(Cipher.ENCRYPT_MODE, keyGenerator(), GCMParameterSpec(GCM_TAG_BITS, iv))
         val ciphertext = cipher.doFinal(value.toByteArray(UTF_8))
         return listOf(WIRE_VERSION, encode(iv), encode(ciphertext)).joinToString(".")
     }
@@ -36,7 +37,7 @@ internal class SecretCipher(
         val iv = decode(parts[1]).also { require(it.size == IV_BYTES) { "Invalid secret IV" } }
         val ciphertext = decode(parts[2]).also { require(it.size > GCM_TAG_BITS / 8) { "Invalid secret payload" } }
         val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, keyProvider(), GCMParameterSpec(GCM_TAG_BITS, iv))
+        cipher.init(Cipher.DECRYPT_MODE, existingKeyProvider(), GCMParameterSpec(GCM_TAG_BITS, iv))
         return cipher.doFinal(ciphertext).toString(UTF_8)
     }
 
@@ -45,22 +46,47 @@ internal class SecretCipher(
     private fun decode(value: String): ByteArray = Base64.getUrlDecoder().decode(value)
 }
 
-internal class AndroidKeystoreSecretKeyProvider {
-    operator fun invoke(): SecretKey {
-        val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
-        (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+internal class SecretKeyUnavailableException(message: String) : IllegalStateException(message)
 
-        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER).apply {
-            init(
-                KeyGenParameterSpec.Builder(
-                    KEY_ALIAS,
-                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-                )
-                    .setKeySize(256)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .build()
-            )
-        }.generateKey()
+internal class AndroidKeystoreSecretKeyProvider {
+    private val lock = Any()
+
+    fun getExisting(): SecretKey = synchronized(lock) {
+        loadKeyStore().readKey()
     }
+
+    fun getOrCreate(): SecretKey = synchronized(lock) {
+        val keyStore = loadKeyStore()
+        if (keyStore.containsAlias(KEY_ALIAS)) keyStore.readKey() else generateKey()
+    }
+
+    private fun loadKeyStore(): KeyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+
+    private fun KeyStore.readKey(): SecretKey {
+        if (!containsAlias(KEY_ALIAS)) {
+            throw SecretKeyUnavailableException(
+                "Android Keystore alias '$KEY_ALIAS' does not exist"
+            )
+        }
+        return getKey(KEY_ALIAS, null) as? SecretKey
+            ?: throw SecretKeyUnavailableException(
+                "Android Keystore alias '$KEY_ALIAS' is not an AES secret key"
+            )
+    }
+
+    private fun generateKey(): SecretKey = KeyGenerator.getInstance(
+        KeyProperties.KEY_ALGORITHM_AES,
+        KEYSTORE_PROVIDER
+    ).apply {
+        init(
+            KeyGenParameterSpec.Builder(
+                KEY_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+            )
+                .setKeySize(256)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .build()
+        )
+    }.generateKey()
 }

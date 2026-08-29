@@ -1,12 +1,14 @@
 package com.hiosdra.hreader.bootstrap
 
 import android.app.Application
+import android.util.Log
 import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.bootstrap.di.appModule
 import com.hiosdra.hreader.bootstrap.di.networkModule
 import com.hiosdra.hreader.entrypoint.notification.NotificationChannels
 import com.hiosdra.hreader.adapter.observability.ErrorReportingManager
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
+import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.entrypoint.worker.SyncScheduler
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -19,6 +21,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+
+private const val TAG = "MyApplication"
 
 class MyApplication : Application() {
 
@@ -39,6 +43,12 @@ class MyApplication : Application() {
         val syncScheduler = koin.get<SyncScheduler>()
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStop(owner: LifecycleOwner) {
+                startupScope.launch {
+                    val result = runCatchingCancellable { preferenceWrites.awaitWrites() }
+                    result.exceptionOrNull()?.let { error ->
+                        Log.e(TAG, "Could not flush preference writes on app stop", error)
+                    }
+                }
                 syncScheduler.enqueueBackgroundSyncChain()
             }
         })

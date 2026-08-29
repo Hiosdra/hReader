@@ -44,7 +44,11 @@ import kotlinx.coroutines.launch
 class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarrier {
     private val applicationContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val secretCipher = SecretCipher(AndroidKeystoreSecretKeyProvider()::invoke)
+    private val secretKeyProvider = AndroidKeystoreSecretKeyProvider()
+    private val secretCipher = SecretCipher(
+        existingKeyProvider = secretKeyProvider::getExisting,
+        keyGenerator = secretKeyProvider::getOrCreate
+    )
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -108,11 +112,12 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
                 preferencesDataStore,
                 preferenceWrites,
                 preferenceWriteFailure,
-                preferenceReady
+                preferenceReady,
+                "regular"
             )
         }
         scope.launch {
-            processWrites(secretDataStore, secretWrites, secretWriteFailure, secretReady)
+            processWrites(secretDataStore, secretWrites, secretWriteFailure, secretReady, "secret")
         }
     }
 
@@ -534,23 +539,25 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
     }
 
     private suspend fun hydrateSecrets() {
+        Log.d(TAG, "Secret hydration started")
         try {
             try {
                 migrateSecrets()
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                Log.e(TAG, "Could not migrate encrypted preferences; retaining stored secrets", error)
+                Log.e(TAG, "Secret migration failed; retaining stored values", error)
             }
             val loaded = try {
                 secretDataStore.data.first().toSecretState()
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                Log.e(TAG, "Could not read encrypted preferences; retaining in-memory defaults", error)
+                Log.e(TAG, "Secret DataStore read failed; retaining in-memory defaults", error)
                 SecretState()
             }
             completeSecretHydration(loaded)
+            Log.d(TAG, "Secret hydration completed")
         } catch (error: CancellationException) {
             synchronized(secretStateLock) {
                 secretReady.completeExceptionally(error)
@@ -584,6 +591,17 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             decrypt = secretCipher::decrypt,
             encrypt = secretCipher::encrypt
         )
+        plan.readResults.forEach { (id, result) ->
+            logSecretRead("migration", id, result)
+        }
+        plan.encryptionErrors.forEach { (id, error) ->
+            Log.e(
+                TAG,
+                "Secret $id during migration: legacy value could not be encrypted, " +
+                    "error=${error::class.java.simpleName}; retaining source value",
+                error
+            )
+        }
         if (plan.valuesToWrite.isEmpty() && plan.legacyKeysWithReadableEncryptedValue.isEmpty()) return
 
         secretDataStore.edit { preferences ->
@@ -606,11 +624,17 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             }
         } catch (error: CancellationException) {
             throw error
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            Log.e(
+                TAG,
+                "Secret migration verification read failed; " +
+                    "error=${error::class.java.simpleName}",
+                error
+            )
             false
         }
         if (!verified) {
-            Log.w(TAG, "Secret migration verification failed; retaining legacy values")
+            Log.w(TAG, "Secret migration verification failed; retaining source values")
             return
         }
 
@@ -620,18 +644,31 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             }
             preferences[secretMigrationStateKey] = SECRET_MIGRATION_COMPLETE
         }
+        Log.i(TAG, "Secret migration completed")
     }
 
     private fun MutablePreferences.writeSecret(
         legacyKey: Preferences.Key<String>,
         value: String
     ) {
-        val encryptedKey = secretDefinitions.first { it.legacyKey == legacyKey }.encryptedKey
+        val definition = secretDefinitions.first { it.legacyKey == legacyKey }
+        val encryptedKey = definition.encryptedKey
         if (value.isBlank()) {
             remove(encryptedKey)
             remove(legacyKey)
         } else {
-            this[encryptedKey] = secretCipher.encrypt(value)
+            try {
+                this[encryptedKey] = secretCipher.encrypt(value)
+            } catch (error: Exception) {
+                Log.e(
+                    TAG,
+                    "Secret ${definition.id}: " +
+                        "encryption failed; value was not persisted, " +
+                        "error=${error::class.java.simpleName}",
+                    error
+                )
+                throw error
+            }
             remove(legacyKey)
             this[secretMigrationStateKey] = SECRET_MIGRATION_COMPLETE
         }
@@ -641,7 +678,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         dataStore: androidx.datastore.core.DataStore<Preferences>,
         writes: Channel<WriteRequest>,
         failure: AtomicReference<Throwable?>,
-        ready: CompletableDeferred<Unit>
+        ready: CompletableDeferred<Unit>,
+        storageName: String
     ) {
         ready.await()
         for (request in writes) {
@@ -653,6 +691,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
                 throw error
             } catch (error: Throwable) {
                 failure.set(error)
+                Log.e(TAG, "Could not persist $storageName preferences", error)
                 request.completion?.completeExceptionally(error)
             }
         }
@@ -721,11 +760,44 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
 
     private fun Preferences.readSecret(id: SecretId): String {
         val definition = definitionFor(id)
-        return readSecretValue(
+        val result = readSecretValueWithDiagnostics(
             legacyValue = this[definition.legacyKey],
             encryptedValue = this[definition.encryptedKey],
             decrypt = secretCipher::decrypt
         )
+        if (result.source != SecretReadSource.ENCRYPTED && result.source != SecretReadSource.NONE) {
+            logSecretRead("hydration", id, result)
+        }
+        return result.value
+    }
+
+    private fun logSecretRead(stage: String, id: SecretId, result: SecretReadResult) {
+        val message = "Secret $id during $stage: ${result.source}; " +
+            "legacyEntry=${result.legacyEntryPresent}, " +
+            "encryptedEntry=${result.encryptedEntryPresent}"
+        when (result.source) {
+            SecretReadSource.NONE -> Log.d(TAG, "$message; no usable stored value exists")
+            SecretReadSource.ENCRYPTED -> Log.d(TAG, "$message; encrypted value is readable")
+            SecretReadSource.LEGACY -> Log.i(TAG, "$message; plaintext legacy value is available")
+            SecretReadSource.LEGACY_FALLBACK -> {
+                result.encryptedReadError?.let { error ->
+                    Log.w(
+                        TAG,
+                        "$message; using legacy fallback, error=${error::class.java.simpleName}",
+                        error
+                    )
+                } ?: Log.w(TAG, "$message; using legacy fallback")
+            }
+            SecretReadSource.UNREADABLE_ENCRYPTED -> {
+                result.encryptedReadError?.let { error ->
+                    Log.e(
+                        TAG,
+                        "$message; encrypted value cannot be read, error=${error::class.java.simpleName}",
+                        error
+                    )
+                } ?: Log.e(TAG, "$message; encrypted value is blank or unreadable")
+            }
+        }
     }
 
     private fun decodeSyncPerformanceRecords(json: String?): List<SyncPerformanceRecord> {
