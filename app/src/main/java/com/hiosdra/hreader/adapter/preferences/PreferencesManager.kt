@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.preferences
 
 import android.content.Context
 import android.util.Log
+import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -62,6 +63,18 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
 
     private val secretDataStore by lazy {
         PreferenceDataStoreFactory.create(
+            migrations = listOf(
+                SharedPreferencesMigration(
+                    context = applicationContext,
+                    sharedPreferencesName = SECRETS_FILE,
+                    keysToMigrate = legacySecretPreferenceKeys
+                ),
+                SharedPreferencesMigration(
+                    context = applicationContext,
+                    sharedPreferencesName = PREFS_FILE,
+                    keysToMigrate = legacySecretPreferenceKeys
+                )
+            ),
             scope = scope,
             produceFile = { applicationContext.preferencesDataStoreFile(SECRETS_FILE) }
         )
@@ -792,6 +805,12 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val KEY_MINIFLUX_SERVER_URL = "miniflux_server_url"
         private const val KEY_MINIFLUX_API_TOKEN = "miniflux_api_token"
         private const val KEY_OPENROUTER_API_KEY = "openrouter_api_key"
+        private val legacySecretPreferenceKeys = setOf(
+            KEY_FRESHRSS_USERNAME,
+            KEY_FRESHRSS_API_PASSWORD,
+            KEY_MINIFLUX_API_TOKEN,
+            KEY_OPENROUTER_API_KEY
+        )
         private const val KEY_PAYWALL_BYPASS_METHOD = "paywall_bypass_method"
         private const val KEY_BIONIC_READING_ENABLED = "bionic_reading_enabled"
         private const val KEY_SENTRY_REPORTING_ENABLED = "sentry_reporting_enabled"
