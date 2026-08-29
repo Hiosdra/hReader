@@ -4,7 +4,6 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.KeyStore
-import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -20,13 +19,13 @@ private const val IV_BYTES = 12
 
 internal class SecretCipher(
     private val existingKeyProvider: () -> SecretKey,
-    private val keyGenerator: () -> SecretKey = existingKeyProvider,
-    private val random: SecureRandom = SecureRandom()
+    private val keyGenerator: () -> SecretKey = existingKeyProvider
 ) {
     fun encrypt(value: String): String {
-        val iv = ByteArray(IV_BYTES).also(random::nextBytes)
         val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, keyGenerator(), GCMParameterSpec(GCM_TAG_BITS, iv))
+        cipher.init(Cipher.ENCRYPT_MODE, keyGenerator())
+        val iv = cipher.iv ?: throw IllegalStateException("Cipher did not provide an IV")
+        require(iv.size == IV_BYTES) { "Invalid generated secret IV" }
         val ciphertext = cipher.doFinal(value.toByteArray(UTF_8))
         return listOf(WIRE_VERSION, encode(iv), encode(ciphertext)).joinToString(".")
     }
