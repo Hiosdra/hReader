@@ -1,6 +1,10 @@
 package com.hiosdra.hreader.adapter.preferences
 
+import java.nio.charset.StandardCharsets.UTF_8
+import java.util.Base64
+import javax.crypto.Cipher
 import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,6 +22,21 @@ class SecretCipherTest {
         val encrypted = cipher.encrypt("token with unicode żółć")
 
         assertEquals("token with unicode żółć", cipher.decrypt(encrypted))
+    }
+
+    @Test
+    fun `decrypts v1 ciphertext with a caller-provided legacy IV`() {
+        val iv = ByteArray(12) { (it + 1).toByte() }
+        val legacyCipher = Cipher.getInstance("AES/GCM/NoPadding")
+        legacyCipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, iv))
+        val ciphertext = legacyCipher.doFinal("legacy secret".toByteArray(UTF_8))
+        val encoded = listOf(
+            "v1",
+            Base64.getUrlEncoder().withoutPadding().encodeToString(iv),
+            Base64.getUrlEncoder().withoutPadding().encodeToString(ciphertext)
+        ).joinToString(".")
+
+        assertEquals("legacy secret", cipher.decrypt(encoded))
     }
 
     @Test
