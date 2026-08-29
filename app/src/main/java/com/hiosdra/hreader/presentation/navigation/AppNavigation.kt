@@ -5,14 +5,20 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -35,6 +41,7 @@ import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
 import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
+import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
@@ -53,6 +60,7 @@ import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 import com.hiosdra.hreader.R
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -62,6 +70,7 @@ fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     entryPoint: EntryPoint = EntryPoint.ArticleList,
     backendPreferences: BackendPreferences = koinInject(),
+    preferenceWriteBarrier: PreferenceWriteBarrier = koinInject(),
     readerPreferences: ReaderPreferences = koinInject(),
     ttsPreferences: TtsPreferences = koinInject(),
     aiPreferences: AiPreferences = koinInject(),
@@ -81,6 +90,25 @@ fun AppNavigation(
     articleImageDownloader: ArticleImageDownloader = koinInject(),
     networkStatus: NetworkStatus = koinInject()
 ) {
+    var preferencesReady by remember { mutableStateOf(false) }
+    LaunchedEffect(preferenceWriteBarrier) {
+        try {
+            preferenceWriteBarrier.awaitReady()
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+        }
+        preferencesReady = true
+    }
+    if (!preferencesReady) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     val configured = remember { backendPreferences.hasBackendCredentials() }
     val startDestination = remember(entryPoint) {
         when {
