@@ -21,74 +21,34 @@ internal fun articleScrollProgress(value: Int, maxValue: Int): Float =
 internal fun articleScrollOffset(progress: Float, maxValue: Int): Int =
     (progress.coerceIn(0f, 1f) * maxValue.coerceAtLeast(0)).roundToInt()
 
-internal data class ArticleScrollPosition(
-    val outerScrollPx: Int,
-    val webViewScrollY: Int
-)
-
-internal fun articleScrollRangePx(
-    outerMaxScrollPx: Int,
-    webViewMaxScrollPx: Int
-): Int = (outerMaxScrollPx.coerceAtLeast(0).toLong() + webViewMaxScrollPx.coerceAtLeast(0))
-    .coerceAtMost(Int.MAX_VALUE.toLong())
-    .toInt()
-
-internal fun articleCombinedScrollOffset(
-    outerScrollPx: Int,
-    outerMaxScrollPx: Int,
+internal fun oversizedArticleHeaderScrollPx(
     webViewScrollY: Int,
-    webViewMaxScrollPx: Int
-): Int = (outerScrollPx.coerceIn(0, outerMaxScrollPx.coerceAtLeast(0)).toLong() +
-    webViewScrollY.coerceIn(0, webViewMaxScrollPx.coerceAtLeast(0)))
-    .coerceAtMost(Int.MAX_VALUE.toLong())
-    .toInt()
+    headerHeightPx: Int
+): Int = webViewScrollY.coerceAtLeast(0).coerceAtMost(headerHeightPx.coerceAtLeast(0))
 
-internal fun articleCombinedScrollProgress(
-    outerScrollPx: Int,
-    outerMaxScrollPx: Int,
+internal fun oversizedArticleBodyScrollPx(
     webViewScrollY: Int,
-    webViewMaxScrollPx: Int
-): Float = articleScrollProgress(
-    value = articleCombinedScrollOffset(
-        outerScrollPx = outerScrollPx,
-        outerMaxScrollPx = outerMaxScrollPx,
-        webViewScrollY = webViewScrollY,
-        webViewMaxScrollPx = webViewMaxScrollPx
-    ),
-    maxValue = articleScrollRangePx(
-        outerMaxScrollPx = outerMaxScrollPx,
-        webViewMaxScrollPx = webViewMaxScrollPx
-    )
-)
+    headerHeightPx: Int
+): Int = (webViewScrollY - oversizedArticleHeaderScrollPx(webViewScrollY, headerHeightPx))
+    .coerceAtLeast(0)
 
-internal fun articleScrollPositionForProgress(
-    progress: Float,
-    outerMaxScrollPx: Int,
-    webViewMaxScrollPx: Int
-): ArticleScrollPosition {
-    val outerMax = outerMaxScrollPx.coerceAtLeast(0)
-    val webViewMax = webViewMaxScrollPx.coerceAtLeast(0)
-    val totalOffset = articleScrollOffset(
-        progress = progress,
-        maxValue = articleScrollRangePx(
-            outerMaxScrollPx = outerMax,
-            webViewMaxScrollPx = webViewMax
-        )
-    )
-    val outerOffset = totalOffset.coerceAtMost(outerMax)
-    return ArticleScrollPosition(
-        outerScrollPx = outerOffset,
-        webViewScrollY = (totalOffset - outerOffset).coerceAtMost(webViewMax)
-    )
-}
-
-internal fun articleHeaderScrollDeltaForWebViewGesture(
-    deltaY: Float,
-    webViewScrollY: Int
-): Float = if (deltaY > 0f) {
-    deltaY
-} else {
-    minOf(0f, deltaY + webViewScrollY.coerceAtLeast(0))
+internal fun oversizedArticleScrollYAfterHeaderResize(
+    webViewScrollY: Int,
+    previousHeaderHeightPx: Int,
+    newHeaderHeightPx: Int
+): Int {
+    val scrollY = webViewScrollY.coerceAtLeast(0)
+    val previousHeight = previousHeaderHeightPx.coerceAtLeast(0)
+    val newHeight = newHeaderHeightPx.coerceAtLeast(0)
+    if (previousHeight == newHeight) return scrollY
+    return if (scrollY >= previousHeight && previousHeight > 0) {
+        (scrollY.toLong() + newHeight - previousHeight)
+            .coerceAtLeast(0L)
+            .coerceAtMost(Int.MAX_VALUE.toLong())
+            .toInt()
+    } else {
+        scrollY.coerceAtMost(newHeight)
+    }
 }
 
 internal data class VerticalScrollbarMetrics(

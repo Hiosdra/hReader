@@ -1,9 +1,7 @@
 package com.hiosdra.hreader.presentation.article
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReaderWebViewGestureTest {
@@ -38,52 +36,66 @@ class ReaderWebViewGestureTest {
     }
 
     @Test
-    fun `parent-only movement does not dispatch a child move`() {
-        val gesture = ReaderWebViewGestureState(touchSlop = 8f)
-        gesture.start(600f)
+    fun `one forward sequence consumes the header before the body`() {
+        val target = FakeArticleWebViewScrollTarget(maxScrollY = 1000)
+        val controller = ArticleWebViewScrollController().apply { attachForTest(target) }
 
-        val move = gesture.move(y = 400f, consumedParentDelta = 200f)
+        assertEquals(-120f, controller.consumeComposeScrollDelta(-120f), 0f)
+        assertEquals(120, oversizedArticleHeaderScrollPx(target.scrollY, 200))
+        assertEquals(0, oversizedArticleBodyScrollPx(target.scrollY, 200))
 
-        assertFalse(move)
-        assertEquals(200f, gesture.touchEventOffsetY, 0f)
-        assertTrue(gesture.shouldCancelChildOnUp)
+        assertEquals(-130f, controller.consumeComposeScrollDelta(-130f), 0f)
+        assertEquals(200, oversizedArticleHeaderScrollPx(target.scrollY, 200))
+        assertEquals(50, oversizedArticleBodyScrollPx(target.scrollY, 200))
     }
 
     @Test
-    fun `child receives only the movement left after the parent reaches its limit`() {
-        val gesture = ReaderWebViewGestureState(touchSlop = 8f)
-        gesture.start(600f)
-        assertFalse(gesture.move(y = 400f, consumedParentDelta = 200f))
+    fun `one move crossing the header boundary loses no delta`() {
+        val target = FakeArticleWebViewScrollTarget(maxScrollY = 1000, initialScrollY = 190)
+        val controller = ArticleWebViewScrollController().apply { attachForTest(target) }
 
-        val move = gesture.move(y = 300f, consumedParentDelta = 0f)
-
-        assertTrue(move)
-        assertEquals(200f, gesture.touchEventOffsetY, 0f)
-        assertFalse(gesture.shouldCancelChildOnUp)
+        assertEquals(-30f, controller.consumeComposeScrollDelta(-30f), 0f)
+        assertEquals(220, target.scrollY)
+        assertEquals(200, oversizedArticleHeaderScrollPx(target.scrollY, 200))
+        assertEquals(20, oversizedArticleBodyScrollPx(target.scrollY, 200))
     }
 
     @Test
-    fun `parent-only reverse movement cancels the child gesture`() {
-        val gesture = ReaderWebViewGestureState(touchSlop = 8f)
-        gesture.start(200f)
+    fun `reverse sequence reaches the body start before revealing the header`() {
+        val target = FakeArticleWebViewScrollTarget(maxScrollY = 1000, initialScrollY = 350)
+        val controller = ArticleWebViewScrollController().apply { attachForTest(target) }
 
-        val move = gesture.move(y = 300f, consumedParentDelta = -100f)
+        assertEquals(100f, controller.consumeComposeScrollDelta(100f), 0f)
+        assertEquals(200, oversizedArticleHeaderScrollPx(target.scrollY, 200))
+        assertEquals(50, oversizedArticleBodyScrollPx(target.scrollY, 200))
 
-        assertFalse(move)
-        assertTrue(gesture.shouldCancelChildOnUp)
+        assertEquals(100f, controller.consumeComposeScrollDelta(100f), 0f)
+        assertEquals(150, oversizedArticleHeaderScrollPx(target.scrollY, 200))
+        assertEquals(0, oversizedArticleBodyScrollPx(target.scrollY, 200))
     }
 
     @Test
-    fun `a new gesture does not inherit the previous handoff`() {
-        val gesture = ReaderWebViewGestureState(touchSlop = 8f)
-        gesture.start(600f)
-        assertFalse(gesture.move(y = 400f, consumedParentDelta = 200f))
+    fun `direction change uses the same continuous WebView offset`() {
+        val target = FakeArticleWebViewScrollTarget(maxScrollY = 1000, initialScrollY = 180)
+        val controller = ArticleWebViewScrollController().apply { attachForTest(target) }
 
-        gesture.start(600f)
-        val move = gesture.move(y = 500f, consumedParentDelta = 0f)
+        controller.consumeComposeScrollDelta(-80f)
+        controller.consumeComposeScrollDelta(35f)
 
-        assertTrue(move)
-        assertEquals(0f, gesture.touchEventOffsetY, 0f)
-        assertFalse(gesture.shouldCancelChildOnUp)
+        assertEquals(225, target.scrollY)
+        assertEquals(200, oversizedArticleHeaderScrollPx(target.scrollY, 200))
+        assertEquals(25, oversizedArticleBodyScrollPx(target.scrollY, 200))
+    }
+}
+
+private class FakeArticleWebViewScrollTarget(
+    private val maxScrollY: Int,
+    initialScrollY: Int = 0
+) : ArticleWebViewScrollTarget {
+    override var scrollY: Int = initialScrollY
+        private set
+
+    override fun scrollBy(deltaY: Int) {
+        scrollY = (scrollY + deltaY).coerceIn(0, maxScrollY)
     }
 }

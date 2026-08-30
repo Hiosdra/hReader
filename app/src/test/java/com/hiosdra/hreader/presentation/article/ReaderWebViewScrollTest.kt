@@ -1,8 +1,6 @@
 package com.hiosdra.hreader.presentation.article
 
 import android.app.Application
-import android.os.SystemClock
-import android.view.MotionEvent
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,41 +13,34 @@ import org.robolectric.annotation.Config
 class ReaderWebViewScrollTest {
 
     @Test
-    fun `forward gesture hands the header delta to the parent`() {
+    fun `Compose header scroll uses the actual ReaderWebView offset`() {
         val webView = createWebView()
         try {
-            var parentDelta = 0f
-            webView.onParentScrollDelta = { delta ->
-                parentDelta += delta
-                delta
-            }
+            webView.scrollTo(0, 200)
+            val controller = ArticleWebViewScrollController()
+            controller.attach(webView)
 
-            sendEvent(webView, MotionEvent.ACTION_DOWN, 600f)
-            sendEvent(webView, MotionEvent.ACTION_MOVE, 400f)
-            sendEvent(webView, MotionEvent.ACTION_UP, 400f)
+            val consumed = controller.consumeComposeScrollDelta(80f)
 
-            assertEquals(200f, parentDelta, 0.001f)
+            assertEquals(120, webView.scrollY)
+            assertEquals(80f, consumed, 0f)
         } finally {
             webView.releaseResources()
         }
     }
 
     @Test
-    fun `reverse gesture hands only the part beyond the body start to the parent`() {
+    fun `released ReaderWebView receives no delayed controller movement`() {
         val webView = createWebView()
         try {
-            webView.scrollTo(0, 80)
-            var parentDelta = 0f
-            webView.onParentScrollDelta = { delta ->
-                parentDelta += delta
-                delta
-            }
+            val controller = ArticleWebViewScrollController()
+            controller.attach(webView)
+            controller.detach(webView)
 
-            sendEvent(webView, MotionEvent.ACTION_DOWN, 200f)
-            sendEvent(webView, MotionEvent.ACTION_MOVE, 300f)
-            sendEvent(webView, MotionEvent.ACTION_UP, 300f)
+            val consumed = controller.consumeComposeScrollDelta(-100f)
 
-            assertEquals(-20f, parentDelta, 0.001f)
+            assertEquals(0, webView.scrollY)
+            assertEquals(0f, consumed, 0f)
         } finally {
             webView.releaseResources()
         }
@@ -63,22 +54,6 @@ class ReaderWebViewScrollTest {
         layout(0, 0, 400, 800)
     }
 
-    private fun sendEvent(webView: ReaderWebView, action: Int, y: Float) {
-        val eventTime = SystemClock.uptimeMillis()
-        val event = MotionEvent.obtain(
-            eventTime,
-            eventTime,
-            action,
-            100f,
-            y,
-            0
-        )
-        try {
-            webView.onTouchEvent(event)
-        } finally {
-            event.recycle()
-        }
-    }
 }
 
 private class ReaderWebViewTestApplication : Application()

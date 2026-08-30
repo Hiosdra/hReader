@@ -118,55 +118,63 @@ internal fun readerGestureDirection(
     }
 }
 
-private const val TOUCH_POSITION_EPSILON = 0.01f
+internal class ArticleWebViewScrollController {
+    private var webView: ReaderWebView? = null
+    private var scrollTarget: ArticleWebViewScrollTarget? = null
+    private var fractionalScrollY = 0f
 
-internal class ReaderWebViewGestureState(
-    private val touchSlop: Float
-) {
-    private var initialY = 0f
-    private var lastDispatchedY = 0f
-    private var touchOffsetY = 0f
-    private var parentConsumedMovement = false
-    private var childMoved = false
+    internal fun attach(webView: ReaderWebView) {
+        if (this.webView === webView) return
+        this.webView = webView
+        scrollTarget = object : ArticleWebViewScrollTarget {
+            override val scrollY: Int
+                get() = webView.scrollY
 
-    val touchEventOffsetY: Float
-        get() = touchOffsetY
-
-    val shouldCancelChildOnUp: Boolean
-        get() = parentConsumedMovement && !childMoved
-
-    fun start(y: Float) {
-        initialY = y
-        lastDispatchedY = y
-        touchOffsetY = 0f
-        parentConsumedMovement = false
-        childMoved = false
-    }
-
-    fun move(y: Float, consumedParentDelta: Float): Boolean {
-        if (consumedParentDelta != 0f) {
-            parentConsumedMovement = true
-        }
-        touchOffsetY += consumedParentDelta
-        val adjustedY = y + touchOffsetY
-        val shouldDispatchToChild =
-            abs(adjustedY - lastDispatchedY) > TOUCH_POSITION_EPSILON
-        if (shouldDispatchToChild) {
-            lastDispatchedY = adjustedY
-            if (abs(adjustedY - initialY) > touchSlop) {
-                childMoved = true
+            override fun scrollBy(deltaY: Int) {
+                webView.scrollBy(0, deltaY)
             }
         }
-        return shouldDispatchToChild
+        fractionalScrollY = 0f
     }
 
-    fun reset() {
-        initialY = 0f
-        lastDispatchedY = 0f
-        touchOffsetY = 0f
-        parentConsumedMovement = false
-        childMoved = false
+    internal fun attachForTest(scrollTarget: ArticleWebViewScrollTarget) {
+        webView = null
+        this.scrollTarget = scrollTarget
+        fractionalScrollY = 0f
     }
+
+    internal fun detach(webView: ReaderWebView) {
+        if (this.webView !== webView) return
+        this.webView = null
+        scrollTarget = null
+        fractionalScrollY = 0f
+    }
+
+    fun consumeComposeScrollDelta(deltaY: Float): Float {
+        val target = scrollTarget ?: return 0f
+        val requestedScrollY = -deltaY + fractionalScrollY
+        val requestedScrollYPx = requestedScrollY.roundToInt()
+        if (requestedScrollYPx == 0) {
+            fractionalScrollY = requestedScrollY
+            return 0f
+        }
+
+        val previousScrollY = target.scrollY
+        target.scrollBy(requestedScrollYPx)
+        val consumedScrollYPx = target.scrollY - previousScrollY
+        fractionalScrollY = if (consumedScrollYPx == requestedScrollYPx) {
+            requestedScrollY - requestedScrollYPx
+        } else {
+            0f
+        }
+        return -consumedScrollYPx.toFloat()
+    }
+}
+
+internal interface ArticleWebViewScrollTarget {
+    val scrollY: Int
+
+    fun scrollBy(deltaY: Int)
 }
 
 @Composable
@@ -198,12 +206,13 @@ internal class ReaderWebView(context: Context) : WebView(context) {
     private var initialTouchY = 0f
     private var touchInProgress = false
     private var pagerGestureDirection: ReaderGestureDirection? = null
-    private var lastTouchY = 0f
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-    private val gestureState = ReaderWebViewGestureState(touchSlop)
+
+    internal var loadedContentTopInsetPx: Int = 0
+    internal var pageLoadRestoreScrollY: Int = 0
+    internal var contentLayoutReady: Boolean = false
 
     var allowScroll: Boolean = true
-    internal var onParentScrollDelta: ((Float) -> Float)? = null
     var protectVerticalScrollFromPager: Boolean = false
         set(value) {
             field = value
@@ -262,6 +271,11 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         post(update)
     }
 
+    fun cancelContentHeightUpdates() {
+        contentHeightUpdateRunnable?.let(::removeCallbacks)
+        contentHeightUpdateRunnable = null
+    }
+
     fun releaseResources() {
         if (released) return
         released = true
@@ -281,10 +295,8 @@ internal class ReaderWebView(context: Context) : WebView(context) {
 
     private fun clearCallbacksAndClients() {
         parent?.requestDisallowInterceptTouchEvent(false)
-        onParentScrollDelta = null
         clearTouchState()
-        contentHeightUpdateRunnable?.let(::removeCallbacks)
-        contentHeightUpdateRunnable = null
+        cancelContentHeightUpdates()
         setOnScrollChangeListener(null)
         setOnLongClickListener(null)
         webViewClient = WebViewClient()
@@ -294,10 +306,8 @@ internal class ReaderWebView(context: Context) : WebView(context) {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val clickDetected = event.actionMasked == MotionEvent.ACTION_UP &&
             touchInProgress &&
-            !gestureState.shouldCancelChildOnUp &&
             abs(event.x - initialTouchX) <= touchSlop &&
             abs(event.y - initialTouchY) <= touchSlop
-        var dispatchMoveToChild = true
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -305,8 +315,6 @@ internal class ReaderWebView(context: Context) : WebView(context) {
                 initialTouchY = event.y
                 touchInProgress = true
                 pagerGestureDirection = null
-                lastTouchY = event.y
-                gestureState.start(event.y)
                 parent?.requestDisallowInterceptTouchEvent(protectVerticalScrollFromPager)
             }
             MotionEvent.ACTION_MOVE -> {
@@ -320,40 +328,14 @@ internal class ReaderWebView(context: Context) : WebView(context) {
                         parent?.requestDisallowInterceptTouchEvent(false)
                     }
                 }
-                var consumedParentDelta = 0f
-                if (pagerGestureDirection == ReaderGestureDirection.Vertical) {
-                    val deltaY = lastTouchY - event.y
-                    val parentDelta = articleHeaderScrollDeltaForWebViewGesture(deltaY, scrollY)
-                    consumedParentDelta = onParentScrollDelta?.invoke(parentDelta)?.coerceIn(
-                        minOf(0f, parentDelta),
-                        maxOf(0f, parentDelta)
-                    ) ?: 0f
-                }
-                dispatchMoveToChild = gestureState.move(event.y, consumedParentDelta)
-                lastTouchY = event.y
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 parent?.requestDisallowInterceptTouchEvent(false)
             }
         }
 
-        val cancelChildGesture = event.actionMasked == MotionEvent.ACTION_UP &&
-            gestureState.shouldCancelChildOnUp
-        val touchEventOffsetY = when (event.actionMasked) {
-            MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
-                gestureState.touchEventOffsetY
-            else -> 0f
-        }
         val handled = try {
-            if (event.actionMasked == MotionEvent.ACTION_MOVE && !dispatchMoveToChild) {
-                true
-            } else {
-                dispatchTouchEventToChild(
-                    event = event,
-                    touchEventOffsetY = touchEventOffsetY,
-                    cancel = cancelChildGesture
-                )
-            }
+            super.onTouchEvent(event)
         } finally {
             if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
                 clearTouchState()
@@ -363,27 +345,9 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         return handled
     }
 
-    private fun dispatchTouchEventToChild(
-        event: MotionEvent,
-        touchEventOffsetY: Float,
-        cancel: Boolean
-    ): Boolean {
-        val originalAction = event.action
-        if (cancel) event.action = MotionEvent.ACTION_CANCEL
-        if (touchEventOffsetY != 0f) event.offsetLocation(0f, touchEventOffsetY)
-        return try {
-            super.onTouchEvent(event)
-        } finally {
-            if (touchEventOffsetY != 0f) event.offsetLocation(0f, -touchEventOffsetY)
-            if (cancel) event.action = originalAction
-        }
-    }
-
     private fun clearTouchState() {
         touchInProgress = false
         pagerGestureDirection = null
-        lastTouchY = 0f
-        gestureState.reset()
     }
 
     override fun performClick(): Boolean {

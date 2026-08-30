@@ -22,50 +22,37 @@ class ArticleScrollProgressTest {
     }
 
     @Test
-    fun `forward WebView gesture is offered to the article header first`() {
+    fun `oversized article offset scrolls only the header before its boundary`() {
+        assertEquals(140, oversizedArticleHeaderScrollPx(webViewScrollY = 140, headerHeightPx = 200))
+        assertEquals(0, oversizedArticleBodyScrollPx(webViewScrollY = 140, headerHeightPx = 200))
+    }
+
+    @Test
+    fun `oversized article offset scrolls the body only after the header boundary`() {
+        assertEquals(200, oversizedArticleHeaderScrollPx(webViewScrollY = 260, headerHeightPx = 200))
+        assertEquals(60, oversizedArticleBodyScrollPx(webViewScrollY = 260, headerHeightPx = 200))
+    }
+
+    @Test
+    fun `header resize keeps the article top at zero`() {
         assertEquals(
-            140f,
-            articleHeaderScrollDeltaForWebViewGesture(deltaY = 140f, webViewScrollY = 80),
-            0f
+            0,
+            oversizedArticleScrollYAfterHeaderResize(
+                webViewScrollY = 0,
+                previousHeaderHeightPx = 200,
+                newHeaderHeightPx = 320
+            )
         )
     }
 
     @Test
-    fun `reverse WebView gesture uses body before revealing the header`() {
+    fun `header resize preserves the body offset after handoff`() {
         assertEquals(
-            0f,
-            articleHeaderScrollDeltaForWebViewGesture(deltaY = -40f, webViewScrollY = 80),
-            0f
-        )
-        assertEquals(
-            -20f,
-            articleHeaderScrollDeltaForWebViewGesture(deltaY = -100f, webViewScrollY = 80),
-            0f
-        )
-    }
-
-    @Test
-    fun `combined progress includes outer and WebView scroll`() {
-        assertEquals(
-            0.5f,
-            articleCombinedScrollProgress(
-                outerScrollPx = 100,
-                outerMaxScrollPx = 200,
-                webViewScrollY = 400,
-                webViewMaxScrollPx = 800
-            ),
-            0.001f
-        )
-    }
-
-    @Test
-    fun `saved progress is split between outer and WebView scroll`() {
-        assertEquals(
-            ArticleScrollPosition(outerScrollPx = 200, webViewScrollY = 300),
-            articleScrollPositionForProgress(
-                progress = 0.5f,
-                outerMaxScrollPx = 200,
-                webViewMaxScrollPx = 800
+            370,
+            oversizedArticleScrollYAfterHeaderResize(
+                webViewScrollY = 250,
+                previousHeaderHeightPx = 200,
+                newHeaderHeightPx = 320
             )
         )
     }
