@@ -266,6 +266,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
 
     // Testing - Compose
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 
@@ -276,6 +278,7 @@ dependencies {
     // MockK for mocking in unit tests
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.work.testing)
 
     // Debug Tools
     debugImplementation(libs.androidx.compose.ui.test.manifest)
