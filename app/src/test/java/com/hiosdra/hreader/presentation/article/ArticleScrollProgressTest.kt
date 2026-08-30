@@ -22,6 +22,42 @@ class ArticleScrollProgressTest {
     }
 
     @Test
+    fun `oversized article offset scrolls only the header before its boundary`() {
+        assertEquals(140, oversizedArticleHeaderScrollPx(webViewScrollY = 140, headerHeightPx = 200))
+        assertEquals(0, oversizedArticleBodyScrollPx(webViewScrollY = 140, headerHeightPx = 200))
+    }
+
+    @Test
+    fun `oversized article offset scrolls the body only after the header boundary`() {
+        assertEquals(200, oversizedArticleHeaderScrollPx(webViewScrollY = 260, headerHeightPx = 200))
+        assertEquals(60, oversizedArticleBodyScrollPx(webViewScrollY = 260, headerHeightPx = 200))
+    }
+
+    @Test
+    fun `header resize keeps the article top at zero`() {
+        assertEquals(
+            0,
+            oversizedArticleScrollYAfterHeaderResize(
+                webViewScrollY = 0,
+                previousHeaderHeightPx = 200,
+                newHeaderHeightPx = 320
+            )
+        )
+    }
+
+    @Test
+    fun `header resize preserves the body offset after handoff`() {
+        assertEquals(
+            370,
+            oversizedArticleScrollYAfterHeaderResize(
+                webViewScrollY = 250,
+                previousHeaderHeightPx = 200,
+                newHeaderHeightPx = 320
+            )
+        )
+    }
+
+    @Test
     fun `scrollbar is absent when content fits the viewport`() {
         assertNull(
             verticalScrollbarMetrics(

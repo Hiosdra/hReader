@@ -2,6 +2,9 @@ package com.hiosdra.hreader.presentation.article
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -32,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
@@ -62,10 +67,13 @@ import java.time.format.FormatStyle
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.FlowPreview
+
+private const val OVERSIZED_ARTICLE_HEADER_RESIZE_DEBOUNCE_MS = 150L
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -102,13 +110,18 @@ internal fun ArticleContent(
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
     val dateText = remember(entry.publishedAt, locale) { formatArticleDate(entry.publishedAt, locale) }
     val readableArticleContent = articleContent
+    val contentFingerprint = readableArticleContent.hashCode()
     val articleScrollState = rememberSaveable(entry.id, saver = ScrollState.Saver) { ScrollState(0) }
     var restoredContentPositionKey by rememberSaveable(entry.id) { mutableStateOf<Int?>(null) }
     var readingCompletionReported by rememberSaveable(entry.id) { mutableStateOf(false) }
     var webContentHeightPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
+    var measuredWebContentTopInsetPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
     var webViewRestoreScrollY by rememberSaveable(entry.id) { mutableIntStateOf(0) }
     var webViewScrollProgress by rememberSaveable(entry.id) { mutableFloatStateOf(0f) }
+    var webViewScrollY by rememberSaveable(entry.id) { mutableIntStateOf(0) }
     var articleViewportHeightPx by remember(entry.id) { mutableIntStateOf(0) }
+    var articleHeaderHeightPx by remember(entry.id) { mutableIntStateOf(0) }
+    var webContentTopInsetPx by remember(entry.id, contentFingerprint) { mutableIntStateOf(0) }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
@@ -125,22 +138,43 @@ internal fun ArticleContent(
     val imageDownloadFailedMessage = stringResource(R.string.article_download_failed)
     val density = LocalDensity.current
     val minimumWebViewHeightPx = with(density) { 240.dp.roundToPx() }
-    val safeWebContentHeightPx = safeArticleWebViewHeightPx(webContentHeightPx)
-    val webViewNeedsInternalScroll = articleWebViewNeedsInternalScroll(webContentHeightPx)
+    val articleBodyHeightPx = (webContentHeightPx - measuredWebContentTopInsetPx).coerceAtLeast(0)
+    val safeWebContentHeightPx = safeArticleWebViewHeightPx(articleBodyHeightPx)
+    val measuredOversizedArticle = articleWebViewNeedsInternalScroll(articleBodyHeightPx)
+    var oversizedArticleDetected by remember(entry.id, contentFingerprint) { mutableStateOf(false) }
+    LaunchedEffect(measuredOversizedArticle) {
+        if (measuredOversizedArticle) oversizedArticleDetected = true
+    }
+    val webViewNeedsInternalScroll = measuredOversizedArticle || oversizedArticleDetected
     val webViewHeightPx = if (webViewNeedsInternalScroll) {
         articleViewportHeightPx.coerceAtLeast(minimumWebViewHeightPx)
     } else {
         safeWebContentHeightPx.coerceAtLeast(minimumWebViewHeightPx)
     }
     val webViewHeight = with(density) { webViewHeightPx.toDp() }
-    val scrollbarMetrics by remember(articleScrollState, webViewNeedsInternalScroll) {
+    val webViewMaxScrollPx = (webContentHeightPx - webViewHeightPx).coerceAtLeast(0)
+    LaunchedEffect(webViewNeedsInternalScroll, articleHeaderHeightPx) {
+        if (!webViewNeedsInternalScroll || articleHeaderHeightPx <= 0) return@LaunchedEffect
+        if (webContentTopInsetPx != 0) delay(OVERSIZED_ARTICLE_HEADER_RESIZE_DEBOUNCE_MS)
+        webContentTopInsetPx = articleHeaderHeightPx
+    }
+    val oversizedContentLayoutReady = !webViewNeedsInternalScroll ||
+        webContentTopInsetPx > 0 && measuredWebContentTopInsetPx == webContentTopInsetPx
+    val webViewScrollController = remember(entry.id) { ArticleWebViewScrollController() }
+    val headerScrollableState = rememberScrollableState { deltaY ->
+        webViewScrollController.consumeComposeScrollDelta(deltaY)
+    }
+    val scrollbarMetrics by remember(
+        articleScrollState,
+        webViewNeedsInternalScroll,
+        webViewMaxScrollPx
+    ) {
         derivedStateOf {
             if (webViewNeedsInternalScroll) {
-                val maxScrollPx = (webContentHeightPx - webViewHeightPx).coerceAtLeast(0)
                 verticalScrollbarMetrics(
-                    viewportSizePx = webViewHeightPx,
+                    viewportSizePx = articleViewportHeightPx,
                     contentSizePx = webContentHeightPx,
-                    scrollOffsetPx = articleScrollOffset(webViewScrollProgress, maxScrollPx)
+                    scrollOffsetPx = articleScrollOffset(webViewScrollProgress, webViewMaxScrollPx)
                 )
             } else {
                 val contentSizePx = (articleViewportHeightPx.toLong() + articleScrollState.maxValue)
@@ -157,8 +191,15 @@ internal fun ArticleContent(
     val latestReadingPositionLoaded = rememberUpdatedState(readingPositionLoaded)
     val latestOnReadingProgressChanged = rememberUpdatedState(onReadingProgressChanged)
     val latestOnReadingCompleted = rememberUpdatedState(onReadingCompleted)
-    val contentFingerprint = readableArticleContent.hashCode()
     val contentPositionKey = contentFingerprint xor if (webViewNeedsInternalScroll) Int.MIN_VALUE else 0
+    val currentArticleProgress = {
+        if (webViewNeedsInternalScroll) {
+            articleScrollProgress(webViewScrollY, webViewMaxScrollPx) to (webViewMaxScrollPx > 0)
+        } else {
+            val maxValue = articleScrollState.maxValue
+            articleScrollProgress(articleScrollState.value, maxValue) to (maxValue > 0)
+        }
+    }
 
     LaunchedEffect(
         entry.id,
@@ -166,13 +207,15 @@ internal fun ArticleContent(
         readingPositionLoaded,
         savedReadingProgress,
         contentPositionKey,
-        webContentHeightPx > 0
+        webContentHeightPx > 0,
+        oversizedContentLayoutReady
     ) {
         if (
             restoredContentPositionKey == contentPositionKey ||
             !contentLoaded ||
             !readingPositionLoaded ||
-            webContentHeightPx <= 0
+            webContentHeightPx <= 0 ||
+            !oversizedContentLayoutReady
         ) {
             return@LaunchedEffect
         }
@@ -183,11 +226,7 @@ internal fun ArticleContent(
         }
 
         if (webViewNeedsInternalScroll) {
-            webViewRestoreScrollY = articleWebViewRestoreScrollY(
-                progress = progress,
-                contentHeightPx = webContentHeightPx,
-                viewportHeightPx = webViewHeightPx
-            )
+            webViewRestoreScrollY = articleScrollOffset(progress, webViewMaxScrollPx)
         } else {
             val maxValue = snapshotFlow { articleScrollState.maxValue }.first { it > 0 }
             articleScrollState.scrollTo(articleScrollOffset(progress, maxValue))
@@ -195,17 +234,10 @@ internal fun ArticleContent(
         restoredContentPositionKey = contentPositionKey
     }
 
-    LaunchedEffect(entry.id, readingPositionLoaded, webViewNeedsInternalScroll) {
+    LaunchedEffect(entry.id, readingPositionLoaded, webViewNeedsInternalScroll, webViewMaxScrollPx) {
         if (!readingPositionLoaded) return@LaunchedEffect
         readingCompletionReported = false
-        snapshotFlow {
-            if (webViewNeedsInternalScroll) {
-                webViewScrollProgress to true
-            } else {
-                val maxValue = articleScrollState.maxValue
-                articleScrollProgress(articleScrollState.value, maxValue) to (maxValue > 0)
-            }
-        }
+        snapshotFlow { currentArticleProgress() }
             .filter { (_, ready) -> ready }
             .sample(READING_POSITION_SAMPLE_MILLIS)
             .collect { (progress, _) ->
@@ -221,21 +253,90 @@ internal fun ArticleContent(
             }
     }
 
-    DisposableEffect(entry.id, webViewNeedsInternalScroll) {
+    DisposableEffect(entry.id, webViewNeedsInternalScroll, webViewMaxScrollPx) {
         onDispose {
             if (!latestReadingPositionLoaded.value) return@onDispose
-            val maxValue = articleScrollState.maxValue
-            if (!webViewNeedsInternalScroll && maxValue <= 0) return@onDispose
-            val progress = if (webViewNeedsInternalScroll) {
-                webViewScrollProgress
-            } else {
-                articleScrollProgress(articleScrollState.value, maxValue)
-            }
+            val (progress, ready) = currentArticleProgress()
+            if (!ready) return@onDispose
             if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
                 latestOnReadingCompleted.value(entry.id)
             } else {
                 latestOnReadingProgressChanged.value(entry.id, progress)
             }
+        }
+    }
+    val articleHeader: @Composable (Modifier) -> Unit = { headerModifier ->
+        Column(
+            modifier = headerModifier
+                .fillMaxWidth()
+                .widthIn(max = 760.dp)
+                .padding(top = 12.dp)
+        ) {
+            Text(
+                text = feedTitle.uppercase(locale),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
+                text = entry.title,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = 28.sp,
+                    lineHeight = 34.sp
+                ),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            ArticleMetadata(
+                author = entry.author,
+                dateText = dateText,
+                readingTimeMinutes = entry.readingTime,
+                isOnline = isOnline,
+                aiProvider = aiProvider,
+                aiOverview = aiOverview,
+                isGeneratingOverview = isGeneratingOverview,
+                aiOverviewProgress = aiOverviewProgress,
+                onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null,
+                credibilityEnabled = credibilityEnabled,
+                credibilityReport = credibilityReport,
+                isAnalyzingCredibility = isAnalyzingCredibility,
+                onAnalyzeCredibility = if (onAnalyzeCredibility != null) {
+                    { force -> onAnalyzeCredibility(entry.id, force) }
+                } else null
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+
+            if (mainImageUrl != null) {
+                Spacer(modifier = Modifier.height(20.dp))
+                OfflineAwareImage(
+                    entryId = entry.id,
+                    imageUrl = mainImageUrl,
+                    contentDescription = null,
+                    isOnline = isOnline,
+                    articleImageLoader = articleImageLoader,
+                    coilImageLoader = coilImageLoader,
+                    remoteResourcePolicy = remoteResourcePolicy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(MaterialTheme.shapes.large)
+                        .clickable { zoomImageUrl = mainImageUrl },
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+    val onArticleLinkClick: (String) -> Unit = { url ->
+        if (isOnline) {
+            openChromeCustomTab(context, url)
+        } else {
+            copyTextToClipboard(context, articleLinkLabel, url)
+            Toast.makeText(context, offlineLinkCopiedMessage, Toast.LENGTH_SHORT).show()
         }
     }
     Surface(
@@ -248,98 +349,80 @@ internal fun ArticleContent(
                 .fillMaxSize()
                 .onSizeChanged { articleViewportHeightPx = it.height }
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(articleScrollState)
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            if (webViewNeedsInternalScroll) {
+                if (webContentTopInsetPx > 0) {
+                    ArticleWebView(
+                        articleContent = readableArticleContent,
+                        baseUrl = entry.url,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        allowNetworkLoads = isOnline,
+                        localImagePaths = localImagePaths,
+                        textScale = textScale,
+                        scrollEnabled = true,
+                        contentTopInsetPx = webContentTopInsetPx,
+                        scrollController = webViewScrollController,
+                        restoreScrollY = webViewRestoreScrollY,
+                        onScrollYChanged = { scrollY -> webViewScrollY = scrollY },
+                        onScrollProgress = { progress -> webViewScrollProgress = progress },
+                        onContentHeightChanged = { height, topInset ->
+                            webContentHeightPx = height
+                            measuredWebContentTopInsetPx = topInset
+                        },
+                        onLinkClick = onArticleLinkClick,
+                        onImageLongClick = { url -> imageActionsUrl = url },
+                        readerPreferences = readerPreferences,
+                        remoteResourcePolicy = remoteResourcePolicy
+                    )
+                }
+                articleHeader(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 16.dp)
+                        .wrapContentHeight(unbounded = true)
+                        .onSizeChanged { articleHeaderHeightPx = it.height }
+                        .graphicsLayer {
+                            translationY = -oversizedArticleHeaderScrollPx(
+                                webViewScrollY,
+                                articleHeaderHeightPx
+                            ).toFloat()
+                        }
+                        .scrollable(
+                            state = headerScrollableState,
+                            orientation = Orientation.Vertical
+                        )
+                )
+            } else {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 760.dp)
-                        .padding(top = 12.dp)
+                        .fillMaxSize()
+                        .verticalScroll(articleScrollState)
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = feedTitle.uppercase(locale),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                    articleHeader(
+                        Modifier.onSizeChanged { articleHeaderHeightPx = it.height }
                     )
-                    Text(
-                        text = entry.title,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 28.sp,
-                            lineHeight = 34.sp
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    ArticleMetadata(
-                        author = entry.author,
-                        dateText = dateText,
-                        readingTimeMinutes = entry.readingTime,
-                        isOnline = isOnline,
-                        aiProvider = aiProvider,
-                        aiOverview = aiOverview,
-                        isGeneratingOverview = isGeneratingOverview,
-                        aiOverviewProgress = aiOverviewProgress,
-                        onAiOverviewClick = if (onAiOverview != null) { { onAiOverview(entry.id) } } else null,
-                        credibilityEnabled = credibilityEnabled,
-                        credibilityReport = credibilityReport,
-                        isAnalyzingCredibility = isAnalyzingCredibility,
-                        onAnalyzeCredibility = if (onAnalyzeCredibility != null) {
-                            { force -> onAnalyzeCredibility(entry.id, force) }
-                        } else null
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HorizontalDivider()
-
-                    if (mainImageUrl != null) {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        OfflineAwareImage(
-                            entryId = entry.id,
-                            imageUrl = mainImageUrl,
-                            contentDescription = null,
-                            isOnline = isOnline,
-                            articleImageLoader = articleImageLoader,
-                            coilImageLoader = coilImageLoader,
-                            remoteResourcePolicy = remoteResourcePolicy,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(16f / 9f)
-                                .clip(MaterialTheme.shapes.large)
-                                .clickable { zoomImageUrl = mainImageUrl },
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
                     ArticleWebView(
                         articleContent = readableArticleContent,
                         baseUrl = entry.url,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .widthIn(max = 760.dp)
                             .height(webViewHeight.coerceAtLeast(240.dp)),
                         allowNetworkLoads = isOnline,
                         localImagePaths = localImagePaths,
                         textScale = textScale,
-                        scrollEnabled = webViewNeedsInternalScroll,
-                        restoreScrollY = webViewRestoreScrollY,
+                        scrollEnabled = false,
+                        restoreScrollY = 0,
                         onScrollProgress = { progress -> webViewScrollProgress = progress },
-                        onContentHeightChanged = { height -> webContentHeightPx = height },
-                        onLinkClick = { url ->
-                            if (isOnline) {
-                                openChromeCustomTab(context, url)
-                            } else {
-                                copyTextToClipboard(context, articleLinkLabel, url)
-                                Toast.makeText(context, offlineLinkCopiedMessage, Toast.LENGTH_SHORT).show()
-                            }
+                        onContentHeightChanged = { height, topInset ->
+                            webContentHeightPx = height
+                            measuredWebContentTopInsetPx = topInset
                         },
+                        onLinkClick = onArticleLinkClick,
                         onImageLongClick = { url -> imageActionsUrl = url },
                         readerPreferences = readerPreferences,
                         remoteResourcePolicy = remoteResourcePolicy

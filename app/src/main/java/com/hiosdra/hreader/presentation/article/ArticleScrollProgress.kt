@@ -21,6 +21,36 @@ internal fun articleScrollProgress(value: Int, maxValue: Int): Float =
 internal fun articleScrollOffset(progress: Float, maxValue: Int): Int =
     (progress.coerceIn(0f, 1f) * maxValue.coerceAtLeast(0)).roundToInt()
 
+internal fun oversizedArticleHeaderScrollPx(
+    webViewScrollY: Int,
+    headerHeightPx: Int
+): Int = webViewScrollY.coerceAtLeast(0).coerceAtMost(headerHeightPx.coerceAtLeast(0))
+
+internal fun oversizedArticleBodyScrollPx(
+    webViewScrollY: Int,
+    headerHeightPx: Int
+): Int = (webViewScrollY - oversizedArticleHeaderScrollPx(webViewScrollY, headerHeightPx))
+    .coerceAtLeast(0)
+
+internal fun oversizedArticleScrollYAfterHeaderResize(
+    webViewScrollY: Int,
+    previousHeaderHeightPx: Int,
+    newHeaderHeightPx: Int
+): Int {
+    val scrollY = webViewScrollY.coerceAtLeast(0)
+    val previousHeight = previousHeaderHeightPx.coerceAtLeast(0)
+    val newHeight = newHeaderHeightPx.coerceAtLeast(0)
+    if (previousHeight == newHeight) return scrollY
+    return if (scrollY >= previousHeight && previousHeight > 0) {
+        (scrollY.toLong() + newHeight - previousHeight)
+            .coerceAtLeast(0L)
+            .coerceAtMost(Int.MAX_VALUE.toLong())
+            .toInt()
+    } else {
+        scrollY.coerceAtMost(newHeight)
+    }
+}
+
 internal data class VerticalScrollbarMetrics(
     val thumbFraction: Float,
     val positionFraction: Float
