@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
  * Where the app was asked to open: the article list, or the subscribe screen with the address
  * another app handed over.
  */
-private fun Intent.entryPoint(): EntryPoint {
+internal fun Intent.entryPoint(): EntryPoint {
     if (action == Intent.ACTION_VIEW && data?.scheme == SHORTCUT_SCHEME) {
         return EntryPoint.AddFeed(url = null)
     }
