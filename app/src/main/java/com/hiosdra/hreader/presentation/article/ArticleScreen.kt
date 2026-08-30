@@ -181,7 +181,24 @@ fun ArticleScreen(
     }
 
     val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
+    val ttsContent = currentEntry?.let { viewModel.getContentForEntry(it.id) }
+    val contentLoadFinished = currentEntry?.let { entry ->
+        entry.id in uiState.content || entry.id in uiState.partialContentIds
+    } == true
+    val ttsContentState = if (currentEntry == null) {
+        null
+    } else {
+        remember(currentEntry.id, ttsContent, contentLoadFinished) {
+            articleTtsContentState(
+                content = ttsContent,
+                contentLoadFinished = contentLoadFinished
+            )
+        }
+    }
     var bottomActionBarHeightPx by remember { mutableIntStateOf(0) }
+    LaunchedEffect(currentEntry?.url) {
+        if (currentEntry?.url.isNullOrBlank()) bottomActionBarHeightPx = 0
+    }
     val bottomActionBarHeight = if (currentEntry == null) {
         0.dp
     } else {
@@ -235,7 +252,39 @@ fun ArticleScreen(
                         }
                         ctx.startActivity(Intent.createChooser(sendIntent, null))
                     }
-                }
+                },
+                ttsState = ttsState,
+                temporaryTtsModel = temporaryTtsModel,
+                configuredTtsModel = configuredTtsModel,
+                ttsModelStatuses = ttsModelStatuses,
+                ttsContentState = ttsContentState,
+                onTemporaryTtsModelChange = { model ->
+                    if (ttsState.articleId != null) ttsController.stop()
+                    temporaryTtsModel = model
+                },
+                onToggleSpeech = {
+                    currentEntry?.let { entry ->
+                        if (ttsState.articleId != null) {
+                            ttsController.stop()
+                        } else if (ttsContentState == ArticleTtsContentState.AVAILABLE) {
+                            requestNotificationPermission {
+                                viewModel.getContentForEntry(entry.id)
+                                    ?.takeIf(::hasReadableArticleText)
+                                    ?.let { html ->
+                                        ttsController.play(
+                                            articleId = entry.id,
+                                            title = entry.title,
+                                            html = html,
+                                            modelOverride = temporaryTtsModel
+                                        )
+                                    }
+                            }
+                        }
+                    }
+                },
+                onPauseSpeech = ttsController::pause,
+                onResumeSpeech = ttsController::resume,
+                onRetryContent = { currentEntry?.let { viewModel.retryContent(it.id) } }
             )
         }
     ) { paddingValues ->
@@ -354,7 +403,7 @@ fun ArticleScreen(
                     .navigationBarsPadding()
             ) {
                 AnimatedVisibility(
-                    visible = currentEntry != null,
+                    visible = currentEntry?.url?.isNotBlank() == true,
                     modifier = Modifier.fillMaxWidth(),
                     enter = slideInVertically(
                         animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD)),
@@ -370,53 +419,16 @@ fun ArticleScreen(
                     )
                 ) {
                     currentEntry?.let { entry ->
-                        val ttsContent = viewModel.getContentForEntry(entry.id)
-                        val contentLoadFinished = entry.id in uiState.content ||
-                            entry.id in uiState.partialContentIds
-                        val ttsContentState = remember(entry.id, ttsContent, contentLoadFinished) {
-                            articleTtsContentState(
-                                content = ttsContent,
-                                contentLoadFinished = contentLoadFinished
-                            )
-                        }
-                        ArticleBottomActionBar(
+                        ArticleBottomLinkBar(
                             modifier = Modifier.onSizeChanged { size ->
                                 if (bottomActionBarHeightPx != size.height) {
                                     bottomActionBarHeightPx = size.height
                                 }
                             },
-                            state = ttsState,
-                            temporaryModel = temporaryTtsModel,
-                            configuredModel = configuredTtsModel,
-                            modelStatuses = ttsModelStatuses,
-                            onTemporaryModelChange = { model ->
-                                if (ttsState.articleId != null) ttsController.stop()
-                                temporaryTtsModel = model
-                            },
                             entryUrl = entry.url.takeIf(String::isNotBlank),
                             isOnline = uiState.isOnline,
                             canUsePaywallBypass = entry.url.isNotBlank() &&
                                 !paywallBypassService.isPaywallBypassUrl(entry.url),
-                            onToggleSpeech = {
-                                if (ttsState.articleId != null) {
-                                    ttsController.stop()
-                                } else if (ttsContentState == ArticleTtsContentState.AVAILABLE) {
-                                    requestNotificationPermission {
-                                        viewModel.getContentForEntry(entry.id)
-                                            ?.takeIf(::hasReadableArticleText)
-                                            ?.let { html ->
-                                                ttsController.play(
-                                                    articleId = entry.id,
-                                                    title = entry.title,
-                                                    html = html,
-                                                    modelOverride = temporaryTtsModel
-                                                )
-                                            }
-                                    }
-                                }
-                            },
-                            onPauseSpeech = ttsController::pause,
-                            onResumeSpeech = ttsController::resume,
                             onOpenInChrome = {
                                 openChromeCustomTab(navController.context, cleanUrl(entry.url))
                             },
@@ -426,9 +438,7 @@ fun ArticleScreen(
                                     val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
                                     openChromeCustomTab(navController.context, bypassUrl)
                                 }
-                            },
-                            contentState = ttsContentState,
-                            onRetryContent = { viewModel.retryContent(entry.id) }
+                            }
                         )
                     }
                 }

@@ -7,9 +7,13 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
+import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -74,10 +78,73 @@ class ArticleTopBarTest {
         assertEquals(1, increases.get())
     }
 
+    @Test
+    fun `overflow menu exposes read aloud action`() {
+        val starts = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        setContent(
+            ttsContentState = ArticleTtsContentState.AVAILABLE,
+            onToggleSpeech = { starts.incrementAndGet() }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.article_read_aloud))
+            .performClick()
+
+        assertEquals(1, starts.get())
+    }
+
+    @Test
+    fun `overflow menu keeps read aloud disabled without article text`() {
+        val retries = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        setContent(
+            ttsContentState = ArticleTtsContentState.UNAVAILABLE,
+            onRetryContent = { retries.incrementAndGet() }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.article_read_aloud_unavailable))
+            .assertIsNotEnabled()
+        composeTestRule.onNodeWithText(context.getString(R.string.action_retry))
+            .performClick()
+
+        assertEquals(1, retries.get())
+    }
+
+    @Test
+    fun `overflow menu allows selecting a temporary voice`() {
+        val selected = AtomicReference<TtsModel?>()
+        val context = RuntimeEnvironment.getApplication()
+        val systemVoice = context.getString(R.string.tts_model_android_name)
+        setContent(
+            ttsContentState = ArticleTtsContentState.AVAILABLE,
+            ttsModelStatuses = mapOf(TtsModel.ANDROID to TtsModelStatus.Available),
+            onTemporaryTtsModelChange = { selected.set(it) }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(
+            context.getString(R.string.article_tts_model, systemVoice)
+        ).performClick()
+        composeTestRule.onNodeWithText(systemVoice).performClick()
+
+        assertEquals(TtsModel.ANDROID, selected.get())
+    }
+
     private fun setContent(
         canUseWebView: Boolean = false,
         onToggleWebView: () -> Unit = {},
-        onIncreaseTextScale: () -> Unit = {}
+        onIncreaseTextScale: () -> Unit = {},
+        ttsContentState: ArticleTtsContentState? = null,
+        onToggleSpeech: () -> Unit = {},
+        ttsState: ArticleTtsState = ArticleTtsState(),
+        ttsModelStatuses: Map<TtsModel, TtsModelStatus> = emptyMap(),
+        onTemporaryTtsModelChange: (TtsModel?) -> Unit = {},
+        onRetryContent: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             HReaderTheme {
@@ -96,7 +163,13 @@ class ArticleTopBarTest {
                     onToggleRead = {},
                     onBack = {},
                     onToggleWebView = onToggleWebView,
-                    onShare = {}
+                    onShare = {},
+                    ttsState = ttsState,
+                    ttsModelStatuses = ttsModelStatuses,
+                    ttsContentState = ttsContentState,
+                    onTemporaryTtsModelChange = onTemporaryTtsModelChange,
+                    onToggleSpeech = onToggleSpeech,
+                    onRetryContent = onRetryContent
                 )
             }
         }
