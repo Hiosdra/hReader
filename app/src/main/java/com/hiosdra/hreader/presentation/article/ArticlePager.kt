@@ -21,6 +21,7 @@ import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
+import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.R
@@ -59,7 +60,10 @@ internal fun ArticlePager(
     credibilityEnabled: Boolean = false,
     credibilityReports: Map<Long, CredibilityReport> = emptyMap(),
     analyzingCredibilityIds: Set<Long> = emptySet(),
-    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
+    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null,
+    ttsState: ArticleTtsState = ArticleTtsState(),
+    onSpeechPosition: ((Long, Int) -> Unit)? = null,
+    onReadFromSelection: ((Long, Int) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val articleLinkLabel = stringResource(R.string.article_link)
@@ -105,6 +109,7 @@ internal fun ArticlePager(
                         )
                     }
                 } else {
+                    val activeTtsState = ttsState.takeIf { it.articleId == entry.id }
                     ArticleContent(
                         entry = entry,
                         mainImageUrl = getLeadImageForEntry(entry.id),
@@ -133,7 +138,15 @@ internal fun ArticlePager(
                         credibilityEnabled = credibilityEnabled,
                         credibilityReport = credibilityReports[entry.id],
                         isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
-                        onAnalyzeCredibility = onAnalyzeCredibility
+                        onAnalyzeCredibility = onAnalyzeCredibility,
+                        speechInteractionEnabled = entry.id in loadedContentIds,
+                        speechRange = activeTtsState?.currentRange,
+                        onSpeechPosition = onSpeechPosition?.let { handler ->
+                            { offset -> handler(entry.id, offset) }
+                        },
+                        onReadFromSelection = onReadFromSelection?.let { handler ->
+                            { offset -> handler(entry.id, offset) }
+                        }
                     )
                 }
             }

@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.core.application.port.out
 
 import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.application.tts.TtsTextRange
 import kotlinx.coroutines.flow.StateFlow
 
 data class ArticleTtsState(
@@ -12,6 +13,7 @@ data class ArticleTtsState(
     val isPaused: Boolean = false,
     val currentChunk: Int = 0,
     val totalChunks: Int = 0,
+    val currentRange: TtsTextRange? = null,
     val error: String? = null
 ) {
     val progress: Float
@@ -24,8 +26,10 @@ interface ArticleTtsPlayer {
         articleId: Long,
         title: String,
         html: String,
-        modelOverride: TtsModel? = null
+        modelOverride: TtsModel? = null,
+        startOffset: Int = 0
     )
+    fun seekTo(textOffset: Int)
     fun stop()
     fun stopFromService()
     fun pause()

@@ -111,6 +111,7 @@
     <string name="article_web_unavailable_offline">Tryb web niedostępny offline</string>
     <string name="article_stop_reading">Zatrzymaj czytanie</string>
     <string name="article_read_aloud">Czytaj na głos</string>
+    <string name="article_read_from_here">Czytaj od tego miejsca</string>
     <string name="article_read_aloud_unavailable">Czytanie na głos jest niedostępne, ponieważ ten artykuł nie zawiera tekstu do odczytania.</string>
     <string name="article_tts_model">Głos: %1$s</string>
     <string name="article_tts_model_use_settings">Użyj ustawień (%1$s)</string>

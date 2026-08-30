@@ -25,6 +25,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.tts.TtsTextDocumentFactory
+import com.hiosdra.hreader.core.application.tts.TtsTextRange
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -48,6 +50,11 @@ internal fun ArticleWebView(
     onScrollProgress: ((Float) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
+    articleTitle: String = "",
+    speechInteractionEnabled: Boolean = false,
+    speechRange: TtsTextRange? = null,
+    onSpeechPosition: ((Int) -> Unit)? = null,
+    onReadFromSelection: ((Int) -> Unit)? = null,
     readerPreferences: ReaderPreferences,
     remoteResourcePolicy: RemoteResourcePolicy
 ) {
@@ -55,6 +62,14 @@ internal fun ArticleWebView(
     val linkColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.primary.toArgb())
     val codeBg = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.surfaceVariant.toArgb())
     val ruleColor = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.outlineVariant.toArgb())
+    val speechHighlightHex = String.format(
+        "#%06X",
+        0xFFFFFF and MaterialTheme.colorScheme.primaryContainer.toArgb()
+    )
+    val speechHighlightTextHex = String.format(
+        "#%06X",
+        0xFFFFFF and MaterialTheme.colorScheme.onPrimaryContainer.toArgb()
+    )
 
     // Read by the request interceptor below, which outlives any single recomposition: the client is
     // built once with the WebView, while the downloaded images arrive with the article body.
@@ -66,6 +81,10 @@ internal fun ArticleWebView(
     val currentOnScrollProgress = rememberUpdatedState(onScrollProgress)
     val currentOnLinkClick = rememberUpdatedState(onLinkClick)
     val currentOnImageLongClick = rememberUpdatedState(onImageLongClick)
+    val currentSpeechInteractionEnabled = rememberUpdatedState(speechInteractionEnabled)
+    val currentSpeechRange = rememberUpdatedState(speechRange)
+    val currentOnSpeechPosition = rememberUpdatedState(onSpeechPosition)
+    val currentOnReadFromSelection = rememberUpdatedState(onReadFromSelection)
     val currentRemoteResourcePolicy = rememberUpdatedState(remoteResourcePolicy)
     val currentAllowNetworkLoads = rememberUpdatedState(allowNetworkLoads)
     val resourceScope = rememberCoroutineScope()
@@ -88,22 +107,34 @@ internal fun ArticleWebView(
         }
     }
 
+    val speechMarkup = remember(processedContent, articleTitle, speechInteractionEnabled) {
+        if (speechInteractionEnabled) {
+            TtsTextDocumentFactory.annotateHtml(articleTitle, processedContent)
+        } else {
+            processedContent
+        }
+    }
+
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     val contentTopInsetCssPx = contentTopInsetPx.coerceAtLeast(0) / density
     val htmlData = remember(
-        processedContent,
+        speechMarkup,
         textColorHex,
         linkColorHex,
         codeBg,
         ruleColor,
+        speechHighlightHex,
+        speechHighlightTextHex,
         contentTopInsetCssPx
     ) {
         articleHtml(
-            processedContent,
+            speechMarkup,
             textColorHex,
             linkColorHex,
             codeBg,
             ruleColor,
+            speechHighlightHex,
+            speechHighlightTextHex,
             contentTopInsetCssPx
         )
     }
@@ -119,6 +150,35 @@ internal fun ArticleWebView(
     val lastAppliedRestoreScrollY = remember { mutableIntStateOf(Int.MIN_VALUE) }
     var renderProcessError by remember(articleContent, baseUrl) { mutableStateOf(false) }
     var renderAttempt by remember(articleContent, baseUrl) { mutableIntStateOf(0) }
+
+    fun applySpeechHighlight(webView: ReaderWebView) {
+        if (!currentSpeechInteractionEnabled.value || !webView.contentLayoutReady) return
+        val range = currentSpeechRange.value
+        val script = if (range == null) {
+            "window.__hreaderTts && window.__hreaderTts.clear();"
+        } else {
+            "window.__hreaderTts && window.__hreaderTts.highlight(${range.start},${range.endExclusive});"
+        }
+        webView.evaluateJavascript(script, null)
+    }
+
+    @Suppress("DEPRECATION")
+    fun requestSpeechPosition(webView: ReaderWebView, x: Float, y: Float) {
+        if (!currentSpeechInteractionEnabled.value || !webView.contentLayoutReady || webView.isReleased) return
+        when (webView.hitTestResult.type) {
+            WebView.HitTestResult.ANCHOR_TYPE,
+            WebView.HitTestResult.SRC_ANCHOR_TYPE,
+            WebView.HitTestResult.IMAGE_TYPE,
+            WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE -> return
+        }
+        val cssX = x / density
+        val cssY = y / density
+        webView.evaluateJavascript(
+            "window.__hreaderTts && window.__hreaderTts.positionAt($cssX,$cssY);"
+        ) { result ->
+            result.toJavascriptInt()?.let { currentOnSpeechPosition.value?.invoke(it) }
+        }
+    }
 
     if (renderProcessError) {
         ReaderWebViewError(
@@ -148,7 +208,11 @@ internal fun ArticleWebView(
                         }
                         allowScroll = currentScrollEnabled.value
                         settings.hardenArticleContent()
+                        settings.javaScriptEnabled = currentSpeechInteractionEnabled.value
                         settings.defaultFontSize = 16
+                        val readerView = this
+                        readerView.onSpeechTap = { x, y -> requestSpeechPosition(readerView, x, y) }
+                        readerView.onReadFromSelection = currentOnReadFromSelection.value
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         isVerticalScrollBarEnabled = false
                         isHorizontalScrollBarEnabled = false
@@ -224,6 +288,7 @@ internal fun ArticleWebView(
                                         }
                                     }
                                     updateScrollProgress(readerView)
+                                    applySpeechHighlight(readerView)
                                 }
                             }
                         }
@@ -257,6 +322,7 @@ internal fun ArticleWebView(
                             if (v is ReaderWebView) updateScrollProgress(v)
                         }
                         setOnLongClickListener { v: View ->
+                            val readerView = v as? ReaderWebView
                             val result = (v as? WebView)?.hitTestResult
                             if (result != null) {
                                 val type = result.type
@@ -265,11 +331,16 @@ internal fun ArticleWebView(
                                 ) {
                                     val url = result.extra
                                     if (!url.isNullOrBlank()) {
+                                        readerView?.speechSelectionActionEnabled = false
+                                        readerView?.suppressNextClick = true
                                         currentOnImageLongClick.value?.invoke(url)
                                         return@setOnLongClickListener true
                                     }
                                 }
                             }
+                            readerView?.speechSelectionActionEnabled =
+                                currentSpeechInteractionEnabled.value
+                            readerView?.suppressNextClick = true
                             false
                         }
                     }
@@ -279,6 +350,8 @@ internal fun ArticleWebView(
                     // were downloaded. Whatever is left points at the network, and offline every one of
                     // those costs a connect timeout before the page settles.
                     webView.settings.blockNetworkLoads = !allowNetworkLoads
+                    webView.settings.javaScriptEnabled = currentSpeechInteractionEnabled.value
+                    webView.onReadFromSelection = currentOnReadFromSelection.value
                     val textZoom = (textScale.coerceIn(0.85f, 1.35f) * 100).roundToInt()
                     if (webView.settings.textZoom != textZoom) {
                         webView.settings.textZoom = textZoom
@@ -332,6 +405,7 @@ internal fun ArticleWebView(
                         loadedBaseUrl.value = baseUrl
                         webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
                     }
+                    applySpeechHighlight(webView)
                 },
                 onRelease = { webView ->
                     scrollController?.detach(webView)
@@ -349,14 +423,17 @@ private fun articleHtml(
     linkColorHex: String,
     codeBg: String,
     ruleColor: String,
+    speechHighlightHex: String,
+    speechHighlightTextHex: String,
     contentTopInsetCssPx: Float
 ): String = """
     <!DOCTYPE html>
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; font-src http: https: data:;">
         <style>
-            :root { --text:$textColorHex; --link:$linkColorHex; --code:$codeBg; --rule:$ruleColor; }
+            :root { --text:$textColorHex; --link:$linkColorHex; --code:$codeBg; --rule:$ruleColor; --speech-highlight:$speechHighlightHex; --speech-highlight-text:$speechHighlightTextHex; }
             body { font-family: system-ui,-apple-system,Roboto,sans-serif; font-size:16px; line-height:1.6; margin:0; padding:${contentTopInsetCssPx}px 0 32px 0; color:var(--text); background:transparent; }
             h1,h2,h3 { line-height:1.25; margin:1.4em 0 .6em; }
             h1 { font-size:1.5em; }
@@ -372,8 +449,122 @@ private fun articleHtml(
             th,td { border:1px solid var(--rule); padding:6px 8px; text-align:left; }
             ul,ol { padding-left:1.25em; }
             hr { border:none; height:1px; background:var(--rule); margin:32px 0; }
+            .tts-current { background:var(--speech-highlight); color:var(--speech-highlight-text); border-radius:.55em; box-shadow:0 0 0 .12em var(--speech-highlight); box-decoration-break:clone; -webkit-box-decoration-break:clone; }
         </style>
+        <script>
+            window.__hreaderTts = (() => {
+                const markerSelector = '[data-hreader-tts-start]';
+
+                const markerFor = node => {
+                    if (!node) return null;
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        return node.parentElement ? node.parentElement.closest(markerSelector) : null;
+                    }
+                    return node.nodeType === Node.ELEMENT_NODE ? node.closest(markerSelector) : null;
+                };
+
+                const positionInMarker = (node, offset) => {
+                    const marker = markerFor(node);
+                    if (!marker) return null;
+                    let prefix = '';
+                    try {
+                        const range = document.createRange();
+                        range.selectNodeContents(marker);
+                        range.setEnd(node, Math.max(0, offset));
+                        prefix = range.toString();
+                    } catch (_) {
+                        return null;
+                    }
+                    const rawMarker = marker.textContent || '';
+                    const leadingWhitespace = /^\s/.test(rawMarker) ? 1 : 0;
+                    const relative = Math.max(0, prefix.replace(/\s+/g, ' ').length - leadingWhitespace);
+                    const start = Number(marker.dataset.hreaderTtsStart);
+                    const end = Number(marker.dataset.hreaderTtsEnd);
+                    return Math.max(start, Math.min(end, start + relative));
+                };
+
+                const positionForBoundary = (node, offset) => {
+                    const direct = positionInMarker(node, offset);
+                    if (direct !== null) return direct;
+                    if (!node || !node.childNodes || node.childNodes.length === 0) return null;
+                    const boundary = Math.max(0, Math.min(offset, node.childNodes.length));
+                    for (let index = boundary; index < node.childNodes.length; index += 1) {
+                        const nextPosition = positionForBoundary(node.childNodes[index], 0);
+                        if (nextPosition !== null) return nextPosition;
+                    }
+                    for (let index = boundary - 1; index >= 0; index -= 1) {
+                        const previous = node.childNodes[index];
+                        const previousOffset = previous.nodeType === Node.TEXT_NODE
+                            ? previous.nodeValue.length
+                            : previous.childNodes.length;
+                        const previousPosition = positionForBoundary(previous, previousOffset);
+                        if (previousPosition !== null) return previousPosition;
+                    }
+                    return null;
+                };
+
+                const nearestMarker = (x, y) => {
+                    let closest = null;
+                    let closestDistance = Number.POSITIVE_INFINITY;
+                    document.querySelectorAll(markerSelector).forEach(marker => {
+                        const rect = marker.getBoundingClientRect();
+                        const horizontal = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
+                        const vertical = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
+                        const distance = horizontal + vertical;
+                        if (distance < closestDistance) {
+                            closest = marker;
+                            closestDistance = distance;
+                        }
+                    });
+                    return closest ? Number(closest.dataset.hreaderTtsStart) : null;
+                };
+
+                const positionAt = (x, y) => {
+                    let range = null;
+                    if (document.caretRangeFromPoint) {
+                        range = document.caretRangeFromPoint(x, y);
+                    } else if (document.caretPositionFromPoint) {
+                        const caret = document.caretPositionFromPoint(x, y);
+                        const position = caret
+                            ? positionForBoundary(caret.offsetNode, caret.offset)
+                            : null;
+                        if (position !== null) return position;
+                    }
+                    const position = range
+                        ? positionForBoundary(range.startContainer, range.startOffset)
+                        : null;
+                    if (position !== null) return position;
+                    return nearestMarker(x, y);
+                };
+
+                const selectionStart = () => {
+                    const selection = window.getSelection();
+                    if (!selection || selection.rangeCount === 0) return null;
+                    const range = selection.getRangeAt(0);
+                    return positionForBoundary(range.startContainer, range.startOffset);
+                };
+
+                const highlight = (start, end) => {
+                    const left = Number(start);
+                    const right = Number(end);
+                    document.querySelectorAll(markerSelector).forEach(marker => {
+                        const markerStart = Number(marker.dataset.hreaderTtsStart);
+                        const markerEnd = Number(marker.dataset.hreaderTtsEnd);
+                        marker.classList.toggle('tts-current', left < markerEnd && right > markerStart);
+                    });
+                };
+
+                const clear = () => {
+                    document.querySelectorAll('.tts-current').forEach(marker => marker.classList.remove('tts-current'));
+                };
+
+                return { positionAt, selectionStart, highlight, clear };
+            })();
+        </script>
     </head>
     <body>$body</body>
     </html>
 """.trimIndent()
+
+private fun String.toJavascriptInt(): Int? =
+    trim().removeSurrounding("\"").toDoubleOrNull()?.toInt()

@@ -54,6 +54,7 @@ import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
+import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
@@ -61,6 +62,7 @@ import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
@@ -133,6 +135,19 @@ fun ArticleScreen(
     var temporaryTtsModel by remember { mutableStateOf<TtsModel?>(null) }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
+    fun startSpeech(entry: Entry, startOffset: Int = 0) {
+        val html = viewModel.getContentForEntry(entry.id)?.takeIf(::hasReadableArticleText) ?: return
+        requestNotificationPermission {
+            ttsController.play(
+                articleId = entry.id,
+                title = entry.title,
+                html = html,
+                modelOverride = temporaryTtsModel,
+                startOffset = startOffset
+            )
+        }
+    }
+
     LaunchedEffect(feedId, startArticleId, includeRead, sessionStartMillis) {
         viewModel.openList(feedId, startArticleId, includeRead, sessionStartMillis)
     }
@@ -163,7 +178,7 @@ fun ArticleScreen(
         snapshotFlow { pagerState.settledPage }.collect { page ->
             val entry = viewModel.uiState.value.entries.getOrNull(page) ?: return@collect
             if (ttsController.state.value.articleId?.let { it != entry.id } == true) {
-                ttsController.pause()
+                ttsController.stop()
             }
             if (!entry.isRead) {
                 viewModel.updateReadStatus(page, true)
@@ -300,7 +315,18 @@ fun ArticleScreen(
                         credibilityEnabled = uiState.credibilityEnabled,
                         credibilityReports = uiState.credibilityReports,
                         analyzingCredibilityIds = uiState.analyzingCredibilityIds,
-                        onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) }
+                        onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) },
+                        ttsState = ttsState,
+                        onSpeechPosition = { entryId, offset ->
+                            if (ttsController.state.value.articleId == entryId) {
+                                ttsController.seekTo(offset)
+                            }
+                        },
+                        onReadFromSelection = { entryId, offset ->
+                            viewModel.uiState.value.entries.find { it.id == entryId }?.let { entry ->
+                                startSpeech(entry, offset)
+                            }
+                        }
                     )
                 }
             }
@@ -379,18 +405,19 @@ fun ArticleScreen(
                                 contentLoadFinished = contentLoadFinished
                             )
                         }
+                        val activeTtsState = ttsState.takeIf { it.articleId == entry.id }
                         ArticleBottomActionBar(
                             modifier = Modifier.onSizeChanged { size ->
                                 if (bottomActionBarHeightPx != size.height) {
                                     bottomActionBarHeightPx = size.height
                                 }
                             },
-                            state = ttsState,
+                            state = activeTtsState ?: ArticleTtsState(),
                             temporaryModel = temporaryTtsModel,
                             configuredModel = configuredTtsModel,
                             modelStatuses = ttsModelStatuses,
                             onTemporaryModelChange = { model ->
-                                if (ttsState.articleId != null) ttsController.stop()
+                                if (activeTtsState != null) ttsController.stop()
                                 temporaryTtsModel = model
                             },
                             entryUrl = entry.url.takeIf(String::isNotBlank),
@@ -398,21 +425,10 @@ fun ArticleScreen(
                             canUsePaywallBypass = entry.url.isNotBlank() &&
                                 !paywallBypassService.isPaywallBypassUrl(entry.url),
                             onToggleSpeech = {
-                                if (ttsState.articleId != null) {
+                                if (activeTtsState != null) {
                                     ttsController.stop()
                                 } else if (ttsContentState == ArticleTtsContentState.AVAILABLE) {
-                                    requestNotificationPermission {
-                                        viewModel.getContentForEntry(entry.id)
-                                            ?.takeIf(::hasReadableArticleText)
-                                            ?.let { html ->
-                                                ttsController.play(
-                                                    articleId = entry.id,
-                                                    title = entry.title,
-                                                    html = html,
-                                                    modelOverride = temporaryTtsModel
-                                                )
-                                            }
-                                    }
+                                    startSpeech(entry)
                                 }
                             },
                             onPauseSpeech = ttsController::pause,

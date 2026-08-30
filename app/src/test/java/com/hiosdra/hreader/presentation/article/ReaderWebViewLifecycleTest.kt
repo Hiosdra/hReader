@@ -68,6 +68,38 @@ class ReaderWebViewLifecycleTest {
     }
 
     @Test
+    fun `a simple tap reports its coordinates for speech seeking`() {
+        val webView = createWebView()
+        var tap: Pair<Float, Float>? = null
+        webView.onSpeechTap = { x, y -> tap = x to y }
+        try {
+            dispatch(webView, MotionEvent.ACTION_DOWN, 40f, 80f)
+            dispatch(webView, MotionEvent.ACTION_UP, 40f, 80f)
+
+            assertEquals(40f to 80f, tap)
+        } finally {
+            webView.releaseResources()
+        }
+    }
+
+    @Test
+    fun `long press does not dispatch a speech tap when selection starts`() {
+        val webView = createWebView()
+        var tapCount = 0
+        webView.onSpeechTap = { _, _ -> tapCount += 1 }
+        try {
+            dispatch(webView, MotionEvent.ACTION_DOWN, 40f, 80f)
+            webView.speechSelectionActionEnabled = true
+            webView.suppressNextClick = true
+            dispatch(webView, MotionEvent.ACTION_UP, 40f, 80f)
+
+            assertEquals(0, tapCount)
+        } finally {
+            webView.releaseResources()
+        }
+    }
+
+    @Test
     fun `posted work and controller movement stop after release`() {
         val webView = createWebView()
         val controller = ArticleWebViewScrollController()

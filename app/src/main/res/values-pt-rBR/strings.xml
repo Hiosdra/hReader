@@ -87,6 +87,7 @@
     <string name="article_web_unavailable_offline">Modo Web indisponível offline</string>
     <string name="article_stop_reading">Parar leitura</string>
     <string name="article_read_aloud">Ler em voz alta</string>
+    <string name="article_read_from_here">Ler a partir daqui</string>
     <string name="article_read_aloud_unavailable">A leitura em voz alta não está disponível porque este artigo não tem texto legível.</string>
     <string name="article_tts_model">Voz: %1$s</string>
     <string name="article_tts_model_use_settings">Usar configuração (%1$s)</string>

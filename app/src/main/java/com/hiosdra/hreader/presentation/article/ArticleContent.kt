@@ -57,6 +57,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.tts.TtsTextRange
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
@@ -104,7 +105,11 @@ internal fun ArticleContent(
     credibilityEnabled: Boolean = false,
     credibilityReport: CredibilityReport? = null,
     isAnalyzingCredibility: Boolean = false,
-    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
+    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null,
+    speechInteractionEnabled: Boolean = false,
+    speechRange: TtsTextRange? = null,
+    onSpeechPosition: ((Int) -> Unit)? = null,
+    onReadFromSelection: ((Int) -> Unit)? = null
 ) {
     val locale = LocalLocale.current.platformLocale
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
@@ -372,6 +377,11 @@ internal fun ArticleContent(
                         },
                         onLinkClick = onArticleLinkClick,
                         onImageLongClick = { url -> imageActionsUrl = url },
+                        articleTitle = entry.title,
+                        speechInteractionEnabled = speechInteractionEnabled,
+                        speechRange = speechRange,
+                        onSpeechPosition = onSpeechPosition,
+                        onReadFromSelection = onReadFromSelection,
                         readerPreferences = readerPreferences,
                         remoteResourcePolicy = remoteResourcePolicy
                     )
@@ -424,6 +434,11 @@ internal fun ArticleContent(
                         },
                         onLinkClick = onArticleLinkClick,
                         onImageLongClick = { url -> imageActionsUrl = url },
+                        articleTitle = entry.title,
+                        speechInteractionEnabled = speechInteractionEnabled,
+                        speechRange = speechRange,
+                        onSpeechPosition = onSpeechPosition,
+                        onReadFromSelection = onReadFromSelection,
                         readerPreferences = readerPreferences,
                         remoteResourcePolicy = remoteResourcePolicy
                     )

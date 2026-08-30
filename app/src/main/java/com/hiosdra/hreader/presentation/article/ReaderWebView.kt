@@ -1,8 +1,13 @@
 package com.hiosdra.hreader.presentation.article
 
 import android.content.Context
+import android.graphics.Rect
 import android.os.SystemClock
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -26,6 +31,7 @@ import kotlin.math.roundToInt
 private const val CONTENT_HEIGHT_UPDATE_ATTEMPTS = 12
 private const val CONTENT_HEIGHT_UPDATE_DELAY_MS = 100L
 private const val CONTENT_HEIGHT_STABLE_SAMPLES = 2
+private const val READ_FROM_SELECTION_MENU_ID = 0x48525453
 
 internal enum class ReaderGestureDirection {
     Horizontal,
@@ -206,11 +212,18 @@ internal class ReaderWebView(context: Context) : WebView(context) {
     private var initialTouchY = 0f
     private var touchInProgress = false
     private var pagerGestureDirection: ReaderGestureDirection? = null
+    private var lastClickX = 0f
+    private var lastClickY = 0f
+    private var dispatchSpeechTapOnClick = false
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
 
     internal var loadedContentTopInsetPx: Int = 0
     internal var pageLoadRestoreScrollY: Int = 0
     internal var contentLayoutReady: Boolean = false
+    internal var onSpeechTap: ((Float, Float) -> Unit)? = null
+    internal var onReadFromSelection: ((Int) -> Unit)? = null
+    internal var speechSelectionActionEnabled: Boolean = false
+    internal var suppressNextClick: Boolean = false
 
     var allowScroll: Boolean = true
     var protectVerticalScrollFromPager: Boolean = false
@@ -299,6 +312,10 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         cancelContentHeightUpdates()
         setOnScrollChangeListener(null)
         setOnLongClickListener(null)
+        onSpeechTap = null
+        onReadFromSelection = null
+        speechSelectionActionEnabled = false
+        suppressNextClick = false
         webViewClient = WebViewClient()
         webChromeClient = null
     }
@@ -315,6 +332,8 @@ internal class ReaderWebView(context: Context) : WebView(context) {
                 initialTouchY = event.y
                 touchInProgress = true
                 pagerGestureDirection = null
+                speechSelectionActionEnabled = false
+                suppressNextClick = false
                 parent?.requestDisallowInterceptTouchEvent(protectVerticalScrollFromPager)
             }
             MotionEvent.ACTION_MOVE -> {
@@ -341,7 +360,12 @@ internal class ReaderWebView(context: Context) : WebView(context) {
                 clearTouchState()
             }
         }
-        if (clickDetected) performClick()
+        if (clickDetected) {
+            lastClickX = event.x
+            lastClickY = event.y
+            dispatchSpeechTapOnClick = true
+            performClick()
+        }
         return handled
     }
 
@@ -352,7 +376,32 @@ internal class ReaderWebView(context: Context) : WebView(context) {
 
     override fun performClick(): Boolean {
         super.performClick()
+        if (dispatchSpeechTapOnClick && !suppressNextClick) {
+            onSpeechTap?.invoke(lastClickX, lastClickY)
+        }
+        dispatchSpeechTapOnClick = false
+        suppressNextClick = false
         return true
+    }
+
+    override fun startActionMode(callback: ActionMode.Callback): ActionMode? =
+        startActionMode(callback, ActionMode.TYPE_PRIMARY)
+
+    override fun startActionMode(callback: ActionMode.Callback, type: Int): ActionMode? {
+        val selectionCallback = onReadFromSelection
+        val wrappedCallback = if (speechSelectionActionEnabled && selectionCallback != null) {
+            SpeechSelectionActionModeCallback(this, callback, selectionCallback)
+        } else {
+            callback
+        }
+        return super.startActionMode(wrappedCallback, type)
+    }
+
+    internal fun requestSelectedSpeechOffset(onOffset: (Int) -> Unit) {
+        if (!speechSelectionActionEnabled || !settings.javaScriptEnabled || !contentLayoutReady || isReleased) return
+        evaluateJavascript("window.__hreaderTts && window.__hreaderTts.selectionStart()") { result ->
+            result.toJavascriptInt()?.let(onOffset)
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -371,3 +420,54 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         super.scrollBy(x, if (allowScroll) y else 0)
     }
 }
+
+private class SpeechSelectionActionModeCallback(
+    private val webView: ReaderWebView,
+    private val delegate: ActionMode.Callback,
+    private val onReadFromSelection: (Int) -> Unit
+) : ActionMode.Callback2() {
+    override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+        val created = delegate.onCreateActionMode(mode, menu)
+        if (created) addReadAction(menu)
+        return created
+    }
+
+    override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean {
+        val prepared = delegate.onPrepareActionMode(mode, menu)
+        addReadAction(menu)
+        return prepared
+    }
+
+    override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+        if (item.itemId == READ_FROM_SELECTION_MENU_ID) {
+            webView.requestSelectedSpeechOffset { offset ->
+                onReadFromSelection(offset)
+                mode.finish()
+            }
+            return true
+        }
+        return delegate.onActionItemClicked(mode, item)
+    }
+
+    override fun onDestroyActionMode(mode: ActionMode) {
+        delegate.onDestroyActionMode(mode)
+        webView.speechSelectionActionEnabled = false
+    }
+
+    override fun onGetContentRect(mode: ActionMode, view: View, outRect: Rect) {
+        (delegate as? ActionMode.Callback2)?.onGetContentRect(mode, view, outRect)
+    }
+
+    private fun addReadAction(menu: Menu) {
+        if (menu.findItem(READ_FROM_SELECTION_MENU_ID) != null) return
+        menu.add(
+            Menu.NONE,
+            READ_FROM_SELECTION_MENU_ID,
+            Menu.NONE,
+            webView.context.getString(R.string.article_read_from_here)
+        ).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+    }
+}
+
+private fun String.toJavascriptInt(): Int? =
+    trim().removeSurrounding("\"").toDoubleOrNull()?.toInt()
