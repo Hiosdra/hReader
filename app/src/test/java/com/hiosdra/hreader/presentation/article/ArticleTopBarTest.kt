@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -74,10 +75,61 @@ class ArticleTopBarTest {
         assertEquals(1, increases.get())
     }
 
+    @Test
+    fun `overflow menu exposes read aloud action`() {
+        val starts = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        setContent(
+            ttsContentState = ArticleTtsContentState.AVAILABLE,
+            onInvokeTts = { starts.incrementAndGet() }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.article_read_aloud))
+            .performClick()
+
+        assertEquals(1, starts.get())
+    }
+
+    @Test
+    fun `active tts opens the player from the overflow menu`() {
+        val invocations = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        setContent(
+            ttsContentState = ArticleTtsContentState.AVAILABLE,
+            isTtsActive = true,
+            onInvokeTts = { invocations.incrementAndGet() }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.article_open_tts_player))
+            .performClick()
+
+        assertEquals(1, invocations.get())
+    }
+
+    @Test
+    fun `overflow menu keeps read aloud disabled without article text`() {
+        val context = RuntimeEnvironment.getApplication()
+        setContent(
+            ttsContentState = ArticleTtsContentState.UNAVAILABLE
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.article_read_aloud_unavailable))
+            .assertIsNotEnabled()
+    }
+
     private fun setContent(
         canUseWebView: Boolean = false,
         onToggleWebView: () -> Unit = {},
-        onIncreaseTextScale: () -> Unit = {}
+        onIncreaseTextScale: () -> Unit = {},
+        ttsContentState: ArticleTtsContentState? = null,
+        isTtsActive: Boolean = false,
+        onInvokeTts: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             HReaderTheme {
@@ -96,7 +148,10 @@ class ArticleTopBarTest {
                     onToggleRead = {},
                     onBack = {},
                     onToggleWebView = onToggleWebView,
-                    onShare = {}
+                    onShare = {},
+                    ttsContentState = ttsContentState,
+                    isTtsActive = isTtsActive,
+                    onInvokeTts = onInvokeTts
                 )
             }
         }

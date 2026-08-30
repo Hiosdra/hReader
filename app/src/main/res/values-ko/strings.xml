@@ -87,6 +87,7 @@
     <string name="article_web_unavailable_offline">오프라인에서는 웹 모드를 사용할 수 없습니다</string>
     <string name="article_stop_reading">읽기 중지</string>
     <string name="article_read_aloud">소리 내어 읽기</string>
+    <string name="article_open_tts_player">플레이어 열기</string>
     <string name="article_read_aloud_unavailable">이 기사에 읽을 수 있는 텍스트가 없어 소리 내어 읽기를 사용할 수 없습니다.</string>
     <string name="article_tts_model">음성: %1$s</string>
     <string name="article_tts_model_use_settings">설정 사용(%1$s)</string>

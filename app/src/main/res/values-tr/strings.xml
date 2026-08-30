@@ -87,6 +87,7 @@
     <string name="article_web_unavailable_offline">Web modu çevrimdışıyken kullanılamaz</string>
     <string name="article_stop_reading">Okumayı durdur</string>
     <string name="article_read_aloud">Sesli oku</string>
+    <string name="article_open_tts_player">Oynatıcıyı aç</string>
     <string name="article_read_aloud_unavailable">Bu makalede okunabilir metin olmadığı için sesli okuma kullanılamıyor.</string>
     <string name="article_tts_model">Ses: %1$s</string>
     <string name="article_tts_model_use_settings">Ayarları kullan (%1$s)</string>

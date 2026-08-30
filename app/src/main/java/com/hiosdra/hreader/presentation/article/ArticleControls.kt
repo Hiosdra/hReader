@@ -17,12 +17,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -35,11 +32,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,15 +53,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
-import com.hiosdra.hreader.core.application.tts.TtsModel
-import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
-import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 import kotlin.math.roundToInt
-import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,7 +75,10 @@ internal fun ArticleTopBar(
     onToggleRead: () -> Unit,
     onBack: () -> Unit,
     onToggleWebView: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    ttsContentState: ArticleTtsContentState? = null,
+    isTtsActive: Boolean = false,
+    onInvokeTts: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -141,6 +134,17 @@ internal fun ArticleTopBar(
                         .clip(MaterialTheme.shapes.small)
                         .background(MaterialTheme.colorScheme.surfaceContainer)
                 ) {
+                    ttsContentState?.let { contentState ->
+                        ArticleTtsMenuItem(
+                            isTtsActive = isTtsActive,
+                            contentState = contentState,
+                            onClick = {
+                                overflowExpanded.value = false
+                                onInvokeTts()
+                            }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
                     if (entryUrl != null) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_share)) },
@@ -194,6 +198,28 @@ internal fun ArticleTopBar(
         colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
+    )
+}
+
+@Composable
+private fun ArticleTtsMenuItem(
+    isTtsActive: Boolean,
+    contentState: ArticleTtsContentState,
+    onClick: () -> Unit
+) {
+    val (label, enabled) = when {
+        isTtsActive -> R.string.article_open_tts_player to true
+        contentState == ArticleTtsContentState.LOADING -> R.string.article_missing_content to false
+        contentState == ArticleTtsContentState.UNAVAILABLE -> R.string.article_read_aloud_unavailable to false
+        else -> R.string.article_read_aloud to true
+    }
+    DropdownMenuItem(
+        text = { Text(stringResource(label)) },
+        onClick = onClick,
+        enabled = enabled,
+        leadingIcon = {
+            Icon(Icons.Filled.PlayArrow, contentDescription = null)
+        }
     )
 }
 
@@ -324,23 +350,13 @@ private fun ReaderModeOption(
 }
 
 @Composable
-internal fun ArticleBottomActionBar(
+internal fun ArticleBottomLinkBar(
     modifier: Modifier = Modifier,
-    state: ArticleTtsState,
-    temporaryModel: TtsModel?,
-    configuredModel: TtsModel,
-    modelStatuses: Map<TtsModel, TtsModelStatus>,
-    onTemporaryModelChange: (TtsModel?) -> Unit,
     entryUrl: String?,
     isOnline: Boolean,
     canUsePaywallBypass: Boolean,
-    onToggleSpeech: () -> Unit,
-    onPauseSpeech: () -> Unit,
-    onResumeSpeech: () -> Unit,
     onOpenInChrome: () -> Unit,
-    onBypassPaywall: () -> Unit,
-    contentState: ArticleTtsContentState = ArticleTtsContentState.AVAILABLE,
-    onRetryContent: () -> Unit = {}
+    onBypassPaywall: () -> Unit
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -349,206 +365,31 @@ internal fun ArticleBottomActionBar(
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
         ) {
-            if (state.articleId != null) {
-                ArticleTtsDetails(
-                    state = state,
-                    onPause = onPauseSpeech,
-                    onResume = onResumeSpeech
-                )
-            }
-            if (state.articleId == null && contentState != ArticleTtsContentState.AVAILABLE) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(
-                            if (contentState == ArticleTtsContentState.LOADING) {
-                                R.string.article_missing_content
-                            } else {
-                                R.string.article_read_aloud_unavailable
-                            }
-                        ),
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (contentState == ArticleTtsContentState.UNAVAILABLE) {
-                        TextButton(onClick = onRetryContent) {
-                            Text(stringResource(R.string.action_retry))
-                        }
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ArticleTtsModelSelector(
-                    modifier = Modifier.weight(1f),
-                    temporaryModel = temporaryModel,
-                    configuredModel = configuredModel,
-                    modelStatuses = modelStatuses,
-                    onTemporaryModelChange = onTemporaryModelChange
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                IconButton(
-                    onClick = onToggleSpeech,
-                    enabled = state.articleId != null || contentState == ArticleTtsContentState.AVAILABLE
-                ) {
+            if (entryUrl != null) {
+                IconButton(onClick = onOpenInChrome, enabled = isOnline) {
                     Icon(
-                        imageVector = if (state.articleId != null) {
-                            Icons.Filled.Close
-                        } else {
-                            Icons.Filled.PlayArrow
-                        },
-                        contentDescription = if (state.articleId != null) {
-                            stringResource(R.string.article_stop_reading)
-                        } else if (contentState == ArticleTtsContentState.LOADING) {
-                            stringResource(R.string.article_missing_content)
-                        } else if (contentState == ArticleTtsContentState.UNAVAILABLE) {
-                            stringResource(R.string.article_read_aloud_unavailable)
-                        } else {
-                            stringResource(R.string.article_read_aloud)
-                        }
+                        painter = painterResource(id = R.drawable.ic_chrome_logo),
+                        contentDescription = stringResource(R.string.article_open_original_in_chrome),
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                if (entryUrl != null) {
-                    IconButton(onClick = onOpenInChrome, enabled = isOnline) {
+                if (canUsePaywallBypass) {
+                    IconButton(onClick = onBypassPaywall, enabled = isOnline) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_chrome_logo),
-                            contentDescription = stringResource(R.string.article_open_original_in_chrome),
+                            Icons.Filled.Lock,
+                            contentDescription = stringResource(R.string.article_open_through_paywall_bypass),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    if (canUsePaywallBypass) {
-                        IconButton(onClick = onBypassPaywall, enabled = isOnline) {
-                            Icon(
-                                Icons.Filled.Lock,
-                                contentDescription = stringResource(R.string.article_open_through_paywall_bypass),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ArticleTtsModelSelector(
-    modifier: Modifier,
-    temporaryModel: TtsModel?,
-    configuredModel: TtsModel,
-    modelStatuses: Map<TtsModel, TtsModelStatus>,
-    onTemporaryModelChange: (TtsModel?) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedModel = temporaryModel ?: configuredModel
-    val availableModels = TtsModelCatalog.models.filter {
-        modelStatuses[it] == TtsModelStatus.Available
-    }
-    val selectedModelName = stringResource(selectedModel.displayNameRes)
-
-    Box(modifier = modifier) {
-        TextButton(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { expanded = true }
-        ) {
-            Text(
-                text = stringResource(R.string.article_tts_model, selectedModelName),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            val settingsLabel = stringResource(
-                R.string.article_tts_model_use_settings,
-                stringResource(configuredModel.displayNameRes)
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        if (temporaryModel == null) {
-                            stringResource(R.string.tts_voice_selected, settingsLabel)
-                        } else {
-                            settingsLabel
-                        }
-                    )
-                },
-                onClick = {
-                    onTemporaryModelChange(null)
-                    expanded = false
-                }
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            availableModels.forEach { model ->
-                val modelName = stringResource(model.displayNameRes)
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            if (temporaryModel == model) {
-                                stringResource(R.string.tts_voice_selected, modelName)
-                            } else {
-                                modelName
-                            }
-                        )
-                    },
-                    onClick = {
-                        onTemporaryModelChange(model)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArticleTtsDetails(
-    state: ArticleTtsState,
-    onPause: () -> Unit,
-    onResume: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = if (state.isPreparing) stringResource(R.string.article_preparing_voice) else state.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = state.error ?: state.model?.let { stringResource(it.displayNameRes) }.orEmpty(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            LinearProgressIndicator(
-                progress = { state.progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
-            )
-        }
-        TextButton(onClick = if (state.isPaused) onResume else onPause) {
-            Text(stringResource(if (state.isPaused) R.string.article_resume else R.string.article_pause))
         }
     }
 }

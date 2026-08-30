@@ -87,6 +87,7 @@
     <string name="article_web_unavailable_offline">El modo web no está disponible sin conexión</string>
     <string name="article_stop_reading">Detener lectura</string>
     <string name="article_read_aloud">Leer en voz alta</string>
+    <string name="article_open_tts_player">Abrir reproductor</string>
     <string name="article_read_aloud_unavailable">La lectura en voz alta no está disponible porque este artículo no tiene texto legible.</string>
     <string name="article_tts_model">Voz: %1$s</string>
     <string name="article_tts_model_use_settings">Usar configuración (%1$s)</string>
