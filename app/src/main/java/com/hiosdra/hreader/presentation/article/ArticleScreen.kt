@@ -11,11 +11,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,7 +43,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import coil3.ImageLoader as CoilImageLoader
@@ -61,6 +58,7 @@ import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
@@ -69,7 +67,6 @@ import com.hiosdra.hreader.presentation.text.resolve
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 import com.hiosdra.hreader.R
 import kotlin.math.roundToInt
-import kotlinx.coroutines.flow.first
 
 internal const val MIN_ARTICLE_TEXT_SCALE = 0.85f
 internal const val MAX_ARTICLE_TEXT_SCALE = 1.35f
@@ -131,6 +128,8 @@ fun ArticleScreen(
     val ttsModelStatuses by ttsModelManager.statuses.collectAsStateWithLifecycle()
     val configuredTtsModel = ttsPreferences.getTtsModel()
     var temporaryTtsModel by remember { mutableStateOf<TtsModel?>(null) }
+    var ttsPlayerSheetVisible by rememberSaveable { mutableStateOf(false) }
+    var ttsMiniPlayerHeightPx by remember { mutableIntStateOf(0) }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
     LaunchedEffect(feedId, startArticleId, includeRead, sessionStartMillis) {
@@ -195,6 +194,26 @@ fun ArticleScreen(
             )
         }
     }
+    val ttsPlayerContent = ttsState.articleId?.let(viewModel::getContentForEntry)
+    val ttsPlayerContentLoadFinished = ttsState.articleId?.let { articleId ->
+        articleId in uiState.content || articleId in uiState.partialContentIds
+    } == true
+    val ttsPlayerContentState = if (ttsState.articleId == null) {
+        null
+    } else {
+        remember(ttsState.articleId, ttsPlayerContent, ttsPlayerContentLoadFinished) {
+            articleTtsContentState(
+                content = ttsPlayerContent,
+                contentLoadFinished = ttsPlayerContentLoadFinished
+            )
+        }
+    }
+    LaunchedEffect(ttsState.articleId) {
+        if (ttsState.articleId == null) {
+            ttsPlayerSheetVisible = false
+            ttsMiniPlayerHeightPx = 0
+        }
+    }
     var bottomActionBarHeightPx by remember { mutableIntStateOf(0) }
     LaunchedEffect(currentEntry?.url) {
         if (currentEntry?.url.isNullOrBlank()) bottomActionBarHeightPx = 0
@@ -204,12 +223,44 @@ fun ArticleScreen(
     } else {
         with(LocalDensity.current) { bottomActionBarHeightPx.toDp() }
     }
+    val ttsMiniPlayerHeight = with(LocalDensity.current) { ttsMiniPlayerHeightPx.toDp() }
+    val articleBottomContentPadding = bottomActionBarHeight + if (ttsState.articleId != null) {
+        ttsMiniPlayerHeight + 16.dp
+    } else {
+        0.dp
+    }
+    val playArticleTts: (Entry) -> Unit = { entry ->
+        requestNotificationPermission {
+            viewModel.getContentForEntry(entry.id)
+                ?.takeIf(::hasReadableArticleText)
+                ?.let { html ->
+                    ttsController.play(
+                        articleId = entry.id,
+                        title = entry.title,
+                        html = html,
+                        modelOverride = temporaryTtsModel
+                    )
+                }
+        }
+    }
+    val retryTts = {
+        ttsState.articleId
+            ?.let { articleId -> uiState.entries.firstOrNull { it.id == articleId } }
+            ?.let { entry ->
+                if (ttsPlayerContent?.let(::hasReadableArticleText) == true) {
+                    playArticleTts(entry)
+                } else {
+                    viewModel.retryContent(entry.id)
+                }
+            }
+        Unit
+    }
 
     Scaffold(
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.padding(bottom = bottomActionBarHeight)
+                modifier = Modifier.padding(bottom = articleBottomContentPadding)
             )
         },
         topBar = {
@@ -253,38 +304,17 @@ fun ArticleScreen(
                         ctx.startActivity(Intent.createChooser(sendIntent, null))
                     }
                 },
-                ttsState = ttsState,
-                temporaryTtsModel = temporaryTtsModel,
-                configuredTtsModel = configuredTtsModel,
-                ttsModelStatuses = ttsModelStatuses,
                 ttsContentState = ttsContentState,
-                onTemporaryTtsModelChange = { model ->
-                    if (ttsState.articleId != null) ttsController.stop()
-                    temporaryTtsModel = model
-                },
-                onToggleSpeech = {
-                    currentEntry?.let { entry ->
-                        if (ttsState.articleId != null) {
-                            ttsController.stop()
-                        } else if (ttsContentState == ArticleTtsContentState.AVAILABLE) {
-                            requestNotificationPermission {
-                                viewModel.getContentForEntry(entry.id)
-                                    ?.takeIf(::hasReadableArticleText)
-                                    ?.let { html ->
-                                        ttsController.play(
-                                            articleId = entry.id,
-                                            title = entry.title,
-                                            html = html,
-                                            modelOverride = temporaryTtsModel
-                                        )
-                                    }
-                            }
-                        }
+                isTtsActive = ttsState.articleId != null,
+                onInvokeTts = {
+                    if (ttsState.articleId != null) {
+                        ttsPlayerSheetVisible = true
+                    } else {
+                        currentEntry?.takeIf {
+                            ttsContentState == ArticleTtsContentState.AVAILABLE
+                        }?.let { playArticleTts(it) }
                     }
-                },
-                onPauseSpeech = ttsController::pause,
-                onResumeSpeech = ttsController::resume,
-                onRetryContent = { currentEntry?.let { viewModel.retryContent(it.id) } }
+                }
             )
         }
     ) { paddingValues ->
@@ -295,7 +325,7 @@ fun ArticleScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
-                            .padding(bottom = bottomActionBarHeight),
+                            .padding(bottom = articleBottomContentPadding),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
@@ -306,7 +336,7 @@ fun ArticleScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
-                            .padding(bottom = bottomActionBarHeight)
+                            .padding(bottom = articleBottomContentPadding)
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -325,6 +355,7 @@ fun ArticleScreen(
                         isWebViewMode = isWebViewMode,
                         textScale = textScale,
                         paddingValues = paddingValues,
+                        bottomContentPadding = articleBottomContentPadding,
                         getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                         getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                         getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
@@ -354,8 +385,6 @@ fun ArticleScreen(
                 }
             }
 
-            // Errors interrupt reading as little as possible: a modal with a single OK button stopped
-            // the article dead to report something the reader can act on later, or not at all.
             val currentEntryId = uiState.entries.getOrNull(uiState.currentIndex)?.id
 
             uiState.overviewError?.let { error ->
@@ -370,7 +399,6 @@ fun ArticleScreen(
                 )
             }
 
-            // What is missing offline, said out loud rather than left as an empty screen.
             uiState.contentError?.let { message ->
                 if (currentEntryId != null) {
                     ArticleContentErrorBanner(
@@ -378,7 +406,7 @@ fun ArticleScreen(
                         onRetry = { viewModel.retryContent(currentEntryId) },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = bottomActionBarHeight + 8.dp)
+                            .padding(bottom = articleBottomContentPadding + 8.dp)
                             .navigationBarsPadding()
                     )
                 }
@@ -393,6 +421,45 @@ fun ArticleScreen(
                     },
                     onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
                     onDismissed = viewModel::clearScoreError
+                )
+            }
+
+            if (ttsState.articleId != null) {
+                ArticleTtsMiniPlayer(
+                    state = ttsState,
+                    onOpen = { ttsPlayerSheetVisible = true },
+                    onPause = ttsController::pause,
+                    onResume = ttsController::resume,
+                    onStop = ttsController::stop,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = bottomActionBarHeight + 8.dp)
+                        .navigationBarsPadding(),
+                    onSizeChanged = { height ->
+                        if (ttsMiniPlayerHeightPx != height) ttsMiniPlayerHeightPx = height
+                    }
+                )
+            }
+
+            if (ttsPlayerSheetVisible && ttsState.articleId != null) {
+                ArticleTtsPlayerSheet(
+                    state = ttsState,
+                    temporaryModel = temporaryTtsModel,
+                    configuredModel = configuredTtsModel,
+                    modelStatuses = ttsModelStatuses,
+                    contentState = ttsPlayerContentState,
+                    onTemporaryModelChange = { model ->
+                        ttsController.stop()
+                        temporaryTtsModel = model
+                    },
+                    onPause = ttsController::pause,
+                    onResume = ttsController::resume,
+                    onStop = {
+                        ttsPlayerSheetVisible = false
+                        ttsController.stop()
+                    },
+                    onRetry = retryTts,
+                    onDismiss = { ttsPlayerSheetVisible = false }
                 )
             }
 

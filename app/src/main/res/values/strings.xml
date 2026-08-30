@@ -109,6 +109,7 @@
     <string name="article_web_unavailable_offline">Web mode unavailable offline</string>
     <string name="article_stop_reading">Stop reading</string>
     <string name="article_read_aloud">Read aloud</string>
+    <string name="article_open_tts_player">Open player</string>
     <string name="article_read_aloud_unavailable">Read aloud is unavailable because this article has no readable text.</string>
     <string name="article_tts_model">Voice: %1$s</string>
     <string name="article_tts_model_use_settings">Use settings (%1$s)</string>

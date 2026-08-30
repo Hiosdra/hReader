@@ -87,6 +87,7 @@
     <string name="article_web_unavailable_offline">Mode Web indisponible hors connexion</string>
     <string name="article_stop_reading">Arrêter la lecture</string>
     <string name="article_read_aloud">Lire à voix haute</string>
+    <string name="article_open_tts_player">Ouvrir le lecteur</string>
     <string name="article_read_aloud_unavailable">La lecture à voix haute n’est pas disponible, car cet article ne contient aucun texte lisible.</string>
     <string name="article_tts_model">Voix : %1$s</string>
     <string name="article_tts_model_use_settings">Utiliser les réglages (%1$s)</string>

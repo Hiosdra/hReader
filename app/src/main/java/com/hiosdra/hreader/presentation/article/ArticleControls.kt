@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -33,7 +32,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,15 +53,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
-import com.hiosdra.hreader.core.application.tts.TtsModel
-import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
-import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 import kotlin.math.roundToInt
-import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,16 +76,9 @@ internal fun ArticleTopBar(
     onBack: () -> Unit,
     onToggleWebView: () -> Unit,
     onShare: () -> Unit,
-    ttsState: ArticleTtsState = ArticleTtsState(),
-    temporaryTtsModel: TtsModel? = null,
-    configuredTtsModel: TtsModel = TtsModel.ANDROID,
-    ttsModelStatuses: Map<TtsModel, TtsModelStatus> = emptyMap(),
     ttsContentState: ArticleTtsContentState? = null,
-    onTemporaryTtsModelChange: (TtsModel?) -> Unit = {},
-    onToggleSpeech: () -> Unit = {},
-    onPauseSpeech: () -> Unit = {},
-    onResumeSpeech: () -> Unit = {},
-    onRetryContent: () -> Unit = {}
+    isTtsActive: Boolean = false,
+    onInvokeTts: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -149,42 +135,14 @@ internal fun ArticleTopBar(
                         .background(MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     ttsContentState?.let { contentState ->
-                        ArticleTtsToggleMenuItem(
-                            state = ttsState,
+                        ArticleTtsMenuItem(
+                            isTtsActive = isTtsActive,
                             contentState = contentState,
                             onClick = {
                                 overflowExpanded.value = false
-                                onToggleSpeech()
+                                onInvokeTts()
                             }
                         )
-                        ArticleTtsModelMenuItem(
-                            temporaryModel = temporaryTtsModel,
-                            configuredModel = configuredTtsModel,
-                            modelStatuses = ttsModelStatuses,
-                            onTemporaryModelChange = onTemporaryTtsModelChange
-                        )
-                        if (ttsState.articleId != null) {
-                            ArticleTtsPlaybackMenuItem(
-                                state = ttsState,
-                                onPause = {
-                                    overflowExpanded.value = false
-                                    onPauseSpeech()
-                                },
-                                onResume = {
-                                    overflowExpanded.value = false
-                                    onResumeSpeech()
-                                }
-                            )
-                        }
-                        if (contentState == ArticleTtsContentState.UNAVAILABLE && ttsState.articleId == null) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.action_retry)) },
-                                onClick = {
-                                    overflowExpanded.value = false
-                                    onRetryContent()
-                                }
-                            )
-                        }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
                     if (entryUrl != null) {
@@ -244,14 +202,13 @@ internal fun ArticleTopBar(
 }
 
 @Composable
-private fun ArticleTtsToggleMenuItem(
-    state: ArticleTtsState,
+private fun ArticleTtsMenuItem(
+    isTtsActive: Boolean,
     contentState: ArticleTtsContentState,
     onClick: () -> Unit
 ) {
-    val isReading = state.articleId != null
     val (label, enabled) = when {
-        isReading -> R.string.article_stop_reading to true
+        isTtsActive -> R.string.article_open_tts_player to true
         contentState == ArticleTtsContentState.LOADING -> R.string.article_missing_content to false
         contentState == ArticleTtsContentState.UNAVAILABLE -> R.string.article_read_aloud_unavailable to false
         else -> R.string.article_read_aloud to true
@@ -261,127 +218,7 @@ private fun ArticleTtsToggleMenuItem(
         onClick = onClick,
         enabled = enabled,
         leadingIcon = {
-            Icon(
-                imageVector = if (isReading) Icons.Filled.Close else Icons.Filled.PlayArrow,
-                contentDescription = null
-            )
-        }
-    )
-}
-
-@Composable
-private fun ArticleTtsModelMenuItem(
-    temporaryModel: TtsModel?,
-    configuredModel: TtsModel,
-    modelStatuses: Map<TtsModel, TtsModelStatus>,
-    onTemporaryModelChange: (TtsModel?) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedModel = temporaryModel ?: configuredModel
-    val availableModels = TtsModelCatalog.models.filter {
-        modelStatuses[it] == TtsModelStatus.Available
-    }
-    val selectedModelName = stringResource(selectedModel.displayNameRes)
-
-    Box {
-        DropdownMenuItem(
-            text = {
-                Text(
-                    text = stringResource(R.string.article_tts_model, selectedModelName),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            onClick = { expanded = true }
-        )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            val settingsLabel = stringResource(
-                R.string.article_tts_model_use_settings,
-                stringResource(configuredModel.displayNameRes)
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        if (temporaryModel == null) {
-                            stringResource(R.string.tts_voice_selected, settingsLabel)
-                        } else {
-                            settingsLabel
-                        }
-                    )
-                },
-                onClick = {
-                    onTemporaryModelChange(null)
-                    expanded = false
-                }
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            availableModels.forEach { model ->
-                val modelName = stringResource(model.displayNameRes)
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            if (temporaryModel == model) {
-                                stringResource(R.string.tts_voice_selected, modelName)
-                            } else {
-                                modelName
-                            }
-                        )
-                    },
-                    onClick = {
-                        onTemporaryModelChange(model)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArticleTtsPlaybackMenuItem(
-    state: ArticleTtsState,
-    onPause: () -> Unit,
-    onResume: () -> Unit
-) {
-    val playbackActionDescription = stringResource(
-        if (state.isPaused) R.string.article_resume else R.string.article_pause
-    )
-    DropdownMenuItem(
-        text = {
-            Column {
-                Text(
-                    text = if (state.isPreparing) {
-                        stringResource(R.string.article_preparing_voice)
-                    } else {
-                        state.title
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = state.error ?: state.model?.let { stringResource(it.displayNameRes) }.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                LinearProgressIndicator(
-                    progress = { state.progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-            }
-        },
-        onClick = if (state.isPaused) onResume else onPause,
-        leadingIcon = {
-            Text(
-                text = if (state.isPaused) "▶" else "Ⅱ",
-                modifier = Modifier.semantics {
-                    contentDescription = playbackActionDescription
-                }
-            )
+            Icon(Icons.Filled.PlayArrow, contentDescription = null)
         }
     )
 }
