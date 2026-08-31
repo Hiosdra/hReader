@@ -22,6 +22,13 @@ class ArticleScrollProgressTest {
     }
 
     @Test
+    fun `web view max scroll uses the viewport and clamps invalid sizes`() {
+        assertEquals(1000, readerWebViewMaxScrollPx(contentHeightPx = 2000, viewportHeightPx = 1000))
+        assertEquals(0, readerWebViewMaxScrollPx(contentHeightPx = 800, viewportHeightPx = 1000))
+        assertEquals(0, readerWebViewMaxScrollPx(contentHeightPx = -1, viewportHeightPx = 1000))
+    }
+
+    @Test
     fun `oversized article offset scrolls only the header before its boundary`() {
         assertEquals(140, oversizedArticleHeaderScrollPx(webViewScrollY = 140, headerHeightPx = 200))
         assertEquals(0, oversizedArticleBodyScrollPx(webViewScrollY = 140, headerHeightPx = 200))

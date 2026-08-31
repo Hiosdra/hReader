@@ -29,12 +29,17 @@ import com.hiosdra.hreader.core.domain.service.cleanUrl
 import java.io.File
 import java.io.FileInputStream
 import java.net.URLConnection
+import kotlin.math.roundToInt
 
 @Composable
 fun OfflinePageWebView(
     page: OfflinePage,
     modifier: Modifier = Modifier,
-    onLinkClick: ((String) -> Unit)? = null
+    onLinkClick: ((String) -> Unit)? = null,
+    readingPositionLoaded: Boolean,
+    savedReadingProgress: Float?,
+    onReadingProgressChanged: (Long, Float) -> Unit,
+    onReadingCompleted: (Long) -> Unit
 ) {
     val currentPage = rememberUpdatedState(page)
     val currentOnLinkClick = rememberUpdatedState(onLinkClick)
@@ -45,6 +50,39 @@ fun OfflinePageWebView(
     var isScrollable by rememberSaveable(page.entryId) { mutableStateOf(false) }
     var renderProcessError by remember(page.entryId, page.html, page.baseUrl) { mutableStateOf(false) }
     var renderAttempt by remember(page.entryId, page.html, page.baseUrl) { mutableIntStateOf(0) }
+    var scrollY by rememberSaveable(page.entryId) { mutableIntStateOf(0) }
+    var contentHeightPx by remember(page.entryId, page.html, page.baseUrl, renderAttempt) {
+        mutableIntStateOf(0)
+    }
+    var viewportHeightPx by remember(page.entryId, page.html, page.baseUrl, renderAttempt) {
+        mutableIntStateOf(0)
+    }
+    var contentHeightSettled by remember(page.entryId, page.html, page.baseUrl, renderAttempt) {
+        mutableStateOf(false)
+    }
+    val pageKey = Triple(page.entryId, page.html, page.baseUrl)
+    val contentKey = pageKey.hashCode()
+
+    ArticleWebViewReadingPosition(
+        entryId = page.entryId,
+        contentKey = contentKey,
+        readingPositionLoaded = readingPositionLoaded,
+        savedReadingProgress = savedReadingProgress,
+        scrollY = scrollY,
+        contentHeightPx = contentHeightPx,
+        viewportHeightPx = viewportHeightPx,
+        contentHeightSettled = contentHeightSettled,
+        webViewReady = loadedWebView.value != null,
+        onRestoreScrollY = { restoreScrollY ->
+            scrollY = restoreScrollY
+            loadedWebView.value?.let { readerView ->
+                readerView.pageLoadRestoreScrollY = restoreScrollY
+                readerView.postIfActive { readerView.scrollTo(0, restoreScrollY) }
+            }
+        },
+        onReadingProgressChanged = onReadingProgressChanged,
+        onReadingCompleted = onReadingCompleted
+    )
 
     if (renderProcessError) {
         ReaderWebViewError(
@@ -66,6 +104,10 @@ fun OfflinePageWebView(
                                 scrollbarThumbFraction = thumbFraction
                             }
                             fun updateScrollProgress(readerView: ReaderWebView) {
+                                val density = readerView.resources.displayMetrics.density
+                                contentHeightPx = (readerView.contentHeight * density).roundToInt()
+                                viewportHeightPx = readerView.height
+                                scrollY = readerView.scrollY
                                 progressReporter.update(readerView)
                             }
                             protectVerticalScrollFromPager = true
@@ -82,6 +124,7 @@ fun OfflinePageWebView(
                                     scrollProgress = 0f
                                     scrollbarThumbFraction = 1f
                                     isScrollable = false
+                                    contentHeightSettled = false
                                     renderProcessError = true
                                     return true
                                 }
@@ -108,9 +151,12 @@ fun OfflinePageWebView(
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
                                     val readerView = view as? ReaderWebView ?: return
+                                    contentHeightSettled = false
                                     readerView.postIfActive {
+                                        readerView.scrollTo(0, scrollY)
                                         updateScrollProgress(readerView)
                                         readerView.scheduleContentHeightUpdates {
+                                            contentHeightSettled = true
                                             updateScrollProgress(readerView)
                                         }
                                     }
@@ -125,10 +171,13 @@ fun OfflinePageWebView(
                         }
                     },
                     update = { webView ->
-                        val key = Triple(page.entryId, page.html, page.baseUrl)
-                        if (loadedWebView.value !== webView || loadedPageKey.value != key) {
+                        if (loadedWebView.value !== webView || loadedPageKey.value != pageKey) {
                             loadedWebView.value = webView
-                            loadedPageKey.value = key
+                            loadedPageKey.value = pageKey
+                            contentHeightSettled = false
+                            webView.contentLayoutReady = false
+                            webView.cancelContentHeightUpdates()
+                            webView.pageLoadRestoreScrollY = scrollY
                             webView.loadDataWithBaseURL(page.baseUrl, page.html, "text/html", "UTF-8", null)
                         }
                     },

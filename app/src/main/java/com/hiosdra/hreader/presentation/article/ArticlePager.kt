@@ -102,6 +102,10 @@ internal fun ArticlePager(
                                 copyTextToClipboard(context, articleLinkLabel, url)
                                 Toast.makeText(context, offlineLinkCopiedMessage, Toast.LENGTH_SHORT).show()
                             },
+                            readingPositionLoaded = entry.id in loadedReadingPositionIds,
+                            savedReadingProgress = readingProgressForEntry(entry.id),
+                            onReadingProgressChanged = onReadingProgressChanged,
+                            onReadingCompleted = onReadingCompleted,
                             modifier = webViewModifier
                         )
                     } else {
@@ -110,6 +114,10 @@ internal fun ArticlePager(
                             url = entry.url,
                             isOnline = isOnline,
                             remoteResourcePolicy = remoteResourcePolicy,
+                            readingPositionLoaded = entry.id in loadedReadingPositionIds,
+                            savedReadingProgress = readingProgressForEntry(entry.id),
+                            onReadingProgressChanged = onReadingProgressChanged,
+                            onReadingCompleted = onReadingCompleted,
                             modifier = webViewModifier
                         )
                     }

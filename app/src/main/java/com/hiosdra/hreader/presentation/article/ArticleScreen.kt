@@ -84,7 +84,7 @@ internal fun articleWebViewRestoreScrollY(
     contentHeightPx: Int,
     viewportHeightPx: Int
 ): Int {
-    val maxScrollY = (contentHeightPx - viewportHeightPx).coerceAtLeast(0)
+    val maxScrollY = readerWebViewMaxScrollPx(contentHeightPx, viewportHeightPx)
     return (progress.coerceIn(0f, 1f) * maxScrollY).roundToInt()
 }
 
