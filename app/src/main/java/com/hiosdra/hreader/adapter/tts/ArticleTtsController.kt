@@ -6,6 +6,7 @@ import android.media.AudioManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.PlaybackParams
 import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -273,7 +274,7 @@ class ArticleTtsController internal constructor(
                     isPlaying = !_state.value.isPaused,
                     currentChunk = index
                 )
-                playSamples(audio.samples, audio.sampleRate)
+                playSamples(audio.samples, audio.sampleRate, audio.playbackSpeed)
                 audio = nextAudio?.await() ?: return@coroutineScope
             }
         }
@@ -281,7 +282,11 @@ class ArticleTtsController internal constructor(
         _state.value = ArticleTtsState()
     }
 
-    private suspend fun playSamples(samples: FloatArray, sampleRate: Int) = withContext(Dispatchers.IO) {
+    private suspend fun playSamples(
+        samples: FloatArray,
+        sampleRate: Int,
+        playbackSpeed: Float
+    ) = withContext(Dispatchers.IO) {
         val minBuffer = AudioTrack.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_OUT_MONO,
@@ -310,6 +315,11 @@ class ArticleTtsController internal constructor(
             audioTrack = track
             val written = track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
             check(written == samples.size) { "Audio playback failed ($written/${samples.size})" }
+            if (playbackSpeed != 1f) {
+                track.playbackParams = PlaybackParams()
+                    .setSpeed(playbackSpeed)
+                    .setPitch(1f)
+            }
             track.play()
             while (track.playbackHeadPosition < samples.size) {
                 resumeSignal.await()

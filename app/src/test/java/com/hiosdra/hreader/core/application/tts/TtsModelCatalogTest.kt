@@ -16,6 +16,8 @@ class TtsModelCatalogTest {
         assertEquals(TtsEngineFamily.VITS, TtsModelCatalog.definition(TtsModel.GOSIA).model.family)
         assertEquals(TtsEngineFamily.KITTEN, TtsModelCatalog.definition(TtsModel.KITTEN_MINI).model.family)
         assertEquals(TtsEngineFamily.MATCHA, TtsModelCatalog.definition(TtsModel.MATCHA_LJSPEECH).model.family)
+        assertEquals(TtsEngineFamily.QWEN_CPP, TtsModelCatalog.definition(TtsModel.QWEN_CPP_0_6B_BASE_Q4).model.family)
+        assertEquals(TtsEngineFamily.MNN, TtsModelCatalog.definition(TtsModel.MNN_0_6B_BASE_INT8).model.family)
     }
 
     @Test
@@ -29,7 +31,22 @@ class TtsModelCatalogTest {
             TtsModelCatalog.compatibleModels("PL")
         )
         assertEquals(
-            listOf(TtsModel.KOKORO, TtsModel.ANDROID),
+            listOf(
+                TtsModel.KOKORO,
+                TtsModel.QWEN_CPP_0_6B_BASE_Q4,
+                TtsModel.QWEN_CPP_0_6B_BASE_Q8,
+                TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q4,
+                TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q8,
+                TtsModel.QWEN_CPP_1_7B_BASE_Q4,
+                TtsModel.QWEN_CPP_1_7B_BASE_Q8,
+                TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q4,
+                TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q8,
+                TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q4,
+                TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q8,
+                TtsModel.MNN_0_6B_BASE_INT8,
+                TtsModel.MNN_0_6B_BASE_FP16,
+                TtsModel.ANDROID
+            ),
             TtsModelCatalog.compatibleModels("zh")
         )
         assertEquals(
@@ -39,6 +56,18 @@ class TtsModelCatalogTest {
                 TtsModel.PIPER_LESSAC_HIGH,
                 TtsModel.KITTEN_MINI,
                 TtsModel.MATCHA_LJSPEECH,
+                TtsModel.QWEN_CPP_0_6B_BASE_Q4,
+                TtsModel.QWEN_CPP_0_6B_BASE_Q8,
+                TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q4,
+                TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q8,
+                TtsModel.QWEN_CPP_1_7B_BASE_Q4,
+                TtsModel.QWEN_CPP_1_7B_BASE_Q8,
+                TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q4,
+                TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q8,
+                TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q4,
+                TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q8,
+                TtsModel.MNN_0_6B_BASE_INT8,
+                TtsModel.MNN_0_6B_BASE_FP16,
                 TtsModel.ANDROID
             ),
             TtsModelCatalog.compatibleModels("en")

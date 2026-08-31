@@ -60,6 +60,7 @@ val debugStoreFile = rootProject.file(
 
 android {
     namespace = "com.hiosdra.hreader"
+    ndkVersion = "27.2.12479018"
     // core-ktx 1.19 and the other AndroidX bumps require API 37.
     compileSdk = 37
     compileSdkMinor = 1
@@ -74,6 +75,24 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        ndk {
+            abiFilters += setOf("arm64-v8a")
+        }
+
+        externalNativeBuild {
+            cmake {
+                cppFlags += listOf("-std=c++17")
+                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            }
+        }
+
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {
@@ -143,7 +162,9 @@ android {
                 "**/libsherpa-onnx-c-api.so",
                 "**/libsherpa-onnx-cxx-api.so",
                 "**/libsherpa-onnx-jni.so",
-                "**/liblitertlm_jni.so"
+                "**/liblitertlm_jni.so",
+                "**/libhreader_qwen3_tts.so",
+                "**/libhreader_mnn_tts.so"
             )
         }
     }

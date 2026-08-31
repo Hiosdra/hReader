@@ -1,0 +1,6 @@
+[submodule "external/qwen3-tts.cpp"]
+	path = external/qwen3-tts.cpp
+	url = https://github.com/Danmoreng/qwen3-tts.cpp.git
+[submodule "external/MNN"]
+	path = external/MNN
+	url = https://github.com/alibaba/MNN.git

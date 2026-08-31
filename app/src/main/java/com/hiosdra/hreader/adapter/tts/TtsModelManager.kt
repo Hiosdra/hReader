@@ -84,7 +84,8 @@ class TtsModelManager(
                         downloadFiles(model, artifact.files, staging)
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        if (artifact.archive == null) throw e
                         staging.deleteRecursively()
                         staging.mkdirs()
                         downloadArchive(
@@ -107,6 +108,7 @@ class TtsModelManager(
                         progressTotal = archiveSize + artifact.supplementalFiles.sumOf(RemoteFile::size)
                     )
                 }
+                writeGeneratedFiles(artifact.generatedFiles, content)
                 check(artifact.isComplete(content)) {
                     "Model download is incomplete"
                 }
@@ -134,6 +136,7 @@ class TtsModelManager(
         var downloaded = 0L
         files.forEach { remote ->
             val output = File(staging, remote.name)
+            output.parentFile?.mkdirs()
             downloadTo(remote.url, output, remote.size) { count ->
                 downloaded += count
                 updateProgress(model, progressBase + downloaded, progressTotal)
@@ -141,6 +144,14 @@ class TtsModelManager(
             check(output.sha256() == remote.sha256) {
                 "Downloaded ${remote.name} failed integrity check"
             }
+        }
+    }
+
+    private fun writeGeneratedFiles(files: List<GeneratedFile>, destination: File) {
+        files.forEach { generated ->
+            val output = File(destination, generated.name)
+            output.parentFile?.mkdirs()
+            output.writeText(generated.content)
         }
     }
 

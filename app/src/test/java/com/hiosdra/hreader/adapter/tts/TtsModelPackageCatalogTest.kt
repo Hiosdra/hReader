@@ -35,6 +35,8 @@ class TtsModelPackageCatalogTest {
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.GOSIA)?.engineFiles is SherpaModelFiles.Vits)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KITTEN_MINI)?.engineFiles is SherpaModelFiles.Kitten)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)?.engineFiles is SherpaModelFiles.Matcha)
+        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.QWEN_CPP_0_6B_BASE_Q4)?.engineFiles is QwenCppModelFiles)
+        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.MNN_0_6B_BASE_INT8)?.engineFiles is MnnModelFiles)
         assertEquals(
             listOf("vocos-22khz-univ.onnx"),
             TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)
@@ -46,5 +48,26 @@ class TtsModelPackageCatalogTest {
             .forEach { model ->
                 assertTrue(TtsModelPackageCatalog.packageFor(model)?.engineFiles is SherpaModelFiles.Vits)
             }
+    }
+
+    @Test
+    fun `registers model assets and generated config for native runtimes`() {
+        val qwen = checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q4))
+        assertEquals(
+            listOf("qwen-talker-0.6b-customvoice-Q4_K_M.gguf", "qwen-tokenizer-12hz-Q4_K_M.gguf"),
+            qwen.requiredFiles
+        )
+        assertEquals("vivian", (qwen.engineFiles as QwenCppModelFiles).speaker)
+
+        val qwenQ8 = checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.QWEN_CPP_1_7B_BASE_Q8))
+        assertEquals(
+            listOf("qwen-talker-1.7b-base-Q8_0.gguf", "qwen-tokenizer-12hz-Q8_0.gguf"),
+            qwenQ8.requiredFiles
+        )
+
+        val mnn = checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.MNN_0_6B_BASE_INT8))
+        assertEquals(listOf("config.json"), mnn.generatedFiles.map(GeneratedFile::name))
+        assertEquals("config.json", (mnn.engineFiles as MnnModelFiles).config)
+        assertTrue(mnn.requiredFiles.contains("qwen3_tts_ref.wav"))
     }
 }
