@@ -94,6 +94,10 @@
     <string name="article_open_original_in_chrome">Ouvrir la page originale dans Chrome</string>
     <string name="article_open_embedded_media">Ouvrir le contenu multimédia intégré</string>
     <string name="article_open_through_paywall_bypass">Ouvrir via le contournement du paywall</string>
+    <string name="article_original_short">Original</string>
+    <string name="article_open_through_paywall_service">Ouvrir via %1$s</string>
+    <string name="article_choose_paywall_service">Choisir un service de contournement du paywall</string>
+    <string name="article_external_actions_requires_connection">Connectez-vous à Internet pour ouvrir des pages externes.</string>
     <string name="article_preparing_voice">Préparation de la voix…</string>
     <string name="article_resume">Reprendre</string>
     <string name="article_pause">Pause</string>

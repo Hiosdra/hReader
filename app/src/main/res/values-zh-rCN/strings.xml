@@ -94,6 +94,10 @@
     <string name="article_open_original_in_chrome">在 Chrome 中打开原始页面</string>
     <string name="article_open_embedded_media">打开嵌入式媒体</string>
     <string name="article_open_through_paywall_bypass">通过付费墙绕过服务打开</string>
+    <string name="article_original_short">原文</string>
+    <string name="article_open_through_paywall_service">通过 %1$s 打开</string>
+    <string name="article_choose_paywall_service">选择付费墙绕过服务</string>
+    <string name="article_external_actions_requires_connection">连接到互联网后才能打开外部页面。</string>
     <string name="article_preparing_voice">正在准备语音…</string>
     <string name="article_resume">继续</string>
     <string name="article_pause">暂停</string>

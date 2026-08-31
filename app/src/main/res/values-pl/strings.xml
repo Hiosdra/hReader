@@ -118,6 +118,10 @@
     <string name="article_open_original_in_chrome">Otwórz oryginalną stronę w Chrome</string>
     <string name="article_open_embedded_media">Otwórz osadzone multimedia</string>
     <string name="article_open_through_paywall_bypass">Otwórz przez obejście paywalla</string>
+    <string name="article_original_short">Oryginał</string>
+    <string name="article_open_through_paywall_service">Otwórz przez %1$s</string>
+    <string name="article_choose_paywall_service">Wybierz usługę obejścia paywalla</string>
+    <string name="article_external_actions_requires_connection">Połącz się z internetem, aby otworzyć strony zewnętrzne.</string>
     <string name="article_preparing_voice">Przygotowywanie głosu…</string>
     <string name="article_resume">Wznów</string>
     <string name="article_pause">Wstrzymaj</string>

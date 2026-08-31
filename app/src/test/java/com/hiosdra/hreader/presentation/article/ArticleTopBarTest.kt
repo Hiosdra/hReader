@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -123,13 +124,47 @@ class ArticleTopBarTest {
             .assertIsNotEnabled()
     }
 
+    @Test
+    fun `overflow menu keeps external actions available`() {
+        val opens = AtomicInteger()
+        val selected = AtomicReference<PaywallBypassMethod>()
+        val context = RuntimeEnvironment.getApplication()
+        val defaultMethod = PaywallBypassMethod.WAYBACK_MACHINE
+        setContent(
+            onOpenInChrome = { opens.incrementAndGet() },
+            defaultPaywallBypassMethod = defaultMethod,
+            canUsePaywallBypass = true,
+            onBypassPaywall = { selected.set(it) }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.article_open_original_in_chrome))
+            .performClick()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(
+            context.getString(
+                R.string.article_open_through_paywall_service,
+                context.getString(R.string.paywall_wayback_machine)
+            )
+        ).performClick()
+
+        assertEquals(1, opens.get())
+        assertEquals(defaultMethod, selected.get())
+    }
+
     private fun setContent(
         canUseWebView: Boolean = false,
         onToggleWebView: () -> Unit = {},
         onIncreaseTextScale: () -> Unit = {},
         ttsContentState: ArticleTtsContentState? = null,
         isTtsActive: Boolean = false,
-        onInvokeTts: () -> Unit = {}
+        onInvokeTts: () -> Unit = {},
+        onOpenInChrome: () -> Unit = {},
+        defaultPaywallBypassMethod: PaywallBypassMethod? = null,
+        canUsePaywallBypass: Boolean = false,
+        onBypassPaywall: (PaywallBypassMethod) -> Unit = {}
     ) {
         composeTestRule.setContent {
             HReaderTheme {
@@ -151,7 +186,11 @@ class ArticleTopBarTest {
                     onShare = {},
                     ttsContentState = ttsContentState,
                     isTtsActive = isTtsActive,
-                    onInvokeTts = onInvokeTts
+                    onInvokeTts = onInvokeTts,
+                    onOpenInChrome = onOpenInChrome,
+                    defaultPaywallBypassMethod = defaultPaywallBypassMethod,
+                    canUsePaywallBypass = canUsePaywallBypass,
+                    onBypassPaywall = onBypassPaywall
                 )
             }
         }

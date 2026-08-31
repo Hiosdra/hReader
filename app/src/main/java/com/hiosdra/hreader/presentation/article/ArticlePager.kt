@@ -25,6 +25,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import coil3.ImageLoader as CoilImageLoader
@@ -62,7 +63,11 @@ internal fun ArticlePager(
     credibilityEnabled: Boolean = false,
     credibilityReports: Map<Long, CredibilityReport> = emptyMap(),
     analyzingCredibilityIds: Set<Long> = emptySet(),
-    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
+    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null,
+    defaultPaywallBypassMethod: PaywallBypassMethod = PaywallBypassMethod.SMRY_AI,
+    canUsePaywallBypass: (String) -> Boolean = { false },
+    onOpenInChrome: (String) -> Unit = {},
+    onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val articleLinkLabel = stringResource(R.string.article_link)
@@ -138,7 +143,11 @@ internal fun ArticlePager(
                         credibilityEnabled = credibilityEnabled,
                         credibilityReport = credibilityReports[entry.id],
                         isAnalyzingCredibility = analyzingCredibilityIds.contains(entry.id),
-                        onAnalyzeCredibility = onAnalyzeCredibility
+                        onAnalyzeCredibility = onAnalyzeCredibility,
+                        defaultPaywallBypassMethod = defaultPaywallBypassMethod,
+                        canUsePaywallBypass = canUsePaywallBypass,
+                        onOpenInChrome = onOpenInChrome,
+                        onBypassPaywall = onBypassPaywall
                     )
                 }
             }

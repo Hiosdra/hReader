@@ -94,6 +94,10 @@
     <string name="article_open_original_in_chrome">Özgün sayfayı Chrome’da aç</string>
     <string name="article_open_embedded_media">Gömülü medyayı aç</string>
     <string name="article_open_through_paywall_bypass">Paywall atlama ile aç</string>
+    <string name="article_original_short">Orijinal</string>
+    <string name="article_open_through_paywall_service">%1$s üzerinden aç</string>
+    <string name="article_choose_paywall_service">Paywall atlama hizmetini seç</string>
+    <string name="article_external_actions_requires_connection">Harici sayfaları açmak için internete bağlanın.</string>
     <string name="article_preparing_voice">Ses hazırlanıyor…</string>
     <string name="article_resume">Sürdür</string>
     <string name="article_pause">Duraklat</string>
