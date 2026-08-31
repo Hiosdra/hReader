@@ -3,9 +3,15 @@ package com.hiosdra.hreader.adapter.tts
 internal class MnnTtsNative {
     private var handle = 0L
 
-    fun load(modelDirectory: String, configName: String, numThreads: Int) {
+    fun load(
+        modelDirectory: String,
+        configName: String,
+        numThreads: Int,
+        backend: String,
+        cacheDirectory: String
+    ) {
         ensureHandle()
-        check(nativeLoad(handle, modelDirectory, configName, numThreads)) { lastError() }
+        check(nativeLoad(handle, modelDirectory, configName, numThreads, backend, cacheDirectory)) { lastError() }
     }
 
     fun synthesize(
@@ -53,7 +59,9 @@ internal class MnnTtsNative {
         handle: Long,
         modelDirectory: String,
         configName: String,
-        numThreads: Int
+        numThreads: Int,
+        backend: String,
+        cacheDirectory: String
     ): Boolean
 
     private external fun nativeSynthesize(

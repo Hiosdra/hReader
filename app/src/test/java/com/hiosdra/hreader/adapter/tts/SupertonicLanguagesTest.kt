@@ -37,16 +37,6 @@ class SupertonicLanguagesTest {
         assertEquals(
             listOf(
                 TtsModel.KOKORO,
-                TtsModel.QWEN_CPP_0_6B_BASE_Q4,
-                TtsModel.QWEN_CPP_0_6B_BASE_Q8,
-                TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q4,
-                TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q8,
-                TtsModel.QWEN_CPP_1_7B_BASE_Q4,
-                TtsModel.QWEN_CPP_1_7B_BASE_Q8,
-                TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q4,
-                TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q8,
-                TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q4,
-                TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q8,
                 TtsModel.MNN_0_6B_BASE_INT8,
                 TtsModel.MNN_0_6B_BASE_FP16,
                 TtsModel.ANDROID
@@ -64,16 +54,6 @@ class SupertonicLanguagesTest {
                 TtsModel.PIPER_LESSAC_HIGH,
                 TtsModel.KITTEN_MINI,
                 TtsModel.MATCHA_LJSPEECH,
-                TtsModel.QWEN_CPP_0_6B_BASE_Q4,
-                TtsModel.QWEN_CPP_0_6B_BASE_Q8,
-                TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q4,
-                TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q8,
-                TtsModel.QWEN_CPP_1_7B_BASE_Q4,
-                TtsModel.QWEN_CPP_1_7B_BASE_Q8,
-                TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q4,
-                TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q8,
-                TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q4,
-                TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q8,
                 TtsModel.MNN_0_6B_BASE_INT8,
                 TtsModel.MNN_0_6B_BASE_FP16,
                 TtsModel.ANDROID

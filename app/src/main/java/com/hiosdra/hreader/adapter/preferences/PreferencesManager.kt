@@ -21,6 +21,7 @@ import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.sync.SyncDefaults
+import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.parseTtsLanguageOverrides
@@ -485,6 +486,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             transform = { it.copy(ttsAdvancedSettings = normalizedSettings) },
             write = {
                 this[ttsThreadsKey] = normalizedSettings.numThreads
+                this[ttsMnnBackendKey] = normalizedSettings.mnnBackend.name
                 this[ttsSilenceScaleKey] = normalizedSettings.silenceScale
                 this[ttsSupertonicSpeakerKey] = normalizedSettings.supertonicSpeaker
                 this[ttsSupertonicStepsKey] = normalizedSettings.supertonicSteps
@@ -741,6 +743,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         ttsSpeed = (this[ttsSpeedKey] ?: 1f).coerceIn(0.7f, 1.4f),
         ttsAdvancedSettings = TtsAdvancedSettings(
             numThreads = (this[ttsThreadsKey] ?: 4).coerceIn(1, 4),
+            mnnBackend = MnnTtsBackend.entries.firstOrNull { it.name == this[ttsMnnBackendKey] }
+                ?: MnnTtsBackend.CPU,
             silenceScale = (this[ttsSilenceScaleKey] ?: 0.2f).coerceIn(0f, 1f),
             supertonicSpeaker = (this[ttsSupertonicSpeakerKey] ?: 0).coerceIn(0, 9),
             supertonicSteps = (this[ttsSupertonicStepsKey] ?: 8).coerceIn(4, 12),
@@ -899,6 +903,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val KEY_TTS_SPEED = "tts_speed"
         private const val KEY_TTS_LANGUAGE_OVERRIDES = "tts_language_overrides"
         private const val KEY_TTS_THREADS = "tts_threads"
+        private const val KEY_TTS_MNN_BACKEND = "tts_mnn_backend"
         private const val KEY_TTS_SILENCE_SCALE = "tts_silence_scale"
         private const val KEY_TTS_SUPERTONIC_SPEAKER = "tts_supertonic_speaker"
         private const val KEY_TTS_SUPERTONIC_STEPS = "tts_supertonic_steps"
@@ -946,6 +951,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private val ttsSpeedKey = floatPreferencesKey(KEY_TTS_SPEED)
         private val ttsLanguageOverridesKey = stringSetPreferencesKey(KEY_TTS_LANGUAGE_OVERRIDES)
         private val ttsThreadsKey = intPreferencesKey(KEY_TTS_THREADS)
+        private val ttsMnnBackendKey = stringPreferencesKey(KEY_TTS_MNN_BACKEND)
         private val ttsSilenceScaleKey = floatPreferencesKey(KEY_TTS_SILENCE_SCALE)
         private val ttsSupertonicSpeakerKey = intPreferencesKey(KEY_TTS_SUPERTONIC_SPEAKER)
         private val ttsSupertonicStepsKey = intPreferencesKey(KEY_TTS_SUPERTONIC_STEPS)

@@ -28,6 +28,28 @@ std::string joinPath(const std::string& directory, const char* name) {
     return directory + "/" + name;
 }
 
+std::string quoteJson(const std::string& value) {
+    std::string result = "\"";
+    for (const unsigned char character : value) {
+        switch (character) {
+            case '\\': result += "\\\\"; break;
+            case '\"': result += "\\\""; break;
+            case '\b': result += "\\b"; break;
+            case '\f': result += "\\f"; break;
+            case '\n': result += "\\n"; break;
+            case '\r': result += "\\r"; break;
+            case '\t': result += "\\t"; break;
+            default: result += static_cast<char>(character); break;
+        }
+    }
+    result += "\"";
+    return result;
+}
+
+bool isSupportedBackend(const std::string& backend) {
+    return backend == "cpu" || backend == "opencl" || backend == "vulkan";
+}
+
 }
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -51,18 +73,27 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
     jlong handle_ptr,
     jstring model_directory,
     jstring config_name,
-    jint num_threads
+    jint num_threads,
+    jstring backend,
+    jstring cache_directory
 ) {
     auto* handle = reinterpret_cast<MnnHandle*>(handle_ptr);
-    if (handle == nullptr || model_directory == nullptr || config_name == nullptr) return JNI_FALSE;
+    if (handle == nullptr || model_directory == nullptr || config_name == nullptr || backend == nullptr ||
+        cache_directory == nullptr) {
+        return JNI_FALSE;
+    }
 
     const char* directory = env->GetStringUTFChars(model_directory, nullptr);
     const char* config = env->GetStringUTFChars(config_name, nullptr);
+    const char* backend_name = env->GetStringUTFChars(backend, nullptr);
+    const char* cache = env->GetStringUTFChars(cache_directory, nullptr);
     const auto releaseStrings = [&] {
         if (directory != nullptr) env->ReleaseStringUTFChars(model_directory, directory);
         if (config != nullptr) env->ReleaseStringUTFChars(config_name, config);
+        if (backend_name != nullptr) env->ReleaseStringUTFChars(backend, backend_name);
+        if (cache != nullptr) env->ReleaseStringUTFChars(cache_directory, cache);
     };
-    if (directory == nullptr || config == nullptr) {
+    if (directory == nullptr || config == nullptr || backend_name == nullptr || cache == nullptr) {
         releaseStrings();
         handle->last_error = "Could not read MNN model parameters";
         return JNI_FALSE;
@@ -72,6 +103,13 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
         handle->last_error.clear();
         const int threads = std::clamp(static_cast<int>(num_threads), 1, 4);
         const std::string directory_string(directory);
+        const std::string backend_string(backend_name);
+        const std::string cache_string(cache);
+        if (!isSupportedBackend(backend_string)) {
+            handle->last_error = "Unsupported MNN backend: " + backend_string;
+            releaseStrings();
+            return JNI_FALSE;
+        }
         handle->llm.reset(Llm::createLLM(joinPath(directory_string, config)));
         if (!handle->llm) {
             handle->last_error = "Could not create MNN Qwen3-TTS model";
@@ -79,8 +117,10 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
             return JNI_FALSE;
         }
         const std::string runtime_config =
-            "{\"async\":false,\"mllm\":{\"backend_type\":\"cpu\",\"thread_num\":" +
-            std::to_string(threads) + "}}";
+            "{\"backend_type\":" + quoteJson(backend_string) + ",\"thread_num\":" +
+            std::to_string(threads) + ",\"precision\":\"low\",\"memory\":\"low\",\"async\":false,\"tmp_path\":" +
+            quoteJson(cache_string) + ",\"mllm\":{\"backend_type\":" + quoteJson(backend_string) +
+            ",\"thread_num\":" + std::to_string(threads) + ",\"precision\":\"low\",\"memory\":\"low\"}}";
         if (!handle->llm->set_config(runtime_config) || !handle->llm->load()) {
             handle->last_error = "MNN Qwen3-TTS model load failed";
             releaseStrings();

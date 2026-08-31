@@ -368,7 +368,6 @@ private fun AdvancedTtsSettings(
             )
         }
         TtsEngineFamily.MATCHA,
-        TtsEngineFamily.QWEN_CPP,
         TtsEngineFamily.MNN -> Unit
         TtsEngineFamily.ANDROID -> Text(
             text = stringResource(R.string.tts_advanced_not_system),

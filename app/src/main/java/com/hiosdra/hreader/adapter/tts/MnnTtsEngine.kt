@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.adapter.tts
 
+import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
@@ -57,15 +58,19 @@ internal class MnnTtsEngine(
 
     private fun ensureLoaded(model: TtsModel, settings: TtsAdvancedSettings) {
         check(model in supportedModels) { "MNN does not support ${model.name}" }
-        val configuration = LoadedConfiguration(model, settings.numThreads)
+        val configuration = LoadedConfiguration(model, settings.numThreads, settings.mnnBackend)
         if (configuration == loadedConfiguration) return
         runtime.release()
         loadedConfiguration = null
         val files = modelFiles(model)
+        val cacheDirectory = modelManager.runtimeCacheDirectory(model, settings.mnnBackend)
+        cacheDirectory.mkdirs()
         runtime.load(
             modelDirectory = modelManager.directory(model).absolutePath,
             configName = files.config,
-            numThreads = settings.numThreads
+            numThreads = settings.numThreads,
+            backend = settings.mnnBackend.wireName,
+            cacheDirectory = cacheDirectory.absolutePath
         )
         loadedConfiguration = configuration
     }
@@ -77,7 +82,8 @@ internal class MnnTtsEngine(
 
     private data class LoadedConfiguration(
         val model: TtsModel,
-        val numThreads: Int
+        val numThreads: Int,
+        val backend: MnnTtsBackend
     )
 
     private companion object {

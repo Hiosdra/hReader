@@ -47,13 +47,6 @@ internal sealed interface SherpaModelFiles : TtsModelFiles {
     ) : SherpaModelFiles
 }
 
-internal data class QwenCppModelFiles(
-    val talker: String,
-    val tokenizer: String,
-    val speaker: String? = null,
-    val instruction: String? = null
-) : TtsModelFiles
-
 internal data class MnnModelFiles(
     val config: String,
     val referenceAudio: String
@@ -181,112 +174,6 @@ internal object TtsModelPackageCatalog {
                 size = 76_741_121
             )
         ),
-        TtsModel.QWEN_CPP_0_6B_BASE_Q4 to qwenCppPackage(
-            directoryName = "qwen-cpp-0_6b-base-q4",
-            talker = RemoteFile(
-                name = "qwen-talker-0.6b-base-Q4_K_M.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-0.6b-base-Q4_K_M.gguf",
-                sha256 = "4b468ec7b1f62b90ef4ca316c0aa57deadfd54b2cf9651703ea753cedaf04226",
-                size = 628_905_056
-            ),
-            tokenizer = QWEN_Q4_TOKENIZER
-        ),
-        TtsModel.QWEN_CPP_0_6B_BASE_Q8 to qwenCppPackage(
-            directoryName = "qwen-cpp-0_6b-base-q8",
-            talker = RemoteFile(
-                name = "qwen-talker-0.6b-base-Q8_0.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-0.6b-base-Q8_0.gguf",
-                sha256 = "d54dbaf10591421fa764ed630d764efa717ae40cd959bd48c66d4eb1af226426",
-                size = 992_615_488
-            ),
-            tokenizer = QWEN_Q8_TOKENIZER
-        ),
-        TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q4 to qwenCppPackage(
-            directoryName = "qwen-cpp-0_6b-custom-voice-q4",
-            talker = RemoteFile(
-                name = "qwen-talker-0.6b-customvoice-Q4_K_M.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-0.6b-customvoice-Q4_K_M.gguf",
-                sha256 = "b3a7e6613d80f8a703c06267fc1e94d48ce91932ab82ab6e31c50f4ca4868e1e",
-                size = 604_878_080
-            ),
-            tokenizer = QWEN_Q4_TOKENIZER,
-            speaker = "vivian"
-        ),
-        TtsModel.QWEN_CPP_0_6B_CUSTOM_VOICE_Q8 to qwenCppPackage(
-            directoryName = "qwen-cpp-0_6b-custom-voice-q8",
-            talker = RemoteFile(
-                name = "qwen-talker-0.6b-customvoice-Q8_0.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-0.6b-customvoice-Q8_0.gguf",
-                sha256 = "4eb38675c736ed6ac72012846ac8d6ef80e5af8bc05726870f0b3a6569588519",
-                size = 968_588_544
-            ),
-            tokenizer = QWEN_Q8_TOKENIZER,
-            speaker = "vivian"
-        ),
-        TtsModel.QWEN_CPP_1_7B_BASE_Q4 to qwenCppPackage(
-            directoryName = "qwen-cpp-1_7b-base-q4",
-            talker = RemoteFile(
-                name = "qwen-talker-1.7b-base-Q4_K_M.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-1.7b-base-Q4_K_M.gguf",
-                sha256 = "ea393ebaf2167ea23ce9fc18b093822851358a950d7075cd47ab4f6ce23e887d",
-                size = 1_219_245_248
-            ),
-            tokenizer = QWEN_Q4_TOKENIZER
-        ),
-        TtsModel.QWEN_CPP_1_7B_BASE_Q8 to qwenCppPackage(
-            directoryName = "qwen-cpp-1_7b-base-q8",
-            talker = RemoteFile(
-                name = "qwen-talker-1.7b-base-Q8_0.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-1.7b-base-Q8_0.gguf",
-                sha256 = "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
-                size = 2_079_448_256
-            ),
-            tokenizer = QWEN_Q8_TOKENIZER
-        ),
-        TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q4 to qwenCppPackage(
-            directoryName = "qwen-cpp-1_7b-custom-voice-q4",
-            talker = RemoteFile(
-                name = "qwen-talker-1.7b-customvoice-Q4_K_M.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-1.7b-customvoice-Q4_K_M.gguf",
-                sha256 = "cc328834a631bc08bf9f43e62fa23f8a1383d9b429864ce6690cfb172077fc4a",
-                size = 1_182_631_296
-            ),
-            tokenizer = QWEN_Q4_TOKENIZER,
-            speaker = "vivian"
-        ),
-        TtsModel.QWEN_CPP_1_7B_CUSTOM_VOICE_Q8 to qwenCppPackage(
-            directoryName = "qwen-cpp-1_7b-custom-voice-q8",
-            talker = RemoteFile(
-                name = "qwen-talker-1.7b-customvoice-Q8_0.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-1.7b-customvoice-Q8_0.gguf",
-                sha256 = "cab2cff67a0a557310febe558dc83076b28ed790e491867eb2751759f4cd89fa",
-                size = 2_042_834_304
-            ),
-            tokenizer = QWEN_Q8_TOKENIZER,
-            speaker = "vivian"
-        ),
-        TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q4 to qwenCppPackage(
-            directoryName = "qwen-cpp-1_7b-voice-design-q4",
-            talker = RemoteFile(
-                name = "qwen-talker-1.7b-voicedesign-Q4_K_M.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-1.7b-voicedesign-Q4_K_M.gguf",
-                sha256 = "7605ed0cc5e72059f27468c27f70c070e05d1cc0c7b1c76bfb9cba717a59eee3",
-                size = 1_182_630_816
-            ),
-            tokenizer = QWEN_Q4_TOKENIZER,
-            instruction = "A clear, natural voice with a warm, neutral tone."
-        ),
-        TtsModel.QWEN_CPP_1_7B_VOICE_DESIGN_Q8 to qwenCppPackage(
-            directoryName = "qwen-cpp-1_7b-voice-design-q8",
-            talker = RemoteFile(
-                name = "qwen-talker-1.7b-voicedesign-Q8_0.gguf",
-                url = "$QWEN_GGUF_ROOT/qwen-talker-1.7b-voicedesign-Q8_0.gguf",
-                sha256 = "575610ab1ddcca4dca6bd9a64bcd859d93bbad8764f9cab24e1dbc0c51f62276",
-                size = 2_042_833_824
-            ),
-            tokenizer = QWEN_Q8_TOKENIZER,
-            instruction = "A clear, natural voice with a warm, neutral tone."
-        ),
         TtsModel.MNN_0_6B_BASE_INT8 to mnnPackage(
             directoryName = "mnn-0_6b-base-int8",
             files = MNN_INT8_FILES
@@ -326,24 +213,6 @@ private fun piperPackage(
     )
 )
 
-private fun qwenCppPackage(
-    directoryName: String,
-    talker: RemoteFile,
-    tokenizer: RemoteFile,
-    speaker: String? = null,
-    instruction: String? = null
-) = TtsModelPackage(
-    directoryName = directoryName,
-    engineFiles = QwenCppModelFiles(
-        talker = talker.name,
-        tokenizer = tokenizer.name,
-        speaker = speaker,
-        instruction = instruction
-    ),
-    requiredFiles = listOf(talker.name, tokenizer.name),
-    files = listOf(talker, tokenizer)
-)
-
 private fun mnnPackage(
     directoryName: String,
     files: List<RemoteFile>
@@ -377,9 +246,6 @@ private const val TTS_RELEASE_ROOT =
     "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models"
 private const val SUPERTONIC_HF_ROOT =
     "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/$SUPERTONIC_HF_REVISION"
-private const val QWEN_GGUF_REVISION = "e0f336a048a3de02b29b8ad92969217d9ecffe3e"
-private const val QWEN_GGUF_ROOT =
-    "https://huggingface.co/Serveurperso/Qwen3-TTS-GGUF/resolve/$QWEN_GGUF_REVISION"
 private const val MNN_INT8_ROOT =
     "https://www.modelscope.cn/models/huangzhengxiang/Qwen3-TTS-0.6B-Base-INT8-MNN"
 private const val MNN_FP16_ROOT =
@@ -398,20 +264,6 @@ private fun mnnFile(
     size = size
 )
 
-private val QWEN_Q4_TOKENIZER = RemoteFile(
-    name = "qwen-tokenizer-12hz-Q4_K_M.gguf",
-    url = "$QWEN_GGUF_ROOT/qwen-tokenizer-12hz-Q4_K_M.gguf",
-    sha256 = "cf3788b4d50aaa665fb6e57c170396aae03a3555fea52d2b5d0cda902d658039",
-    size = 254_974_752
-)
-
-private val QWEN_Q8_TOKENIZER = RemoteFile(
-    name = "qwen-tokenizer-12hz-Q8_0.gguf",
-    url = "$QWEN_GGUF_ROOT/qwen-tokenizer-12hz-Q8_0.gguf",
-    sha256 = "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
-    size = 291_150_624
-)
-
 private val MNN_REFERENCE_AUDIO = RemoteFile(
     name = "qwen3_tts_ref.wav",
     url = "https://modelscope.cn/datasets/huangzhengxiang/qwen3-tts-ref/resolve/master/qwen3_tts_ref.wav",
@@ -421,6 +273,10 @@ private val MNN_REFERENCE_AUDIO = RemoteFile(
 
 private const val MNN_CONFIG = """
 {
+  "backend_type": "cpu",
+  "thread_num": 4,
+  "precision": "low",
+  "memory": "low",
   "llm_model": "talker.mnn",
   "llm_weight": "talker.mnn.weight",
   "llm_config": "llm_config.json",

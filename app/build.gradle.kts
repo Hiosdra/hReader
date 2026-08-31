@@ -163,7 +163,6 @@ android {
                 "**/libsherpa-onnx-cxx-api.so",
                 "**/libsherpa-onnx-jni.so",
                 "**/liblitertlm_jni.so",
-                "**/libhreader_qwen3_tts.so",
                 "**/libhreader_mnn_tts.so"
             )
         }

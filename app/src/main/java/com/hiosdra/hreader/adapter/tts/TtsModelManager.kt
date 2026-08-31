@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.tts
 
 import android.content.Context
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
@@ -38,6 +39,12 @@ class TtsModelManager(
     override val statuses: StateFlow<Map<TtsModel, TtsModelStatus>> = _statuses.asStateFlow()
 
     fun directory(model: TtsModel): File = File(modelRoot, TtsModelPackageCatalog.directoryName(model))
+
+    fun runtimeCacheDirectory(model: TtsModel, backend: MnnTtsBackend): File =
+        File(
+            appContext.cacheDir,
+            "tts_mnn/${TtsModelPackageCatalog.directoryName(model)}/${backend.wireName}/$MNN_RUNTIME_CACHE_VERSION"
+        )
 
     override fun markDownloadEnqueued(model: TtsModel) {
         _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
@@ -286,5 +293,9 @@ class TtsModelManager(
             }
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private companion object {
+        const val MNN_RUNTIME_CACHE_VERSION = 1
     }
 }
