@@ -35,4 +35,20 @@ class TtsTextProcessorTest {
 
         assertTrue(chunks.all { it.length <= 350 })
     }
+
+    @Test
+    fun `splits long sentences on word boundaries`() {
+        val text = "one two three four five six seven eight nine ten"
+        val chunks = TtsTextProcessor.chunks(text, 20)
+
+        assertTrue(chunks.all { it.length <= 20 })
+        assertEquals(text, chunks.joinToString(" "))
+    }
+
+    @Test
+    fun `MNN chunks stay within the low latency budget`() {
+        val chunks = TtsTextProcessor.chunks("word ".repeat(100), MNN_TTS_MAX_CHUNK_CHARACTERS)
+
+        assertTrue(chunks.all { it.length <= MNN_TTS_MAX_CHUNK_CHARACTERS })
+    }
 }

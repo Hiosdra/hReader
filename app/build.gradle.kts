@@ -194,8 +194,8 @@ sentry {
     authToken.set(sentryAuthToken)
     includeProguardMapping.set(true)
     autoUploadProguardMapping.set(sentryUploadEnabled)
-    uploadNativeSymbols.set(false)
-    autoUploadNativeSymbols.set(false)
+    uploadNativeSymbols.set(sentryUploadEnabled)
+    autoUploadNativeSymbols.set(sentryUploadEnabled)
     includeNativeSources.set(false)
     includeSourceContext.set(false)
     tracingInstrumentation {
@@ -256,8 +256,9 @@ dependencies {
     implementation(libs.moshi.kotlin)
     ksp(libs.moshi.kotlin.codegen)
 
-    // Error reporting without the optional NDK and session-replay native modules.
+    // Error reporting with native crash support, without the optional session-replay module.
     implementation(libs.sentry.android.core)
+    implementation(libs.sentry.android.ndk)
 
     // Dependency Injection (Koin)
     implementation(platform(libs.koin.bom))

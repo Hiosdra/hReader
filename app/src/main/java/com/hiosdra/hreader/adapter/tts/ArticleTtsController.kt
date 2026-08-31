@@ -8,6 +8,7 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.media.PlaybackParams
 import android.os.Build
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -19,6 +20,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleTtsState
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
+import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -129,11 +131,17 @@ class ArticleTtsController internal constructor(
                     isPreparing = true,
                     error = null
                 )
+                val synthesisChunks = if (model.family == TtsEngineFamily.MNN) {
+                    TtsTextProcessor.chunks(chunks.joinToString(" "), MNN_TTS_MAX_CHUNK_CHARACTERS)
+                } else {
+                    chunks
+                }
+                _state.value = _state.value.copy(totalChunks = synthesisChunks.size)
                 runCatchingCancellable {
                     if (model == TtsModel.ANDROID) {
-                        speakWithAndroid(chunks, language)
+                        speakWithAndroid(synthesisChunks, language)
                     } else {
-                        speakWithNeuralTts(model, chunks, language)
+                        speakWithNeuralTts(model, synthesisChunks, language)
                     }
                 }.onFailure failure@{
                     if (version != playbackVersion) return@failure
@@ -144,7 +152,7 @@ class ArticleTtsController internal constructor(
                             isPreparing = true,
                             error = neuralFallbackMessage(model, it)
                         )
-                        runCatchingCancellable { speakWithAndroid(chunks, language) }
+                        runCatchingCancellable { speakWithAndroid(synthesisChunks, language) }
                             .onFailure { androidFailure ->
                                 if (version == playbackVersion && androidFailure !is CancellationException) {
                                     finishPlaybackWithError(
@@ -254,14 +262,30 @@ class ArticleTtsController internal constructor(
     private suspend fun speakWithNeuralTts(model: TtsModel, chunks: List<String>, language: String) {
         coroutineScope {
             val settings = preferences.getTtsAdvancedSettings()
+            val backend = settings.mnnBackend.name
+                .takeIf { model.family == TtsEngineFamily.MNN }
+                ?: "default"
+            val preparationStartedAt = SystemClock.elapsedRealtime()
             val modelPreparation = async(Dispatchers.Default) {
                 neuralTts.prepare(model, settings)
             }
             modelPreparation.await()
+            Log.i(
+                TAG,
+                "prepared model=${model.name} backend=$backend " +
+                    "elapsedMs=${SystemClock.elapsedRealtime() - preparationStartedAt}"
+            )
             val speed = preferences.getTtsSpeed()
+            val firstGenerationStartedAt = SystemClock.elapsedRealtime()
             var audio = withContext(Dispatchers.Default) {
                 neuralTts.generate(model, chunks.first(), speed, language, settings)
             }
+            Log.i(
+                TAG,
+                "first chunk generated model=${model.name} backend=$backend " +
+                    "elapsedMs=${SystemClock.elapsedRealtime() - firstGenerationStartedAt} " +
+                    "chunkChars=${chunks.first().codePointCount(0, chunks.first().length)}"
+            )
             chunks.forEachIndexed { index, _ ->
                 val nextAudio = chunks.getOrNull(index + 1)?.let { nextChunk ->
                     async(Dispatchers.Default) {

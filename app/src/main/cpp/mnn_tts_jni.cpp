@@ -1,8 +1,11 @@
 #include <jni.h>
 
+#include <android/log.h>
+
 #include "llm/llm.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include <memory>
 #include <string>
@@ -11,6 +14,13 @@
 namespace {
 
 using MNN::Transformer::Llm;
+using SteadyClock = std::chrono::steady_clock;
+
+constexpr char LOG_TAG[] = "hReader-MNN";
+
+long long elapsedMilliseconds(SteadyClock::time_point startedAt) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(SteadyClock::now() - startedAt).count();
+}
 
 struct LlmDeleter {
     void operator()(Llm* llm) const {
@@ -20,6 +30,8 @@ struct LlmDeleter {
 
 struct MnnHandle {
     std::unique_ptr<Llm, LlmDeleter> llm;
+    std::string backend;
+    int threads = 0;
     std::string last_error;
 };
 
@@ -105,14 +117,24 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
         const std::string directory_string(directory);
         const std::string backend_string(backend_name);
         const std::string cache_string(cache);
+        const auto startedAt = SteadyClock::now();
+        __android_log_print(
+            ANDROID_LOG_INFO,
+            LOG_TAG,
+            "load start backend=%s threads=%d",
+            backend_string.c_str(),
+            threads
+        );
         if (!isSupportedBackend(backend_string)) {
             handle->last_error = "Unsupported MNN backend: " + backend_string;
+            __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "load rejected backend=%s", backend_string.c_str());
             releaseStrings();
             return JNI_FALSE;
         }
         handle->llm.reset(Llm::createLLM(joinPath(directory_string, config)));
         if (!handle->llm) {
             handle->last_error = "Could not create MNN Qwen3-TTS model";
+            __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "load failed: could not create model");
             releaseStrings();
             return JNI_FALSE;
         }
@@ -123,15 +145,36 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
             ",\"thread_num\":" + std::to_string(threads) + ",\"precision\":\"low\",\"memory\":\"low\"}}";
         if (!handle->llm->set_config(runtime_config) || !handle->llm->load()) {
             handle->last_error = "MNN Qwen3-TTS model load failed";
+            __android_log_print(
+                ANDROID_LOG_ERROR,
+                LOG_TAG,
+                "load failed backend=%s elapsedMs=%lld",
+                backend_string.c_str(),
+                elapsedMilliseconds(startedAt)
+            );
             releaseStrings();
             return JNI_FALSE;
         }
+        handle->backend = backend_string;
+        handle->threads = threads;
+        const auto* context = handle->llm->getContext();
+        __android_log_print(
+            ANDROID_LOG_INFO,
+            LOG_TAG,
+            "load complete backend=%s threads=%d elapsedMs=%lld mnnLoadMs=%lld",
+            handle->backend.c_str(),
+            handle->threads,
+            elapsedMilliseconds(startedAt),
+            context == nullptr ? 0LL : static_cast<long long>(context->load_us / 1'000)
+        );
     } catch (const std::exception& error) {
         handle->last_error = error.what();
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "load exception=%s", error.what());
         releaseStrings();
         return JNI_FALSE;
     } catch (...) {
         handle->last_error = "MNN Qwen3-TTS model load failed";
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "load exception=unknown");
         releaseStrings();
         return JNI_FALSE;
     }
@@ -169,6 +212,16 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeSynthesize(
 
     std::vector<float> waveform;
     bool generated = false;
+    const int frameLimit = std::clamp(static_cast<int>(max_frames), 1, 2'048);
+    const auto startedAt = SteadyClock::now();
+    __android_log_print(
+        ANDROID_LOG_INFO,
+        LOG_TAG,
+        "synthesis start backend=%s textBytes=%zu maxFrames=%d",
+        handle->backend.empty() ? "unknown" : handle->backend.c_str(),
+        std::string(native_text).size(),
+        frameLimit
+    );
     try {
         handle->llm->setWavformCallback([&waveform](const float* samples, size_t size, bool) {
             if (samples != nullptr && size > 0) waveform.insert(waveform.end(), samples, samples + size);
@@ -177,13 +230,15 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeSynthesize(
         generated = handle->llm->generateTTS(
             native_text,
             native_language,
-            std::clamp(static_cast<int>(max_frames), 1, 2'048),
+            frameLimit,
             native_reference_audio
         );
     } catch (const std::exception& error) {
         handle->last_error = error.what();
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "synthesis exception=%s", error.what());
     } catch (...) {
         handle->last_error = "MNN Qwen3-TTS synthesis failed";
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "synthesis exception=unknown");
     }
     try {
         handle->llm->setWavformCallback({});
@@ -198,6 +253,22 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeSynthesize(
     env->ReleaseStringUTFChars(text, native_text);
     env->ReleaseStringUTFChars(language, native_language);
     env->ReleaseStringUTFChars(reference_audio, native_reference_audio);
+
+    const auto* context = handle->llm->getContext();
+    __android_log_print(
+        generated && !waveform.empty() ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
+        LOG_TAG,
+        "synthesis %s backend=%s elapsedMs=%lld generatedFrames=%d decodeMs=%lld audioMs=%lld "
+        "samples=%zu status=%d",
+        generated && !waveform.empty() ? "complete" : "failed",
+        handle->backend.empty() ? "unknown" : handle->backend.c_str(),
+        elapsedMilliseconds(startedAt),
+        context == nullptr ? 0 : context->gen_seq_len,
+        context == nullptr ? 0LL : static_cast<long long>(context->decode_us / 1'000),
+        context == nullptr ? 0LL : static_cast<long long>(context->audio_us / 1'000),
+        waveform.size(),
+        context == nullptr ? -1 : static_cast<int>(context->status)
+    );
 
     if (!generated || waveform.empty()) {
         if (handle->last_error.empty()) handle->last_error = "MNN Qwen3-TTS synthesis failed";

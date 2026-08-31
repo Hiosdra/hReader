@@ -1,5 +1,7 @@
 package com.hiosdra.hreader.adapter.tts
 
+import android.os.SystemClock
+import android.util.Log
 import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
@@ -36,12 +38,34 @@ internal class MnnTtsEngine(
         val referenceAudio = modelManager.directory(model)
             .resolve(files.referenceAudio)
             .absolutePath
-        val maxFrames = (text.codePointCount(0, text.length) * 2).coerceIn(128, 2_048)
-        val samples = runtime.synthesize(
-            text = text,
-            language = QwenTtsLanguage.mnnName(language),
-            referenceAudio = referenceAudio,
-            maxFrames = maxFrames
+        val textCharacters = text.codePointCount(0, text.length)
+        val maxFrames = mnnTtsMaxFrames(text)
+        val startedAt = SystemClock.elapsedRealtime()
+        Log.i(
+            TAG,
+            "synthesis start model=${model.name} backend=${settings.mnnBackend.wireName} " +
+                "threads=${settings.numThreads} textChars=$textCharacters maxFrames=$maxFrames"
+        )
+        val samples = try {
+            runtime.synthesize(
+                text = text,
+                language = QwenTtsLanguage.mnnName(language),
+                referenceAudio = referenceAudio,
+                maxFrames = maxFrames
+            )
+        } catch (error: Exception) {
+            Log.e(
+                TAG,
+                "synthesis failed model=${model.name} backend=${settings.mnnBackend.wireName} " +
+                    "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
+                error
+            )
+            throw error
+        }
+        Log.i(
+            TAG,
+            "synthesis complete model=${model.name} backend=${settings.mnnBackend.wireName} " +
+                "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} samples=${samples.size}"
         )
         return TtsAudio(
             samples = samples,
@@ -87,6 +111,14 @@ internal class MnnTtsEngine(
     )
 
     private companion object {
+        const val TAG = "MnnTtsEngine"
         const val SAMPLE_RATE = 24_000
     }
 }
+
+internal const val MNN_TTS_MAX_CHUNK_CHARACTERS = 120
+internal const val MNN_TTS_MIN_FRAMES = 128
+internal const val MNN_TTS_MAX_FRAMES = 384
+
+internal fun mnnTtsMaxFrames(text: String): Int =
+    (text.codePointCount(0, text.length) * 2).coerceIn(MNN_TTS_MIN_FRAMES, MNN_TTS_MAX_FRAMES)
