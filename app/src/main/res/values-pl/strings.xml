@@ -449,6 +449,11 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="tts_missing_voice_description">Jeśli pobranego głosu brakuje lub nie można go uruchomić, hReader automatycznie użyje głosu systemowego.</string>
     <string name="tts_not_downloaded">%1$s · niepobrany</string>
     <string name="tts_cpu_threads">Wątki CPU</string>
+    <string name="tts_mnn_backend">Backend MNN</string>
+    <string name="tts_mnn_backend_cpu">CPU</string>
+    <string name="tts_mnn_backend_opencl">OpenCL (GPU)</string>
+    <string name="tts_mnn_backend_vulkan">Vulkan (GPU)</string>
+    <string name="tts_mnn_backend_description">Używany przez modele Qwen3-TTS MNN. Backendy GPU wymagają zgodnych sterowników; jeśli wybrany backend nie wystartuje, hReader użyje głosu systemowego.</string>
     <string name="tts_pause_between_sentences">Przerwa między zdaniami</string>
     <string name="tts_speaker_id">Identyfikator mówcy</string>
     <string name="tts_quality_steps">Kroki jakości</string>
@@ -483,9 +488,9 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="tts_model_kitten_description">Angielski głos KittenTTS · pobranie 68 MB</string>
     <string name="tts_model_matcha_description">Angielski głos Matcha · pobranie 131 MB</string>
     <string name="tts_model_mnn_0_6b_base_int8_name">MNN Qwen3-TTS 0.6B (INT8)</string>
-    <string name="tts_model_mnn_0_6b_base_int8_description">Klonowanie głosu MNN na CPU · pobranie 1,4 GB</string>
+    <string name="tts_model_mnn_0_6b_base_int8_description">Klonowanie głosu MNN · pobranie 1,4 GB</string>
     <string name="tts_model_mnn_0_6b_base_fp16_name">MNN Qwen3-TTS 0.6B (FP16)</string>
-    <string name="tts_model_mnn_0_6b_base_fp16_description">Klonowanie głosu MNN na CPU · pobranie 2,0 GB</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_description">Klonowanie głosu MNN · pobranie 2,0 GB</string>
     <string name="tts_model_android_name">Głos systemowy</string>
     <string name="tts_model_android_description">Głos wbudowany · zawsze dostępny</string>
     <string name="tts_speech_playback_failed">Odtwarzanie mowy nie powiodło się.</string>

@@ -33,6 +33,7 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
+import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import com.hiosdra.hreader.core.application.tts.TtsModel
@@ -308,6 +309,10 @@ private fun AdvancedTtsSettings(
         steps = 2,
         onValueChange = { onSettingsChange(settings.copy(numThreads = it.roundToInt())) }
     )
+    MnnBackendSetting(
+        selected = settings.mnnBackend,
+        onSelected = { onSettingsChange(settings.copy(mnnBackend = it)) }
+    )
     AdvancedSlider(
         label = stringResource(R.string.tts_pause_between_sentences),
         value = settings.silenceScale,
@@ -384,6 +389,49 @@ private fun AdvancedTtsSettings(
         Text(stringResource(R.string.tts_reset_settings))
     }
 }
+
+@Composable
+private fun MnnBackendSetting(
+    selected: MnnTtsBackend,
+    onSelected: (MnnTtsBackend) -> Unit
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Text(
+        text = stringResource(R.string.tts_mnn_backend),
+        style = MaterialTheme.typography.bodyLarge
+    )
+    Box {
+        TextButton(onClick = { menuExpanded = true }) {
+            Text(stringResource(selected.displayNameRes))
+        }
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false }
+        ) {
+            MnnTtsBackend.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(option.displayNameRes)) },
+                    onClick = {
+                        onSelected(option)
+                        menuExpanded = false
+                    }
+                )
+            }
+        }
+    }
+    Text(
+        text = stringResource(R.string.tts_mnn_backend_description),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+private val MnnTtsBackend.displayNameRes: Int
+    get() = when (this) {
+        MnnTtsBackend.CPU -> R.string.tts_mnn_backend_cpu
+        MnnTtsBackend.OPENCL -> R.string.tts_mnn_backend_opencl
+        MnnTtsBackend.VULKAN -> R.string.tts_mnn_backend_vulkan
+    }
 
 @Composable
 private fun AdvancedSlider(

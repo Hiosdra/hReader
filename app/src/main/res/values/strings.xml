@@ -482,6 +482,11 @@
     <string name="tts_missing_voice_description">If a downloaded voice is missing or cannot start, hReader uses the system voice automatically.</string>
     <string name="tts_not_downloaded">%1$s · not downloaded</string>
     <string name="tts_cpu_threads">CPU threads</string>
+    <string name="tts_mnn_backend">MNN backend</string>
+    <string name="tts_mnn_backend_cpu">CPU</string>
+    <string name="tts_mnn_backend_opencl">OpenCL (GPU)</string>
+    <string name="tts_mnn_backend_vulkan">Vulkan (GPU)</string>
+    <string name="tts_mnn_backend_description">Used by Qwen3-TTS MNN models. GPU backends require compatible device drivers; if one cannot start, hReader uses the system voice.</string>
     <string name="tts_pause_between_sentences">Pause between sentences</string>
     <string name="tts_speaker_id">Speaker ID</string>
     <string name="tts_quality_steps">Quality steps</string>
@@ -516,9 +521,9 @@
     <string name="tts_model_kitten_description">English KittenTTS voice · 68 MB download</string>
     <string name="tts_model_matcha_description">English Matcha voice · 131 MB download</string>
     <string name="tts_model_mnn_0_6b_base_int8_name">MNN Qwen3-TTS 0.6B (INT8)</string>
-    <string name="tts_model_mnn_0_6b_base_int8_description">MNN CPU voice cloning · 1.4 GB download</string>
+    <string name="tts_model_mnn_0_6b_base_int8_description">MNN voice cloning · 1.4 GB download</string>
     <string name="tts_model_mnn_0_6b_base_fp16_name">MNN Qwen3-TTS 0.6B (FP16)</string>
-    <string name="tts_model_mnn_0_6b_base_fp16_description">MNN CPU voice cloning · 2.0 GB download</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_description">MNN voice cloning · 2.0 GB download</string>
     <string name="tts_model_android_name">System voice</string>
     <string name="tts_model_android_description">Built-in voice · always available</string>
     <string name="tts_speech_playback_failed">Speech playback failed.</string>

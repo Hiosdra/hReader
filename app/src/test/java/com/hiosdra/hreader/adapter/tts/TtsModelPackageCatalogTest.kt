@@ -58,4 +58,19 @@ class TtsModelPackageCatalogTest {
         assertTrue(mnn.generatedFiles.single().content.contains("\"mllm\""))
         assertTrue(mnn.requiredFiles.contains("qwen3_tts_ref.wav"))
     }
+
+    @Test
+    fun `pins int8 tokenizer to an existing modelscope revision`() {
+        val tokenizer = checkNotNull(
+            TtsModelPackageCatalog.packageFor(TtsModel.MNN_0_6B_BASE_INT8)
+                ?.files
+                ?.single { it.name == "tokenizer.txt" }
+        )
+
+        assertEquals(
+            "https://www.modelscope.cn/models/huangzhengxiang/Qwen3-TTS-0.6B-Base-INT8-MNN/" +
+                "resolve/cfc9c9ff6f976fbde0be10b97d3d927c2c4a6049/tokenizer.txt",
+            tokenizer.url
+        )
+    }
 }

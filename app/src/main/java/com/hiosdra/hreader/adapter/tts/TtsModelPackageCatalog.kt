@@ -306,7 +306,7 @@ private val MNN_INT8_FILES = listOf(
     mnnFile(MNN_INT8_ROOT, "talker.mnn.weight", "200d657f09bd56f00bf2782c2dcad866404bdd5e", "51973f76a0202a4ff0463da77fbd7598741949eef02b0b119733c1c93541783c", 478_542_762),
     mnnFile(MNN_INT8_ROOT, "talker_embeddings_bf16.bin", "be76186e21b1bfca22b1c8bc601889a87bc067be", "733b4f6c4afcce1d4880e65691c3284046a5f01382398a3008d4bdfc7156d41d", 6_291_456),
     mnnFile(MNN_INT8_ROOT, "talker_text_embeddings_bf16.bin", "45417ef5f1a0b62a9adbf3f9f49e601cc0f261cf", "1ed4fbb339ef48327faee2aa2154756320fb54e9131976c7b063827ed984edf4", 622_329_856),
-    mnnFile(MNN_INT8_ROOT, "tokenizer.txt", "cfc9c9ff6f976fb0e0db10b97d3d927c2c4a6049", "837c69c8566f5ed0892e0ce089e3292f5826c9256433324cb65b7ec833fbbc39", 3_193_703)
+    mnnFile(MNN_INT8_ROOT, "tokenizer.txt", "cfc9c9ff6f976fbde0be10b97d3d927c2c4a6049", "837c69c8566f5ed0892e0ce089e3292f5826c9256433324cb65b7ec833fbbc39", 3_193_703)
 )
 
 private val MNN_FP16_FILES = listOf(

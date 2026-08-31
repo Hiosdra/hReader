@@ -367,6 +367,11 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="tts_missing_voice_description">Si falta una voz descargada o no puede iniciarse, hReader usará automáticamente la voz del sistema.</string>
     <string name="tts_not_downloaded">%1$s · no descargada</string>
     <string name="tts_cpu_threads">Hilos de CPU</string>
+    <string name="tts_mnn_backend">Backend MNN</string>
+    <string name="tts_mnn_backend_cpu">CPU</string>
+    <string name="tts_mnn_backend_opencl">OpenCL (GPU)</string>
+    <string name="tts_mnn_backend_vulkan">Vulkan (GPU)</string>
+    <string name="tts_mnn_backend_description">Usado por los modelos Qwen3-TTS de MNN. Los backends de GPU requieren controladores compatibles; si uno no puede iniciarse, hReader usa la voz del sistema.</string>
     <string name="tts_pause_between_sentences">Pausa entre frases</string>
     <string name="tts_speaker_id">ID del hablante</string>
     <string name="tts_quality_steps">Pasos de calidad</string>
@@ -401,9 +406,9 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="tts_model_kitten_description">Voz inglesa de KittenTTS · descarga de 68 MB</string>
     <string name="tts_model_matcha_description">Voz inglesa de Matcha · descarga de 131 MB</string>
     <string name="tts_model_mnn_0_6b_base_int8_name">MNN Qwen3-TTS 0.6B (INT8)</string>
-    <string name="tts_model_mnn_0_6b_base_int8_description">Clonación de voz MNN en CPU · descarga de 1,4 GB</string>
+    <string name="tts_model_mnn_0_6b_base_int8_description">Clonación de voz MNN · descarga de 1,4 GB</string>
     <string name="tts_model_mnn_0_6b_base_fp16_name">MNN Qwen3-TTS 0.6B (FP16)</string>
-    <string name="tts_model_mnn_0_6b_base_fp16_description">Clonación de voz MNN en CPU · descarga de 2,0 GB</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_description">Clonación de voz MNN · descarga de 2,0 GB</string>
     <string name="tts_model_android_name">Voz del sistema</string>
     <string name="tts_model_android_description">Voz integrada · siempre disponible</string>
     <string name="tts_speech_playback_failed">Falló la reproducción de voz.</string>

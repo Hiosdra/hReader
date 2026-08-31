@@ -9,8 +9,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(EXTERNAL_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../external")
 set(MNN_ROOT "${EXTERNAL_ROOT}/MNN")
 
-option(HREADER_MNN_OPENCL "Build MNN with OpenCL support" OFF)
-option(HREADER_MNN_VULKAN "Build MNN with Vulkan support" OFF)
+option(HREADER_MNN_OPENCL "Build MNN with OpenCL support" ON)
+option(HREADER_MNN_VULKAN "Build MNN with Vulkan support" ON)
 
 set(MNN_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(MNN_SEP_BUILD OFF CACHE BOOL "" FORCE)
