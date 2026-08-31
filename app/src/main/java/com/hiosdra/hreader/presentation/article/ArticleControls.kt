@@ -11,17 +11,15 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
@@ -44,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -53,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.theme.MotionDuration
@@ -78,7 +76,13 @@ internal fun ArticleTopBar(
     onShare: () -> Unit,
     ttsContentState: ArticleTtsContentState? = null,
     isTtsActive: Boolean = false,
-    onInvokeTts: () -> Unit = {}
+    onInvokeTts: () -> Unit = {},
+    isOnline: Boolean = true,
+    defaultPaywallBypassMethod: PaywallBypassMethod? = null,
+    canUsePaywallBypass: Boolean = false,
+    onOpenInChrome: () -> Unit = {},
+    onBypassPaywall: (PaywallBypassMethod) -> Unit = {},
+    onOpenPaywallMethodPicker: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -108,7 +112,7 @@ internal fun ArticleTopBar(
         },
         actions = {
             val overflowExpanded = remember { mutableStateOf(false) }
-            if (entryUrl != null) {
+            if (!entryUrl.isNullOrBlank()) {
                 FeedWebToggle(
                     isWebViewMode = isWebViewMode,
                     canUseWebView = canUseWebView,
@@ -145,7 +149,71 @@ internal fun ArticleTopBar(
                         )
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
-                    if (entryUrl != null) {
+                    if (!entryUrl.isNullOrBlank()) {
+                        val externalActionOfflineDescription = stringResource(
+                            R.string.article_external_actions_requires_connection
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.article_open_original_in_chrome)) },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onOpenInChrome()
+                            },
+                            enabled = isOnline,
+                            modifier = Modifier.semantics {
+                                if (!isOnline) stateDescription = externalActionOfflineDescription
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_chrome_logo),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        )
+                        if (canUsePaywallBypass && defaultPaywallBypassMethod != null) {
+                            val defaultMethodName = stringResource(
+                                paywallBypassMethodNameRes(defaultPaywallBypassMethod)
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            R.string.article_open_through_paywall_service,
+                                            defaultMethodName
+                                        )
+                                    )
+                                },
+                                onClick = {
+                                    overflowExpanded.value = false
+                                    onBypassPaywall(defaultPaywallBypassMethod)
+                                },
+                                enabled = isOnline,
+                                modifier = Modifier.semantics {
+                                    if (!isOnline) stateDescription = externalActionOfflineDescription
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_lock_open),
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.article_choose_paywall_service)) },
+                                onClick = {
+                                    overflowExpanded.value = false
+                                    onOpenPaywallMethodPicker()
+                                },
+                                enabled = isOnline,
+                                modifier = Modifier.semantics {
+                                    if (!isOnline) stateDescription = externalActionOfflineDescription
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_share)) },
                             onClick = {
@@ -346,50 +414,5 @@ private fun ReaderModeOption(
             color = textColor,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
         )
-    }
-}
-
-@Composable
-internal fun ArticleBottomLinkBar(
-    modifier: Modifier = Modifier,
-    entryUrl: String?,
-    isOnline: Boolean,
-    canUsePaywallBypass: Boolean,
-    onOpenInChrome: () -> Unit,
-    onBypassPaywall: () -> Unit
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RectangleShape,
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = ARTICLE_BOTTOM_BAR_ALPHA),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End
-        ) {
-            if (entryUrl != null) {
-                IconButton(onClick = onOpenInChrome, enabled = isOnline) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_chrome_logo),
-                        contentDescription = stringResource(R.string.article_open_original_in_chrome),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (canUsePaywallBypass) {
-                    IconButton(onClick = onBypassPaywall, enabled = isOnline) {
-                        Icon(
-                            Icons.Filled.Lock,
-                            contentDescription = stringResource(R.string.article_open_through_paywall_bypass),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-        }
     }
 }

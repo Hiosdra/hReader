@@ -116,6 +116,10 @@
     <string name="article_open_original_in_chrome">Open original page in Chrome</string>
     <string name="article_open_embedded_media">Open embedded media</string>
     <string name="article_open_through_paywall_bypass">Open through paywall bypass</string>
+    <string name="article_original_short">Original</string>
+    <string name="article_open_through_paywall_service">Open through %1$s</string>
+    <string name="article_choose_paywall_service">Choose a paywall bypass service</string>
+    <string name="article_external_actions_requires_connection">Connect to the internet to open external pages.</string>
     <string name="article_preparing_voice">Preparing voice…</string>
     <string name="article_resume">Resume</string>
     <string name="article_pause">Pause</string>

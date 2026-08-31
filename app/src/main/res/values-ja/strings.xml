@@ -94,6 +94,10 @@
     <string name="article_open_original_in_chrome">元のページをChromeで開く</string>
     <string name="article_open_embedded_media">埋め込みメディアを開く</string>
     <string name="article_open_through_paywall_bypass">ペイウォール回避経由で開く</string>
+    <string name="article_original_short">オリジナル</string>
+    <string name="article_open_through_paywall_service">%1$s 経由で開く</string>
+    <string name="article_choose_paywall_service">ペイウォール回避サービスを選択</string>
+    <string name="article_external_actions_requires_connection">外部ページを開くにはインターネット接続が必要です。</string>
     <string name="article_preparing_voice">音声を準備中…</string>
     <string name="article_resume">再開</string>
     <string name="article_pause">一時停止</string>

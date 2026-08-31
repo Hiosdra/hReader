@@ -1,12 +1,6 @@
 package com.hiosdra.hreader.presentation.article
 
 import android.content.Intent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,6 +49,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsModel
@@ -64,7 +59,6 @@ import com.hiosdra.hreader.core.domain.service.cleanUrl
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
 import com.hiosdra.hreader.presentation.text.resolve
-import com.hiosdra.hreader.presentation.theme.MotionDuration
 import com.hiosdra.hreader.R
 import kotlin.math.roundToInt
 
@@ -73,7 +67,6 @@ internal const val MAX_ARTICLE_TEXT_SCALE = 1.35f
 private const val ARTICLE_TEXT_SCALE_STEP = 0.1f
 internal const val FEED_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.72f
 internal const val WEB_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.85f
-internal const val ARTICLE_BOTTOM_BAR_ALPHA = 0.72f
 internal const val READING_POSITION_SAMPLE_MILLIS = 400L
 
 // Compose packs layout dimensions into 18 bits. Keep a margin below the 262143 px
@@ -127,8 +120,10 @@ fun ArticleScreen(
     val ttsState by ttsController.state.collectAsStateWithLifecycle()
     val ttsModelStatuses by ttsModelManager.statuses.collectAsStateWithLifecycle()
     val configuredTtsModel = ttsPreferences.getTtsModel()
+    val configuredPaywallBypassMethod = readerPreferences.getPaywallBypassMethod()
     var temporaryTtsModel by remember { mutableStateOf<TtsModel?>(null) }
     var ttsPlayerSheetVisible by rememberSaveable { mutableStateOf(false) }
+    var paywallMethodPickerVisible by rememberSaveable { mutableStateOf(false) }
     var ttsMiniPlayerHeightPx by remember { mutableIntStateOf(0) }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
@@ -214,17 +209,8 @@ fun ArticleScreen(
             ttsMiniPlayerHeightPx = 0
         }
     }
-    var bottomActionBarHeightPx by remember { mutableIntStateOf(0) }
-    LaunchedEffect(currentEntry?.url) {
-        if (currentEntry?.url.isNullOrBlank()) bottomActionBarHeightPx = 0
-    }
-    val bottomActionBarHeight = if (currentEntry == null) {
-        0.dp
-    } else {
-        with(LocalDensity.current) { bottomActionBarHeightPx.toDp() }
-    }
     val ttsMiniPlayerHeight = with(LocalDensity.current) { ttsMiniPlayerHeightPx.toDp() }
-    val articleBottomContentPadding = bottomActionBarHeight + if (ttsState.articleId != null) {
+    val articleBottomContentPadding = if (ttsState.articleId != null) {
         ttsMiniPlayerHeight + 16.dp
     } else {
         0.dp
@@ -255,6 +241,20 @@ fun ArticleScreen(
             }
         Unit
     }
+    val openArticleInChrome: (String) -> Unit = { url ->
+        if (uiState.isOnline && url.isNotBlank()) {
+            openChromeCustomTab(navController.context, cleanUrl(url))
+        }
+    }
+    val openArticleThroughPaywall: (String, PaywallBypassMethod) -> Unit = { url, method ->
+        if (uiState.isOnline && url.isNotBlank()) {
+            val bypassUrl = paywallBypassService.getBypassUrl(url, method)
+            openChromeCustomTab(navController.context, bypassUrl)
+        }
+    }
+    val canUsePaywallBypass = currentEntry?.url?.let { url ->
+        url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
+    } == true
 
     Scaffold(
         snackbarHost = {
@@ -314,7 +314,17 @@ fun ArticleScreen(
                             ttsContentState == ArticleTtsContentState.AVAILABLE
                         }?.let { playArticleTts(it) }
                     }
-                }
+                },
+                isOnline = uiState.isOnline,
+                defaultPaywallBypassMethod = configuredPaywallBypassMethod,
+                canUsePaywallBypass = canUsePaywallBypass,
+                onOpenInChrome = {
+                    currentEntry?.url?.let(openArticleInChrome)
+                },
+                onBypassPaywall = { method ->
+                    currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
+                },
+                onOpenPaywallMethodPicker = { paywallMethodPickerVisible = true }
             )
         }
     ) { paddingValues ->
@@ -380,7 +390,13 @@ fun ArticleScreen(
                         credibilityEnabled = uiState.credibilityEnabled,
                         credibilityReports = uiState.credibilityReports,
                         analyzingCredibilityIds = uiState.analyzingCredibilityIds,
-                        onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) }
+                        onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) },
+                        defaultPaywallBypassMethod = configuredPaywallBypassMethod,
+                        canUsePaywallBypass = { url ->
+                            url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
+                        },
+                        onOpenInChrome = openArticleInChrome,
+                        onBypassPaywall = openArticleThroughPaywall
                     )
                 }
             }
@@ -433,7 +449,7 @@ fun ArticleScreen(
                     onStop = ttsController::stop,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = bottomActionBarHeight + 8.dp)
+                        .padding(bottom = 8.dp)
                         .navigationBarsPadding(),
                     onSizeChanged = { height ->
                         if (ttsMiniPlayerHeightPx != height) ttsMiniPlayerHeightPx = height
@@ -463,52 +479,15 @@ fun ArticleScreen(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            ) {
-                AnimatedVisibility(
-                    visible = currentEntry?.url?.isNotBlank() == true,
-                    modifier = Modifier.fillMaxWidth(),
-                    enter = slideInVertically(
-                        animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD)),
-                        initialOffsetY = { it / 2 }
-                    ) + fadeIn(
-                        animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
-                    ),
-                    exit = slideOutVertically(
-                        animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT)),
-                        targetOffsetY = { it / 2 }
-                    ) + fadeOut(
-                        animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                    )
-                ) {
-                    currentEntry?.let { entry ->
-                        ArticleBottomLinkBar(
-                            modifier = Modifier.onSizeChanged { size ->
-                                if (bottomActionBarHeightPx != size.height) {
-                                    bottomActionBarHeightPx = size.height
-                                }
-                            },
-                            entryUrl = entry.url.takeIf(String::isNotBlank),
-                            isOnline = uiState.isOnline,
-                            canUsePaywallBypass = entry.url.isNotBlank() &&
-                                !paywallBypassService.isPaywallBypassUrl(entry.url),
-                            onOpenInChrome = {
-                                openChromeCustomTab(navController.context, cleanUrl(entry.url))
-                            },
-                            onBypassPaywall = {
-                                if (entry.url.isNotBlank()) {
-                                    val bypassMethod = readerPreferences.getPaywallBypassMethod()
-                                    val bypassUrl = paywallBypassService.getBypassUrl(entry.url, bypassMethod)
-                                    openChromeCustomTab(navController.context, bypassUrl)
-                                }
-                            }
-                        )
-                    }
-                }
+            if (paywallMethodPickerVisible && currentEntry != null) {
+                PaywallBypassMethodPicker(
+                    defaultPaywallBypassMethod = configuredPaywallBypassMethod,
+                    onSelect = { method ->
+                        paywallMethodPickerVisible = false
+                        currentEntry.url.let { url -> openArticleThroughPaywall(url, method) }
+                    },
+                    onDismiss = { paywallMethodPickerVisible = false }
+                )
             }
         }
     }

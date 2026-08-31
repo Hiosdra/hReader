@@ -94,6 +94,10 @@
     <string name="article_open_original_in_chrome">Chrome에서 원래 페이지 열기</string>
     <string name="article_open_embedded_media">삽입된 미디어 열기</string>
     <string name="article_open_through_paywall_bypass">페이월 우회로 열기</string>
+    <string name="article_original_short">원문</string>
+    <string name="article_open_through_paywall_service">%1$s을(를) 통해 열기</string>
+    <string name="article_choose_paywall_service">페이월 우회 서비스 선택</string>
+    <string name="article_external_actions_requires_connection">외부 페이지를 열려면 인터넷 연결이 필요합니다.</string>
     <string name="article_preparing_voice">음성 준비 중…</string>
     <string name="article_resume">재개</string>
     <string name="article_pause">일시중지</string>

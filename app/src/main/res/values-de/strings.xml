@@ -100,6 +100,10 @@
     <string name="article_open_original_in_chrome">Originalseite in Chrome öffnen</string>
     <string name="article_open_embedded_media">Eingebettete Medien öffnen</string>
     <string name="article_open_through_paywall_bypass">Über Paywall-Umgehung öffnen</string>
+    <string name="article_original_short">Original</string>
+    <string name="article_open_through_paywall_service">Über %1$s öffnen</string>
+    <string name="article_choose_paywall_service">Dienst zur Paywall-Umgehung auswählen</string>
+    <string name="article_external_actions_requires_connection">Verbinde dich mit dem Internet, um externe Seiten zu öffnen.</string>
     <string name="article_preparing_voice">Stimme wird vorbereitet…</string>
     <string name="article_resume">Fortsetzen</string>
     <string name="article_pause">Pausieren</string>

@@ -57,6 +57,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
@@ -104,7 +105,11 @@ internal fun ArticleContent(
     credibilityEnabled: Boolean = false,
     credibilityReport: CredibilityReport? = null,
     isAnalyzingCredibility: Boolean = false,
-    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null
+    onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null,
+    defaultPaywallBypassMethod: PaywallBypassMethod = PaywallBypassMethod.SMRY_AI,
+    canUsePaywallBypass: (String) -> Boolean = { false },
+    onOpenInChrome: (String) -> Unit = {},
+    onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> }
 ) {
     val locale = LocalLocale.current.platformLocale
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
@@ -307,6 +312,16 @@ internal fun ArticleContent(
                     { force -> onAnalyzeCredibility(entry.id, force) }
                 } else null
             )
+            if (entry.url.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                ArticleSourceActions(
+                    defaultPaywallBypassMethod = defaultPaywallBypassMethod,
+                    isOnline = isOnline,
+                    canUsePaywallBypass = canUsePaywallBypass(entry.url),
+                    onOpenInChrome = { onOpenInChrome(entry.url) },
+                    onBypassPaywall = { method -> onBypassPaywall(entry.url, method) }
+                )
+            }
             Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider()
 
