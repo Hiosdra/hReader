@@ -9,6 +9,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(EXTERNAL_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../external")
 set(MNN_ROOT "${EXTERNAL_ROOT}/MNN")
 
+if (NOT ANDROID_ABI STREQUAL "arm64-v8a")
+    add_custom_target(hreader_mnn_tts)
+    return()
+endif()
+
 option(HREADER_MNN_OPENCL "Build MNN with OpenCL support" ON)
 option(HREADER_MNN_VULKAN "Build MNN with Vulkan support" ON)
 

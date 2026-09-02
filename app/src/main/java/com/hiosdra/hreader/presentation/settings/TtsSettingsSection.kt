@@ -309,10 +309,12 @@ private fun AdvancedTtsSettings(
         steps = 2,
         onValueChange = { onSettingsChange(settings.copy(numThreads = it.roundToInt())) }
     )
-    MnnBackendSetting(
-        selected = settings.mnnBackend,
-        onSelected = { onSettingsChange(settings.copy(mnnBackend = it)) }
-    )
+    if (model.family == TtsEngineFamily.MNN) {
+        MnnBackendSetting(
+            selected = settings.mnnBackend,
+            onSelected = { onSettingsChange(settings.copy(mnnBackend = it)) }
+        )
+    }
     AdvancedSlider(
         label = stringResource(R.string.tts_pause_between_sentences),
         value = settings.silenceScale,

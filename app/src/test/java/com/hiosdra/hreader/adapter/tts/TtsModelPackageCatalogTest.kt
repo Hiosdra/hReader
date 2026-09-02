@@ -4,6 +4,7 @@ import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -57,6 +58,18 @@ class TtsModelPackageCatalogTest {
         assertTrue(mnn.generatedFiles.single().content.contains("\"backend_type\": \"cpu\""))
         assertTrue(mnn.generatedFiles.single().content.contains("\"mllm\""))
         assertTrue(mnn.requiredFiles.contains("qwen3_tts_ref.wav"))
+    }
+
+    @Test
+    fun `preflight includes model bytes and staging headroom`() {
+        val mnn = checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.MNN_0_6B_BASE_INT8))
+        val downloadBytes = mnn.files.sumOf(RemoteFile::size)
+        val requiredBytes = mnn.requiredStorageBytes()
+
+        assertTrue(requiredBytes > downloadBytes)
+        assertTrue(requiredBytes - downloadBytes >= 128L * 1024 * 1024)
+        assertFalse(hasEnoughTtsModelStorage(downloadBytes, requiredBytes))
+        assertTrue(hasEnoughTtsModelStorage(requiredBytes, requiredBytes))
     }
 
     @Test

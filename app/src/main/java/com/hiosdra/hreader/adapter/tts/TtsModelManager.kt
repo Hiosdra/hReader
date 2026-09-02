@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.tts
 
 import android.content.Context
+import android.os.StatFs
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsModel
@@ -77,6 +78,8 @@ class TtsModelManager(
                 _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
                 staging.deleteRecursively()
                 staging.mkdirs()
+                archive.delete()
+                ensureStorageAvailable(artifact)
                 if (artifact.files.isEmpty()) {
                     val archiveSize = checkNotNull(artifact.archive).size
                     downloadArchive(
@@ -130,6 +133,15 @@ class TtsModelManager(
                 archive.delete()
                 staging.deleteRecursively()
             }
+        }
+    }
+
+    private fun ensureStorageAvailable(artifact: TtsModelPackage) {
+        val requiredBytes = artifact.requiredStorageBytes()
+        val availableBytes = StatFs(modelRoot.path).availableBytes
+        check(hasEnoughTtsModelStorage(availableBytes, requiredBytes)) {
+            "Not enough storage for ${artifact.directoryName}: " +
+                "$requiredBytes required, $availableBytes available"
         }
     }
 
