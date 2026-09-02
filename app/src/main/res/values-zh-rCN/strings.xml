@@ -181,6 +181,9 @@
     <string name="feeds_label_value">%1$s：%2$s</string>
     <string name="feeds_site_url">网站网址</string>
     <string name="feeds_feed_url">订阅源网址</string>
+    <string name="feeds_preload_ai_overview">预生成 AI 摘要</string>
+    <string name="feeds_preload_ai_overview_description">同步后，为此来源的未读文章生成摘要。Gemma 可离线运行；云端模型会将文章文本发送给所选提供商，并需要网络连接。</string>
+    <string name="feeds_preload_ai_overview_error">无法保存 AI 摘要预生成设置。</string>
     <string name="feeds_imported">导入完成：%1$s、%2$s、%3$s</string>
     <plurals name="feeds_imported_added"><item quantity="other">%1$d 个已添加</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="other">%1$d 个已订阅</item></plurals>

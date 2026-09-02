@@ -148,6 +148,30 @@ class FeedsViewModel(
         ) { feeds.renameFeed(feedId, trimmed) }
     }
 
+    fun setAiOverviewPreloading(feedId: Long, enabled: Boolean) {
+        if (_uiState.value.isBusy) return
+        val current = _uiState.value.feeds.firstOrNull { it.id == feedId } ?: return
+        if (current.preloadAiOverview == enabled) return
+
+        updateAiOverviewPreloading(feedId, enabled)
+        retryAction = null
+        _uiState.value = _uiState.value.copy(isBusy = true, message = null)
+        viewModelScope.launch {
+            val result = runCatchingCancellable {
+                feeds.setAiOverviewPreloading(feedId, enabled)
+            }
+            val failed = result.isFailure
+            if (failed) updateAiOverviewPreloading(feedId, current.preloadAiOverview)
+            retryAction = { setAiOverviewPreloading(feedId, enabled) }.takeIf { failed }
+            _uiState.value = _uiState.value.copy(
+                isBusy = false,
+                message = UiText.Resource(R.string.feeds_preload_ai_overview_error).takeIf { failed },
+                messageIsError = failed,
+                messageCanRetry = failed
+            )
+        }
+    }
+
     fun importOpml(xml: String) {
         runFeedAction(
             success = {
@@ -287,6 +311,19 @@ class FeedsViewModel(
         if (_uiState.value.searchQuery.isNotEmpty()) {
             filterFeeds()
         }
+    }
+
+    private fun updateAiOverviewPreloading(feedId: Long, enabled: Boolean) {
+        val updatedFeeds = _uiState.value.feeds.map { feed ->
+            if (feed.id == feedId) feed.copy(preloadAiOverview = enabled) else feed
+        }
+        val updatedFilteredFeeds = _uiState.value.filteredFeeds.map { feed ->
+            if (feed.id == feedId) feed.copy(preloadAiOverview = enabled) else feed
+        }
+        _uiState.value = _uiState.value.copy(
+            feeds = updatedFeeds,
+            filteredFeeds = updatedFilteredFeeds
+        )
     }
 }
 

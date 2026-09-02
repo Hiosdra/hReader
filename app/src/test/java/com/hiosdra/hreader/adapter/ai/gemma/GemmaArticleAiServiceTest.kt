@@ -72,4 +72,24 @@ class GemmaArticleAiServiceTest {
 
         assertTrue(inferenceCalls > 1)
     }
+
+    @Test
+    fun usesGroundedInstructionsForPromotionalArticleFooters() = runBlocking {
+        val systemPrompt = slot<String>()
+        val userPrompt = slot<String>()
+        coEvery {
+            engine.generate(capture(systemPrompt), capture(userPrompt), any(), any(), any())
+        } returns Result.success("Local summary")
+
+        service.generateArticleOverview(
+            title = "Budget and public debt",
+            content = "<p>The budget deficit grows.</p>",
+            modelId = Gemma4E2bModel.MODEL_ID,
+            onProgress = {}
+        ).getOrThrow()
+
+        assertTrue(systemPrompt.captured.contains("e-book promotions"))
+        assertTrue(systemPrompt.captured.contains("late footer"))
+        assertTrue(userPrompt.captured.contains("If this part is mostly a footer"))
+    }
 }

@@ -40,6 +40,7 @@ import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
+import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewPrefetchStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
@@ -81,6 +82,7 @@ import com.hiosdra.hreader.core.application.usecase.feeds.FeedUseCase
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
 import com.hiosdra.hreader.entrypoint.worker.ArticleContentSyncWorker
+import com.hiosdra.hreader.entrypoint.worker.ArticleAiOverviewPreloadWorker
 import com.hiosdra.hreader.entrypoint.worker.ContentSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.CacheMaintenanceWorker
 import com.hiosdra.hreader.entrypoint.worker.FullPageSyncWorker
@@ -127,6 +129,7 @@ val appModule = module {
     single<ArticleMutationStore> { get<ArticleRepository>() }
     single<ArticleSyncStore> { get<ArticleRepository>() }
     single<ArticleMaintenanceStore> { get<ArticleRepository>() }
+    single<ArticleAiOverviewPrefetchStore> { get<ArticleRepository>() }
     single { ArticleImageRepository(androidApplication(), get(), get(), get(), get(), get()) }
     single<ArticleImageStore> { get<ArticleImageRepository>() }
     single<coil3.ImageLoader> {
@@ -229,6 +232,7 @@ val appModule = module {
             backendPreferences = get(),
             syncPreferences = get(),
             networkMonitor = get(),
+            aiPreferences = get(),
             scope = get(named("applicationScope"))
         )
     }
@@ -275,6 +279,7 @@ val appModule = module {
     }
     worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get()) }
     worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }

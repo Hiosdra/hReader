@@ -5,6 +5,7 @@ import com.hiosdra.hreader.adapter.ai.gemma.GemmaArticleAiService
 import com.hiosdra.hreader.adapter.ai.openrouter.ArticleAiService
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
+import com.hiosdra.hreader.core.application.ai.GemmaModelNotInstalledException
 import com.hiosdra.hreader.core.application.ai.MissingAiApiKeyException
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
@@ -44,7 +45,11 @@ class ArticleAiGatewayRouter(
         if (modelId == Gemma4E2bModel.MODEL_ID) gemma else openRouter
 
     private fun reportSummaryFailure(error: Throwable) {
-        if (error !is EmptyAiContentException && error !is MissingAiApiKeyException) {
+        if (
+            error !is EmptyAiContentException &&
+            error !is MissingAiApiKeyException &&
+            error !is GemmaModelNotInstalledException
+        ) {
             errorReporter.captureException(error, AI_SUMMARY_COMPONENT)
         }
     }

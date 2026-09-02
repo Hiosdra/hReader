@@ -49,4 +49,26 @@ class ArticleSummaryPipelineTest {
         assertTrue(progress.any { it.phase == ArticleAiPhase.STREAMING })
         assertTrue(progress.any { it.phase == ArticleAiPhase.FINALIZING })
     }
+
+    @Test
+    fun finalPartIsNotBoundToTheWorkingSummaryLimit() = runBlocking {
+        val pipeline = ArticleSummaryPipeline()
+        val content = (1..250).joinToString(" ") { "Fact $it." }
+        val finalOverview = ("Final overview. " + "Important conclusion. ".repeat(40)).trim()
+
+        val result = pipeline.generate(
+            title = "Title",
+            content = content,
+            modelId = "test/final-limit",
+            contextLength = 1_024,
+            onProgress = {}
+        ) { part, _ ->
+            if (part.isFinalPart) Result.success(finalOverview) else Result.success("Working summary")
+        }.getOrThrow()
+
+        assertEquals(finalOverview, result)
+        assertTrue(
+            result.length > ArticleSummaryPlanner.plan(content, 1_024).workingSummaryCharacterLimit
+        )
+    }
 }

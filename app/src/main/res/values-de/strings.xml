@@ -190,6 +190,9 @@
     <string name="feeds_label_value">%1$s: %2$s</string>
     <string name="feeds_site_url">Webseiten-URL</string>
     <string name="feeds_feed_url">Feed-URL</string>
+    <string name="feeds_preload_ai_overview">KI-Zusammenfassungen vorab erstellen</string>
+    <string name="feeds_preload_ai_overview_description">Nach der Synchronisierung Zusammenfassungen für ungelesene Artikel aus dieser Quelle erstellen. Gemma funktioniert offline; Cloud-Modelle senden den Artikeltext an den ausgewählten Anbieter und benötigen eine Netzwerkverbindung.</string>
+    <string name="feeds_preload_ai_overview_error">Die Einstellung für KI-Zusammenfassungen konnte nicht gespeichert werden.</string>
     <string name="feeds_imported">Importiert: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="one">%1$d hinzugefügt</item><item quantity="other">%1$d hinzugefügt</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="one">%1$d bereits abonniert</item><item quantity="other">%1$d bereits abonniert</item></plurals>

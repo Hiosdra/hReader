@@ -9,6 +9,7 @@ import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -16,6 +17,9 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.await
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.ai.AiModel
+import com.hiosdra.hreader.core.application.ai.AiProvider
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
@@ -64,6 +68,7 @@ internal const val KEY_PROGRESS_TOTAL = "progress_total"
 internal const val KEY_USER_VISIBLE = "user_visible"
 internal const val KEY_OPERATION_TITLE = "operation_title"
 internal const val KEY_ERROR_MESSAGE = "error_message"
+internal const val KEY_AI_MODEL_ID = "ai_model_id"
 
 internal fun offlinePreparationStage(tags: Set<String>): OfflinePreparationStage = when {
     OFFLINE_SYNC_STAGE_TAG in tags -> OfflinePreparationStage.SYNCING
@@ -82,6 +87,7 @@ class SyncScheduler(
     private val backendPreferences: BackendPreferences,
     private val syncPreferences: SyncPreferences,
     private val networkMonitor: NetworkStatus,
+    private val aiPreferences: AiPreferences,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val workManagerProvider: (Context) -> WorkManager = { appContext ->
         WorkManager.getInstance(appContext)
@@ -186,7 +192,7 @@ class SyncScheduler(
             SYNC_PIPELINE_WORK,
             ExistingWorkPolicy.KEEP,
             prefetchRequest()
-        ).then(maintenanceRequest()).enqueue()
+        ).then(aiOverviewPreloadRequest()).then(maintenanceRequest()).enqueue()
     }
 
     /**
@@ -221,6 +227,7 @@ class SyncScheduler(
         var continuation = workManager
             .beginUniqueWork(SYNC_PIPELINE_WORK, policy, syncWork)
             .then(prefetchRequest(plan, operationTitle))
+            .then(aiOverviewPreloadRequest())
         if (plan.includeFullPages) {
             continuation = continuation.then(fullPageRequest(plan, operationTitle))
         }
@@ -361,6 +368,24 @@ class SyncScheduler(
                 if (plan.fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
             }
             .build()
+
+    private fun aiOverviewPreloadRequest(): OneTimeWorkRequest {
+        val modelId = aiPreferences.getAiModelId()
+        return OneTimeWorkRequestBuilder<ArticleAiOverviewPreloadWorker>()
+            .setConstraints(aiOverviewPreloadConstraints(modelId))
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
+            .setInputData(Data.Builder().putString(KEY_AI_MODEL_ID, modelId).build())
+            .build()
+    }
+
+    private fun aiOverviewPreloadConstraints(modelId: String): Constraints =
+        if (AiModel.providerFor(modelId) == AiProvider.OPENROUTER) {
+            networkConstraints(avoidLowStorage = true)
+        } else {
+            Constraints.Builder()
+                .setRequiresStorageNotLow(true)
+                .build()
+        }
 
     private fun fullPageRequest(
         plan: SyncPlan,

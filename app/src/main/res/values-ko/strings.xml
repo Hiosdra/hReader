@@ -181,6 +181,9 @@
     <string name="feeds_label_value">%1$s: %2$s</string>
     <string name="feeds_site_url">사이트 URL</string>
     <string name="feeds_feed_url">피드 URL</string>
+    <string name="feeds_preload_ai_overview">AI 요약 미리 생성</string>
+    <string name="feeds_preload_ai_overview_description">동기화 후 이 소스의 읽지 않은 기사 요약을 생성합니다. Gemma는 오프라인에서 작동하며, 클라우드 모델은 기사 텍스트를 선택한 제공업체로 보내고 네트워크 연결이 필요합니다.</string>
+    <string name="feeds_preload_ai_overview_error">AI 요약 미리 생성 설정을 저장할 수 없습니다.</string>
     <string name="feeds_imported">가져옴: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="other">%1$d개 추가</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="other">%1$d개 이미 구독</item></plurals>
