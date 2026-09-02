@@ -85,8 +85,11 @@ internal fun ArticleWebViewReadingPosition(
         }
         readingCompletionReported = false
         snapshotFlow {
-            val maxScrollPx = readerWebViewMaxScrollPx(contentHeightPx, viewportHeightPx)
-            articleScrollProgress(scrollY, maxScrollPx) to (maxScrollPx > 0)
+            val maxScrollPx = readerWebViewMaxScrollPx(
+                latestContentHeightPx.value,
+                latestViewportHeightPx.value
+            )
+            articleScrollProgress(latestScrollY.value, maxScrollPx) to (maxScrollPx > 0)
         }
             .filter { (_, ready) -> ready }
             .sample(READING_POSITION_SAMPLE_MILLIS)
