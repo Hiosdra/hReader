@@ -423,8 +423,8 @@ class ArticleRepository(
             }
         }
 
-    override suspend fun getAiOverviewPrefetchTargets(): List<AiOverviewPrefetchTarget> =
-        articleDao.getAiOverviewPrefetchTargets().mapNotNull { target ->
+    override suspend fun getAiOverviewPrefetchTargets(limit: Int, offset: Int): List<AiOverviewPrefetchTarget> =
+        articleDao.getAiOverviewPrefetchTargets(limit = limit, offset = offset).mapNotNull { target ->
             target.id.toLongOrNull()?.let { id ->
                 AiOverviewPrefetchTarget(id = id, title = target.title, url = target.url)
             }

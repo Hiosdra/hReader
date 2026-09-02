@@ -47,7 +47,7 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
         val target = AiOverviewPrefetchTarget(1L, "Title", "https://example.com/article")
 
         every { aiPreferences.getAiModelId() } returns AiModel.GEMMA_4_E2B_ID
-        coEvery { targetStore.getAiOverviewPrefetchTargets() } returns listOf(target)
+        coEvery { targetStore.getAiOverviewPrefetchTargets(any(), any()) } returns listOf(target)
         coEvery {
             contentStore.getArticleContent(target.id, target.url, allowNetwork = false)
         } returns ArticleText("<p>Body</p>", null, ArticleContentSource.FULL)
@@ -96,8 +96,43 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
         ).doWork()
 
         assertTrue(result is ListenableWorker.Result.Retry)
-        coVerify(exactly = 0) { targetStore.getAiOverviewPrefetchTargets() }
+        coVerify(exactly = 0) { targetStore.getAiOverviewPrefetchTargets(any(), any()) }
         coVerify(exactly = 0) { contentStore.getArticleContent(any(), any(), any()) }
+    }
+
+    @Test
+    fun generationBudgetFinishesSuccessfullyAfterEightOverviews() = runBlocking {
+        setBattery(level = 90, status = android.os.BatteryManager.BATTERY_STATUS_DISCHARGING)
+        val targets = (1L..9L).map { id ->
+            AiOverviewPrefetchTarget(id, "Title $id", "https://example.com/article/$id")
+        }
+        val targetStore = mockk<ArticleAiOverviewPrefetchStore>()
+        val contentStore = mockk<ArticleContentStore>()
+        val aiGateway = mockk<ArticleAiGateway>()
+        val overviewStore = mockk<ArticleAiOverviewStore>()
+        val aiPreferences = mockk<AiPreferences>()
+
+        every { aiPreferences.getAiModelId() } returns AiModel.GEMMA_4_E2B_ID
+        coEvery { targetStore.getAiOverviewPrefetchTargets(any(), any()) } returns targets
+        coEvery { contentStore.getArticleContent(any(), any(), allowNetwork = false) } returns
+            ArticleText("<p>Body</p>", null, ArticleContentSource.FULL)
+        coEvery { overviewStore.get(any(), any(), any()) } returns null
+        coEvery { aiGateway.generateArticleOverview(any(), any(), any(), any()) } returns
+            Result.success("Summary")
+        coEvery { overviewStore.save(any(), any(), any(), any()) } just runs
+
+        val result = createWorker(
+            targetStore = targetStore,
+            contentStore = contentStore,
+            aiGateway = aiGateway,
+            overviewStore = overviewStore,
+            aiPreferences = aiPreferences,
+            errorReporter = mockk(relaxed = true)
+        ).doWork()
+
+        assertTrue(result is ListenableWorker.Result.Success)
+        coVerify(exactly = 8) { aiGateway.generateArticleOverview(any(), any(), any(), any()) }
+        coVerify(exactly = 1) { targetStore.getAiOverviewPrefetchTargets(16, 0) }
     }
 
     private fun createWorker(

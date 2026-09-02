@@ -25,6 +25,8 @@ import java.io.IOException
 
 private const val MAX_RUN_ATTEMPTS = 5
 private const val MAX_OVERVIEWS_PER_RUN = 8
+private const val MAX_TARGETS_SCANNED_PER_RUN = 64
+private const val TARGET_SCAN_BATCH_SIZE = 16
 private const val MIN_BATTERY_PERCENT = 80
 
 class ArticleAiOverviewPreloadWorker(
@@ -53,65 +55,76 @@ class ArticleAiOverviewPreloadWorker(
         }
 
         return try {
-            val preloadTargets = targets.getAiOverviewPrefetchTargets()
-            if (preloadTargets.isEmpty()) return Result.success()
-
             val allowNetworkForContent = provider == AiProvider.OPENROUTER
             var generated = 0
+            var scanned = 0
+            var offset = 0
             var retryableFailure: Throwable? = null
+            var stopScanning = false
 
-            for (target in preloadTargets) {
-                if (generated >= MAX_OVERVIEWS_PER_RUN) {
-                    Log.i(TAG, "Generated $generated AI overviews; the rest waits for the next run")
-                    return retryOrFinish()
-                }
-
-                val articleText = try {
-                    content.getArticleContent(
-                        entryId = target.id,
-                        url = target.url,
-                        allowNetwork = allowNetworkForContent
-                    )
-                } catch (failure: CancellationException) {
-                    throw failure
-                } catch (failure: Exception) {
-                    Log.w(TAG, "Could not load content for AI overview ${target.id}", failure)
-                    continue
-                }
-
-                if (articleText.source != ArticleContentSource.FULL || articleText.html.isBlank()) {
-                    Log.d(TAG, "Skipping AI overview ${target.id}; full article content is unavailable")
-                    continue
-                }
-                if (overviews.get(target.id, articleText.html, modelId) != null) continue
-
-                val result = ai.generateArticleOverview(
-                    title = target.title,
-                    content = articleText.html,
-                    modelId = modelId
+            while (generated < MAX_OVERVIEWS_PER_RUN && scanned < MAX_TARGETS_SCANNED_PER_RUN) {
+                val batchSize = minOf(TARGET_SCAN_BATCH_SIZE, MAX_TARGETS_SCANNED_PER_RUN - scanned)
+                val preloadTargets = targets.getAiOverviewPrefetchTargets(
+                    limit = batchSize,
+                    offset = offset
                 )
-                val failure = result.exceptionOrNull()
-                if (failure != null) {
-                    if (failure is CancellationException) throw failure
-                    if (failure.isRetryableForAi()) {
-                        retryableFailure = failure
-                        Log.w(TAG, "Temporary AI overview failure for ${target.id}", failure)
-                        break
-                    }
-                    if (failure is GemmaModelNotInstalledException) {
-                        Log.i(TAG, "Skipping AI overview preload because Gemma is not installed")
-                        break
-                    }
-                    if (failure !is EmptyAiContentException && failure !is MissingAiApiKeyException) {
-                        Log.w(TAG, "Skipping AI overview ${target.id}", failure)
-                    }
-                    continue
-                }
-                val overview = result.getOrNull() ?: continue
+                if (preloadTargets.isEmpty()) break
+                scanned += preloadTargets.size
+                offset += preloadTargets.size
 
-                if (overview.isBlank()) continue
-                overviews.save(target.id, articleText.html, modelId, overview)
-                generated++
+                for (target in preloadTargets) {
+                    if (generated >= MAX_OVERVIEWS_PER_RUN) break
+
+                    val articleText = try {
+                        content.getArticleContent(
+                            entryId = target.id,
+                            url = target.url,
+                            allowNetwork = allowNetworkForContent
+                        )
+                    } catch (failure: CancellationException) {
+                        throw failure
+                    } catch (failure: Exception) {
+                        Log.w(TAG, "Could not load content for AI overview ${target.id}", failure)
+                        continue
+                    }
+
+                    if (articleText.source != ArticleContentSource.FULL || articleText.html.isBlank()) {
+                        Log.d(TAG, "Skipping AI overview ${target.id}; full article content is unavailable")
+                        continue
+                    }
+                    if (overviews.get(target.id, articleText.html, modelId) != null) continue
+
+                    val result = ai.generateArticleOverview(
+                        title = target.title,
+                        content = articleText.html,
+                        modelId = modelId
+                    )
+                    val failure = result.exceptionOrNull()
+                    if (failure != null) {
+                        if (failure is CancellationException) throw failure
+                        if (failure.isRetryableForAi()) {
+                            retryableFailure = failure
+                            Log.w(TAG, "Temporary AI overview failure for ${target.id}", failure)
+                            break
+                        }
+                        if (failure is GemmaModelNotInstalledException) {
+                            Log.i(TAG, "Skipping AI overview preload because Gemma is not installed")
+                            stopScanning = true
+                            break
+                        }
+                        if (failure !is EmptyAiContentException && failure !is MissingAiApiKeyException) {
+                            Log.w(TAG, "Skipping AI overview ${target.id}", failure)
+                        }
+                        continue
+                    }
+                    val overview = result.getOrNull() ?: continue
+
+                    if (overview.isBlank()) continue
+                    overviews.save(target.id, articleText.html, modelId, overview)
+                    generated++
+                }
+
+                if (stopScanning || retryableFailure != null || preloadTargets.size < batchSize) break
             }
 
             retryableFailure?.let {

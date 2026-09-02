@@ -7,5 +7,5 @@ data class AiOverviewPrefetchTarget(
 )
 
 interface ArticleAiOverviewPrefetchStore {
-    suspend fun getAiOverviewPrefetchTargets(): List<AiOverviewPrefetchTarget>
+    suspend fun getAiOverviewPrefetchTargets(limit: Int, offset: Int): List<AiOverviewPrefetchTarget>
 }

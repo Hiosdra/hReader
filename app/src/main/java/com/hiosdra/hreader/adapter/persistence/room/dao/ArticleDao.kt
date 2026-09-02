@@ -324,9 +324,11 @@ interface ArticleDao {
             "WHERE f.preloadAiOverview = 1 " +
             "AND ((a.status IS NULL OR a.status != :readStatus) OR a.backlogFetchedAt IS NOT NULL) " +
             "ORDER BY CASE WHEN (a.status IS NULL OR a.status != :readStatus) THEN 0 ELSE 1 END, " +
-            "a.publishedAt DESC, a.id DESC"
+            "a.publishedAt DESC, a.id DESC LIMIT :limit OFFSET :offset"
     )
     suspend fun getAiOverviewPrefetchTargets(
+        limit: Int,
+        offset: Int,
         readStatus: ArticleStatus = ArticleStatus.READ
     ): List<AiOverviewPrefetchTarget>
 
