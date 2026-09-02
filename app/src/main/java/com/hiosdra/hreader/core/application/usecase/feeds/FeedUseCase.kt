@@ -22,6 +22,8 @@ class FeedUseCase(
     suspend fun verifyConnection(): Int = feeds.verifyConnection()
     suspend fun deleteFeed(feedId: Long) = feeds.deleteFeed(feedId)
     suspend fun renameFeed(feedId: Long, title: String) = feeds.renameFeed(feedId, title)
+    suspend fun setAiOverviewPreloading(feedId: Long, enabled: Boolean) =
+        feeds.setAiOverviewPreloading(feedId, enabled)
     suspend fun exportOpml(title: String): String = feeds.exportOpml(title)
     suspend fun importOpml(xml: String): OpmlImportResult = feeds.importOpml(xml)
 }

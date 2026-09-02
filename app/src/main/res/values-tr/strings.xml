@@ -181,6 +181,9 @@
     <string name="feeds_label_value">%1$s: %2$s</string>
     <string name="feeds_site_url">Site URL’si</string>
     <string name="feeds_feed_url">Akış URL’si</string>
+    <string name="feeds_preload_ai_overview">Yapay zekâ özetlerini önceden yükle</string>
+    <string name="feeds_preload_ai_overview_description">Senkronizasyondan sonra bu kaynaktaki okunmamış makaleler için özet oluşturun. Gemma çevrimdışı çalışır; bulut modelleri makale metnini seçilen sağlayıcıya gönderir ve ağ bağlantısı gerektirir.</string>
+    <string name="feeds_preload_ai_overview_error">Yapay zekâ özeti ön yükleme ayarı kaydedilemedi.</string>
     <string name="feeds_imported">İçe aktarıldı: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="one">%1$d eklendi</item><item quantity="other">%1$d eklendi</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="one">%1$d zaten abonelikte</item><item quantity="other">%1$d zaten abonelikte</item></plurals>

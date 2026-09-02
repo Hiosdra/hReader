@@ -5,6 +5,7 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import android.content.Context
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.Operation
 import androidx.work.impl.utils.futures.SettableFuture
@@ -12,6 +13,8 @@ import androidx.work.WorkContinuation
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.hiosdra.hreader.adapter.system.NetworkMonitor
+import com.hiosdra.hreader.core.application.ai.AiModel
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import io.mockk.every
@@ -36,6 +39,7 @@ class SyncSchedulerTest {
     private val context = mockk<Context>(relaxed = true)
     private val backendPreferences = mockk<BackendPreferences>(relaxed = true)
     private val syncPreferences = mockk<SyncPreferences>(relaxed = true)
+    private val aiPreferences = mockk<AiPreferences>(relaxed = true)
     private val networkMonitor = mockk<NetworkMonitor>(relaxed = true)
     private val workManager = mockk<WorkManager>(relaxed = true)
     private val workContinuation = mockk<WorkContinuation>(relaxed = true)
@@ -45,6 +49,7 @@ class SyncSchedulerTest {
         backendPreferences = backendPreferences,
         syncPreferences = syncPreferences,
         networkMonitor = networkMonitor,
+        aiPreferences = aiPreferences,
         workManagerProvider = { workManager }
     )
 
@@ -87,7 +92,7 @@ class SyncSchedulerTest {
                 any<OneTimeWorkRequest>()
             )
         }
-        verify(exactly = 2) { workContinuation.then(any<OneTimeWorkRequest>()) }
+        verify(exactly = 3) { workContinuation.then(any<OneTimeWorkRequest>()) }
         assertTrue(request.captured.tags.none { it == "FullOfflinePreparation" })
     }
 
@@ -115,7 +120,7 @@ class SyncSchedulerTest {
     }
 
     @Test
-    fun resync_expeditesEveryStage() {
+    fun resync_expeditesSyncAndContentStages() {
         val syncRequest = slot<OneTimeWorkRequest>()
         val stageRequests = mutableListOf<OneTimeWorkRequest>()
 
@@ -132,6 +137,7 @@ class SyncSchedulerTest {
 
         assertTrue(syncRequest.captured.workSpec.expedited)
         assertTrue(stageRequests.first().workSpec.expedited)
+        assertFalse(stageRequests[1].workSpec.expedited)
     }
 
     @Test
@@ -155,6 +161,36 @@ class SyncSchedulerTest {
     }
 
     @Test
+    fun gemmaOverviewPreloadDoesNotRequireNetwork() {
+        every { aiPreferences.getAiModelId() } returns AiModel.GEMMA_4_E2B_ID
+        val stageRequests = mutableListOf<OneTimeWorkRequest>()
+        every { workContinuation.then(capture(stageRequests)) } returns workContinuation
+
+        scheduler.syncNow()
+
+        assertEquals(NetworkType.NOT_REQUIRED, stageRequests[1].workSpec.constraints.requiredNetworkType)
+        assertTrue(stageRequests[1].workSpec.constraints.requiresStorageNotLow())
+        assertFalse(stageRequests[1].workSpec.constraints.requiresBatteryNotLow())
+        assertEquals(
+            AiModel.GEMMA_4_E2B_ID,
+            stageRequests[1].workSpec.input.getString(KEY_AI_MODEL_ID)
+        )
+    }
+
+    @Test
+    fun cloudOverviewPreloadRequiresNetwork() {
+        every { aiPreferences.getAiModelId() } returns AiModel.DEFAULT_ID
+        val stageRequests = mutableListOf<OneTimeWorkRequest>()
+        every { workContinuation.then(capture(stageRequests)) } returns workContinuation
+
+        scheduler.syncNow()
+
+        assertEquals(NetworkType.CONNECTED, stageRequests[1].workSpec.constraints.requiredNetworkType)
+        assertFalse(stageRequests[1].workSpec.constraints.requiresBatteryNotLow())
+        assertEquals(AiModel.DEFAULT_ID, stageRequests[1].workSpec.input.getString(KEY_AI_MODEL_ID))
+    }
+
+    @Test
     fun fullOfflinePreparation_addsFullPageStageToThePipeline() {
         val request = slot<OneTimeWorkRequest>()
 
@@ -169,7 +205,7 @@ class SyncSchedulerTest {
         assertNotNull(scheduler.prepareFullOffline())
 
         assertTrue(request.captured.tags.contains("FullOfflinePreparation"))
-        verify(exactly = 3) { workContinuation.then(any<OneTimeWorkRequest>()) }
+        verify(exactly = 4) { workContinuation.then(any<OneTimeWorkRequest>()) }
     }
 
     @Test

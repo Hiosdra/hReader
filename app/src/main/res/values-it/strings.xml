@@ -181,6 +181,9 @@
     <string name="feeds_label_value">%1$s: %2$s</string>
     <string name="feeds_site_url">URL sito</string>
     <string name="feeds_feed_url">URL feed</string>
+    <string name="feeds_preload_ai_overview">Precarica i riepiloghi IA</string>
+    <string name="feeds_preload_ai_overview_description">Dopo la sincronizzazione, genera riepiloghi per gli articoli non letti di questa fonte. Gemma funziona offline; i modelli cloud inviano il testo dell’articolo al provider selezionato e richiedono una connessione di rete.</string>
+    <string name="feeds_preload_ai_overview_error">Impossibile salvare l’impostazione di precaricamento dei riepiloghi IA.</string>
     <string name="feeds_imported">Importati: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="one">%1$d aggiunto</item><item quantity="many">%1$d aggiunti</item><item quantity="other">%1$d aggiunti</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="one">%1$d già presente</item><item quantity="many">%1$d già presenti</item><item quantity="other">%1$d già presenti</item></plurals>

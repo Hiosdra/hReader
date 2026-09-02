@@ -5,6 +5,7 @@ import com.hiosdra.hreader.adapter.ai.gemma.GemmaArticleAiService
 import com.hiosdra.hreader.adapter.ai.openrouter.ArticleAiService
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
+import com.hiosdra.hreader.core.application.ai.GemmaModelNotInstalledException
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -84,6 +85,18 @@ class ArticleAiGatewayRouterTest {
         } returns Result.failure(EmptyAiContentException())
 
         router.generateArticleOverview("Title", "Body", "vendor/model", progress)
+
+        verify(exactly = 0) { errorReporter.captureException(any(), "ai_summary") }
+    }
+
+    @Test
+    fun doesNotReportMissingLocalModel() = runBlocking {
+        val progress: suspend (ArticleAiProgress) -> Unit = {}
+        coEvery {
+            gemma.generateArticleOverview("Title", "Body", Gemma4E2bModel.MODEL_ID, progress)
+        } returns Result.failure(GemmaModelNotInstalledException())
+
+        router.generateArticleOverview("Title", "Body", Gemma4E2bModel.MODEL_ID, progress)
 
         verify(exactly = 0) { errorReporter.captureException(any(), "ai_summary") }
     }

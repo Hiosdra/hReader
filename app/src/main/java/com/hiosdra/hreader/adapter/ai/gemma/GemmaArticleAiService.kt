@@ -8,6 +8,7 @@ import com.hiosdra.hreader.adapter.ai.common.stripToPlainText
 import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.ArticleSummaryPipeline
+import com.hiosdra.hreader.core.application.ai.ArticleSummaryPromptPolicy
 import com.hiosdra.hreader.core.application.ai.EmptyAiContentException
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
@@ -42,7 +43,8 @@ class GemmaArticleAiService(
             content = plainText,
             modelId = modelId,
             contextLength = Gemma4E2bModel.CONTEXT_LENGTH,
-            onProgress = onProgress
+            onProgress = onProgress,
+            promptPolicy = ArticleSummaryPromptPolicy.GEMMA
         ) { part, onDelta ->
             engine.generate(
                 systemPrompt = part.systemPrompt,

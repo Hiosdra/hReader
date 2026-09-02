@@ -181,6 +181,9 @@
     <string name="feeds_label_value">%1$s：%2$s</string>
     <string name="feeds_site_url">サイトURL</string>
     <string name="feeds_feed_url">フィードURL</string>
+    <string name="feeds_preload_ai_overview">AI概要を事前生成</string>
+    <string name="feeds_preload_ai_overview_description">同期後、このソースの未読記事の概要を生成します。Gemmaはオフラインで動作します。クラウドモデルは記事本文を選択したプロバイダーに送信し、ネットワーク接続を必要とします。</string>
+    <string name="feeds_preload_ai_overview_error">AI概要の事前生成設定を保存できませんでした。</string>
     <string name="feeds_imported">インポート完了：%1$s、%2$s、%3$s</string>
     <plurals name="feeds_imported_added"><item quantity="other">%1$d 件追加</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="other">%1$d 件は購読済み</item></plurals>

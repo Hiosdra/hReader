@@ -14,6 +14,7 @@ interface FeedStore {
     suspend fun verifyConnection(): Int
     suspend fun deleteFeed(feedId: Long)
     suspend fun renameFeed(feedId: Long, title: String)
+    suspend fun setAiOverviewPreloading(feedId: Long, enabled: Boolean)
     suspend fun exportOpml(title: String): String
     suspend fun importOpml(xml: String): OpmlImportResult
 }

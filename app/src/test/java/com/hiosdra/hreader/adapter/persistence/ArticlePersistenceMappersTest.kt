@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.persistence
 
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleListItem
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleReaderItem
+import com.hiosdra.hreader.adapter.persistence.room.entity.FeedEntity
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Enclosure
 import com.hiosdra.hreader.core.domain.model.Entry
@@ -98,5 +99,19 @@ class ArticlePersistenceMappersTest {
         assertEquals(feed.id, feedEntity.id)
         assertEquals(feed.title, feedEntity.title)
         assertEquals(feed.feedUrl, feedEntity.feedUrl)
+    }
+
+    @Test
+    fun feedMapperPreservesAiOverviewPreloading() {
+        val feed = FeedEntity(
+            id = 7L,
+            title = "Feed",
+            siteUrl = "https://example.com",
+            feedUrl = "https://example.com/feed",
+            preloadAiOverview = true
+        ).toArticleFeed()
+
+        assertTrue(feed.preloadAiOverview)
+        assertTrue(feed.copy().toArticleFeedEntity().preloadAiOverview)
     }
 }

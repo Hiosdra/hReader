@@ -8,6 +8,7 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleBody
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleListItem
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleReaderItem
+import com.hiosdra.hreader.adapter.persistence.room.entity.AiOverviewPrefetchTarget
 import com.hiosdra.hreader.adapter.persistence.room.entity.FeedUnreadCount
 import com.hiosdra.hreader.adapter.persistence.room.entity.PendingStatus
 import com.hiosdra.hreader.adapter.persistence.room.entity.PrefetchTarget
@@ -316,6 +317,20 @@ interface ArticleDao {
             "ELSE 1 END, publishedAt DESC, id DESC"
     )
     suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
+
+    @Query(
+        "SELECT a.id AS id, a.title AS title, a.url AS url " +
+            "FROM articles a INNER JOIN feeds f ON f.id = a.feedId " +
+            "WHERE f.preloadAiOverview = 1 " +
+            "AND ((a.status IS NULL OR a.status != :readStatus) OR a.backlogFetchedAt IS NOT NULL) " +
+            "ORDER BY CASE WHEN (a.status IS NULL OR a.status != :readStatus) THEN 0 ELSE 1 END, " +
+            "a.publishedAt DESC, a.id DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun getAiOverviewPrefetchTargets(
+        limit: Int,
+        offset: Int,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): List<AiOverviewPrefetchTarget>
 
     @Query("SELECT * FROM articles WHERE id IN (:ids)")
     suspend fun getArticlesImmediate(ids: List<String>): List<ArticleEntity>

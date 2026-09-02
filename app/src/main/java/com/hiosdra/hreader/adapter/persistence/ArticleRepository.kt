@@ -8,6 +8,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
+import com.hiosdra.hreader.adapter.persistence.room.entity.FeedEntity
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
@@ -15,6 +16,8 @@ import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
+import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewPrefetchStore
+import com.hiosdra.hreader.core.application.port.out.AiOverviewPrefetchTarget
 import com.hiosdra.hreader.core.application.port.out.ArticleListWindow
 import com.hiosdra.hreader.core.application.port.out.ENTRIES_PAGE_LIMIT
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
@@ -74,7 +77,7 @@ class ArticleRepository(
     private val preferencesManager: SyncPreferences,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val articleImageStore: ArticleImageStore
-) : ArticleStore {
+) : ArticleStore, ArticleAiOverviewPrefetchStore {
     private val queryRepository = ArticleQueryRepository(articleDao, feedDao)
     private val mutationRepository = ArticleMutationRepository(articleDao)
 
@@ -203,7 +206,9 @@ class ArticleRepository(
 
     private suspend fun persistBacklogPage(entries: List<Entry>) {
         val now = Instant.now()
-        val feeds = entries.associate { it.feed.id to it.feed.toArticleFeedEntity() }.values.toList()
+        val feeds = entries.associate { it.feed.id to it.feed.toArticleFeedEntity() }
+            .values
+            .toList()
         // Read entries get their read time stamped now, so retention starts counting from the
         // download rather than leaving them un-prunable forever.
         val articles = entries.map { entry ->
@@ -213,16 +218,18 @@ class ArticleRepository(
             )
         }
         db.withTransaction {
-            feedDao.insertFeeds(feeds)
+            feedDao.insertFeeds(feeds.preservingAiOverviewPreloading())
             articleDao.insertArticles(articles)
         }
     }
 
     private suspend fun persistPage(entries: List<Entry>): ArticleSyncStats {
-        val feeds = entries.associate { it.feed.id to it.feed.toArticleFeedEntity() }.values.toList()
+        val feeds = entries.associate { it.feed.id to it.feed.toArticleFeedEntity() }
+            .values
+            .toList()
         val articles = entries.map { it.toEntity() }
         val result = db.withTransaction {
-            feedDao.insertFeeds(feeds)
+            feedDao.insertFeeds(feeds.preservingAiOverviewPreloading())
             insertArticlesPreservingPendingStatus(articles)
         }
         for (entryId in result.invalidatedEntryIds) {
@@ -238,15 +245,23 @@ class ArticleRepository(
     }
 
     private suspend fun reconcileFeeds() {
-        val incoming = api.getFeeds().map { it.toArticleFeedEntity() }
-        val incomingIds = incoming.mapTo(hashSetOf()) { it.id }
-        val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
+        val fetchedFeeds = api.getFeeds().map { it.toArticleFeedEntity() }
         db.withTransaction {
+            val incoming = fetchedFeeds.preservingAiOverviewPreloading()
+            val incomingIds = incoming.mapTo(hashSetOf()) { it.id }
+            val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
             if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
             staleIds.chunked(DELETE_CHUNK).forEach { feedIds ->
                 articleDao.deleteByFeedIds(feedIds)
                 feedDao.deleteByIds(feedIds)
             }
+        }
+    }
+
+    private suspend fun List<FeedEntity>.preservingAiOverviewPreloading(): List<FeedEntity> {
+        val existingSettings = feedDao.getAllFeedsImmediate().associate { it.id to it.preloadAiOverview }
+        return map { feed ->
+            feed.copy(preloadAiOverview = existingSettings[feed.id] ?: feed.preloadAiOverview)
         }
     }
 
@@ -405,6 +420,13 @@ class ArticleRepository(
         .mapNotNull { target ->
             target.id.toLongOrNull()?.let { id ->
                 PrefetchTarget(id = id, url = target.url, enclosures = target.enclosures)
+            }
+        }
+
+    override suspend fun getAiOverviewPrefetchTargets(limit: Int, offset: Int): List<AiOverviewPrefetchTarget> =
+        articleDao.getAiOverviewPrefetchTargets(limit = limit, offset = offset).mapNotNull { target ->
+            target.id.toLongOrNull()?.let { id ->
+                AiOverviewPrefetchTarget(id = id, title = target.title, url = target.url)
             }
         }
 

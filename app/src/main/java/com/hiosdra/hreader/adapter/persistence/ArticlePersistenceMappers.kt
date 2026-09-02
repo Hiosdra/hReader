@@ -74,7 +74,8 @@ internal fun FeedEntity.toArticleFeed(): Feed = Feed(
     id = id,
     title = title,
     siteUrl = siteUrl,
-    feedUrl = feedUrl
+    feedUrl = feedUrl,
+    preloadAiOverview = preloadAiOverview
 )
 
 internal fun Entry.toEntity(): ArticleEntity = ArticleEntity(
@@ -98,5 +99,6 @@ internal fun Feed.toArticleFeedEntity(): FeedEntity = FeedEntity(
     id = id,
     title = title,
     siteUrl = siteUrl,
-    feedUrl = feedUrl
+    feedUrl = feedUrl,
+    preloadAiOverview = preloadAiOverview
 )

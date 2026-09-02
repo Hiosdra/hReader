@@ -35,17 +35,24 @@ class FeedRepository(
 
     override suspend fun refreshFeeds(): List<Feed> {
         val feeds = backend.getFeeds()
-        val incoming = feeds.map { it.toFeedEntity() }
-        val incomingIds = incoming.mapTo(hashSetOf()) { it.id }
-        val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
-        db.withTransaction {
-            if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
+        val incoming = db.withTransaction {
+            val existingSettings = feedDao.getAllFeedsImmediate()
+                .associate { it.id to it.preloadAiOverview }
+            val persistedFeeds = feeds.map { feed ->
+                feed.toFeedEntity().copy(
+                    preloadAiOverview = existingSettings[feed.id] ?: feed.preloadAiOverview
+                )
+            }
+            val incomingIds = persistedFeeds.mapTo(hashSetOf()) { it.id }
+            val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
+            if (persistedFeeds.isNotEmpty()) feedDao.insertFeeds(persistedFeeds)
             staleIds.chunked(DELETE_FEED_CHUNK).forEach { feedIds ->
                 articleDao.deleteByFeedIds(feedIds)
                 feedDao.deleteByIds(feedIds)
             }
+            persistedFeeds
         }
-        return feeds
+        return incoming.map { it.toFeed() }
     }
 
     override suspend fun getUnreadCounts(): Map<Long, Int> = backend.getUnreadCounts()
@@ -68,6 +75,10 @@ class FeedRepository(
     override suspend fun renameFeed(feedId: Long, title: String) {
         backend.renameFeed(feedId, title)
         feedDao.updateTitle(feedId, title)
+    }
+
+    override suspend fun setAiOverviewPreloading(feedId: Long, enabled: Boolean) {
+        feedDao.updateAiOverviewPreloading(feedId, enabled)
     }
 
     override suspend fun exportOpml(title: String): String = buildOpml(getCachedFeeds(), title)
@@ -111,12 +122,14 @@ private fun FeedEntity.toFeed(): Feed = Feed(
     id = id,
     title = title,
     siteUrl = siteUrl,
-    feedUrl = feedUrl
+    feedUrl = feedUrl,
+    preloadAiOverview = preloadAiOverview
 )
 
 private fun Feed.toFeedEntity(): FeedEntity = FeedEntity(
     id = id,
     title = title,
     siteUrl = siteUrl,
-    feedUrl = feedUrl
+    feedUrl = feedUrl,
+    preloadAiOverview = preloadAiOverview
 )

@@ -212,6 +212,9 @@
     <string name="feeds_label_value">%1$s: %2$s</string>
     <string name="feeds_site_url">URL witryny</string>
     <string name="feeds_feed_url">URL kanału</string>
+    <string name="feeds_preload_ai_overview">Wstępnie generuj podsumowania AI</string>
+    <string name="feeds_preload_ai_overview_description">Po synchronizacji generuj podsumowania nieprzeczytanych artykułów z tego źródła. Gemma działa offline, a modele chmurowe wysyłają tekst do wybranego dostawcy i wymagają sieci.</string>
+    <string name="feeds_preload_ai_overview_error">Nie można zapisać ustawienia wstępnego generowania podsumowań AI.</string>
     <string name="feeds_imported">Zaimportowano: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="one">dodano: %1$d</item><item quantity="few">dodano: %1$d</item><item quantity="many">dodano: %1$d</item><item quantity="other">dodano: %1$d</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="one">już zasubskrybowano: %1$d</item><item quantity="few">już zasubskrybowano: %1$d</item><item quantity="many">już zasubskrybowano: %1$d</item><item quantity="other">już zasubskrybowano: %1$d</item></plurals>

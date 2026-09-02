@@ -181,6 +181,9 @@
     <string name="feeds_label_value">%1$s: %2$s</string>
     <string name="feeds_site_url">URL do site</string>
     <string name="feeds_feed_url">URL do feed</string>
+    <string name="feeds_preload_ai_overview">Pré-carregar resumos de IA</string>
+    <string name="feeds_preload_ai_overview_description">Após a sincronização, gere resumos para os artigos não lidos desta fonte. O Gemma funciona offline; modelos em nuvem enviam o texto do artigo ao provedor selecionado e precisam de conexão de rede.</string>
+    <string name="feeds_preload_ai_overview_error">Não foi possível salvar a configuração de pré-carregamento dos resumos de IA.</string>
     <string name="feeds_imported">Importados: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="one">%1$d adicionado</item><item quantity="many">%1$d adicionados</item><item quantity="other">%1$d adicionados</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="one">%1$d já assinado</item><item quantity="many">%1$d já assinados</item><item quantity="other">%1$d já assinados</item></plurals>

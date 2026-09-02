@@ -208,6 +208,9 @@
     <string name="feeds_label_value">%1$s: %2$s</string>
     <string name="feeds_site_url">Site URL</string>
     <string name="feeds_feed_url">Feed URL</string>
+    <string name="feeds_preload_ai_overview">Preload AI overviews</string>
+    <string name="feeds_preload_ai_overview_description">After sync, generate overviews for unread articles from this source. Gemma works offline; cloud models send article text to the selected provider and need a network connection.</string>
+    <string name="feeds_preload_ai_overview_error">Could not save the AI overview preload setting.</string>
     <string name="feeds_imported">Imported: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added">
         <item quantity="one">%1$d added</item>
