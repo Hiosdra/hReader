@@ -3,10 +3,12 @@ package com.hiosdra.hreader.core.application.port.out
 import com.hiosdra.hreader.core.domain.model.DiscoveredFeed
 import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.core.application.feeds.OpmlImportResult
+import kotlinx.coroutines.flow.Flow
 
 interface FeedStore {
     suspend fun getCachedFeeds(): List<Feed>
     suspend fun getCachedUnreadCounts(): Map<Long, Int>
+    fun observeUnreadCounts(): Flow<Map<Long, Int>>
     suspend fun refreshFeeds(): List<Feed>
     suspend fun getUnreadCounts(): Map<Long, Int>
     suspend fun createFeed(url: String)
