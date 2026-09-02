@@ -5,6 +5,7 @@ import com.hiosdra.hreader.core.application.feeds.OpmlImportResult
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.domain.model.DiscoveredFeed
 import com.hiosdra.hreader.core.domain.model.Feed
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 class FeedUseCase(
@@ -15,6 +16,7 @@ class FeedUseCase(
 
     suspend fun getCachedFeeds(): List<Feed> = feeds.getCachedFeeds()
     suspend fun getCachedUnreadCounts(): Map<Long, Int> = feeds.getCachedUnreadCounts()
+    fun observeUnreadCounts(): Flow<Map<Long, Int>> = feeds.observeUnreadCounts()
     suspend fun refreshFeeds(): List<Feed> = feeds.refreshFeeds()
     suspend fun getUnreadCounts(): Map<Long, Int> = feeds.getUnreadCounts()
     suspend fun createFeed(url: String) = feeds.createFeed(url)

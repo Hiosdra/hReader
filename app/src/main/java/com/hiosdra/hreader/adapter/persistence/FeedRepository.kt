@@ -13,7 +13,9 @@ import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.port.out.FeedStore
 import com.hiosdra.hreader.core.application.feeds.OpmlImportResult
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 private const val DELETE_FEED_CHUNK = 500
 
@@ -31,7 +33,12 @@ class FeedRepository(
 
     /** Unread counts from the cached articles, so the list still adds up while offline. */
     override suspend fun getCachedUnreadCounts(): Map<Long, Int> =
-        articleDao.observeUnreadCountsPerFeed().first().associate { it.feedId to it.unreadCount }
+        observeUnreadCounts().first()
+
+    override fun observeUnreadCounts(): Flow<Map<Long, Int>> =
+        articleDao.observeUnreadCountsPerFeed().map { counts ->
+            counts.associate { it.feedId to it.unreadCount }
+        }
 
     override suspend fun refreshFeeds(): List<Feed> {
         val feeds = backend.getFeeds()

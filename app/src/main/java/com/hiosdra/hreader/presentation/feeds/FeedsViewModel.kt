@@ -48,6 +48,7 @@ class FeedsViewModel(
     private var retryAction: (() -> Unit)? = null
 
     init {
+        observeUnreadCounts()
         loadFeeds()
         viewModelScope.launch {
             feeds.isOnline.drop(1).collect { online ->
@@ -56,6 +57,14 @@ class FeedsViewModel(
                     resettleRows = true
                     loadFeeds()
                 }
+            }
+        }
+    }
+
+    private fun observeUnreadCounts() {
+        viewModelScope.launch {
+            feeds.observeUnreadCounts().collect { unreadCounts ->
+                _uiState.value = _uiState.value.copy(unreadCounts = unreadCounts)
             }
         }
     }
@@ -106,8 +115,7 @@ class FeedsViewModel(
             val refreshed = runCatchingCancellable { feeds.refreshFeeds() }
             refreshed.fold(
                 onSuccess = { freshFeeds ->
-                    val counts = runCatchingCancellable { feeds.getUnreadCounts() }.getOrDefault(cachedCounts)
-                    publish(freshFeeds, counts)
+                    publish(freshFeeds, _uiState.value.unreadCounts)
                 },
                 onFailure = { failure ->
                     Log.w("FeedsViewModel", "Falling back to the cached subscriptions", failure)
