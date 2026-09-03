@@ -30,6 +30,7 @@ import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 @Composable
 internal fun RemoteArticleWebView(
@@ -37,7 +38,11 @@ internal fun RemoteArticleWebView(
     url: String,
     isOnline: Boolean,
     modifier: Modifier = Modifier,
-    remoteResourcePolicy: RemoteResourcePolicy
+    remoteResourcePolicy: RemoteResourcePolicy,
+    readingPositionLoaded: Boolean,
+    savedReadingProgress: Float?,
+    onReadingProgressChanged: (Long, Float) -> Unit,
+    onReadingCompleted: (Long) -> Unit
 ) {
     val loadedUrl = remember { mutableStateOf<String?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
@@ -47,12 +52,37 @@ internal fun RemoteArticleWebView(
     var isScrollable by rememberSaveable(entryId) { mutableStateOf(false) }
     var renderProcessError by remember(entryId, url) { mutableStateOf(false) }
     var renderAttempt by remember(entryId, url) { mutableIntStateOf(0) }
+    var contentHeightPx by remember(entryId, url, renderAttempt) { mutableIntStateOf(0) }
+    var viewportHeightPx by remember(entryId, url, renderAttempt) { mutableIntStateOf(0) }
+    var contentHeightSettled by remember(entryId, url, renderAttempt) { mutableStateOf(false) }
     var resourceAllowed by remember(url, renderAttempt) { mutableStateOf<Boolean?>(null) }
     val resourceScope = rememberCoroutineScope()
     val currentIsOnline = rememberUpdatedState(isOnline)
+    val contentKey = 31 * entryId.hashCode() + url.hashCode()
     LaunchedEffect(url, renderAttempt) {
         resourceAllowed = withContext(Dispatchers.IO) { remoteResourcePolicy.allows(url) }
     }
+
+    ArticleWebViewReadingPosition(
+        entryId = entryId,
+        contentKey = contentKey,
+        readingPositionLoaded = readingPositionLoaded,
+        savedReadingProgress = savedReadingProgress,
+        scrollY = savedScrollY,
+        contentHeightPx = contentHeightPx,
+        viewportHeightPx = viewportHeightPx,
+        contentHeightSettled = contentHeightSettled,
+        webViewReady = loadedWebView.value != null,
+        onRestoreScrollY = { restoreScrollY ->
+            savedScrollY = restoreScrollY
+            loadedWebView.value?.let { readerView ->
+                readerView.pageLoadRestoreScrollY = restoreScrollY
+                readerView.postIfActive { readerView.scrollTo(0, restoreScrollY) }
+            }
+        },
+        onReadingProgressChanged = onReadingProgressChanged,
+        onReadingCompleted = onReadingCompleted
+    )
 
     if (resourceAllowed == null) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -78,6 +108,10 @@ internal fun RemoteArticleWebView(
                                 scrollbarThumbFraction = thumbFraction
                             }
                             fun updateScrollProgress(readerView: ReaderWebView) {
+                                val density = readerView.resources.displayMetrics.density
+                                contentHeightPx = (readerView.contentHeight * density).roundToInt()
+                                viewportHeightPx = readerView.height
+                                savedScrollY = readerView.scrollY
                                 progressReporter.update(readerView)
                             }
                             protectVerticalScrollFromPager = true
@@ -119,6 +153,7 @@ internal fun RemoteArticleWebView(
                                     scrollProgress = 0f
                                     scrollbarThumbFraction = 1f
                                     isScrollable = false
+                                    contentHeightSettled = false
                                     renderProcessError = true
                                     return true
                                 }
@@ -126,17 +161,19 @@ internal fun RemoteArticleWebView(
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
                                     val readerView = view as? ReaderWebView ?: return
+                                    readerView.contentLayoutReady = true
+                                    contentHeightSettled = false
                                     readerView.postIfActive {
                                         readerView.scrollTo(0, savedScrollY)
                                         updateScrollProgress(readerView)
                                         readerView.scheduleContentHeightUpdates {
+                                            contentHeightSettled = true
                                             updateScrollProgress(readerView)
                                         }
                                     }
                                 }
                             }
                             setOnScrollChangeListener { _, _, scrollY, _, _ ->
-                                savedScrollY = scrollY
                                 updateScrollProgress(this)
                             }
                             addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
@@ -149,6 +186,9 @@ internal fun RemoteArticleWebView(
                         if (loadedWebView.value !== webView || loadedUrl.value != url) {
                             loadedWebView.value = webView
                             loadedUrl.value = url
+                            contentHeightSettled = false
+                            webView.contentLayoutReady = false
+                            webView.cancelContentHeightUpdates()
                             webView.loadUrl(url)
                             webView.postIfActive { webView.scrollTo(0, savedScrollY) }
                         }

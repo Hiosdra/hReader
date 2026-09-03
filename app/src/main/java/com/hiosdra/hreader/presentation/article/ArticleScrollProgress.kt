@@ -21,6 +21,12 @@ internal fun articleScrollProgress(value: Int, maxValue: Int): Float =
 internal fun articleScrollOffset(progress: Float, maxValue: Int): Int =
     (progress.coerceIn(0f, 1f) * maxValue.coerceAtLeast(0)).roundToInt()
 
+internal fun readerWebViewMaxScrollPx(contentHeightPx: Int, viewportHeightPx: Int): Int =
+    (contentHeightPx.coerceAtLeast(0).toLong() - viewportHeightPx.coerceAtLeast(0))
+        .coerceAtLeast(0L)
+        .coerceAtMost(Int.MAX_VALUE.toLong())
+        .toInt()
+
 internal fun oversizedArticleHeaderScrollPx(
     webViewScrollY: Int,
     headerHeightPx: Int
