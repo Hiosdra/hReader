@@ -1,8 +1,8 @@
 [versions]
-agp = "9.3.2"
+agp = "9.4.0"
 kotlin = "2.4.10"
 ksp = "2.3.11"
-sentry-plugin = "6.19.0"
+sentry-plugin = "6.20.0"
 room = "2.8.4"
 baseline-profile = "1.5.0-rc01"
 compose-bom = "2026.08.00"
