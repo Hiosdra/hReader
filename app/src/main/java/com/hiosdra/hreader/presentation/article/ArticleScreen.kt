@@ -177,7 +177,7 @@ fun ArticleScreen(
     val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
     val ttsContent = currentEntry?.let { viewModel.getContentForEntry(it.id) }
     val contentLoadFinished = currentEntry?.let { entry ->
-        entry.id in uiState.content || entry.id in uiState.partialContentIds
+        viewModel.getContentStateForEntry(entry.id) != ArticleContentLoadState.LOADING
     } == true
     val ttsContentState = if (currentEntry == null) {
         null
@@ -191,7 +191,7 @@ fun ArticleScreen(
     }
     val ttsPlayerContent = ttsState.articleId?.let(viewModel::getContentForEntry)
     val ttsPlayerContentLoadFinished = ttsState.articleId?.let { articleId ->
-        articleId in uiState.content || articleId in uiState.partialContentIds
+        viewModel.getContentStateForEntry(articleId) != ArticleContentLoadState.LOADING
     } == true
     val ttsPlayerContentState = if (ttsState.articleId == null) {
         null
@@ -367,6 +367,7 @@ fun ArticleScreen(
                         paddingValues = paddingValues,
                         bottomContentPadding = articleBottomContentPadding,
                         getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
+                        getContentStateForEntry = { entryId -> viewModel.getContentStateForEntry(entryId) },
                         getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                         getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
                         loadedContentIds = uiState.content.keys,

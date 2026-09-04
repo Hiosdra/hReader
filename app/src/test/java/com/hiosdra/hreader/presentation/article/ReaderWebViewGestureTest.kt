@@ -36,6 +36,17 @@ class ReaderWebViewGestureTest {
     }
 
     @Test
+    fun `content height tracker reports changes and then settles them`() {
+        val tracker = ContentHeightStabilityTracker()
+
+        assertEquals(ContentHeightUpdate(1200, false), tracker.update(1200))
+        assertEquals(ContentHeightUpdate(1200, true), tracker.update(1200))
+        assertEquals(ContentHeightUpdate(1400, false), tracker.update(1400))
+        assertEquals(ContentHeightUpdate(1400, true), tracker.update(1400))
+        assertNull(tracker.update(1400))
+    }
+
+    @Test
     fun `one forward sequence consumes the header before the body`() {
         val target = FakeArticleWebViewScrollTarget(maxScrollY = 1000)
         val controller = ArticleWebViewScrollController().apply { attachForTest(target) }
