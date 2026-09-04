@@ -57,5 +57,6 @@ internal class NeuralTtsEngineRegistry(
 
 internal data class TtsAudio(
     val samples: FloatArray,
-    val sampleRate: Int
+    val sampleRate: Int,
+    val playbackSpeed: Float = 1f
 )

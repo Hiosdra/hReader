@@ -363,6 +363,11 @@
     <string name="tts_missing_voice_description">İndirilen bir ses eksikse veya başlatılamıyorsa hReader otomatik olarak sistem sesini kullanır.</string>
     <string name="tts_not_downloaded">%1$s · indirilmedi</string>
     <string name="tts_cpu_threads">CPU iş parçacıkları</string>
+    <string name="tts_mnn_backend">MNN arka ucu</string>
+    <string name="tts_mnn_backend_cpu">CPU</string>
+    <string name="tts_mnn_backend_opencl">OpenCL (GPU)</string>
+    <string name="tts_mnn_backend_vulkan">Vulkan (GPU)</string>
+    <string name="tts_mnn_backend_description">Qwen3-TTS MNN modelleri tarafından kullanılır. GPU arka uçları uyumlu aygıt sürücüleri gerektirir; biri başlatılamazsa hReader sistem sesini kullanır.</string>
     <string name="tts_pause_between_sentences">Cümleler arasındaki duraklama</string>
     <string name="tts_speaker_id">Konuşmacı kimliği</string>
     <string name="tts_quality_steps">Kalite adımları</string>
@@ -396,6 +401,10 @@
     <string name="tts_model_piper_english_high_description">İngilizce Piper sesi · 35 MB indirme</string>
     <string name="tts_model_kitten_description">İngilizce KittenTTS sesi · 68 MB indirme</string>
     <string name="tts_model_matcha_description">İngilizce Matcha sesi · 131 MB indirme</string>
+    <string name="tts_model_mnn_0_6b_base_int8_name">MNN Qwen3-TTS 0.6B (INT8)</string>
+    <string name="tts_model_mnn_0_6b_base_int8_description">MNN ses klonlama · 1,4GB indirme</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_name">MNN Qwen3-TTS 0.6B (FP16)</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_description">MNN ses klonlama · 2,0GB indirme</string>
     <string name="tts_model_android_name">Sistem sesi</string>
     <string name="tts_model_android_description">Yerleşik ses · her zaman kullanılabilir</string>
     <string name="tts_speech_playback_failed">Konuşma oynatılamadı.</string>

@@ -375,6 +375,11 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="tts_missing_voice_description">Wenn eine heruntergeladene Stimme fehlt oder nicht gestartet werden kann, verwendet hReader automatisch die Systemstimme.</string>
     <string name="tts_not_downloaded">%1$s · nicht heruntergeladen</string>
     <string name="tts_cpu_threads">CPU-Threads</string>
+    <string name="tts_mnn_backend">MNN-Backend</string>
+    <string name="tts_mnn_backend_cpu">CPU</string>
+    <string name="tts_mnn_backend_opencl">OpenCL (GPU)</string>
+    <string name="tts_mnn_backend_vulkan">Vulkan (GPU)</string>
+    <string name="tts_mnn_backend_description">Wird von Qwen3-TTS-MNN-Modellen verwendet. GPU-Backends benötigen kompatible Gerätetreiber; wenn eines nicht startet, verwendet hReader die Systemstimme.</string>
     <string name="tts_pause_between_sentences">Pause zwischen Sätzen</string>
     <string name="tts_speaker_id">Sprecher-ID</string>
     <string name="tts_quality_steps">Qualitätsschritte</string>
@@ -408,6 +413,10 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="tts_model_piper_english_high_description">Englische Piper-Stimme · 35 MB Download</string>
     <string name="tts_model_kitten_description">Englische KittenTTS-Stimme · 68 MB Download</string>
     <string name="tts_model_matcha_description">Englische Matcha-Stimme · 131 MB Download</string>
+    <string name="tts_model_mnn_0_6b_base_int8_name">MNN Qwen3-TTS 0.6B (INT8)</string>
+    <string name="tts_model_mnn_0_6b_base_int8_description">MNN-Sprachklonen · 1,4 GB Download</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_name">MNN Qwen3-TTS 0.6B (FP16)</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_description">MNN-Sprachklonen · 2,0 GB Download</string>
     <string name="tts_model_android_name">Systemstimme</string>
     <string name="tts_model_android_description">Integrierte Stimme · immer verfügbar</string>
     <string name="tts_speech_playback_failed">Sprachwiedergabe fehlgeschlagen.</string>

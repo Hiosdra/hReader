@@ -1,7 +1,9 @@
 package com.hiosdra.hreader.adapter.tts
 
 import android.content.Context
+import android.os.StatFs
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
@@ -39,6 +41,12 @@ class TtsModelManager(
 
     fun directory(model: TtsModel): File = File(modelRoot, TtsModelPackageCatalog.directoryName(model))
 
+    fun runtimeCacheDirectory(model: TtsModel, backend: MnnTtsBackend): File =
+        File(
+            appContext.cacheDir,
+            "tts_mnn/${TtsModelPackageCatalog.directoryName(model)}/${backend.wireName}/$MNN_RUNTIME_CACHE_VERSION"
+        )
+
     override fun markDownloadEnqueued(model: TtsModel) {
         _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
     }
@@ -70,6 +78,8 @@ class TtsModelManager(
                 _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
                 staging.deleteRecursively()
                 staging.mkdirs()
+                archive.delete()
+                ensureStorageAvailable(artifact)
                 if (artifact.files.isEmpty()) {
                     val archiveSize = checkNotNull(artifact.archive).size
                     downloadArchive(
@@ -84,7 +94,8 @@ class TtsModelManager(
                         downloadFiles(model, artifact.files, staging)
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        if (artifact.archive == null) throw e
                         staging.deleteRecursively()
                         staging.mkdirs()
                         downloadArchive(
@@ -107,6 +118,7 @@ class TtsModelManager(
                         progressTotal = archiveSize + artifact.supplementalFiles.sumOf(RemoteFile::size)
                     )
                 }
+                writeGeneratedFiles(artifact.generatedFiles, content)
                 check(artifact.isComplete(content)) {
                     "Model download is incomplete"
                 }
@@ -124,6 +136,15 @@ class TtsModelManager(
         }
     }
 
+    private fun ensureStorageAvailable(artifact: TtsModelPackage) {
+        val requiredBytes = artifact.requiredStorageBytes()
+        val availableBytes = StatFs(modelRoot.path).availableBytes
+        check(hasEnoughTtsModelStorage(availableBytes, requiredBytes)) {
+            "Not enough storage for ${artifact.directoryName}: " +
+                "$requiredBytes required, $availableBytes available"
+        }
+    }
+
     private suspend fun downloadFiles(
         model: TtsModel,
         files: List<RemoteFile>,
@@ -134,6 +155,7 @@ class TtsModelManager(
         var downloaded = 0L
         files.forEach { remote ->
             val output = File(staging, remote.name)
+            output.parentFile?.mkdirs()
             downloadTo(remote.url, output, remote.size) { count ->
                 downloaded += count
                 updateProgress(model, progressBase + downloaded, progressTotal)
@@ -141,6 +163,14 @@ class TtsModelManager(
             check(output.sha256() == remote.sha256) {
                 "Downloaded ${remote.name} failed integrity check"
             }
+        }
+    }
+
+    private fun writeGeneratedFiles(files: List<GeneratedFile>, destination: File) {
+        files.forEach { generated ->
+            val output = File(destination, generated.name)
+            output.parentFile?.mkdirs()
+            output.writeText(generated.content)
         }
     }
 
@@ -275,5 +305,9 @@ class TtsModelManager(
             }
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private companion object {
+        const val MNN_RUNTIME_CACHE_VERSION = 1
     }
 }

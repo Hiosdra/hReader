@@ -60,6 +60,7 @@ val debugStoreFile = rootProject.file(
 
 android {
     namespace = "com.hiosdra.hreader"
+    ndkVersion = "27.2.12479018"
     // core-ktx 1.19 and the other AndroidX bumps require API 37.
     compileSdk = 37
     compileSdkMinor = 1
@@ -74,6 +75,24 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        externalNativeBuild {
+            cmake {
+                cppFlags += listOf("-std=c++17")
+                arguments += listOf(
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+                    "-DHREADER_MNN_OPENCL=ON",
+                    "-DHREADER_MNN_VULKAN=ON"
+                )
+            }
+        }
+
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {
@@ -143,7 +162,8 @@ android {
                 "**/libsherpa-onnx-c-api.so",
                 "**/libsherpa-onnx-cxx-api.so",
                 "**/libsherpa-onnx-jni.so",
-                "**/liblitertlm_jni.so"
+                "**/liblitertlm_jni.so",
+                "**/libhreader_mnn_tts.so"
             )
         }
     }
@@ -170,8 +190,8 @@ sentry {
     authToken.set(sentryAuthToken)
     includeProguardMapping.set(true)
     autoUploadProguardMapping.set(sentryUploadEnabled)
-    uploadNativeSymbols.set(false)
-    autoUploadNativeSymbols.set(false)
+    uploadNativeSymbols.set(sentryUploadEnabled)
+    autoUploadNativeSymbols.set(sentryUploadEnabled)
     includeNativeSources.set(false)
     includeSourceContext.set(false)
     tracingInstrumentation {
@@ -232,8 +252,9 @@ dependencies {
     implementation(libs.moshi.kotlin)
     ksp(libs.moshi.kotlin.codegen)
 
-    // Error reporting without the optional NDK and session-replay native modules.
+    // Error reporting with native crash support, without the optional session-replay module.
     implementation(libs.sentry.android.core)
+    implementation(libs.sentry.android.ndk)
 
     // Dependency Injection (Koin)
     implementation(platform(libs.koin.bom))

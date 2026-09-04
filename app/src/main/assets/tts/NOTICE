@@ -5,3 +5,11 @@ Licensed under OpenRAIL-M. The license is included with the model download.
 sherpa-onnx Android runtime
 Copyright (c) 2022-2026 Xiaomi Corporation
 Licensed under the Apache License 2.0.
+
+Qwen3-TTS model and tokenizer
+Copyright (c) Alibaba / Qwen team
+Licensed under the Apache License 2.0.
+
+MNN Android runtime
+Copyright (c) Alibaba Group
+Licensed under the Apache License 2.0.

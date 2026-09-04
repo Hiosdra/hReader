@@ -8,6 +8,10 @@ data class TtsModelDefinition(
 )
 
 object TtsModelCatalog {
+    private val qwenLanguages = setOf(
+        "de", "en", "es", "fr", "it", "ja", "ko", "pt", "ru", "zh"
+    )
+
     private val definitions = listOf(
         TtsModelDefinition(
             model = TtsModel.SUPERTONIC,
@@ -36,6 +40,14 @@ object TtsModelCatalog {
         TtsModelDefinition(
             model = TtsModel.MATCHA_LJSPEECH,
             supportedLanguages = setOf("en")
+        ),
+        TtsModelDefinition(
+            model = TtsModel.MNN_0_6B_BASE_INT8,
+            supportedLanguages = qwenLanguages
+        ),
+        TtsModelDefinition(
+            model = TtsModel.MNN_0_6B_BASE_FP16,
+            supportedLanguages = qwenLanguages
         ),
         TtsModelDefinition(
             model = TtsModel.ANDROID,

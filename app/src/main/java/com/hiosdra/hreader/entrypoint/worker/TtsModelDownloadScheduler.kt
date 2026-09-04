@@ -15,7 +15,10 @@ import java.util.concurrent.TimeUnit
 
 class TtsModelDownloadScheduler(
     context: Context,
-    private val modelManager: TtsModelGateway
+    private val modelManager: TtsModelGateway,
+    private val workManagerProvider: (Context) -> WorkManager = { appContext ->
+        WorkManager.getInstance(appContext)
+    }
 ) : TtsModelDownloadRequester {
     private val appContext = context.applicationContext
 
@@ -25,14 +28,14 @@ class TtsModelDownloadScheduler(
         val request = OneTimeWorkRequestBuilder<TtsModelDownloadWorker>()
             .setConstraints(
                 Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiredNetworkType(NetworkType.UNMETERED)
                     .setRequiresStorageNotLow(true)
                     .build()
             )
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .setInputData(workDataOf(TtsModelDownloadWorker.KEY_MODEL to model.name))
             .build()
-        WorkManager.getInstance(appContext).enqueueUniqueWork(
+        workManagerProvider(appContext).enqueueUniqueWork(
             downloadWorkName(model),
             ExistingWorkPolicy.KEEP,
             request
@@ -41,7 +44,7 @@ class TtsModelDownloadScheduler(
 
     override fun cancelDownload(model: TtsModel) {
         if (model.bundled) return
-        WorkManager.getInstance(appContext).cancelUniqueWork(downloadWorkName(model))
+        workManagerProvider(appContext).cancelUniqueWork(downloadWorkName(model))
         modelManager.markDownloadCancelled(model)
     }
 }

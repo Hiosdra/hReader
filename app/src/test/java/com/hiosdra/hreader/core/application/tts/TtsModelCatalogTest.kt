@@ -16,6 +16,15 @@ class TtsModelCatalogTest {
         assertEquals(TtsEngineFamily.VITS, TtsModelCatalog.definition(TtsModel.GOSIA).model.family)
         assertEquals(TtsEngineFamily.KITTEN, TtsModelCatalog.definition(TtsModel.KITTEN_MINI).model.family)
         assertEquals(TtsEngineFamily.MATCHA, TtsModelCatalog.definition(TtsModel.MATCHA_LJSPEECH).model.family)
+        assertEquals(TtsEngineFamily.MNN, TtsModelCatalog.definition(TtsModel.MNN_0_6B_BASE_INT8).model.family)
+    }
+
+    @Test
+    fun `keeps MNN backend wire names stable`() {
+        assertEquals(
+            listOf("cpu", "opencl", "vulkan"),
+            MnnTtsBackend.entries.map(MnnTtsBackend::wireName)
+        )
     }
 
     @Test
@@ -29,7 +38,12 @@ class TtsModelCatalogTest {
             TtsModelCatalog.compatibleModels("PL")
         )
         assertEquals(
-            listOf(TtsModel.KOKORO, TtsModel.ANDROID),
+            listOf(
+                TtsModel.KOKORO,
+                TtsModel.MNN_0_6B_BASE_INT8,
+                TtsModel.MNN_0_6B_BASE_FP16,
+                TtsModel.ANDROID
+            ),
             TtsModelCatalog.compatibleModels("zh")
         )
         assertEquals(
@@ -39,6 +53,8 @@ class TtsModelCatalogTest {
                 TtsModel.PIPER_LESSAC_HIGH,
                 TtsModel.KITTEN_MINI,
                 TtsModel.MATCHA_LJSPEECH,
+                TtsModel.MNN_0_6B_BASE_INT8,
+                TtsModel.MNN_0_6B_BASE_FP16,
                 TtsModel.ANDROID
             ),
             TtsModelCatalog.compatibleModels("en")

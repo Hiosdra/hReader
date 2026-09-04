@@ -362,6 +362,11 @@
     <string name="tts_missing_voice_description">다운로드한 음성이 없거나 시작되지 않으면 hReader가 자동으로 시스템 음성을 사용합니다.</string>
     <string name="tts_not_downloaded">%1$s · 다운로드되지 않음</string>
     <string name="tts_cpu_threads">CPU 스레드</string>
+    <string name="tts_mnn_backend">MNN 백엔드</string>
+    <string name="tts_mnn_backend_cpu">CPU</string>
+    <string name="tts_mnn_backend_opencl">OpenCL (GPU)</string>
+    <string name="tts_mnn_backend_vulkan">Vulkan (GPU)</string>
+    <string name="tts_mnn_backend_description">Qwen3-TTS MNN 모델에서 사용합니다. GPU 백엔드는 호환되는 장치 드라이버가 필요하며, 시작할 수 없으면 hReader가 시스템 음성을 사용합니다.</string>
     <string name="tts_pause_between_sentences">문장 사이 일시중지</string>
     <string name="tts_speaker_id">화자 ID</string>
     <string name="tts_quality_steps">품질 단계</string>
@@ -395,6 +400,10 @@
     <string name="tts_model_piper_english_high_description">영어 Piper 음성 · 35MB 다운로드</string>
     <string name="tts_model_kitten_description">영어 KittenTTS 음성 · 68MB 다운로드</string>
     <string name="tts_model_matcha_description">영어 Matcha 음성 · 131MB 다운로드</string>
+    <string name="tts_model_mnn_0_6b_base_int8_name">MNN Qwen3-TTS 0.6B (INT8)</string>
+    <string name="tts_model_mnn_0_6b_base_int8_description">MNN 음성 복제 · 1.4GB 다운로드</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_name">MNN Qwen3-TTS 0.6B (FP16)</string>
+    <string name="tts_model_mnn_0_6b_base_fp16_description">MNN 음성 복제 · 2.0GB 다운로드</string>
     <string name="tts_model_android_name">시스템 음성</string>
     <string name="tts_model_android_description">내장 음성 · 항상 사용 가능</string>
     <string name="tts_speech_playback_failed">음성 재생에 실패했습니다.</string>

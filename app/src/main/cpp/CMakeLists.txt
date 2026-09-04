@@ -1,0 +1,99 @@
+cmake_minimum_required(VERSION 3.22.1)
+
+project(hreader_tts LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+set(EXTERNAL_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../external")
+set(MNN_ROOT "${EXTERNAL_ROOT}/MNN")
+
+if (NOT ANDROID_ABI STREQUAL "arm64-v8a")
+    add_custom_target(hreader_mnn_tts)
+    return()
+endif()
+
+option(HREADER_MNN_OPENCL "Build MNN with OpenCL support" ON)
+option(HREADER_MNN_VULKAN "Build MNN with Vulkan support" ON)
+
+set(MNN_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(MNN_SEP_BUILD OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_DEMO OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_TEST OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_BENCHMARK OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_QUANTOOLS OFF CACHE BOOL "" FORCE)
+set(MNN_EVALUATION OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_TRAIN OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_CONVERTER OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_PROTOBUFFER OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_DIFFUSION OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_LLM ON CACHE BOOL "" FORCE)
+set(MNN_BUILD_LLM_OMNI OFF CACHE BOOL "" FORCE)
+set(MNN_BUILD_AUDIO ON CACHE BOOL "" FORCE)
+set(MNN_BUILD_OPENCV OFF CACHE BOOL "" FORCE)
+set(MNN_IMGCODECS OFF CACHE BOOL "" FORCE)
+set(MNN_LLM_BUILD_DEMO OFF CACHE BOOL "" FORCE)
+set(LLM_SUPPORT_HTTP_RESOURCE OFF CACHE BOOL "" FORCE)
+set(MNN_LLM_VIDEOIO_OPENCV OFF CACHE BOOL "" FORCE)
+set(MNN_OPENCL ${HREADER_MNN_OPENCL} CACHE BOOL "" FORCE)
+set(MNN_VULKAN ${HREADER_MNN_VULKAN} CACHE BOOL "" FORCE)
+set(MNN_JNI OFF CACHE BOOL "" FORCE)
+set(MNN_USE_LOGCAT ON CACHE BOOL "" FORCE)
+set(MNN_SUPPORT_BF16 ON CACHE BOOL "" FORCE)
+set(MNN_LOW_MEMORY ON CACHE BOOL "" FORCE)
+set(MNN_SUPPORT_TRANSFORMER_FUSE ON CACHE BOOL "" FORCE)
+set(MNN_BUILD_FOR_ANDROID_COMMAND ON CACHE BOOL "" FORCE)
+set(NATIVE_LIBRARY_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}" CACHE PATH "" FORCE)
+set(NATIVE_INCLUDE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/mnn-includes" CACHE PATH "" FORCE)
+add_compile_options(-ffunction-sections -fdata-sections)
+
+set(MNN_QWEN3_TTS_PATCH "${CMAKE_CURRENT_LIST_DIR}/mnn-qwen3-tts-backend.patch")
+execute_process(
+    COMMAND git -C "${MNN_ROOT}" apply --reverse --check "${MNN_QWEN3_TTS_PATCH}"
+    RESULT_VARIABLE MNN_QWEN3_TTS_PATCH_REVERSE_RESULT
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if (NOT MNN_QWEN3_TTS_PATCH_REVERSE_RESULT EQUAL 0)
+    execute_process(
+        COMMAND git -C "${MNN_ROOT}" apply --check "${MNN_QWEN3_TTS_PATCH}"
+        RESULT_VARIABLE MNN_QWEN3_TTS_PATCH_CHECK_RESULT
+        OUTPUT_VARIABLE MNN_QWEN3_TTS_PATCH_CHECK_OUTPUT
+        ERROR_VARIABLE MNN_QWEN3_TTS_PATCH_CHECK_ERROR
+    )
+    if (NOT MNN_QWEN3_TTS_PATCH_CHECK_RESULT EQUAL 0)
+        message(FATAL_ERROR
+            "Cannot apply the MNN Qwen3-TTS backend patch: "
+            "${MNN_QWEN3_TTS_PATCH_CHECK_OUTPUT}${MNN_QWEN3_TTS_PATCH_CHECK_ERROR}"
+        )
+    endif()
+    execute_process(
+        COMMAND git -C "${MNN_ROOT}" apply "${MNN_QWEN3_TTS_PATCH}"
+        RESULT_VARIABLE MNN_QWEN3_TTS_PATCH_RESULT
+        OUTPUT_VARIABLE MNN_QWEN3_TTS_PATCH_OUTPUT
+        ERROR_VARIABLE MNN_QWEN3_TTS_PATCH_ERROR
+    )
+    if (NOT MNN_QWEN3_TTS_PATCH_RESULT EQUAL 0)
+        message(FATAL_ERROR
+            "Cannot apply the MNN Qwen3-TTS backend patch: "
+            "${MNN_QWEN3_TTS_PATCH_OUTPUT}${MNN_QWEN3_TTS_PATCH_ERROR}"
+        )
+    endif()
+endif()
+
+add_subdirectory("${MNN_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/mnn")
+
+add_library(hreader_mnn_tts SHARED mnn_tts_jni.cpp)
+target_include_directories(hreader_mnn_tts PRIVATE
+    "${MNN_ROOT}/include"
+    "${MNN_ROOT}/transformers/llm/engine/include"
+    "${MNN_ROOT}/tools/audio/include"
+    "${MNN_ROOT}/3rd_party"
+)
+target_link_libraries(hreader_mnn_tts PRIVATE MNN log android)
+target_link_options(hreader_mnn_tts PRIVATE
+    "-Wl,--gc-sections"
+    "-Wl,-z,max-page-size=16384"
+)

@@ -17,6 +17,7 @@
 # The reflective adapter factory serialises this one, so its property names have to survive.
 -keep class kotlin.Metadata { *; }
 -keepclassmembers class com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord { *; }
+-keep class com.hiosdra.hreader.adapter.tts.MnnTtsNative { *; }
 
 # Wire models are built from JSON by property name, never constructed by the app.
 -keep class com.hiosdra.hreader.adapter.backend.**.dto.** { *; }

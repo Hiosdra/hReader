@@ -1,0 +1,36 @@
+diff --git a/transformers/llm/engine/src/omni.cpp b/transformers/llm/engine/src/omni.cpp
+index 36f21908..ec608439 100644
+--- a/transformers/llm/engine/src/omni.cpp
++++ b/transformers/llm/engine/src/omni.cpp
+@@ -2608,7 +2608,31 @@ bool Talker::load() {
+     mSeqLenIndex = 1;
+     if (isQwen3TTSTalker(mConfig)) {
+         ScheduleConfig qwen3ScheduleConfig;
++        BackendConfig qwen3BackendConfig;
++        qwen3ScheduleConfig.type = backend_type_convert(mConfig->backend_type());
++        qwen3ScheduleConfig.numThread = mConfig->thread_num();
++        if (qwen3ScheduleConfig.type == MNN_FORWARD_OPENCL) {
++            qwen3ScheduleConfig.numThread |= 64;
++            qwen3ScheduleConfig.numThread |= 512;
++        }
++        if (mConfig->power() == "high") {
++            qwen3BackendConfig.power = BackendConfig::Power_High;
++        } else if (mConfig->power() == "low") {
++            qwen3BackendConfig.power = BackendConfig::Power_Low;
++        }
++        if (mConfig->memory() == "high") {
++            qwen3BackendConfig.memory = BackendConfig::Memory_High;
++        } else if (mConfig->memory() == "low") {
++            qwen3BackendConfig.memory = BackendConfig::Memory_Low;
++        }
++        if (mConfig->precision() == "high") {
++            qwen3BackendConfig.precision = BackendConfig::Precision_High;
++        } else if (mConfig->precision() == "low") {
++            qwen3BackendConfig.precision = BackendConfig::Precision_Low;
++        }
++        qwen3ScheduleConfig.backendConfig = &qwen3BackendConfig;
+         mQwen3RuntimeManager.reset(Executor::RuntimeManager::createRuntimeManager(qwen3ScheduleConfig));
++        setRuntimeHint(mQwen3RuntimeManager);
+         Module::Config module_config;
+         module_config.shapeMutable = true;
+         module_config.rearrange = true;
