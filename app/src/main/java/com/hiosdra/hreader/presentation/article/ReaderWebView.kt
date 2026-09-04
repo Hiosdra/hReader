@@ -23,9 +23,17 @@ import com.hiosdra.hreader.R
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private const val CONTENT_HEIGHT_UPDATE_ATTEMPTS = 12
-private const val CONTENT_HEIGHT_UPDATE_DELAY_MS = 100L
+private const val CONTENT_HEIGHT_UPDATE_ATTEMPTS = 40
+private const val CONTENT_HEIGHT_UPDATE_INITIAL_DELAY_MS = 100L
+private const val CONTENT_HEIGHT_UPDATE_MIDDLE_DELAY_MS = 200L
+private const val CONTENT_HEIGHT_UPDATE_FINAL_DELAY_MS = 400L
 private const val CONTENT_HEIGHT_STABLE_SAMPLES = 2
+
+private fun contentHeightUpdateDelayMs(attempts: Int): Long = when {
+    attempts < 10 -> CONTENT_HEIGHT_UPDATE_INITIAL_DELAY_MS
+    attempts < 20 -> CONTENT_HEIGHT_UPDATE_MIDDLE_DELAY_MS
+    else -> CONTENT_HEIGHT_UPDATE_FINAL_DELAY_MS
+}
 
 internal enum class ReaderGestureDirection {
     Horizontal,
@@ -63,6 +71,40 @@ internal fun contentHeightIsSettled(
 ): Boolean = candidateHeightPx > 0 &&
     candidateHeightPx == previousHeightPx &&
     stableSamples >= requiredStableSamples
+
+internal data class ContentHeightUpdate(
+    val heightPx: Int,
+    val settled: Boolean
+)
+
+internal class ContentHeightStabilityTracker(
+    private val requiredStableSamples: Int = CONTENT_HEIGHT_STABLE_SAMPLES
+) {
+    private var lastHeightPx = 0
+    private var stableSamples = 0
+    private var reportedHeightPx = 0
+    private var reportedSettled = false
+
+    fun update(candidateHeightPx: Int): ContentHeightUpdate? {
+        if (candidateHeightPx <= 0) return null
+        if (candidateHeightPx == lastHeightPx) {
+            stableSamples += 1
+        } else {
+            lastHeightPx = candidateHeightPx
+            stableSamples = 1
+        }
+        val settled = contentHeightIsSettled(
+            previousHeightPx = lastHeightPx,
+            candidateHeightPx = candidateHeightPx,
+            stableSamples = stableSamples,
+            requiredStableSamples = requiredStableSamples
+        )
+        if (candidateHeightPx == reportedHeightPx && settled == reportedSettled) return null
+        reportedHeightPx = candidateHeightPx
+        reportedSettled = settled
+        return ContentHeightUpdate(candidateHeightPx, settled)
+    }
+}
 
 internal class ReaderWebViewScrollProgressReporter(
     private val onChanged: (progress: Float, isScrollable: Boolean, thumbFraction: Float) -> Unit
@@ -233,35 +275,26 @@ internal class ReaderWebView(context: Context) : WebView(context) {
     }
 
     fun scheduleContentHeightUpdates(onHeightChanged: (Int) -> Unit) {
+        scheduleContentHeightUpdatesWithSettled { height, settled ->
+            if (settled) onHeightChanged(height)
+        }
+    }
+
+    fun scheduleContentHeightUpdatesWithSettled(onHeightChanged: (Int, Boolean) -> Unit) {
         if (contentHeightUpdateRunnable != null) return
         val update = object : Runnable {
             private var attempts = 0
-            private var lastHeight = 0
-            private var stableSamples = 0
-            private var reportedHeight = 0
+            private val stabilityTracker = ContentHeightStabilityTracker()
 
             override fun run() {
                 if (released) return
                 val height = (contentHeight * resources.displayMetrics.density).roundToInt()
-                if (height > 0) {
-                    if (height == lastHeight) {
-                        stableSamples += 1
-                    } else {
-                        lastHeight = height
-                        stableSamples = 1
-                    }
-                    val isFinalAttempt = attempts >= CONTENT_HEIGHT_UPDATE_ATTEMPTS
-                    if (
-                        (contentHeightIsSettled(lastHeight, height, stableSamples) || isFinalAttempt) &&
-                        height != reportedHeight
-                    ) {
-                        reportedHeight = height
-                        onHeightChanged(height)
-                    }
+                stabilityTracker.update(height)?.let { update ->
+                    onHeightChanged(update.heightPx, update.settled)
                 }
                 if (attempts < CONTENT_HEIGHT_UPDATE_ATTEMPTS) {
                     attempts += 1
-                    postDelayed(this, CONTENT_HEIGHT_UPDATE_DELAY_MS)
+                    postDelayed(this, contentHeightUpdateDelayMs(attempts))
                 } else {
                     contentHeightUpdateRunnable = null
                 }
@@ -269,6 +302,11 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         }
         contentHeightUpdateRunnable = update
         post(update)
+    }
+
+    fun restartContentHeightUpdatesWithSettled(onHeightChanged: (Int, Boolean) -> Unit) {
+        cancelContentHeightUpdates()
+        scheduleContentHeightUpdatesWithSettled(onHeightChanged)
     }
 
     fun cancelContentHeightUpdates() {

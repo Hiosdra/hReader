@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,6 +35,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
@@ -44,6 +46,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,6 +79,7 @@ import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.FlowPreview
 
 private const val OVERSIZED_ARTICLE_HEADER_RESIZE_DEBOUNCE_MS = 150L
+private const val ARTICLE_SCROLL_END_TOLERANCE_PX = 8
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -85,6 +90,7 @@ internal fun ArticleContent(
     modifier: Modifier = Modifier,
     articleContent: String,
     contentLoaded: Boolean,
+    contentState: ArticleContentLoadState = ArticleContentLoadState.FULL,
     readingPositionLoaded: Boolean,
     savedReadingProgress: Float?,
     onReadingProgressChanged: (Long, Float) -> Unit,
@@ -119,14 +125,30 @@ internal fun ArticleContent(
     val articleScrollState = rememberSaveable(entry.id, saver = ScrollState.Saver) { ScrollState(0) }
     var restoredContentPositionKey by rememberSaveable(entry.id) { mutableStateOf<Int?>(null) }
     var readingCompletionReported by rememberSaveable(entry.id) { mutableStateOf(false) }
-    var webContentHeightPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
-    var measuredWebContentTopInsetPx by rememberSaveable(entry.id) { mutableIntStateOf(0) }
-    var webViewRestoreScrollY by rememberSaveable(entry.id) { mutableIntStateOf(0) }
-    var webViewScrollProgress by rememberSaveable(entry.id) { mutableFloatStateOf(0f) }
-    var webViewScrollY by rememberSaveable(entry.id) { mutableIntStateOf(0) }
+    var webContentHeightPx by rememberSaveable(entry.id, contentFingerprint, contentState) {
+        mutableIntStateOf(0)
+    }
+    var measuredWebContentTopInsetPx by rememberSaveable(entry.id, contentFingerprint, contentState) {
+        mutableIntStateOf(0)
+    }
+    var webContentHeightSettled by rememberSaveable(entry.id, contentFingerprint, contentState) {
+        mutableStateOf(false)
+    }
+    var webViewRestoreScrollY by rememberSaveable(entry.id, contentFingerprint, contentState) {
+        mutableIntStateOf(0)
+    }
+    var webViewScrollProgress by rememberSaveable(entry.id, contentFingerprint, contentState) {
+        mutableFloatStateOf(0f)
+    }
+    var webViewScrollY by rememberSaveable(entry.id, contentFingerprint, contentState) {
+        mutableIntStateOf(0)
+    }
     var articleViewportHeightPx by remember(entry.id) { mutableIntStateOf(0) }
     var articleHeaderHeightPx by remember(entry.id) { mutableIntStateOf(0) }
-    var webContentTopInsetPx by remember(entry.id, contentFingerprint) { mutableIntStateOf(0) }
+    var webContentTopInsetPx by remember(entry.id, contentFingerprint, contentState) { mutableIntStateOf(0) }
+    var keepArticleScrollAtEnd by remember(entry.id, contentFingerprint, contentState) {
+        mutableStateOf(false)
+    }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
     var imageShareUrl by remember { mutableStateOf<String?>(null) }
@@ -141,12 +163,15 @@ internal fun ArticleContent(
     val imageSharingFailedMessage = stringResource(R.string.article_image_sharing_failed)
     val imageDownloadedMessage = stringResource(R.string.article_downloading)
     val imageDownloadFailedMessage = stringResource(R.string.article_download_failed)
+    val loadingArticlesDescription = stringResource(R.string.loading_articles)
     val density = LocalDensity.current
     val minimumWebViewHeightPx = with(density) { 240.dp.roundToPx() }
     val articleBodyHeightPx = (webContentHeightPx - measuredWebContentTopInsetPx).coerceAtLeast(0)
     val safeWebContentHeightPx = safeArticleWebViewHeightPx(articleBodyHeightPx)
     val measuredOversizedArticle = articleWebViewNeedsInternalScroll(articleBodyHeightPx)
-    var oversizedArticleDetected by remember(entry.id, contentFingerprint) { mutableStateOf(false) }
+    var oversizedArticleDetected by remember(entry.id, contentFingerprint, contentState) {
+        mutableStateOf(false)
+    }
     LaunchedEffect(measuredOversizedArticle) {
         if (measuredOversizedArticle) oversizedArticleDetected = true
     }
@@ -158,6 +183,20 @@ internal fun ArticleContent(
     }
     val webViewHeight = with(density) { webViewHeightPx.toDp() }
     val webViewMaxScrollPx = (webContentHeightPx - webViewHeightPx).coerceAtLeast(0)
+    LaunchedEffect(contentState, contentFingerprint) {
+        if (contentState != ArticleContentLoadState.LOADING) return@LaunchedEffect
+        articleScrollState.scrollTo(0)
+        webViewRestoreScrollY = 0
+        webViewScrollProgress = 0f
+        webViewScrollY = 0
+        keepArticleScrollAtEnd = false
+    }
+    LaunchedEffect(keepArticleScrollAtEnd, webContentHeightPx, webViewHeightPx, webViewNeedsInternalScroll) {
+        if (!keepArticleScrollAtEnd || webViewNeedsInternalScroll) return@LaunchedEffect
+        withFrameNanos { }
+        articleScrollState.scrollTo(articleScrollState.maxValue)
+        keepArticleScrollAtEnd = false
+    }
     LaunchedEffect(webViewNeedsInternalScroll, articleHeaderHeightPx) {
         if (!webViewNeedsInternalScroll || articleHeaderHeightPx <= 0) return@LaunchedEffect
         if (webContentTopInsetPx != 0) delay(OVERSIZED_ARTICLE_HEADER_RESIZE_DEBOUNCE_MS)
@@ -194,9 +233,14 @@ internal fun ArticleContent(
         }
     }
     val latestReadingPositionLoaded = rememberUpdatedState(readingPositionLoaded)
+    val latestContentState = rememberUpdatedState(contentState)
+    val latestWebContentHeightSettled = rememberUpdatedState(webContentHeightSettled)
     val latestOnReadingProgressChanged = rememberUpdatedState(onReadingProgressChanged)
     val latestOnReadingCompleted = rememberUpdatedState(onReadingCompleted)
-    val contentPositionKey = contentFingerprint xor if (webViewNeedsInternalScroll) Int.MIN_VALUE else 0
+    val contentPositionKey = (31 * contentFingerprint + contentState.ordinal) xor
+        (if (webViewNeedsInternalScroll) Int.MIN_VALUE else 0)
+    val articleContentLayoutReady = contentState != ArticleContentLoadState.LOADING &&
+        webContentHeightPx > 0 && webContentHeightSettled
     val currentArticleProgress = {
         if (webViewNeedsInternalScroll) {
             articleScrollProgress(webViewScrollY, webViewMaxScrollPx) to (webViewMaxScrollPx > 0)
@@ -212,14 +256,15 @@ internal fun ArticleContent(
         readingPositionLoaded,
         savedReadingProgress,
         contentPositionKey,
-        webContentHeightPx > 0,
+        articleContentLayoutReady,
+        webContentHeightSettled,
         oversizedContentLayoutReady
     ) {
         if (
             restoredContentPositionKey == contentPositionKey ||
             !contentLoaded ||
             !readingPositionLoaded ||
-            webContentHeightPx <= 0 ||
+            !articleContentLayoutReady ||
             !oversizedContentLayoutReady
         ) {
             return@LaunchedEffect
@@ -239,8 +284,21 @@ internal fun ArticleContent(
         restoredContentPositionKey = contentPositionKey
     }
 
-    LaunchedEffect(entry.id, readingPositionLoaded, webViewNeedsInternalScroll, webViewMaxScrollPx) {
-        if (!readingPositionLoaded) return@LaunchedEffect
+    LaunchedEffect(
+        entry.id,
+        contentState,
+        readingPositionLoaded,
+        webViewNeedsInternalScroll,
+        webViewMaxScrollPx,
+        webContentHeightSettled
+    ) {
+        if (
+            !readingPositionLoaded ||
+            contentState == ArticleContentLoadState.LOADING ||
+            !webContentHeightSettled
+        ) {
+            return@LaunchedEffect
+        }
         readingCompletionReported = false
         snapshotFlow { currentArticleProgress() }
             .filter { (_, ready) -> ready }
@@ -258,9 +316,21 @@ internal fun ArticleContent(
             }
     }
 
-    DisposableEffect(entry.id, webViewNeedsInternalScroll, webViewMaxScrollPx) {
+    DisposableEffect(
+        entry.id,
+        contentState,
+        webViewNeedsInternalScroll,
+        webViewMaxScrollPx,
+        webContentHeightSettled
+    ) {
         onDispose {
-            if (!latestReadingPositionLoaded.value) return@onDispose
+            if (
+                !latestReadingPositionLoaded.value ||
+                latestContentState.value == ArticleContentLoadState.LOADING ||
+                !latestWebContentHeightSettled.value
+            ) {
+                return@onDispose
+            }
             val (progress, ready) = currentArticleProgress()
             if (!ready) return@onDispose
             if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
@@ -269,6 +339,16 @@ internal fun ArticleContent(
                 latestOnReadingProgressChanged.value(entry.id, progress)
             }
         }
+    }
+    val onWebContentHeightChanged: (Int, Int, Boolean) -> Unit = { height, topInset, settled ->
+        val previousMax = articleScrollState.maxValue
+        val wasAtEnd = !webViewNeedsInternalScroll &&
+            previousMax > 0 &&
+            articleScrollState.value >= previousMax - ARTICLE_SCROLL_END_TOLERANCE_PX
+        if (wasAtEnd && height > webContentHeightPx) keepArticleScrollAtEnd = true
+        webContentHeightPx = height
+        measuredWebContentTopInsetPx = topInset
+        webContentHeightSettled = settled
     }
     val articleHeader: @Composable (Modifier) -> Unit = { headerModifier ->
         Column(
@@ -381,10 +461,8 @@ internal fun ArticleContent(
                         restoreScrollY = webViewRestoreScrollY,
                         onScrollYChanged = { scrollY -> webViewScrollY = scrollY },
                         onScrollProgress = { progress -> webViewScrollProgress = progress },
-                        onContentHeightChanged = { height, topInset ->
-                            webContentHeightPx = height
-                            measuredWebContentTopInsetPx = topInset
-                        },
+                        onContentHeightChanged = onWebContentHeightChanged,
+                        onContentLoadStarted = { webContentHeightSettled = false },
                         onLinkClick = onArticleLinkClick,
                         onImageLongClick = { url -> imageActionsUrl = url },
                         readerPreferences = readerPreferences,
@@ -420,28 +498,42 @@ internal fun ArticleContent(
                     articleHeader(
                         Modifier.onSizeChanged { articleHeaderHeightPx = it.height }
                     )
-                    ArticleWebView(
-                        articleContent = readableArticleContent,
-                        baseUrl = entry.url,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .widthIn(max = 760.dp)
-                            .height(webViewHeight.coerceAtLeast(240.dp)),
-                        allowNetworkLoads = isOnline,
-                        localImagePaths = localImagePaths,
-                        textScale = textScale,
-                        scrollEnabled = false,
-                        restoreScrollY = 0,
-                        onScrollProgress = { progress -> webViewScrollProgress = progress },
-                        onContentHeightChanged = { height, topInset ->
-                            webContentHeightPx = height
-                            measuredWebContentTopInsetPx = topInset
-                        },
-                        onLinkClick = onArticleLinkClick,
-                        onImageLongClick = { url -> imageActionsUrl = url },
-                        readerPreferences = readerPreferences,
-                        remoteResourcePolicy = remoteResourcePolicy
-                    )
+                    if (contentState == ArticleContentLoadState.LOADING) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = 760.dp)
+                                .height(240.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.semantics {
+                                    contentDescription = loadingArticlesDescription
+                                }
+                            )
+                        }
+                    } else {
+                        ArticleWebView(
+                            articleContent = readableArticleContent,
+                            baseUrl = entry.url,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = 760.dp)
+                                .height(webViewHeight.coerceAtLeast(240.dp)),
+                            allowNetworkLoads = isOnline,
+                            localImagePaths = localImagePaths,
+                            textScale = textScale,
+                            scrollEnabled = false,
+                            restoreScrollY = 0,
+                            onScrollProgress = { progress -> webViewScrollProgress = progress },
+                            onContentHeightChanged = onWebContentHeightChanged,
+                            onContentLoadStarted = { webContentHeightSettled = false },
+                            onLinkClick = onArticleLinkClick,
+                            onImageLongClick = { url -> imageActionsUrl = url },
+                            readerPreferences = readerPreferences,
+                            remoteResourcePolicy = remoteResourcePolicy
+                        )
+                    }
                 }
             }
             VerticalScrollbar(

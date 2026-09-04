@@ -42,7 +42,8 @@ internal fun ArticleWebView(
     scrollEnabled: Boolean = true,
     contentTopInsetPx: Int = 0,
     scrollController: ArticleWebViewScrollController? = null,
-    onContentHeightChanged: ((Int, Int) -> Unit)? = null,
+    onContentHeightChanged: ((Int, Int, Boolean) -> Unit)? = null,
+    onContentLoadStarted: (() -> Unit)? = null,
     restoreScrollY: Int = 0,
     onScrollYChanged: ((Int) -> Unit)? = null,
     onScrollProgress: ((Float) -> Unit)? = null,
@@ -61,6 +62,7 @@ internal fun ArticleWebView(
     val currentLocalImagePaths = rememberUpdatedState(localImagePaths)
     val currentScrollEnabled = rememberUpdatedState(scrollEnabled)
     val currentOnContentHeightChanged = rememberUpdatedState(onContentHeightChanged)
+    val currentOnContentLoadStarted = rememberUpdatedState(onContentLoadStarted)
     val currentRestoreScrollY = rememberUpdatedState(restoreScrollY)
     val currentOnScrollYChanged = rememberUpdatedState(onScrollYChanged)
     val currentOnScrollProgress = rememberUpdatedState(onScrollProgress)
@@ -117,6 +119,7 @@ internal fun ArticleWebView(
     val loadedBaseUrl = remember { mutableStateOf<String?>(null) }
     val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
     val lastAppliedRestoreScrollY = remember { mutableIntStateOf(Int.MIN_VALUE) }
+    var loadedLocalImagePathsKey by remember { mutableStateOf<Int?>(null) }
     var renderProcessError by remember(articleContent, baseUrl) { mutableStateOf(false) }
     var renderAttempt by remember(articleContent, baseUrl) { mutableIntStateOf(0) }
 
@@ -129,7 +132,7 @@ internal fun ArticleWebView(
             }
         )
     } else {
-        key(renderAttempt) {
+        key(renderAttempt, articleContent, baseUrl) {
             AndroidView(
                 factory = { context ->
                     ReaderWebView(context).apply {
@@ -215,11 +218,12 @@ internal fun ArticleWebView(
                                 readerView.contentLayoutReady = true
                                 readerView.postIfActive {
                                     readerView.scrollTo(0, readerView.pageLoadRestoreScrollY)
-                                    readerView.scheduleContentHeightUpdates { height ->
+                                    readerView.scheduleContentHeightUpdatesWithSettled { height, settled ->
                                         if (readerView.contentLayoutReady) {
                                             currentOnContentHeightChanged.value?.invoke(
                                                 height,
-                                                readerView.loadedContentTopInsetPx
+                                                readerView.loadedContentTopInsetPx,
+                                                settled
                                             )
                                         }
                                     }
@@ -231,11 +235,12 @@ internal fun ArticleWebView(
                             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                                 val readerView = view as? ReaderWebView ?: return
                                 if (newProgress == 100) {
-                                    readerView.scheduleContentHeightUpdates { height ->
+                                    readerView.scheduleContentHeightUpdatesWithSettled { height, settled ->
                                         if (readerView.contentLayoutReady) {
                                             currentOnContentHeightChanged.value?.invoke(
                                                 height,
-                                                readerView.loadedContentTopInsetPx
+                                                readerView.loadedContentTopInsetPx,
+                                                settled
                                             )
                                         }
                                     }
@@ -244,11 +249,12 @@ internal fun ArticleWebView(
                         }
                         addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
                             val readerView = view as? ReaderWebView ?: return@addOnLayoutChangeListener
-                            readerView.scheduleContentHeightUpdates { height ->
+                            readerView.scheduleContentHeightUpdatesWithSettled { height, settled ->
                                 if (readerView.contentLayoutReady) {
                                     currentOnContentHeightChanged.value?.invoke(
                                         height,
-                                        readerView.loadedContentTopInsetPx
+                                        readerView.loadedContentTopInsetPx,
+                                        settled
                                     )
                                 }
                             }
@@ -279,14 +285,19 @@ internal fun ArticleWebView(
                     // were downloaded. Whatever is left points at the network, and offline every one of
                     // those costs a connect timeout before the page settles.
                     webView.settings.blockNetworkLoads = !allowNetworkLoads
+                    val localImagePathsKey = localImagePaths.hashCode()
+                    val localImagePathsChanged = loadedLocalImagePathsKey != null &&
+                        loadedLocalImagePathsKey != localImagePathsKey
+                    loadedLocalImagePathsKey = localImagePathsKey
                     val textZoom = (textScale.coerceIn(0.85f, 1.35f) * 100).roundToInt()
                     if (webView.settings.textZoom != textZoom) {
                         webView.settings.textZoom = textZoom
-                        webView.scheduleContentHeightUpdates { height ->
+                        webView.scheduleContentHeightUpdatesWithSettled { height, settled ->
                             if (webView.contentLayoutReady) {
                                 currentOnContentHeightChanged.value?.invoke(
                                     height,
-                                    webView.loadedContentTopInsetPx
+                                    webView.loadedContentTopInsetPx,
+                                    settled
                                 )
                             }
                         }
@@ -309,11 +320,11 @@ internal fun ArticleWebView(
                         webView.postIfActive { webView.scrollTo(0, restoreScrollY) }
                     }
 
-                    if (
+                    val shouldLoadContent =
                         loadedWebView.value !== webView ||
                         loadedHtml.value != htmlData ||
                         loadedBaseUrl.value != baseUrl
-                    ) {
+                    if (shouldLoadContent) {
                         val reloadScrollY = if (loadedWebView.value === webView) {
                             oversizedArticleScrollYAfterHeaderResize(
                                 webViewScrollY = webView.scrollY,
@@ -330,7 +341,18 @@ internal fun ArticleWebView(
                         loadedWebView.value = webView
                         loadedHtml.value = htmlData
                         loadedBaseUrl.value = baseUrl
+                        currentOnContentLoadStarted.value?.invoke()
                         webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
+                    } else if (localImagePathsChanged && webView.contentLayoutReady) {
+                        webView.restartContentHeightUpdatesWithSettled { height, settled ->
+                            if (webView.contentLayoutReady) {
+                                currentOnContentHeightChanged.value?.invoke(
+                                    height,
+                                    webView.loadedContentTopInsetPx,
+                                    settled
+                                )
+                            }
+                        }
                     }
                 },
                 onRelease = { webView ->

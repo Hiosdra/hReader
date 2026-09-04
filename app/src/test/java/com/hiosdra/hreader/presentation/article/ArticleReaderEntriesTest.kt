@@ -47,6 +47,7 @@ class ArticleReaderEntriesTest {
             entries = entries,
             currentIndex = 2,
             content = entries.associate { it.id to "<p>${it.id}</p>" },
+            contentLoadStates = entries.associate { it.id to ArticleContentLoadState.FULL },
             leadImages = entries.associate { it.id to "https://example.com/${it.id}.jpg" },
             localImagePaths = entries.associate { it.id to mapOf("image" to "/tmp/${it.id}.jpg") },
             offlinePages = entries.associate { item ->
@@ -64,9 +65,26 @@ class ArticleReaderEntriesTest {
         val trimmed = state.trimReaderState()
 
         assertEquals(setOf(2L, 3L, 4L), trimmed.content.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.contentLoadStates.keys)
         assertEquals(setOf(2L, 3L, 4L), trimmed.leadImages.keys)
         assertEquals(setOf(2L, 3L, 4L), trimmed.localImagePaths.keys)
         assertEquals(setOf(2L, 3L, 4L), trimmed.offlinePages.keys)
+    }
+
+    @Test
+    fun `explicit loading state wins over cached fallback while retry is pending`() {
+        val state = ArticleUiState(
+            entries = listOf(entry(1)),
+            content = mapOf(1L to "<p>Preview</p>"),
+            partialContentIds = setOf(1L),
+            contentLoadStates = mapOf(1L to ArticleContentLoadState.LOADING)
+        )
+
+        assertEquals(ArticleContentLoadState.LOADING, state.contentLoadState(1L))
+        assertEquals(
+            ArticleContentLoadState.FALLBACK,
+            state.copy(contentLoadStates = emptyMap()).contentLoadState(1L)
+        )
     }
 
     private fun entry(id: Long, title: String = "Article $id") = Entry(

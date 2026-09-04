@@ -64,6 +64,12 @@ internal fun mergeReaderEntries(
 internal fun readerFallbackContent(entry: Entry): String? =
     entry.content?.takeIf { it.isNotBlank() } ?: articlePreviewHtml(entry.preview)
 
+enum class ArticleContentLoadState {
+    LOADING,
+    FULL,
+    FALLBACK
+}
+
 data class ArticleUiState(
     val entries: List<Entry> = emptyList(),
     val currentIndex: Int = 0,
@@ -74,6 +80,7 @@ data class ArticleUiState(
     val error: UiText? = null,
     /** Each article's text as it is read, with every image address already resolved. */
     val content: Map<Long, String> = emptyMap(),
+    val contentLoadStates: Map<Long, ArticleContentLoadState> = emptyMap(),
     /**
      * The picture to show above each article. Absent until that article's text has arrived, and
      * null for a body that already carries the picture itself, which read the same way to the
@@ -113,6 +120,7 @@ internal fun ArticleUiState.trimReaderState(index: Int = currentIndex): ArticleU
     val retainedIds = readerWindowIds(index)
     return copy(
         content = content.filterKeys { it in retainedIds },
+        contentLoadStates = contentLoadStates.filterKeys { it in retainedIds },
         leadImages = leadImages.filterKeys { it in retainedIds },
         localImagePaths = localImagePaths.filterKeys { it in retainedIds },
         readingPositions = readingPositions.filterKeys { it in retainedIds },
@@ -124,6 +132,13 @@ internal fun ArticleUiState.trimReaderState(index: Int = currentIndex): ArticleU
         partialContentIds = partialContentIds.filterTo(mutableSetOf()) { it in retainedIds }
     )
 }
+
+internal fun ArticleUiState.contentLoadState(entryId: Long): ArticleContentLoadState =
+    contentLoadStates[entryId] ?: when {
+        entryId in content && entryId in partialContentIds -> ArticleContentLoadState.FALLBACK
+        entryId in content -> ArticleContentLoadState.FULL
+        else -> ArticleContentLoadState.LOADING
+    }
 
 class ArticleViewModel(
     private val reader: ArticleReaderUseCase
@@ -219,12 +234,6 @@ class ArticleViewModel(
         loadAround(index)
     }
 
-    /**
-     * The article on screen and the one either side of it. Arriving at an article whose text has to
-     * be fetched first shows what the feed carried and then replaces it, which the reader sees as
-     * the article rebuilding itself; asking for the neighbours while they are still off screen is
-     * what gives the swipe something ready to show.
-     */
     private fun loadAround(index: Int) {
         val entries = _uiState.value.entries
         val nearby = listOfNotNull(
@@ -335,6 +344,16 @@ class ArticleViewModel(
     private fun loadArticleText(entryId: Long, url: String, force: Boolean = false) {
         if (!force && _uiState.value.content.containsKey(entryId)) return
         if (!requestedContentIds.add(entryId)) return
+        _uiState.update { state ->
+            if (entryId !in state.readerWindowIds()) {
+                state
+            } else {
+                state.copy(
+                    contentLoadStates = state.contentLoadStates +
+                        (entryId to ArticleContentLoadState.LOADING)
+                )
+            }
+        }
         viewModelScope.launch {
             try {
                 val text = reader.getArticleContent(entryId, url, _uiState.value.isOnline)
@@ -359,6 +378,7 @@ class ArticleViewModel(
      * reads as a fault with the one they are. Arriving at that article raises it.
      */
     private fun ArticleUiState.withPartialContent(entryId: Long) = copy(
+        contentLoadStates = contentLoadStates + (entryId to ArticleContentLoadState.FALLBACK),
         partialContentIds = partialContentIds + entryId,
         contentError = if (entries.getOrNull(currentIndex)?.id == entryId) {
             PARTIAL_CONTENT_MESSAGE
@@ -376,6 +396,13 @@ class ArticleViewModel(
             if (entryId !in stored.readerWindowIds()) return@update stored
             val withContent = stored.copy(
                 content = stored.content + (entryId to html),
+                contentLoadStates = stored.contentLoadStates + (
+                    entryId to if (isFullText) {
+                        ArticleContentLoadState.FULL
+                    } else {
+                        ArticleContentLoadState.FALLBACK
+                    }
+                ),
                 leadImages = stored.leadImages + (entryId to leadImage),
                 localImagePaths = stored.localImagePaths + (entryId to localPaths)
             )
@@ -486,6 +513,9 @@ class ArticleViewModel(
         _uiState.value.content[entryId]
             ?: _uiState.value.entries.find { it.id == entryId }?.let(::readerFallbackContent)
 
+    fun getContentStateForEntry(entryId: Long): ArticleContentLoadState =
+        _uiState.value.contentLoadState(entryId)
+
     fun getLeadImageForEntry(entryId: Long): String? = _uiState.value.leadImages[entryId]
 
     fun getReadingProgressForEntry(entryId: Long): Float? =
@@ -538,6 +568,8 @@ class ArticleViewModel(
                 } else {
                     state.leadImages - entryId
                 },
+                contentLoadStates = state.contentLoadStates +
+                    (entryId to ArticleContentLoadState.LOADING),
                 partialContentIds = state.partialContentIds - entryId,
                 contentError = if (currentEntryId == entryId) null else state.contentError
             )
