@@ -2,6 +2,9 @@
 
 #include <android/log.h>
 
+#if defined(HREADER_MNN_VULKAN_ENABLED)
+#include "backend/vulkan/vulkan/vulkan_wrapper.h"
+#endif
 #include "llm/llm.hpp"
 
 #include <algorithm>
@@ -131,6 +134,9 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
             releaseStrings();
             return JNI_FALSE;
         }
+#if defined(HREADER_MNN_VULKAN_ENABLED)
+        if (backend_string == "vulkan") MNNVulkanResetError();
+#endif
         handle->llm.reset(Llm::createLLM(joinPath(directory_string, config)));
         if (!handle->llm) {
             handle->last_error = "Could not create MNN Qwen3-TTS model";
@@ -143,13 +149,23 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
             std::to_string(threads) + ",\"precision\":\"low\",\"memory\":\"low\",\"async\":false,\"tmp_path\":" +
             quoteJson(cache_string) + ",\"mllm\":{\"backend_type\":" + quoteJson(backend_string) +
             ",\"thread_num\":" + std::to_string(threads) + ",\"precision\":\"low\",\"memory\":\"low\"}}";
-        if (!handle->llm->set_config(runtime_config) || !handle->llm->load()) {
+        const bool configured = handle->llm->set_config(runtime_config);
+        const bool loaded = configured && handle->llm->load();
+#if defined(HREADER_MNN_VULKAN_ENABLED)
+        const bool vulkanError = backend_string == "vulkan" && MNNVulkanHasError();
+#else
+        const bool vulkanError = false;
+#endif
+        if (!loaded || vulkanError) {
             handle->last_error = "MNN Qwen3-TTS model load failed";
             __android_log_print(
                 ANDROID_LOG_ERROR,
                 LOG_TAG,
-                "load failed backend=%s elapsedMs=%lld",
+                "load failed backend=%s configured=%d loaded=%d vulkanError=%d elapsedMs=%lld",
                 backend_string.c_str(),
+                configured ? 1 : 0,
+                loaded ? 1 : 0,
+                vulkanError ? 1 : 0,
                 elapsedMilliseconds(startedAt)
             );
             releaseStrings();
@@ -223,6 +239,9 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeSynthesize(
         frameLimit
     );
     try {
+#if defined(HREADER_MNN_VULKAN_ENABLED)
+        if (handle->backend == "vulkan") MNNVulkanResetError();
+#endif
         handle->llm->setWavformCallback([&waveform](const float* samples, size_t size, bool) {
             if (samples != nullptr && size > 0) waveform.insert(waveform.end(), samples, samples + size);
             return true;
@@ -233,6 +252,12 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeSynthesize(
             frameLimit,
             native_reference_audio
         );
+#if defined(HREADER_MNN_VULKAN_ENABLED)
+        if (generated && handle->backend == "vulkan" && MNNVulkanHasError()) {
+            generated = false;
+            handle->last_error = "MNN Vulkan TTS synthesis failed";
+        }
+#endif
     } catch (const std::exception& error) {
         handle->last_error = error.what();
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "synthesis exception=%s", error.what());

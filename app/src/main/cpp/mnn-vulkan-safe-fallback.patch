@@ -1,0 +1,151 @@
+diff --git a/source/backend/vulkan/component/VulkanCommandPool.cpp b/source/backend/vulkan/component/VulkanCommandPool.cpp
+index 3020143..06ee929 100644
+--- a/source/backend/vulkan/component/VulkanCommandPool.cpp
++++ b/source/backend/vulkan/component/VulkanCommandPool.cpp
+@@ -17,5 +17,10 @@ VulkanCommandPool::VulkanCommandPool(const VulkanDevice& dev) : mDevice(dev), mP
+     CALL_VK(mDevice.createCommandPool(mPool));
+-    MNN_ASSERT(VK_NULL_HANDLE != mPool);
++    if (mPool == VK_NULL_HANDLE) {
++        MNNVulkanRecordError(VK_ERROR_INITIALIZATION_FAILED, "command pool handle", __FILE__, __LINE__);
++    }
+ }
+ VulkanCommandPool::~VulkanCommandPool() {
++    if (mPool == VK_NULL_HANDLE) {
++        return;
++    }
+     for (auto& b : mFreeBuffers) {
+diff --git a/source/backend/vulkan/component/VulkanDevice.cpp b/source/backend/vulkan/component/VulkanDevice.cpp
+index 3629078..ae26046 100644
+--- a/source/backend/vulkan/component/VulkanDevice.cpp
++++ b/source/backend/vulkan/component/VulkanDevice.cpp
+@@ -70,6 +70,12 @@ VulkanDevice::VulkanDevice(std::shared_ptr<VulkanInstance> instance)
+     CALL_VK(mInstance->enumeratePhysicalDevices(gpuCount, nullptr));
+-    MNN_ASSERT(0 != gpuCount);
++    if (gpuCount == 0) {
++        MNNVulkanRecordError(VK_ERROR_INITIALIZATION_FAILED, "physical device count", __FILE__, __LINE__);
++        return;
++    }
+     std::vector<VkPhysicalDevice> tmpGpus(gpuCount);
+     CALL_VK(mInstance->enumeratePhysicalDevices(gpuCount, tmpGpus.data()));
+-    MNN_ASSERT(nullptr != tmpGpus[0]);
++    if (tmpGpus[0] == VK_NULL_HANDLE) {
++        MNNVulkanRecordError(VK_ERROR_INITIALIZATION_FAILED, "physical device handle", __FILE__, __LINE__);
++        return;
++    }
+     mPhysicalDevice = tmpGpus[0];
+@@ -80,3 +86,6 @@ VulkanDevice::VulkanDevice(std::shared_ptr<VulkanInstance> instance)
+     mInstance->getPhysicalDeviceQueueFamilyProperties(mPhysicalDevice, queueFamilyCount, nullptr);
+-    MNN_ASSERT(queueFamilyCount);
++    if (queueFamilyCount == 0) {
++        MNNVulkanRecordError(VK_ERROR_INITIALIZATION_FAILED, "queue family count", __FILE__, __LINE__);
++        return;
++    }
+     std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+@@ -91,3 +100,6 @@ VulkanDevice::VulkanDevice(std::shared_ptr<VulkanInstance> instance)
+     }
+-    MNN_ASSERT(queueFamilyIndex < queueFamilyCount);
++    if (queueFamilyIndex >= queueFamilyCount) {
++        MNNVulkanRecordError(VK_ERROR_INITIALIZATION_FAILED, "compute queue family", __FILE__, __LINE__);
++        return;
++    }
+     mQueueFamilyIndex = queueFamilyIndex;
+diff --git a/source/backend/vulkan/runtime/VulkanRuntime.cpp b/source/backend/vulkan/runtime/VulkanRuntime.cpp
+index 676895f..d7a0598 100644
+--- a/source/backend/vulkan/runtime/VulkanRuntime.cpp
++++ b/source/backend/vulkan/runtime/VulkanRuntime.cpp
+@@ -60,6 +60,11 @@ VulkanRuntime* VulkanRuntime::create(const Backend::Info& info) {
+     }
+-    if (device->get() == VK_NULL_HANDLE) {
++    if (device->get() == VK_NULL_HANDLE || MNNVulkanHasError()) {
+         return nullptr;
+     }
+-    return new VulkanRuntime(info, device, instance);
++    auto runtime = new VulkanRuntime(info, device, instance);
++    if (MNNVulkanHasError()) {
++        delete runtime;
++        return nullptr;
++    }
++    return runtime;
+ }
+@@ -74,2 +79,5 @@ VulkanRuntime::VulkanRuntime(const Backend::Info& info, std::shared_ptr<VulkanDe
+     mCmdPool               = std::make_shared<VulkanCommandPool>(dev);
++    if (MNNVulkanHasError()) {
++        return;
++    }
+     //GFlops, Test by mobilenet v1's ms
+@@ -108,2 +116,5 @@ VulkanRuntime::VulkanRuntime(const Backend::Info& info, std::shared_ptr<VulkanDe
+     mMemoryPool        = std::make_shared<VulkanMemoryPool>(dev, mPrecision != BackendConfig::Precision_High);
++    if (MNNVulkanHasError()) {
++        return;
++    }
+     std::shared_ptr<BufferAllocator::Allocator> allocReal(new VulkanBufferAllocator(dev, *mMemoryPool));
+@@ -111,5 +122,17 @@ VulkanRuntime::VulkanRuntime(const Backend::Info& info, std::shared_ptr<VulkanDe
+     mSampler         = std::make_shared<VulkanSampler>(dev, VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
++    if (MNNVulkanHasError()) {
++        return;
++    }
+     mClampSampler         = std::make_shared<VulkanSampler>(dev, VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
++    if (MNNVulkanHasError()) {
++        return;
++    }
+     mPipelineFactory = std::make_shared<VulkanPipelineFactory>(dev);
++    if (MNNVulkanHasError()) {
++        return;
++    }
+     mQueryPool = std::make_shared<VulkanQueryPool>(dev);
++    if (MNNVulkanHasError()) {
++        return;
++    }
+ 
+@@ -279,2 +302,3 @@ public:
+     virtual Runtime* onCreate(const Backend::Info& info) const {
++        MNNVulkanResetError();
+         if (InitVulkan()) {
+diff --git a/source/backend/vulkan/runtime/vulkan_wrapper.cpp b/source/backend/vulkan/runtime/vulkan_wrapper.cpp
+index fe1e9c4..8d01bfe 100644
+--- a/source/backend/vulkan/runtime/vulkan_wrapper.cpp
++++ b/source/backend/vulkan/runtime/vulkan_wrapper.cpp
+@@ -15,2 +15,23 @@
+ #include "backend/vulkan/vulkan/vulkan_wrapper.h"
++#include <atomic>
++
++namespace {
++std::atomic<int> gMnnVulkanError{VK_SUCCESS};
++}
++
++void MNNVulkanResetError(void) {
++    gMnnVulkanError.store(VK_SUCCESS, std::memory_order_relaxed);
++}
++
++bool MNNVulkanHasError(void) {
++    return gMnnVulkanError.load(std::memory_order_relaxed) != VK_SUCCESS;
++}
++
++void MNNVulkanRecordError(VkResult result, const char* expression, const char* file, int line) {
++    int expected = VK_SUCCESS;
++    gMnnVulkanError.compare_exchange_strong(expected, static_cast<int>(result), std::memory_order_relaxed);
++    MNN_ERROR("Vulkan call failed: result=%d expression=%s location=%s:%d\n", static_cast<int>(result), expression,
++              file, line);
++}
++
+ #ifndef MNN_USE_LIB_WRAPPER
+diff --git a/source/backend/vulkan/vulkan/vulkan_wrapper.h b/source/backend/vulkan/vulkan/vulkan_wrapper.h
+index 1f45052..6586a68 100644
+--- a/source/backend/vulkan/vulkan/vulkan_wrapper.h
++++ b/source/backend/vulkan/vulkan/vulkan_wrapper.h
+@@ -23,2 +23,7 @@
+ #include <MNN/MNNDefine.h>
++
++void MNNVulkanResetError(void);
++bool MNNVulkanHasError(void);
++void MNNVulkanRecordError(VkResult result, const char* expression, const char* file, int line);
++
+ // Vulkan call wrapper
+@@ -26,3 +31,6 @@
+ { \
+-auto restemp = (func); MNN_ASSERT(restemp == VK_SUCCESS); \
++auto restemp = (func); \
++if (restemp != VK_SUCCESS) { \
++    MNNVulkanRecordError(restemp, #func, __FILE__, __LINE__); \
++} \
+ }

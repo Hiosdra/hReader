@@ -34,7 +34,7 @@ internal class MnnTtsEngine(
         settings: TtsAdvancedSettings
     ): TtsAudio {
         val files = modelFiles(model)
-        ensureLoaded(model, settings)
+        val effectiveBackend = ensureLoaded(model, settings)
         val referenceAudio = modelManager.directory(model)
             .resolve(files.referenceAudio)
             .absolutePath
@@ -43,7 +43,8 @@ internal class MnnTtsEngine(
         val startedAt = SystemClock.elapsedRealtime()
         Log.i(
             TAG,
-            "synthesis start model=${model.name} backend=${settings.mnnBackend.wireName} " +
+            "synthesis start model=${model.name} requestedBackend=${settings.mnnBackend.wireName} " +
+                "backend=${effectiveBackend.wireName} " +
                 "threads=${settings.numThreads} textChars=$textCharacters maxFrames=$maxFrames"
         )
         val samples = try {
@@ -56,7 +57,7 @@ internal class MnnTtsEngine(
         } catch (error: Exception) {
             Log.e(
                 TAG,
-                "synthesis failed model=${model.name} backend=${settings.mnnBackend.wireName} " +
+                "synthesis failed model=${model.name} backend=${effectiveBackend.wireName} " +
                     "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}",
                 error
             )
@@ -64,7 +65,7 @@ internal class MnnTtsEngine(
         }
         Log.i(
             TAG,
-            "synthesis complete model=${model.name} backend=${settings.mnnBackend.wireName} " +
+            "synthesis complete model=${model.name} backend=${effectiveBackend.wireName} " +
                 "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} samples=${samples.size}"
         )
         return TtsAudio(
@@ -80,23 +81,45 @@ internal class MnnTtsEngine(
         loadedConfiguration = null
     }
 
-    private fun ensureLoaded(model: TtsModel, settings: TtsAdvancedSettings) {
+    private fun ensureLoaded(model: TtsModel, settings: TtsAdvancedSettings): MnnTtsBackend {
         check(model in supportedModels) { "MNN does not support ${model.name}" }
-        val configuration = LoadedConfiguration(model, settings.numThreads, settings.mnnBackend)
-        if (configuration == loadedConfiguration) return
+        val request = LoadRequest(model, settings.numThreads, settings.mnnBackend)
+        loadedConfiguration?.takeIf { it.request == request }?.let { return it.effectiveBackend }
         runtime.release()
         loadedConfiguration = null
         val files = modelFiles(model)
-        val cacheDirectory = modelManager.runtimeCacheDirectory(model, settings.mnnBackend)
-        cacheDirectory.mkdirs()
-        runtime.load(
-            modelDirectory = modelManager.directory(model).absolutePath,
-            configName = files.config,
-            numThreads = settings.numThreads,
-            backend = settings.mnnBackend.wireName,
-            cacheDirectory = cacheDirectory.absolutePath
-        )
-        loadedConfiguration = configuration
+        var lastError: Exception? = null
+        for (backend in mnnTtsBackendCandidates(settings.mnnBackend)) {
+            try {
+                val cacheDirectory = modelManager.runtimeCacheDirectory(model, backend)
+                cacheDirectory.mkdirs()
+                runtime.load(
+                    modelDirectory = modelManager.directory(model).absolutePath,
+                    configName = files.config,
+                    numThreads = settings.numThreads,
+                    backend = backend.wireName,
+                    cacheDirectory = cacheDirectory.absolutePath
+                )
+                loadedConfiguration = LoadedConfiguration(request, backend)
+                if (backend != settings.mnnBackend) {
+                    Log.w(
+                        TAG,
+                        "backend fallback model=${model.name} requested=${settings.mnnBackend.wireName} " +
+                            "effective=${backend.wireName}"
+                    )
+                }
+                return backend
+            } catch (error: Exception) {
+                lastError = error
+                runtime.release()
+                Log.w(
+                    TAG,
+                    "backend failed model=${model.name} backend=${backend.wireName}",
+                    error
+                )
+            }
+        }
+        throw checkNotNull(lastError) { "MNN TTS backend initialization failed" }
     }
 
     private fun modelFiles(model: TtsModel): MnnModelFiles =
@@ -105,9 +128,14 @@ internal class MnnTtsEngine(
         }
 
     private data class LoadedConfiguration(
+        val request: LoadRequest,
+        val effectiveBackend: MnnTtsBackend
+    )
+
+    private data class LoadRequest(
         val model: TtsModel,
         val numThreads: Int,
-        val backend: MnnTtsBackend
+        val requestedBackend: MnnTtsBackend
     )
 
     private companion object {
@@ -119,6 +147,13 @@ internal class MnnTtsEngine(
 internal const val MNN_TTS_MAX_CHUNK_CHARACTERS = 120
 internal const val MNN_TTS_MIN_FRAMES = 128
 internal const val MNN_TTS_MAX_FRAMES = 384
+
+internal fun mnnTtsBackendCandidates(requestedBackend: MnnTtsBackend): List<MnnTtsBackend> =
+    when (requestedBackend) {
+        MnnTtsBackend.CPU -> listOf(MnnTtsBackend.CPU)
+        MnnTtsBackend.OPENCL -> listOf(MnnTtsBackend.OPENCL, MnnTtsBackend.CPU)
+        MnnTtsBackend.VULKAN -> listOf(MnnTtsBackend.VULKAN, MnnTtsBackend.OPENCL, MnnTtsBackend.CPU)
+    }
 
 internal fun mnnTtsMaxFrames(text: String): Int =
     (text.codePointCount(0, text.length) * 2).coerceIn(MNN_TTS_MIN_FRAMES, MNN_TTS_MAX_FRAMES)

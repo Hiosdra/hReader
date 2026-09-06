@@ -49,6 +49,40 @@ set(NATIVE_LIBRARY_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}" CACHE PATH "" FORCE)
 set(NATIVE_INCLUDE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/mnn-includes" CACHE PATH "" FORCE)
 add_compile_options(-ffunction-sections -fdata-sections)
 
+set(MNN_VULKAN_SAFE_PATCH "${CMAKE_CURRENT_LIST_DIR}/mnn-vulkan-safe-fallback.patch")
+execute_process(
+    COMMAND git -C "${MNN_ROOT}" apply --reverse --check "${MNN_VULKAN_SAFE_PATCH}"
+    RESULT_VARIABLE MNN_VULKAN_SAFE_PATCH_REVERSE_RESULT
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if (NOT MNN_VULKAN_SAFE_PATCH_REVERSE_RESULT EQUAL 0)
+    execute_process(
+        COMMAND git -C "${MNN_ROOT}" apply --check "${MNN_VULKAN_SAFE_PATCH}"
+        RESULT_VARIABLE MNN_VULKAN_SAFE_PATCH_CHECK_RESULT
+        OUTPUT_VARIABLE MNN_VULKAN_SAFE_PATCH_CHECK_OUTPUT
+        ERROR_VARIABLE MNN_VULKAN_SAFE_PATCH_CHECK_ERROR
+    )
+    if (NOT MNN_VULKAN_SAFE_PATCH_CHECK_RESULT EQUAL 0)
+        message(FATAL_ERROR
+            "Cannot apply the MNN Vulkan safety patch: "
+            "${MNN_VULKAN_SAFE_PATCH_CHECK_OUTPUT}${MNN_VULKAN_SAFE_PATCH_CHECK_ERROR}"
+        )
+    endif()
+    execute_process(
+        COMMAND git -C "${MNN_ROOT}" apply "${MNN_VULKAN_SAFE_PATCH}"
+        RESULT_VARIABLE MNN_VULKAN_SAFE_PATCH_RESULT
+        OUTPUT_VARIABLE MNN_VULKAN_SAFE_PATCH_OUTPUT
+        ERROR_VARIABLE MNN_VULKAN_SAFE_PATCH_ERROR
+    )
+    if (NOT MNN_VULKAN_SAFE_PATCH_RESULT EQUAL 0)
+        message(FATAL_ERROR
+            "Cannot apply the MNN Vulkan safety patch: "
+            "${MNN_VULKAN_SAFE_PATCH_OUTPUT}${MNN_VULKAN_SAFE_PATCH_ERROR}"
+        )
+    endif()
+endif()
+
 set(MNN_QWEN3_TTS_PATCH "${CMAKE_CURRENT_LIST_DIR}/mnn-qwen3-tts-backend.patch")
 execute_process(
     COMMAND git -C "${MNN_ROOT}" apply --reverse --check "${MNN_QWEN3_TTS_PATCH}"
@@ -92,6 +126,10 @@ target_include_directories(hreader_mnn_tts PRIVATE
     "${MNN_ROOT}/tools/audio/include"
     "${MNN_ROOT}/3rd_party"
 )
+if (HREADER_MNN_VULKAN)
+    target_compile_definitions(hreader_mnn_tts PRIVATE HREADER_MNN_VULKAN_ENABLED=1)
+    target_include_directories(hreader_mnn_tts PRIVATE "${MNN_ROOT}/source")
+endif()
 target_link_libraries(hreader_mnn_tts PRIVATE MNN log android)
 target_link_options(hreader_mnn_tts PRIVATE
     "-Wl,--gc-sections"
