@@ -8,6 +8,7 @@ import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
+import com.hiosdra.hreader.core.application.port.out.TtsModelCacheGateway
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -31,7 +32,7 @@ import java.security.MessageDigest
 class TtsModelManager(
     context: Context,
     client: OkHttpClient
-) : TtsModelGateway {
+) : TtsModelGateway, TtsModelCacheGateway {
     private val appContext = context.applicationContext
     private val client = client.newBuilder().apply { interceptors().clear() }.build()
     private val modelRoot = File(appContext.filesDir, "tts_models")
@@ -47,6 +48,41 @@ class TtsModelManager(
             runtimeCacheRoot,
             "${TtsModelPackageCatalog.directoryName(model)}/${backend.wireName}/$MNN_RUNTIME_CACHE_VERSION"
         )
+
+    override fun isReady(model: TtsModel, backend: MnnTtsBackend): Boolean {
+        val packageDefinition = TtsModelPackageCatalog.packageFor(model) ?: return false
+        if (packageDefinition.engineFiles !is MnnModelFiles ||
+            !packageDefinition.isComplete(directory(model))
+        ) {
+            return false
+        }
+        val cacheDirectory = runtimeCacheDirectory(model, backend)
+        val marker = cacheDirectory.resolve(MNN_RUNTIME_CACHE_MARKER)
+        return marker.isFile && hasRuntimeCacheFiles(cacheDirectory) && runCatching {
+            marker.readText() == runtimeCacheFingerprint(model, backend)
+        }.getOrDefault(false)
+    }
+
+    override fun invalidate(model: TtsModel, backend: MnnTtsBackend) {
+        val cacheDirectory = runtimeCacheDirectory(model, backend)
+        check(!cacheDirectory.exists() || cacheDirectory.deleteRecursively()) {
+            "Could not invalidate MNN runtime cache"
+        }
+    }
+
+    override fun markReady(model: TtsModel, backend: MnnTtsBackend) {
+        val cacheDirectory = runtimeCacheDirectory(model, backend)
+        if (!cacheDirectory.isDirectory || !hasRuntimeCacheFiles(cacheDirectory)) return
+        val marker = cacheDirectory.resolve(MNN_RUNTIME_CACHE_MARKER)
+        val temporaryMarker = cacheDirectory.resolve("$MNN_RUNTIME_CACHE_MARKER.tmp")
+        temporaryMarker.writeText(runtimeCacheFingerprint(model, backend))
+        if (!temporaryMarker.renameTo(marker)) {
+            marker.delete()
+            check(temporaryMarker.renameTo(marker)) {
+                "Could not mark MNN runtime cache ready"
+            }
+        }
+    }
 
     override fun markDownloadEnqueued(model: TtsModel) {
         _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
@@ -312,7 +348,34 @@ class TtsModelManager(
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
+    private fun hasRuntimeCacheFiles(directory: File): Boolean =
+        directory.walkTopDown().any {
+            it.isFile && it.name != MNN_RUNTIME_CACHE_MARKER && it.name != "$MNN_RUNTIME_CACHE_MARKER.tmp"
+        }
+
+    private fun runtimeCacheFingerprint(model: TtsModel, backend: MnnTtsBackend): String {
+        val packageDefinition = checkNotNull(TtsModelPackageCatalog.packageFor(model))
+        val input = buildString {
+            append(MNN_RUNTIME_CACHE_VERSION)
+            append('|').append(model.name)
+            append('|').append(backend.wireName)
+            packageDefinition.files
+                .sortedBy(RemoteFile::name)
+                .forEach { append('|').append(it.name).append(':').append(it.sha256) }
+            packageDefinition.supplementalFiles
+                .sortedBy(RemoteFile::name)
+                .forEach { append('|').append(it.name).append(':').append(it.sha256) }
+            packageDefinition.generatedFiles
+                .sortedBy(GeneratedFile::name)
+                .forEach { append('|').append(it.name).append(':').append(it.content) }
+        }
+        return MessageDigest.getInstance("SHA-256")
+            .digest(input.toByteArray())
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    }
+
     private companion object {
+        const val MNN_RUNTIME_CACHE_MARKER = ".hreader-ready"
         const val MNN_RUNTIME_CACHE_VERSION = 2
     }
 }

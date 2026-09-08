@@ -466,4 +466,16 @@
     <string name="settings_group_expanded">已展开</string>
     <string name="settings_group_collapsed">已收起</string>
     <string name="settings_operation_article_reconciliation">文章协调</string>
+    <string name="notification_tts_cache_title">正在准备语音缓存</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
+    <string name="tts_prepare_cache">准备缓存</string>
+    <string name="tts_refresh_cache">刷新缓存</string>
+    <string name="tts_cancel_cache_preparation">取消准备缓存</string>
+    <string name="tts_cache_ready">所选后端的缓存已准备就绪。</string>
+    <string name="tts_cache_preparing">正在后台准备缓存…</string>
+    <string name="tts_cache_description">在开始朗读前准备此 MNN 语音，可能需要几分钟。</string>
+    <string name="tts_cache_prepare_invalid">无法识别缓存准备请求。</string>
+    <string name="tts_cache_prepare_model_unavailable">请先下载所选的 MNN 语音，再准备其缓存。</string>
+    <string name="tts_cache_prepare_failed">无法准备语音缓存。</string>
+    <string name="tts_cache_prepare_backend_fallback">无法启动 %1$s；已改用 %2$s 准备缓存。</string>
 </resources>

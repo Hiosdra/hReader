@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
+import com.hiosdra.hreader.core.application.port.out.TtsModelCacheRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
@@ -30,7 +31,8 @@ fun TtsSettingsScreen(
     navController: NavController? = null,
     ttsPreferences: TtsPreferences,
     ttsModelManager: TtsModelGateway,
-    ttsModelDownloadScheduler: TtsModelDownloadRequester
+    ttsModelDownloadScheduler: TtsModelDownloadRequester,
+    ttsModelCacheRequester: TtsModelCacheRequester
 ) {
     val requestNotificationPermission = rememberNotificationPermissionRequest()
     Scaffold(
@@ -69,6 +71,7 @@ fun TtsSettingsScreen(
                     preferences = ttsPreferences,
                     modelManager = ttsModelManager,
                     downloadScheduler = ttsModelDownloadScheduler,
+                    cacheRequester = ttsModelCacheRequester,
                     onRequestNotifications = requestNotificationPermission
                 )
             }

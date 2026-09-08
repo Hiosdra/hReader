@@ -12,6 +12,7 @@ object AppNotificationFactory {
     private const val SYNC_NOTIFICATION_BASE = 0x10000000
     private const val MODEL_DOWNLOAD_NOTIFICATION_BASE = 0x20000000
     private const val AI_MODEL_DOWNLOAD_NOTIFICATION_BASE = 0x30000000
+    private const val TTS_CACHE_NOTIFICATION_BASE = 0x40000000
 
     fun syncForegroundInfo(
         context: Context,
@@ -97,6 +98,41 @@ object AppNotificationFactory {
             .build()
         return ForegroundInfo(
             notificationId(workerId, AI_MODEL_DOWNLOAD_NOTIFICATION_BASE),
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+    }
+
+    fun ttsCachePreparationForegroundInfo(
+        context: Context,
+        workerId: UUID,
+        modelName: String,
+        backendName: String,
+        progress: Float
+    ): ForegroundInfo {
+        NotificationChannels.ensure(context)
+        val percentage = (progress.coerceIn(0f, 1f) * 100).toInt()
+        val notification = NotificationCompat.Builder(context, NotificationChannels.TTS)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(context.getString(R.string.notification_tts_cache_title))
+            .setContentText(
+                context.getString(
+                    R.string.notification_tts_cache_text,
+                    modelName,
+                    backendName
+                )
+            )
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setProgress(100, percentage, progress <= 0f)
+            .addAction(
+                R.drawable.baseline_details_24,
+                context.getString(R.string.notification_cancel),
+                WorkManager.getInstance(context).createCancelPendingIntent(workerId)
+            )
+            .build()
+        return ForegroundInfo(
+            notificationId(workerId, TTS_CACHE_NOTIFICATION_BASE),
             notification,
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         )

@@ -31,12 +31,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
+import com.hiosdra.hreader.core.application.port.out.TtsModelCacheRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.application.tts.TtsModelCacheStatus
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.application.tts.TtsLanguages
@@ -50,6 +52,7 @@ internal fun TtsSettingsSection(
     preferences: TtsPreferences,
     modelManager: TtsModelGateway,
     downloadScheduler: TtsModelDownloadRequester,
+    cacheRequester: TtsModelCacheRequester,
     onRequestNotifications: (() -> Unit) -> Unit
 ) {
     val statuses by modelManager.statuses.collectAsStateWithLifecycle()
@@ -61,6 +64,9 @@ internal fun TtsSettingsSection(
     var languageOverrides by remember { mutableStateOf(preferences.getTtsLanguageOverrides()) }
     var languageMenuExpanded by remember { mutableStateOf(false) }
     val models = TtsModelCatalog.models
+    val cacheStatus by remember(selectedModel, advanced.mnnBackend) {
+        cacheRequester.observe(selectedModel, advanced.mnnBackend)
+    }.collectAsStateWithLifecycle(initialValue = TtsModelCacheStatus.NotPrepared)
 
     Text(
         text = stringResource(R.string.tts_read_aloud),
@@ -80,6 +86,9 @@ internal fun TtsSettingsSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = status == TtsModelStatus.Available) {
+                            if (selectedModel != model) {
+                                cacheRequester.cancelPreparation(selectedModel, advanced.mnnBackend)
+                            }
                             preferences.setTtsModel(model)
                             selectedModel = model
                         }
@@ -118,6 +127,7 @@ internal fun TtsSettingsSection(
                                     preferences.setTtsModel(TtsModel.ANDROID)
                                 }
                                 downloadScheduler.cancelDownload(model)
+                                cacheRequester.cancelPreparation(model, advanced.mnnBackend)
                                 scope.launch { modelManager.remove(model) }
                             }) {
                                 Text(stringResource(R.string.tts_remove_voice))
@@ -167,9 +177,22 @@ internal fun TtsSettingsSection(
                 AdvancedTtsSettings(
                     model = selectedModel,
                     settings = advanced,
+                    modelAvailable = statuses[selectedModel] == TtsModelStatus.Available,
+                    cacheStatus = cacheStatus,
                     onSettingsChange = {
+                        if (advanced.mnnBackend != it.mnnBackend) {
+                            cacheRequester.cancelPreparation(selectedModel, advanced.mnnBackend)
+                        }
                         advanced = it
                         preferences.setTtsAdvancedSettings(it)
+                    },
+                    onPrepareCache = { forceRefresh ->
+                        onRequestNotifications {
+                            cacheRequester.enqueuePreparation(selectedModel, advanced, forceRefresh)
+                        }
+                    },
+                    onCancelCache = {
+                        cacheRequester.cancelPreparation(selectedModel, advanced.mnnBackend)
                     },
                     onReset = {
                         val defaults = TtsAdvancedSettings()
@@ -297,7 +320,11 @@ private fun LanguageOverrideRow(
 private fun AdvancedTtsSettings(
     model: TtsModel,
     settings: TtsAdvancedSettings,
+    modelAvailable: Boolean,
+    cacheStatus: TtsModelCacheStatus,
     onSettingsChange: (TtsAdvancedSettings) -> Unit,
+    onPrepareCache: (Boolean) -> Unit,
+    onCancelCache: () -> Unit,
     onReset: () -> Unit
 ) {
     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -313,6 +340,12 @@ private fun AdvancedTtsSettings(
         MnnBackendSetting(
             selected = settings.mnnBackend,
             onSelected = { onSettingsChange(settings.copy(mnnBackend = it)) }
+        )
+        MnnCachePreparationSetting(
+            enabled = modelAvailable,
+            status = cacheStatus,
+            onPrepare = onPrepareCache,
+            onCancel = onCancelCache
         )
     }
     AdvancedSlider(
@@ -389,6 +422,76 @@ private fun AdvancedTtsSettings(
     )
     TextButton(onClick = onReset) {
         Text(stringResource(R.string.tts_reset_settings))
+    }
+}
+
+@Composable
+private fun MnnCachePreparationSetting(
+    enabled: Boolean,
+    status: TtsModelCacheStatus,
+    onPrepare: (Boolean) -> Unit,
+    onCancel: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.tts_prepare_cache),
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Text(
+            text = stringResource(R.string.tts_cache_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        when (status) {
+            TtsModelCacheStatus.NotPrepared -> {
+                Button(enabled = enabled, onClick = { onPrepare(false) }) {
+                    Text(stringResource(R.string.tts_prepare_cache))
+                }
+            }
+            is TtsModelCacheStatus.Preparing -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CircularProgressIndicator(
+                        progress = { status.progress },
+                        modifier = Modifier.padding(8.dp)
+                    )
+                    TextButton(onClick = onCancel) {
+                        Text(stringResource(R.string.tts_cancel_cache_preparation))
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.tts_cache_preparing),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            TtsModelCacheStatus.Ready -> {
+                Text(
+                    text = stringResource(R.string.tts_cache_ready),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(enabled = enabled, onClick = { onPrepare(true) }) {
+                    Text(stringResource(R.string.tts_refresh_cache))
+                }
+            }
+            is TtsModelCacheStatus.Failed -> {
+                Text(
+                    text = status.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Button(enabled = enabled, onClick = { onPrepare(false) }) {
+                    Text(stringResource(R.string.tts_prepare_cache))
+                }
+            }
+        }
     }
 }
 

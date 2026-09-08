@@ -466,4 +466,16 @@
     <string name="settings_group_expanded">展開済み</string>
     <string name="settings_group_collapsed">折りたたみ済み</string>
     <string name="settings_operation_article_reconciliation">記事の照合</string>
+    <string name="notification_tts_cache_title">音声キャッシュを準備中</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
+    <string name="tts_prepare_cache">キャッシュを準備</string>
+    <string name="tts_refresh_cache">キャッシュを更新</string>
+    <string name="tts_cancel_cache_preparation">キャッシュの準備をキャンセル</string>
+    <string name="tts_cache_ready">選択したバックエンド用のキャッシュが準備できました。</string>
+    <string name="tts_cache_preparing">バックグラウンドでキャッシュを準備中…</string>
+    <string name="tts_cache_description">読み上げを開始する前に、このMNN音声を準備します。数分かかる場合があります。</string>
+    <string name="tts_cache_prepare_invalid">キャッシュ準備リクエストを特定できませんでした。</string>
+    <string name="tts_cache_prepare_model_unavailable">キャッシュを準備する前に、選択したMNN音声をダウンロードしてください。</string>
+    <string name="tts_cache_prepare_failed">音声キャッシュを準備できませんでした。</string>
+    <string name="tts_cache_prepare_backend_fallback">%1$sを起動できませんでした。代わりに%2$sでキャッシュを準備しました。</string>
 </resources>

@@ -468,4 +468,16 @@
     <string name="settings_group_expanded">Espansa</string>
     <string name="settings_group_collapsed">Compressa</string>
     <string name="settings_operation_article_reconciliation">Riconciliazione degli articoli</string>
+    <string name="notification_tts_cache_title">Preparazione della cache vocale</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
+    <string name="tts_prepare_cache">Prepara cache</string>
+    <string name="tts_refresh_cache">Aggiorna cache</string>
+    <string name="tts_cancel_cache_preparation">Annulla preparazione cache</string>
+    <string name="tts_cache_ready">La cache è pronta per il backend selezionato.</string>
+    <string name="tts_cache_preparing">Preparazione della cache in background…</string>
+    <string name="tts_cache_description">Prepara questa voce MNN prima dell’inizio della lettura. Potrebbero essere necessari diversi minuti.</string>
+    <string name="tts_cache_prepare_invalid">Impossibile identificare la richiesta di preparazione della cache.</string>
+    <string name="tts_cache_prepare_model_unavailable">Scarica la voce MNN selezionata prima di preparare la cache.</string>
+    <string name="tts_cache_prepare_failed">Impossibile preparare la cache vocale.</string>
+    <string name="tts_cache_prepare_backend_fallback">%1$s non può essere avviato; la cache è stata preparata con %2$s.</string>
 </resources>

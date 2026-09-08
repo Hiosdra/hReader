@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.tts
 
 import android.os.SystemClock
 import android.util.Log
+import com.hiosdra.hreader.core.application.port.out.TtsModelCachePreparer
 import com.hiosdra.hreader.core.application.tts.MnnTtsBackend
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
@@ -9,9 +10,10 @@ import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 
 internal class MnnTtsEngine(
     private val modelManager: TtsModelManager
-) : NeuralTtsEngine {
+) : NeuralTtsEngine, TtsModelCachePreparer {
     private val runtime = MnnTtsNative()
     private var loadedConfiguration: LoadedConfiguration? = null
+    private var cacheReadyCandidate = false
 
     override val supportedModels: Set<TtsModel> = TtsModelCatalog.models
         .filter {
@@ -68,12 +70,39 @@ internal class MnnTtsEngine(
             "synthesis complete model=${model.name} backend=${effectiveBackend.wireName} " +
                 "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} samples=${samples.size}"
         )
+        cacheReadyCandidate = samples.isNotEmpty()
         return TtsAudio(
             samples = samples,
             sampleRate = SAMPLE_RATE,
             playbackSpeed = speed.coerceIn(0.7f, 1.4f)
         )
     }
+
+    @Synchronized
+    override fun prepareCache(
+        model: TtsModel,
+        settings: TtsAdvancedSettings,
+        forceRefresh: Boolean
+    ): MnnTtsBackend =
+        try {
+            if (forceRefresh) {
+                releaseRuntime()
+                mnnTtsBackendCandidates(settings.mnnBackend).forEach { backend ->
+                    modelManager.invalidate(model, backend)
+                }
+            }
+            val audio = generate(
+                model = model,
+                text = CACHE_WARMUP_TEXT,
+                speed = 1f,
+                language = "en",
+                settings = settings
+            )
+            check(audio.samples.isNotEmpty()) { "MNN cache warm-up produced no audio" }
+            checkNotNull(loadedConfiguration).effectiveBackend
+        } finally {
+            releaseRuntime()
+        }
 
     @Synchronized
     override fun release() {
@@ -93,6 +122,9 @@ internal class MnnTtsEngine(
                 check(cacheDirectory.isDirectory || cacheDirectory.mkdirs()) {
                     "Could not create MNN runtime cache directory ${cacheDirectory.absolutePath}"
                 }
+                if (!modelManager.isReady(model, backend)) {
+                    modelManager.invalidate(model, backend)
+                }
                 val cacheBytesBefore = cacheDirectoryBytes(cacheDirectory)
                 val startedAt = SystemClock.elapsedRealtime()
                 runtime.load(
@@ -103,6 +135,7 @@ internal class MnnTtsEngine(
                     cacheDirectory = cacheDirectory.absolutePath
                 )
                 loadedConfiguration = LoadedConfiguration(request, backend)
+                cacheReadyCandidate = false
                 Log.i(
                     TAG,
                     "backend ready model=${model.name} backend=${backend.wireName} " +
@@ -133,9 +166,15 @@ internal class MnnTtsEngine(
 
     private fun releaseRuntime() {
         val configuration = loadedConfiguration
+        val markCacheReady = cacheReadyCandidate
         runtime.release()
         loadedConfiguration = null
+        cacheReadyCandidate = false
         configuration?.let {
+            if (markCacheReady) {
+                runCatching { modelManager.markReady(it.request.model, it.effectiveBackend) }
+                    .onFailure { error -> Log.w(TAG, "Could not mark MNN runtime cache ready", error) }
+            }
             Log.i(
                 TAG,
                 "runtime released model=${it.request.model.name} backend=${it.effectiveBackend.wireName} " +
@@ -169,6 +208,7 @@ internal class MnnTtsEngine(
 
     private companion object {
         const val TAG = "MnnTtsEngine"
+        const val CACHE_WARMUP_TEXT = "This is a short voice cache warm-up."
         const val SAMPLE_RATE = 24_000
     }
 }

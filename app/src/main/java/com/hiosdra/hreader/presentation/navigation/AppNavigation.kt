@@ -46,6 +46,7 @@ import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
+import com.hiosdra.hreader.core.application.port.out.TtsModelCacheRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.presentation.feeds.FeedDetailScreen
 import com.hiosdra.hreader.presentation.feeds.FeedsViewModel
@@ -78,6 +79,7 @@ fun AppNavigation(
     errorReporter: ErrorReporter = koinInject(),
     ttsModelManager: TtsModelGateway = koinInject(),
     ttsModelDownloadScheduler: TtsModelDownloadRequester = koinInject(),
+    ttsModelCacheRequester: TtsModelCacheRequester = koinInject(),
     gemmaModelManager: GemmaModelGateway = koinInject(),
     gemmaModelDownloadScheduler: GemmaModelDownloadRequester = koinInject(),
     gemmaModelLifecycle: GemmaModelLifecycle = koinInject(),
@@ -270,7 +272,8 @@ fun AppNavigation(
                 navController = navController,
                 ttsPreferences = ttsPreferences,
                 ttsModelManager = ttsModelManager,
-                ttsModelDownloadScheduler = ttsModelDownloadScheduler
+                ttsModelDownloadScheduler = ttsModelDownloadScheduler,
+                ttsModelCacheRequester = ttsModelCacheRequester
             )
         }
     }

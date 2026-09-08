@@ -17,6 +17,8 @@
     <string name="notification_full_offline_text">Downloading full pages</string>
     <string name="notification_model_download_title">Downloading voice</string>
     <string name="notification_ai_model_download_title">Downloading AI model</string>
+    <string name="notification_tts_cache_title">Preparing voice cache</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
     <string name="notification_cancel">Cancel</string>
     <string name="notification_tts_title">Read aloud</string>
     <string name="tts_voice_model_default">Voice model</string>
@@ -496,6 +498,12 @@
     <string name="tts_advanced_not_system">Advanced voice settings do not affect the system voice.</string>
     <string name="tts_changes_next_start">Changes apply the next time reading starts.</string>
     <string name="tts_reset_settings">Reset voice settings</string>
+    <string name="tts_prepare_cache">Prepare cache</string>
+    <string name="tts_refresh_cache">Refresh cache</string>
+    <string name="tts_cancel_cache_preparation">Cancel cache preparation</string>
+    <string name="tts_cache_ready">Cache is ready for the selected backend.</string>
+    <string name="tts_cache_preparing">Preparing cache in the background…</string>
+    <string name="tts_cache_description">Prepares this MNN voice before reading starts. It may take several minutes.</string>
     <string name="tts_setting_value">%1$s · %2$s</string>
     <string name="tts_integer_value">%1$s · %2$d</string>
     <string name="tts_decrease">−</string>
@@ -532,6 +540,10 @@
     <string name="tts_neural_voice_fallback_reason">%1$s failed: %2$s. Using the system voice.</string>
     <string name="tts_model_install_failed">Could not install this voice.</string>
     <string name="tts_model_remove_failed">Could not remove this voice.</string>
+    <string name="tts_cache_prepare_invalid">Could not identify the cache preparation request.</string>
+    <string name="tts_cache_prepare_model_unavailable">Download the selected MNN voice before preparing its cache.</string>
+    <string name="tts_cache_prepare_failed">Could not prepare the voice cache.</string>
+    <string name="tts_cache_prepare_backend_fallback">%1$s could not start; cache was prepared with %2$s instead.</string>
 
     <string name="ai_model">AI model</string>
     <string name="ai_search_models">Search models</string>

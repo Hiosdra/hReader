@@ -74,6 +74,9 @@ import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.SentryPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
+import com.hiosdra.hreader.core.application.port.out.TtsModelCacheGateway
+import com.hiosdra.hreader.core.application.port.out.TtsModelCachePreparer
+import com.hiosdra.hreader.core.application.port.out.TtsModelCacheRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
@@ -92,6 +95,8 @@ import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.SyncScheduler
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadScheduler
+import com.hiosdra.hreader.entrypoint.worker.TtsModelCachePreparationWorker
+import com.hiosdra.hreader.entrypoint.worker.TtsModelCachePreparationScheduler
 import org.koin.android.ext.koin.androidApplication
 import org.koin.androidx.workmanager.dsl.worker
 import org.koin.core.qualifier.named
@@ -202,9 +207,12 @@ val appModule = module {
     single<ErrorReporter> { get<ErrorReportingManager>() }
     single { TtsModelManager(androidApplication(), get()) }
     single<TtsModelGateway> { get<TtsModelManager>() }
+    single<TtsModelCacheGateway> { get<TtsModelManager>() }
     single<ArticleTtsPlaybackServiceControl> { ArticleTtsPlaybackServiceLauncher(androidApplication()) }
     single { TtsModelDownloadScheduler(androidApplication(), get()) }
     single<TtsModelDownloadRequester> { get<TtsModelDownloadScheduler>() }
+    single { TtsModelCachePreparationScheduler(androidApplication(), get()) }
+    single<TtsModelCacheRequester> { get<TtsModelCachePreparationScheduler>() }
     single {
         GemmaModelDownloadScheduler(
             context = androidApplication(),
@@ -215,6 +223,7 @@ val appModule = module {
     single<GemmaModelDownloadRequester> { get<GemmaModelDownloadScheduler>() }
     single { SherpaTtsEngine(get()) }
     single { MnnTtsEngine(get()) }
+    single<TtsModelCachePreparer> { get<MnnTtsEngine>() }
     single<NeuralTtsEngine> {
         NeuralTtsEngineRegistry(
             listOf(
@@ -292,6 +301,7 @@ val appModule = module {
     worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get()) }
     worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
+    worker { TtsModelCachePreparationWorker(get(), get(), get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }
     viewModel { FeedsViewModel(get()) }

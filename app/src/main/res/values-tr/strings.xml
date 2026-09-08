@@ -467,4 +467,16 @@
     <string name="settings_group_expanded">Genişletildi</string>
     <string name="settings_group_collapsed">Daraltıldı</string>
     <string name="settings_operation_article_reconciliation">Makale uzlaştırma</string>
+    <string name="notification_tts_cache_title">Ses önbelleği hazırlanıyor</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
+    <string name="tts_prepare_cache">Önbelleği hazırla</string>
+    <string name="tts_refresh_cache">Önbelleği yenile</string>
+    <string name="tts_cancel_cache_preparation">Önbellek hazırlamayı iptal et</string>
+    <string name="tts_cache_ready">Önbellek seçilen arka uç için hazır.</string>
+    <string name="tts_cache_preparing">Önbellek arka planda hazırlanıyor…</string>
+    <string name="tts_cache_description">Okumaya başlamadan önce bu MNN sesi hazırlanır. Birkaç dakika sürebilir.</string>
+    <string name="tts_cache_prepare_invalid">Önbellek hazırlama isteği tanımlanamadı.</string>
+    <string name="tts_cache_prepare_model_unavailable">Önbelleğini hazırlamadan önce seçilen MNN sesini indirin.</string>
+    <string name="tts_cache_prepare_failed">Ses önbelleği hazırlanamadı.</string>
+    <string name="tts_cache_prepare_backend_fallback">%1$s başlatılamadı; önbellek bunun yerine %2$s ile hazırlandı.</string>
 </resources>

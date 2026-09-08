@@ -89,6 +89,37 @@ class AppNotificationFactoryTest {
             aiInfo.notification.extras.getCharSequence(Notification.EXTRA_TITLE)
         )
     }
+
+    @Test
+    fun `tts cache notification includes selected model and backend`() {
+        val context = RuntimeEnvironment.getApplication()
+        val workerId = UUID.fromString("00000000-0000-0000-0000-000000000003")
+
+        val foregroundInfo = AppNotificationFactory.ttsCachePreparationForegroundInfo(
+            context = context,
+            workerId = workerId,
+            modelName = "Qwen3-TTS",
+            backendName = "OpenCL",
+            progress = 0.4f
+        )
+        val notification = foregroundInfo.notification
+
+        assertEquals(NotificationChannels.TTS, notification.channelId)
+        assertEquals(
+            context.getString(R.string.notification_tts_cache_title),
+            notification.extras.getCharSequence(Notification.EXTRA_TITLE)
+        )
+        assertEquals(
+            "Qwen3-TTS · OpenCL",
+            notification.extras.getCharSequence(Notification.EXTRA_TEXT)
+        )
+        assertEquals(1, notification.actions.size)
+        assertTrue(notification.actions.single().actionIntent != null)
+        assertEquals(
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            foregroundInfo.foregroundServiceType
+        )
+    }
 }
 
 private class AppNotificationFactoryTestApplication : Application()

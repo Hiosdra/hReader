@@ -479,4 +479,16 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="settings_group_expanded">Erweitert</string>
     <string name="settings_group_collapsed">Eingeklappt</string>
     <string name="settings_operation_article_reconciliation">Artikelabgleich</string>
+    <string name="notification_tts_cache_title">Sprach-Cache wird vorbereitet</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
+    <string name="tts_prepare_cache">Cache vorbereiten</string>
+    <string name="tts_refresh_cache">Cache aktualisieren</string>
+    <string name="tts_cancel_cache_preparation">Cache-Vorbereitung abbrechen</string>
+    <string name="tts_cache_ready">Cache ist für das ausgewählte Backend bereit.</string>
+    <string name="tts_cache_preparing">Cache wird im Hintergrund vorbereitet …</string>
+    <string name="tts_cache_description">Bereitet diese MNN-Stimme vor, bevor das Vorlesen beginnt. Dies kann mehrere Minuten dauern.</string>
+    <string name="tts_cache_prepare_invalid">Die Cache-Vorbereitungsanfrage konnte nicht erkannt werden.</string>
+    <string name="tts_cache_prepare_model_unavailable">Lade die ausgewählte MNN-Stimme herunter, bevor du ihren Cache vorbereitest.</string>
+    <string name="tts_cache_prepare_failed">Der Sprach-Cache konnte nicht vorbereitet werden.</string>
+    <string name="tts_cache_prepare_backend_fallback">%1$s konnte nicht gestartet werden; der Cache wurde stattdessen mit %2$s vorbereitet.</string>
 </resources>

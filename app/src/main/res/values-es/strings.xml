@@ -471,4 +471,16 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="settings_group_expanded">Expandida</string>
     <string name="settings_group_collapsed">Contraída</string>
     <string name="settings_operation_article_reconciliation">Conciliación de artículos</string>
+    <string name="notification_tts_cache_title">Preparando la caché de voz</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
+    <string name="tts_prepare_cache">Preparar caché</string>
+    <string name="tts_refresh_cache">Actualizar caché</string>
+    <string name="tts_cancel_cache_preparation">Cancelar preparación de la caché</string>
+    <string name="tts_cache_ready">La caché está lista para el backend seleccionado.</string>
+    <string name="tts_cache_preparing">Preparando la caché en segundo plano…</string>
+    <string name="tts_cache_description">Prepara esta voz MNN antes de comenzar la lectura. Puede tardar varios minutos.</string>
+    <string name="tts_cache_prepare_invalid">No se pudo identificar la solicitud de preparación de la caché.</string>
+    <string name="tts_cache_prepare_model_unavailable">Descarga la voz MNN seleccionada antes de preparar su caché.</string>
+    <string name="tts_cache_prepare_failed">No se pudo preparar la caché de voz.</string>
+    <string name="tts_cache_prepare_backend_fallback">No se pudo iniciar %1$s; la caché se preparó con %2$s en su lugar.</string>
 </resources>

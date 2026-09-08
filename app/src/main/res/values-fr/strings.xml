@@ -468,4 +468,16 @@
     <string name="settings_group_expanded">Développée</string>
     <string name="settings_group_collapsed">Réduite</string>
     <string name="settings_operation_article_reconciliation">Réconciliation des articles</string>
+    <string name="notification_tts_cache_title">Préparation du cache vocal</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
+    <string name="tts_prepare_cache">Préparer le cache</string>
+    <string name="tts_refresh_cache">Actualiser le cache</string>
+    <string name="tts_cancel_cache_preparation">Annuler la préparation du cache</string>
+    <string name="tts_cache_ready">Le cache est prêt pour le backend sélectionné.</string>
+    <string name="tts_cache_preparing">Préparation du cache en arrière-plan…</string>
+    <string name="tts_cache_description">Prépare cette voix MNN avant le début de la lecture. Cela peut prendre plusieurs minutes.</string>
+    <string name="tts_cache_prepare_invalid">Impossible d’identifier la demande de préparation du cache.</string>
+    <string name="tts_cache_prepare_model_unavailable">Téléchargez la voix MNN sélectionnée avant de préparer son cache.</string>
+    <string name="tts_cache_prepare_failed">Impossible de préparer le cache vocal.</string>
+    <string name="tts_cache_prepare_backend_fallback">%1$s n’a pas pu démarrer ; le cache a été préparé avec %2$s à la place.</string>
 </resources>

@@ -534,4 +534,16 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="offline_original_pages_download_failed">Nie udało się pobrać oryginalnych stron.</string>
     <string name="sync_content_failed">Synchronizacja artykułów nie powiodła się.</string>
     <string name="sync_article_content_failed">Nie udało się pobrać treści artykułów.</string>
+    <string name="notification_tts_cache_title">Przygotowywanie cache głosu</string>
+    <string name="notification_tts_cache_text">%1$s · %2$s</string>
+    <string name="tts_prepare_cache">Przygotuj cache</string>
+    <string name="tts_refresh_cache">Odśwież cache</string>
+    <string name="tts_cancel_cache_preparation">Anuluj przygotowywanie cache</string>
+    <string name="tts_cache_ready">Cache jest gotowy dla wybranego backendu.</string>
+    <string name="tts_cache_preparing">Przygotowywanie cache w tle…</string>
+    <string name="tts_cache_description">Przygotowuje ten głos MNN przed rozpoczęciem czytania. Może potrwać kilka minut.</string>
+    <string name="tts_cache_prepare_invalid">Nie można rozpoznać żądania przygotowania cache.</string>
+    <string name="tts_cache_prepare_model_unavailable">Pobierz wybrany głos MNN przed przygotowaniem jego cache.</string>
+    <string name="tts_cache_prepare_failed">Nie można przygotować cache głosu.</string>
+    <string name="tts_cache_prepare_backend_fallback">%1$s nie uruchomił się; zamiast tego cache przygotowano dla %2$s.</string>
 </resources>
