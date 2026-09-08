@@ -36,6 +36,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -237,6 +238,29 @@ class SyncScheduler(
 
     override fun observeRequestedSync(): Flow<SyncOperationStatus> =
         observeSyncPipeline().map { it.status }
+
+    override fun observeSyncActivity(): Flow<Boolean> = combine(
+        workManager.getWorkInfosForUniqueWorkFlow(CONTENT_SYNC_WORK),
+        workManager.getWorkInfosForUniqueWorkFlow(SYNC_PIPELINE_WORK)
+    ) { periodic, pipeline ->
+        periodic.any { it.state == WorkInfo.State.RUNNING } || pipeline.any { info ->
+            info.state == WorkInfo.State.RUNNING ||
+                info.state == WorkInfo.State.ENQUEUED ||
+                info.state == WorkInfo.State.BLOCKED
+        }
+    }.distinctUntilChanged()
+
+    override fun observeNextScheduledSync(): Flow<Long?> =
+        workManager.getWorkInfosForUniqueWorkFlow(CONTENT_SYNC_WORK)
+            .map { infos ->
+                infos.firstOrNull {
+                    it.periodicityInfo != null &&
+                        (it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING)
+                }
+                    ?.nextScheduleTimeMillis
+                    ?.takeIf { it > 0L }
+            }
+            .distinctUntilChanged()
 
     /** Stops everything in flight. What is queued has no account left to run against. */
     override suspend fun cancelAllSync() {

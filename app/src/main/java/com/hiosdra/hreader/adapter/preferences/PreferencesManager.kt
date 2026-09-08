@@ -20,9 +20,18 @@ import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.SyncDefaults
 import com.hiosdra.hreader.core.application.sync.SyncCheckpoint
 import com.hiosdra.hreader.core.application.sync.SyncCheckpointMode
+import com.hiosdra.hreader.core.application.sync.ArticleSyncResult
+import com.hiosdra.hreader.core.application.sync.SyncFailure
+import com.hiosdra.hreader.core.application.sync.SyncHealthSnapshot
+import com.hiosdra.hreader.core.application.sync.SyncRunState
+import com.hiosdra.hreader.core.application.sync.SyncRunSummary
+import com.hiosdra.hreader.core.application.sync.recordFinished
+import com.hiosdra.hreader.core.application.sync.recordStageFailure
+import com.hiosdra.hreader.core.application.sync.recordStarted
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.parseTtsLanguageOverrides
@@ -45,7 +54,7 @@ import kotlinx.coroutines.launch
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
-class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarrier {
+class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarrier, SyncHealthStore {
     private val applicationContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val secretKeyProvider = AndroidKeystoreSecretKeyProvider()
@@ -61,6 +70,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
     private val syncRecordsAdapter = moshi.adapter<List<SyncPerformanceRecord>>(
         Types.newParameterizedType(List::class.java, SyncPerformanceRecord::class.java)
     )
+    private val syncHealthAdapter = moshi.adapter(SyncHealthSnapshot::class.java)
 
     private val preferencesDataStore by lazy {
         PreferenceDataStoreFactory.create(
@@ -329,6 +339,30 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             write = { remove(syncCheckpointKey) }
         )
     }
+    override fun getSnapshot(): SyncHealthSnapshot = preferenceState.get().syncHealth
+
+    override fun observe(): Flow<SyncHealthSnapshot> = preferencesDataStore.data
+        .map { it.toSyncHealthSnapshot() }
+        .distinctUntilChanged()
+
+    override fun recordSyncStarted(attemptedAt: Long) {
+        updateSyncHealth { it.recordStarted(attemptedAt) }
+    }
+
+    override fun recordSyncFinished(completedAt: Long, result: ArticleSyncResult) {
+        updateSyncHealth { it.recordFinished(completedAt, result) }
+    }
+
+    override fun recordStageFailure(completedAt: Long, failure: SyncFailure) {
+        updateSyncHealth { it.recordStageFailure(completedAt, failure) }
+    }
+
+    override fun clear() {
+        updatePreferences(
+            transform = { it.copy(syncHealth = SyncHealthSnapshot()) },
+            write = { this[syncHealthKey] = syncHealthAdapter.toJson(SyncHealthSnapshot()) }
+        )
+    }
 
     override fun getSyncPerformanceRecords(): List<SyncPerformanceRecord> =
         preferenceState.get().syncPerformanceRecords
@@ -525,6 +559,16 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             preferenceState.updateAndGet(transform)
             preferenceWrites.trySend(WriteRequest(write))
         }
+    }
+
+    private fun updateSyncHealth(transform: (SyncHealthSnapshot) -> SyncHealthSnapshot) {
+        updatePreferences(
+            transform = { state -> state.copy(syncHealth = transform(state.syncHealth)) },
+            write = {
+                val current = toSyncHealthSnapshot()
+                this[syncHealthKey] = syncHealthAdapter.toJson(transform(current))
+            }
+        )
     }
 
     private fun updateSecrets(
@@ -743,6 +787,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         lastFullSyncTimestamp = this[lastFullSyncTimestampKey] ?: 0L,
         syncCheckpoint = this[syncCheckpointKey]?.let(::decodeSyncCheckpoint),
         syncPerformanceRecords = decodeSyncPerformanceRecords(this[syncPerformanceRecordsKey]),
+        syncHealth = toSyncHealthSnapshot(),
         offlineBacklogTarget = (this[offlineBacklogTargetKey] ?: DEFAULT_OFFLINE_BACKLOG_TARGET)
             .coerceAtLeast(0),
         imageDownloadEnabled = this[imageDownloadEnabledKey] ?: true,
@@ -858,6 +903,31 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         )
     }.getOrNull()
 
+    private fun decodeSyncHealth(json: String?): SyncHealthSnapshot =
+        if (json.isNullOrBlank()) {
+            SyncHealthSnapshot()
+        } else {
+            runCatching { syncHealthAdapter.fromJson(json) ?: SyncHealthSnapshot() }
+                .getOrDefault(SyncHealthSnapshot())
+        }
+
+    private fun Preferences.toSyncHealthSnapshot(): SyncHealthSnapshot {
+        val storedJson = this[syncHealthKey]
+        val stored = decodeSyncHealth(storedJson)
+        if (!storedJson.isNullOrBlank()) return stored
+        val legacyTimestamp = this[lastSyncTimestampKey] ?: 0L
+        if (legacyTimestamp <= 0L) return stored
+        return SyncHealthSnapshot(
+            lastSuccessfulSyncAt = legacyTimestamp,
+            lastAttemptedSyncAt = legacyTimestamp,
+            lastRun = SyncRunSummary(
+                startedAt = legacyTimestamp,
+                completedAt = legacyTimestamp,
+                state = SyncRunState.SUCCEEDED
+            )
+        )
+    }
+
     private fun String?.toPaywallBypassMethod(): PaywallBypassMethod =
         PaywallBypassMethod.entries.firstOrNull { it.name == this } ?: PaywallBypassMethod.SMRY_AI
 
@@ -896,6 +966,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         val lastFullSyncTimestamp: Long = 0L,
         val syncCheckpoint: SyncCheckpoint? = null,
         val syncPerformanceRecords: List<SyncPerformanceRecord> = emptyList(),
+        val syncHealth: SyncHealthSnapshot = SyncHealthSnapshot(),
         val offlineBacklogTarget: Int = DEFAULT_OFFLINE_BACKLOG_TARGET,
         val imageDownloadEnabled: Boolean = true,
         val imageCacheBudgetMegabytes: Int = DEFAULT_IMAGE_CACHE_BUDGET_MB,
@@ -948,6 +1019,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
         private const val KEY_SYNC_CHECKPOINT = "sync_checkpoint"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
+        private const val KEY_SYNC_HEALTH = "sync_health"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
         private const val KEY_TTS_MODEL = "tts_model"
         private const val KEY_TTS_SPEED = "tts_speed"
@@ -996,6 +1068,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private val lastFullSyncTimestampKey = longPreferencesKey(KEY_LAST_FULL_SYNC_TIMESTAMP)
         private val syncCheckpointKey = stringPreferencesKey(KEY_SYNC_CHECKPOINT)
         private val syncPerformanceRecordsKey = stringPreferencesKey(KEY_SYNC_PERFORMANCE_RECORDS)
+        private val syncHealthKey = stringPreferencesKey(KEY_SYNC_HEALTH)
         private val credibilityScoreEnabledKey = booleanPreferencesKey(KEY_CREDIBILITY_SCORE_ENABLED)
         private val ttsModelKey = stringPreferencesKey(KEY_TTS_MODEL)
         private val ttsSpeedKey = floatPreferencesKey(KEY_TTS_SPEED)

@@ -13,6 +13,11 @@ import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
+import com.hiosdra.hreader.core.application.sync.SyncFailure
+import com.hiosdra.hreader.core.application.sync.SyncFailureReason
+import com.hiosdra.hreader.core.application.sync.SyncFailureStage
+import com.hiosdra.hreader.core.application.sync.toSyncFailure
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
@@ -42,7 +47,8 @@ class FullPageSyncWorker(
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val preferencesManager: SyncPreferences,
     private val errorReportingManager: ErrorReporter,
-    private val clock: Clock
+    private val clock: Clock,
+    private val syncHealth: SyncHealthStore
 ) : CoroutineWorker(appContext, params) {
     private val done = AtomicInteger()
     private val total = AtomicInteger()
@@ -99,6 +105,14 @@ class FullPageSyncWorker(
                 remaining == 0 -> Result.success()
                 shouldRetryFullPageSync(remaining, totalTargets, runAttemptCount) -> Result.retry()
                 else -> {
+                    syncHealth.recordStageFailure(
+                        clock.instant().toEpochMilli(),
+                        SyncFailure(
+                            stage = SyncFailureStage.FULL_PAGE,
+                            reason = SyncFailureReason.UNKNOWN,
+                            retryable = false
+                        )
+                    )
                     val message = applicationContext.resources.getQuantityString(
                         R.plurals.offline_original_pages_failed_count,
                         remaining,
@@ -111,7 +125,11 @@ class FullPageSyncWorker(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
+            val failure = e.toSyncFailure(SyncFailureStage.FULL_PAGE)
+            val shouldRetry = failure.retryable && runAttemptCount < MAX_RUN_ATTEMPTS
+            if (!shouldRetry) {
+                syncHealth.recordStageFailure(clock.instant().toEpochMilli(), failure)
+            }
             if (!shouldRetry) errorReportingManager.captureException(e, "full_page_sync")
             if (shouldRetry) {
                 Result.retry()

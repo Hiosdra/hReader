@@ -57,6 +57,7 @@ import com.hiosdra.hreader.presentation.main.MainViewModel
 import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.presentation.settings.SettingsScreen
 import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
+import com.hiosdra.hreader.presentation.sync.SyncHealthScreen
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 import com.hiosdra.hreader.R
 import androidx.compose.ui.res.stringResource
@@ -273,6 +274,12 @@ fun AppNavigation(
                 ttsModelDownloadScheduler = ttsModelDownloadScheduler
             )
         }
+        composable(Routes.SYNC_HEALTH) {
+            SyncHealthScreen(
+                navController = navController,
+                viewModel = koinViewModel()
+            )
+        }
     }
 }
 
@@ -315,6 +322,7 @@ private fun MainWithSubscriptions(
         MainScreen(
             navController = navController,
             onOpenSubscriptions = { scope.launch { drawerState.open() } },
+            onOpenFreshness = { navController.navigate(Routes.SYNC_HEALTH) },
             feedId = selectedFeedId,
             viewModel = mainViewModel,
             imageDependencies = imageDependencies,

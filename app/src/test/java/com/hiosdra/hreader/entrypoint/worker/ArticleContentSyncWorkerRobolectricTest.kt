@@ -18,6 +18,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
 import com.hiosdra.hreader.core.domain.model.Enclosure
 import io.mockk.every
@@ -239,6 +240,7 @@ class ArticleContentSyncWorkerRobolectricTest {
         contentStore: ArticleContentStoreFake,
         preferences: SyncPreferences = mockk(relaxed = true),
         errorReporter: ErrorReporter = mockk(relaxed = true),
+        syncHealth: SyncHealthStore = mockk(relaxed = true),
         inputData: Data = Data.Builder().build(),
         runAttemptCount: Int = 0
     ): ArticleContentSyncWorker {
@@ -256,7 +258,8 @@ class ArticleContentSyncWorkerRobolectricTest {
                     syncPerformanceLogger = ArticleContentPerformanceTracker(),
                     preferencesManager = preferences,
                     errorReportingManager = errorReporter,
-                    clock = TEST_CLOCK
+                    clock = TEST_CLOCK,
+                    syncHealth = syncHealth
                 )
             } else {
                 null

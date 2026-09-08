@@ -18,6 +18,7 @@ object Routes {
     const val ARTICLE = "article?feedId={feedId}&startId={startId}" +
         "&includeRead={includeRead}&session={session}"
     const val SETTINGS = "settings"
+    const val SYNC_HEALTH = "settings/sync-health"
     const val TTS_SETTINGS = "settings/tts"
 
     /** [url] is a site or feed address shared into the app; the argument is optional without it. */

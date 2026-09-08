@@ -48,7 +48,8 @@ fun SyncSection(
     onSyncWhileRoamingChange: (Boolean) -> Unit,
     onQuietHoursEnabledChange: (Boolean) -> Unit,
     onQuietHoursChange: (Int, Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenFreshness: () -> Unit = {}
 ) {
     var showIntervalDialog by remember { mutableStateOf(false) }
     var showQuietHoursDialog by remember { mutableStateOf(false) }
@@ -86,6 +87,12 @@ fun SyncSection(
             },
             checked = state.quietHoursEnabled,
             onCheckedChange = onQuietHoursEnabledChange
+        )
+        SettingRow(
+            title = stringResource(R.string.sync_health),
+            value = stringResource(R.string.sync_health_open),
+            supportingText = stringResource(R.string.sync_health_description),
+            onClick = onOpenFreshness
         )
         if (state.quietHoursEnabled) {
             SettingRow(

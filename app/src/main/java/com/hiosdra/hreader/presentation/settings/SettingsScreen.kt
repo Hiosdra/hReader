@@ -180,6 +180,7 @@ fun SettingsScreen(
                         onSyncWhileRoamingChange = settingsViewModel::onSyncWhileRoamingChange,
                         onQuietHoursEnabledChange = settingsViewModel::onQuietHoursEnabledChange,
                         onQuietHoursChange = settingsViewModel::onQuietHoursChange,
+                        onOpenFreshness = { navController?.navigate(Routes.SYNC_HEALTH) },
                         modifier = Modifier.padding(16.dp)
                     )
                 }

@@ -17,6 +17,11 @@ import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
+import com.hiosdra.hreader.core.application.sync.ArticleSyncResult
+import com.hiosdra.hreader.core.application.sync.SyncFailure
+import com.hiosdra.hreader.core.application.sync.SyncFailureReason
+import com.hiosdra.hreader.core.application.sync.SyncFailureStage
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -78,10 +83,13 @@ class ContentSyncWorkerTest {
     fun `force refresh completes and enqueues prefetch when requested`() = runBlocking {
         val repository = RecordingArticleSyncStore()
         val scheduler = mockk<SyncRequester>(relaxed = true)
+        val syncHealth = mockk<SyncHealthStore>(relaxed = true)
+        val attemptedAt = Instant.parse("2026-08-30T23:00:00Z").toEpochMilli()
 
         val result = createWorker(
             repository = repository,
             scheduler = scheduler,
+            syncHealth = syncHealth,
             inputData = Data.Builder()
                 .putBoolean(KEY_FORCE_FULL_SYNC, true)
                 .putBoolean(KEY_ENQUEUE_PREFETCH, true)
@@ -92,6 +100,8 @@ class ContentSyncWorkerTest {
         assertEquals(1, repository.refreshCount)
         assertEquals(true, repository.lastForceFullSync)
         verify(exactly = 1) { scheduler.enqueuePrefetch() }
+        verify(exactly = 1) { syncHealth.recordSyncStarted(attemptedAt) }
+        verify(exactly = 1) { syncHealth.recordSyncFinished(attemptedAt, any()) }
     }
 
     @Test
@@ -107,6 +117,26 @@ class ContentSyncWorkerTest {
 
         assertTrue(result is Retry)
         verify(exactly = 0) { errorReporter.captureException(any(), any()) }
+    }
+
+    @Test
+    fun `reported retryable failure is persisted and retried`() = runBlocking {
+        val failure = SyncFailure(
+            stage = SyncFailureStage.ARTICLE_SYNC,
+            reason = SyncFailureReason.NETWORK,
+            retryable = true
+        )
+        val syncHealth = mockk<SyncHealthStore>(relaxed = true)
+        val attemptedAt = Instant.parse("2026-08-30T23:00:00Z").toEpochMilli()
+
+        val result = createWorker(
+            repository = RecordingArticleSyncStore(result = ArticleSyncResult(failure = failure)),
+            syncHealth = syncHealth,
+            runAttemptCount = 4
+        ).doWork()
+
+        assertTrue(result is Retry)
+        verify(exactly = 1) { syncHealth.recordSyncFinished(attemptedAt, any()) }
     }
 
     @Test
@@ -133,6 +163,7 @@ class ContentSyncWorkerTest {
         preferences: SyncPreferences = mockk(relaxed = true),
         scheduler: SyncRequester = mockk(relaxed = true),
         errorReporter: ErrorReporter = mockk(relaxed = true),
+        syncHealth: SyncHealthStore = mockk(relaxed = true),
         inputData: Data = Data.Builder().build(),
         runAttemptCount: Int = 0
     ): ContentSyncWorker {
@@ -142,7 +173,8 @@ class ContentSyncWorkerTest {
             performanceTracker = performanceTracker,
             scheduler = scheduler,
             preferences = preferences,
-            errorReporter = errorReporter
+            errorReporter = errorReporter,
+            syncHealth = syncHealth
         )
         return TestListenableWorkerBuilder.from(
             RuntimeEnvironment.getApplication(),
@@ -162,15 +194,17 @@ class ContentSyncWorkerTest {
 }
 
 private class RecordingArticleSyncStore(
-    private val failure: Throwable? = null
+    private val failure: Throwable? = null,
+    private val result: ArticleSyncResult = ArticleSyncResult()
 ) : ArticleSyncStore {
     var refreshCount = 0
     var lastForceFullSync: Boolean? = null
 
-    override suspend fun refreshArticles(forceFullSync: Boolean) {
+    override suspend fun refreshArticles(forceFullSync: Boolean): ArticleSyncResult {
         refreshCount += 1
         lastForceFullSync = forceFullSync
         failure?.let { throw it }
+        return result
     }
 }
 
@@ -192,7 +226,8 @@ private class ContentSyncWorkerFactory(
     private val performanceTracker: SyncPerformanceTracker,
     private val scheduler: SyncRequester,
     private val preferences: SyncPreferences,
-    private val errorReporter: ErrorReporter
+    private val errorReporter: ErrorReporter,
+    private val syncHealth: SyncHealthStore
 ) : WorkerFactory() {
     override fun createWorker(
         appContext: Context,
@@ -211,7 +246,8 @@ private class ContentSyncWorkerFactory(
             clock = Clock.fixed(
                 Instant.parse("2026-08-30T23:00:00Z"),
                 ZoneOffset.UTC
-            )
+            ),
+            syncHealth = syncHealth
         )
     }
 }

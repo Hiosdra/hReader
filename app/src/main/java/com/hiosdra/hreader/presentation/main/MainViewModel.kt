@@ -11,6 +11,7 @@ import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
+import com.hiosdra.hreader.core.application.sync.SyncFreshnessState
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
@@ -82,6 +83,7 @@ data class MainUiState(
     val unreadCount: Int = 0,
     val readCount: Int = 0,
     val syncState: SyncOperationState = SyncOperationState.IDLE,
+    val freshnessState: SyncFreshnessState = SyncFreshnessState.NEVER_SYNCED,
     val offlinePreparation: OfflinePreparationProgress = OfflinePreparationProgress(),
     val isBulkReadStateUpdating: Boolean = false,
     val undo: UndoableAction? = null
@@ -139,6 +141,11 @@ class MainViewModel(
         viewModelScope.launch {
             reader.observeSync().collect { status ->
                 _uiState.update { it.copy(syncState = status.state) }
+            }
+        }
+        viewModelScope.launch {
+            reader.observeFreshness().collect { freshness ->
+                _uiState.update { it.copy(freshnessState = freshness) }
             }
         }
         viewModelScope.launch {

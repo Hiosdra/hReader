@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.persistence
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -10,6 +11,7 @@ import kotlinx.coroutines.sync.withLock
 internal class CacheOwnershipCoordinator(
     private val dataCleaner: CacheDataCleaner,
     private val preferences: SyncPreferences,
+    private val syncHealth: SyncHealthStore,
     private val backendIdentity: BackendIdentity,
     private val preferenceWrites: PreferenceWriteBarrier
 ) : CacheStore {
@@ -55,6 +57,7 @@ internal class CacheOwnershipCoordinator(
         preferences.setLastSyncTimestamp(0L)
         preferences.setLastFullSyncTimestamp(0L)
         preferences.clearSyncCheckpoint()
+        syncHealth.clear()
         preferenceWrites.awaitWrites()
         preferences.setCacheCleanupPending(false)
         preferenceWrites.awaitWrites()

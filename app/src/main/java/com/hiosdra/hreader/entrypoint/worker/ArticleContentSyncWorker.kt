@@ -14,7 +14,10 @@ import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
+import com.hiosdra.hreader.core.application.sync.SyncFailureStage
+import com.hiosdra.hreader.core.application.sync.toSyncFailure
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
@@ -55,7 +58,8 @@ class ArticleContentSyncWorker(
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val preferencesManager: SyncPreferences,
     private val errorReportingManager: ErrorReporter,
-    private val clock: Clock
+    private val clock: Clock,
+    private val syncHealth: SyncHealthStore
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -131,7 +135,11 @@ class ArticleContentSyncWorker(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "ArticleContentSyncWorker failed: ${e.message}", e)
-            val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
+            val failure = e.toSyncFailure(SyncFailureStage.ARTICLE_CONTENT)
+            val shouldRetry = failure.retryable && runAttemptCount < MAX_RUN_ATTEMPTS
+            if (!shouldRetry) {
+                syncHealth.recordStageFailure(clock.instant().toEpochMilli(), failure)
+            }
             if (!shouldRetry) errorReportingManager.captureException(e, "article_content_sync")
             if (shouldRetry) {
                 Result.retry()

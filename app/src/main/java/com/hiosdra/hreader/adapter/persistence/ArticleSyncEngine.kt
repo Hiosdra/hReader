@@ -22,6 +22,7 @@ import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.sync.ArticleSyncResult
 import com.hiosdra.hreader.core.application.sync.SyncCheckpoint
 import com.hiosdra.hreader.core.application.sync.SyncCheckpointMode
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
@@ -58,11 +59,11 @@ internal class ArticleSyncEngine(
 ) : ArticleSyncStore {
     private val syncMutex = Mutex()
 
-    override suspend fun refreshArticles(forceFullSync: Boolean) = syncMutex.withLock {
+    override suspend fun refreshArticles(forceFullSync: Boolean): ArticleSyncResult = syncMutex.withLock {
         refreshArticlesInternal(forceFullSync)
     }
 
-    private suspend fun refreshArticlesInternal(forceFullSync: Boolean) {
+    private suspend fun refreshArticlesInternal(forceFullSync: Boolean): ArticleSyncResult {
         val currentOwner = backendIdentity.cacheOwnerKey()
         checkSession(currentOwner)
         pushPendingStatuses(currentOwner)
@@ -73,6 +74,8 @@ internal class ArticleSyncEngine(
 
         var fetchedCount = 0
         var syncStats = ArticleSyncStats()
+        val fetchedFeedIds = mutableSetOf<Long>()
+        val latestPublishedAtByFeed = mutableMapOf<Long, Long>()
         var cursor = run.checkpoint.cursor
         val seenCursors = mutableSetOf<String>().apply { cursor?.let(::add) }
         var walkedToTheEnd = false
@@ -87,6 +90,10 @@ internal class ArticleSyncEngine(
                 if (page.entries.isNotEmpty()) {
                     syncStats += persistPage(page.entries, run.checkpoint.fullSyncRunId)
                     fetchedCount += page.entries.size
+                    fetchedFeedIds += page.entries.map { it.feed.id }
+                    page.entries.groupBy { it.feed.id }.forEach { (feedId, entries) ->
+                        latestPublishedAtByFeed[feedId] = entries.maxOf { it.publishedAt.toEpochMilli() }
+                    }
                 }
 
                 pages++
@@ -120,7 +127,7 @@ internal class ArticleSyncEngine(
         }
 
         checkSession(currentOwner)
-        reconcileFeeds(currentOwner)
+        val activeFeedIds = reconcileFeeds(currentOwner)
         if (!useIncremental) {
             val fullSyncRunId = checkNotNull(run.checkpoint.fullSyncRunId)
             dropUnreadArticlesMissingFrom(fullSyncRunId)
@@ -133,6 +140,16 @@ internal class ArticleSyncEngine(
         performance.logBatchInfo(ENTRIES_PAGE_LIMIT, fetchedCount)
         performance.logArticleSyncStats(syncStats)
         preferences.setLastSyncTimestamp(run.checkpoint.startedAt)
+        val updatedFeedIds = fetchedFeedIds.intersect(activeFeedIds)
+        val successfulFeedIds = if (useIncremental) updatedFeedIds else activeFeedIds
+        return ArticleSyncResult(
+            activeFeedIds = activeFeedIds,
+            successfulFeedIds = successfulFeedIds,
+            updatedFeedIds = updatedFeedIds,
+            skippedFeedIds = activeFeedIds - updatedFeedIds,
+            newArticles = syncStats.inserted,
+            latestPublishedAtByFeed = latestPublishedAtByFeed
+        )
     }
 
     private suspend fun selectRun(forceFullSync: Boolean, ownerKey: String, now: Long): SyncRun {
@@ -274,7 +291,7 @@ internal class ArticleSyncEngine(
         return result.stats
     }
 
-    private suspend fun reconcileFeeds(ownerKey: String) {
+    private suspend fun reconcileFeeds(ownerKey: String): Set<Long> {
         checkSession(ownerKey)
         val fetchedFeeds = api.getFeeds().map { it.toArticleFeedEntity() }
         checkSession(ownerKey)
@@ -288,6 +305,7 @@ internal class ArticleSyncEngine(
                 feedDao.deleteByIds(feedIds)
             }
         }
+        return fetchedFeeds.mapTo(hashSetOf()) { it.id }
     }
 
     private suspend fun List<FeedEntity>.preservingAiOverviewPreloading(): List<FeedEntity> {
