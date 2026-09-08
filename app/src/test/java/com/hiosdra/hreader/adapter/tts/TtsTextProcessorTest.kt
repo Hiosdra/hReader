@@ -8,14 +8,28 @@ import org.junit.Test
 class TtsTextProcessorTest {
     @Test
     fun `extracts readable text and removes non-content elements`() {
-        val chunks = TtsTextProcessor.fromHtml(
+        val articleText = TtsTextProcessor.fromHtml(
             "Title",
             "<article><p>Hello <b>world</b>.</p><script>bad()</script><footer>menu</footer></article>"
         )
 
-        assertEquals("Title. Hello world.", chunks.single())
-        assertFalse(chunks.single().contains("bad"))
-        assertFalse(chunks.single().contains("menu"))
+        assertEquals("Title.\n\nHello world.", articleText.chunks.single())
+        assertFalse(articleText.chunks.single().contains("bad"))
+        assertFalse(articleText.chunks.single().contains("menu"))
+    }
+
+    @Test
+    fun `preserves content paragraphs and normalizes speech punctuation`() {
+        val articleText = TtsTextProcessor.fromHtml(
+            "A title — with emoji 😀",
+            "<p>First&nbsp;paragraph…</p><p>Second paragraph</p>"
+        )
+
+        assertEquals(
+            "A title, with emoji.\n\nFirst paragraph...\n\nSecond paragraph.",
+            articleText.chunks.single()
+        )
+        assertEquals("First paragraph... Second paragraph.", articleText.languageSample)
     }
 
     @Test
@@ -33,6 +47,14 @@ class TtsTextProcessorTest {
     fun `keeps default synthesis chunks short`() {
         val chunks = TtsTextProcessor.chunks("word ".repeat(200))
 
-        assertTrue(chunks.all { it.length <= 350 })
+        assertTrue(chunks.all { it.length <= 300 })
+    }
+
+    @Test
+    fun `splits long sentences at word boundaries`() {
+        val chunks = TtsTextProcessor.chunks("word ".repeat(200), 32)
+
+        assertTrue(chunks.all { it.length <= 32 })
+        assertTrue(chunks.dropLast(1).all { it.last() != 'w' })
     }
 }
