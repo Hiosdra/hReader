@@ -2,7 +2,24 @@ diff --git a/transformers/llm/engine/src/omni.cpp b/transformers/llm/engine/src/
 index 36f21908..ec608439 100644
 --- a/transformers/llm/engine/src/omni.cpp
 +++ b/transformers/llm/engine/src/omni.cpp
-@@ -2608,7 +2608,31 @@ bool Talker::load() {
+@@ -12,5 +12,6 @@
+ #include <regex>
+ #include <algorithm>
++#include <chrono>
+ #include <cctype>
+ #include <cmath>
+ #include <cstdint>
+@@ -46,1 +46,9 @@
++static void logQwen3ModuleLoad(const char* moduleName, const std::string& backend,
++                               std::chrono::steady_clock::time_point startedAt, bool loaded) {
++    MNN_PRINT("[Qwen3-TTS] module=%s backend=%s loaded=%d elapsedMs=%lld\n", moduleName, backend.c_str(),
++              loaded ? 1 : 0,
++              static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(
++                  std::chrono::steady_clock::now() - startedAt).count()));
++}
++
+ static int roundHalfToEven(float value) {
+@@ -2608,8 +2608,35 @@ bool Talker::load() {
      mSeqLenIndex = 1;
      if (isQwen3TTSTalker(mConfig)) {
          ScheduleConfig qwen3ScheduleConfig;
@@ -10,8 +27,9 @@ index 36f21908..ec608439 100644
 +        qwen3ScheduleConfig.type = backend_type_convert(mConfig->backend_type());
 +        qwen3ScheduleConfig.numThread = mConfig->thread_num();
 +        if (qwen3ScheduleConfig.type == MNN_FORWARD_OPENCL) {
-+            qwen3ScheduleConfig.numThread |= 64;
-+            qwen3ScheduleConfig.numThread |= 512;
++            qwen3ScheduleConfig.numThread |= MNN_GPU_MEMORY_BUFFER;
++            qwen3ScheduleConfig.numThread |= MNN_GPU_TUNING_WIDE;
++            qwen3ScheduleConfig.numThread |= MNN_GPU_RECORD_BATCH;
 +        }
 +        if (mConfig->power() == "high") {
 +            qwen3BackendConfig.power = BackendConfig::Power_High;
@@ -31,6 +49,65 @@ index 36f21908..ec608439 100644
 +        qwen3ScheduleConfig.backendConfig = &qwen3BackendConfig;
          mQwen3RuntimeManager.reset(Executor::RuntimeManager::createRuntimeManager(qwen3ScheduleConfig));
 +        setRuntimeHint(mQwen3RuntimeManager);
++        mQwen3RuntimeManager->setHint(MNN::Interpreter::INIT_THREAD_NUMBER, mConfig->thread_num());
          Module::Config module_config;
          module_config.shapeMutable = true;
          module_config.rearrange = true;
++        auto moduleStartedAt = std::chrono::steady_clock::now();
+         constexpr int hiddenSize = 1024;
+@@ -2617,5 +2617,6 @@ bool Talker::load() {
+         mQwen3RuntimeManager->setExternalFile(mConfig->talker_weight().c_str());
+         mModule.reset(Module::load({"inputs_embeds", "attention_mask", "position_ids"}, {"logits", "hidden_states"},
+                                    mConfig->talker_model().c_str(), mQwen3RuntimeManager, &module_config),
+                       Module::destroy);
++        logQwen3ModuleLoad("talker", mConfig->backend_type(), moduleStartedAt, mModule != nullptr);
+         mQwen3RuntimeManager->setExternalFile("");
+@@ -2623,6 +2623,9 @@ bool Talker::load() {
++        moduleStartedAt = std::chrono::steady_clock::now();
+         mQwen3RuntimeManager->setExternalFile(mConfig->talker_weight().c_str());
+         mQwen3PromptEmbedder.reset(Module::load({"codec_embeds", "text_raw_embeds", "tts_raw_embeds"},
+                                                 {"prompt_inputs_embeds", "trailing_text_hidden", "tts_pad_embed"},
+                                                 mConfig->talker_model().c_str(), mQwen3RuntimeManager, &module_config),
+                                    Module::destroy);
++        logQwen3ModuleLoad("talker_prompt_embedder", mConfig->backend_type(), moduleStartedAt,
++                           mQwen3PromptEmbedder != nullptr);
+         mQwen3RuntimeManager->setExternalFile("");
+@@ -2630,6 +2630,9 @@ bool Talker::load() {
++        moduleStartedAt = std::chrono::steady_clock::now();
+         mQwen3RuntimeManager->setExternalFile(mConfig->code_predictor_weight().c_str());
+         mQwen3CodePredictor.reset(
+             Module::load({"talker_hidden_states", "codec_embeds", "attention_mask", "position_ids"}, {"logits"},
+                          mConfig->code_predictor_model().c_str(), mQwen3RuntimeManager, &module_config),
+             Module::destroy);
++        logQwen3ModuleLoad("code_predictor", mConfig->backend_type(), moduleStartedAt,
++                           mQwen3CodePredictor != nullptr);
+         mQwen3RuntimeManager->setExternalFile("");
+@@ -2637,6 +2637,9 @@ bool Talker::load() {
++        moduleStartedAt = std::chrono::steady_clock::now();
+         mQwen3RuntimeManager->setExternalFile(mConfig->codec_embedder_weight().c_str());
+         mQwen3CodecEmbedder.reset(Module::load({"codec_embeds", "text_hidden"}, {"inputs_embeds"},
+                                                mConfig->codec_embedder_model().c_str(), mQwen3RuntimeManager,
+                                                &module_config),
+                                   Module::destroy);
++        logQwen3ModuleLoad("codec_embedder", mConfig->backend_type(), moduleStartedAt,
++                           mQwen3CodecEmbedder != nullptr);
+         mQwen3RuntimeManager->setExternalFile("");
+@@ -2644,5 +2644,8 @@ bool Talker::load() {
++        moduleStartedAt = std::chrono::steady_clock::now();
+         mQwen3RuntimeManager->setExternalFile(mConfig->speech_decoder_weight().c_str());
+         mQwen3SpeechDecoder.reset(Module::load({"codes"}, {"waveform"}, mConfig->speech_decoder_model().c_str(),
+                                                mQwen3RuntimeManager, &module_config),
+                                   Module::destroy);
++        logQwen3ModuleLoad("speech_decoder", mConfig->backend_type(), moduleStartedAt,
++                           mQwen3SpeechDecoder != nullptr);
+         mQwen3RuntimeManager->setExternalFile("");
+@@ -2650,6 +2650,9 @@ bool Talker::load() {
++        moduleStartedAt = std::chrono::steady_clock::now();
+         mQwen3RuntimeManager->setExternalFile(mConfig->speaker_encoder_weight().c_str());
+         mQwen3SpeakerEncoder.reset(Module::load({"mels"}, {"speaker_embedding"},
+                                                 mConfig->speaker_encoder_model().c_str(), mQwen3RuntimeManager,
+                                                 &module_config),
+                                    Module::destroy);
++        logQwen3ModuleLoad("speaker_encoder", mConfig->backend_type(), moduleStartedAt,
++                           mQwen3SpeakerEncoder != nullptr);
+         mQwen3RuntimeManager->setExternalFile("");

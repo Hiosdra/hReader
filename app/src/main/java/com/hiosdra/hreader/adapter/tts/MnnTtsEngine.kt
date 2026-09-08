@@ -77,22 +77,24 @@ internal class MnnTtsEngine(
 
     @Synchronized
     override fun release() {
-        runtime.release()
-        loadedConfiguration = null
+        releaseRuntime()
     }
 
     private fun ensureLoaded(model: TtsModel, settings: TtsAdvancedSettings): MnnTtsBackend {
         check(model in supportedModels) { "MNN does not support ${model.name}" }
         val request = LoadRequest(model, settings.numThreads, settings.mnnBackend)
         loadedConfiguration?.takeIf { it.request == request }?.let { return it.effectiveBackend }
-        runtime.release()
-        loadedConfiguration = null
+        releaseRuntime()
         val files = modelFiles(model)
         var lastError: Exception? = null
         for (backend in mnnTtsBackendCandidates(settings.mnnBackend)) {
             try {
                 val cacheDirectory = modelManager.runtimeCacheDirectory(model, backend)
-                cacheDirectory.mkdirs()
+                check(cacheDirectory.isDirectory || cacheDirectory.mkdirs()) {
+                    "Could not create MNN runtime cache directory ${cacheDirectory.absolutePath}"
+                }
+                val cacheBytesBefore = cacheDirectoryBytes(cacheDirectory)
+                val startedAt = SystemClock.elapsedRealtime()
                 runtime.load(
                     modelDirectory = modelManager.directory(model).absolutePath,
                     configName = files.config,
@@ -101,6 +103,12 @@ internal class MnnTtsEngine(
                     cacheDirectory = cacheDirectory.absolutePath
                 )
                 loadedConfiguration = LoadedConfiguration(request, backend)
+                Log.i(
+                    TAG,
+                    "backend ready model=${model.name} backend=${backend.wireName} " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} " +
+                        "cacheBytesBefore=$cacheBytesBefore"
+                )
                 if (backend != settings.mnnBackend) {
                     Log.w(
                         TAG,
@@ -114,13 +122,34 @@ internal class MnnTtsEngine(
                 runtime.release()
                 Log.w(
                     TAG,
-                    "backend failed model=${model.name} backend=${backend.wireName}",
+                    "backend failed model=${model.name} backend=${backend.wireName} " +
+                        "cacheBytesAfter=${cacheDirectoryBytes(modelManager.runtimeCacheDirectory(model, backend))}",
                     error
                 )
             }
         }
         throw checkNotNull(lastError) { "MNN TTS backend initialization failed" }
     }
+
+    private fun releaseRuntime() {
+        val configuration = loadedConfiguration
+        runtime.release()
+        loadedConfiguration = null
+        configuration?.let {
+            Log.i(
+                TAG,
+                "runtime released model=${it.request.model.name} backend=${it.effectiveBackend.wireName} " +
+                    "cacheBytes=${cacheDirectoryBytes(modelManager.runtimeCacheDirectory(it.request.model, it.effectiveBackend))}"
+            )
+        }
+    }
+
+    private fun cacheDirectoryBytes(directory: java.io.File): Long =
+        if (!directory.isDirectory) {
+            0L
+        } else {
+            directory.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        }
 
     private fun modelFiles(model: TtsModel): MnnModelFiles =
         checkNotNull(TtsModelPackageCatalog.packageFor(model)?.engineFiles as? MnnModelFiles) {

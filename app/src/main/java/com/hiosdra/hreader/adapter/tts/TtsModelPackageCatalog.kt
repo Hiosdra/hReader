@@ -289,6 +289,8 @@ private const val MNN_CONFIG = """
   "thread_num": 4,
   "precision": "low",
   "memory": "low",
+  "use_mmap": true,
+  "use_cached_mmap": true,
   "llm_model": "talker.mnn",
   "llm_weight": "talker.mnn.weight",
   "llm_config": "llm_config.json",

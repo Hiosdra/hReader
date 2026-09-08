@@ -146,7 +146,9 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
         }
         const std::string runtime_config =
             "{\"backend_type\":" + quoteJson(backend_string) + ",\"thread_num\":" +
-            std::to_string(threads) + ",\"precision\":\"low\",\"memory\":\"low\",\"async\":false,\"tmp_path\":" +
+            std::to_string(threads) +
+            ",\"precision\":\"low\",\"memory\":\"low\",\"async\":false,\"use_mmap\":true," +
+            "\"use_cached_mmap\":true,\"tmp_path\":" +
             quoteJson(cache_string) + ",\"mllm\":{\"backend_type\":" + quoteJson(backend_string) +
             ",\"thread_num\":" + std::to_string(threads) + ",\"precision\":\"low\",\"memory\":\"low\"}}";
         const bool configured = handle->llm->set_config(runtime_config);
@@ -173,15 +175,13 @@ Java_com_hiosdra_hreader_adapter_tts_MnnTtsNative_nativeLoad(
         }
         handle->backend = backend_string;
         handle->threads = threads;
-        const auto* context = handle->llm->getContext();
         __android_log_print(
             ANDROID_LOG_INFO,
             LOG_TAG,
-            "load complete backend=%s threads=%d elapsedMs=%lld mnnLoadMs=%lld",
+            "load complete backend=%s threads=%d elapsedMs=%lld",
             handle->backend.c_str(),
             handle->threads,
-            elapsedMilliseconds(startedAt),
-            context == nullptr ? 0LL : static_cast<long long>(context->load_us / 1'000)
+            elapsedMilliseconds(startedAt)
         );
     } catch (const std::exception& error) {
         handle->last_error = error.what();

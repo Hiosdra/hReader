@@ -35,6 +35,7 @@ class TtsModelManager(
     private val appContext = context.applicationContext
     private val client = client.newBuilder().apply { interceptors().clear() }.build()
     private val modelRoot = File(appContext.filesDir, "tts_models")
+    private val runtimeCacheRoot = File(appContext.noBackupFilesDir, "tts_mnn")
     private val modelLocks = TtsModelCatalog.models.associateWith { Mutex() }
     private val _statuses = MutableStateFlow(currentStatuses())
     override val statuses: StateFlow<Map<TtsModel, TtsModelStatus>> = _statuses.asStateFlow()
@@ -43,8 +44,8 @@ class TtsModelManager(
 
     fun runtimeCacheDirectory(model: TtsModel, backend: MnnTtsBackend): File =
         File(
-            appContext.cacheDir,
-            "tts_mnn/${TtsModelPackageCatalog.directoryName(model)}/${backend.wireName}/$MNN_RUNTIME_CACHE_VERSION"
+            runtimeCacheRoot,
+            "${TtsModelPackageCatalog.directoryName(model)}/${backend.wireName}/$MNN_RUNTIME_CACHE_VERSION"
         )
 
     override fun markDownloadEnqueued(model: TtsModel) {
@@ -235,6 +236,10 @@ class TtsModelManager(
                 check(!target.exists() || target.deleteRecursively()) {
                     "Could not remove model files"
                 }
+                val runtimeCache = File(runtimeCacheRoot, TtsModelPackageCatalog.directoryName(model))
+                check(!runtimeCache.exists() || runtimeCache.deleteRecursively()) {
+                    "Could not remove model runtime cache"
+                }
             }.fold(
                 onSuccess = {
                     _statuses.value = _statuses.value + (model to TtsModelStatus.NotInstalled)
@@ -308,6 +313,6 @@ class TtsModelManager(
     }
 
     private companion object {
-        const val MNN_RUNTIME_CACHE_VERSION = 1
+        const val MNN_RUNTIME_CACHE_VERSION = 2
     }
 }

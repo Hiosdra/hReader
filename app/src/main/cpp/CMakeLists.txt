@@ -50,76 +50,28 @@ set(NATIVE_INCLUDE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/mnn-includes" CACHE PATH 
 add_compile_options(-ffunction-sections -fdata-sections)
 
 set(MNN_VULKAN_SAFE_PATCH "${CMAKE_CURRENT_LIST_DIR}/mnn-vulkan-safe-fallback.patch")
-execute_process(
-    COMMAND git -C "${MNN_ROOT}" apply --reverse --check "${MNN_VULKAN_SAFE_PATCH}"
-    RESULT_VARIABLE MNN_VULKAN_SAFE_PATCH_REVERSE_RESULT
-    OUTPUT_QUIET
-    ERROR_QUIET
-)
-if (NOT MNN_VULKAN_SAFE_PATCH_REVERSE_RESULT EQUAL 0)
-    execute_process(
-        COMMAND git -C "${MNN_ROOT}" apply --check "${MNN_VULKAN_SAFE_PATCH}"
-        RESULT_VARIABLE MNN_VULKAN_SAFE_PATCH_CHECK_RESULT
-        OUTPUT_VARIABLE MNN_VULKAN_SAFE_PATCH_CHECK_OUTPUT
-        ERROR_VARIABLE MNN_VULKAN_SAFE_PATCH_CHECK_ERROR
-    )
-    if (NOT MNN_VULKAN_SAFE_PATCH_CHECK_RESULT EQUAL 0)
-        message(FATAL_ERROR
-            "Cannot apply the MNN Vulkan safety patch: "
-            "${MNN_VULKAN_SAFE_PATCH_CHECK_OUTPUT}${MNN_VULKAN_SAFE_PATCH_CHECK_ERROR}"
-        )
-    endif()
-    execute_process(
-        COMMAND git -C "${MNN_ROOT}" apply "${MNN_VULKAN_SAFE_PATCH}"
-        RESULT_VARIABLE MNN_VULKAN_SAFE_PATCH_RESULT
-        OUTPUT_VARIABLE MNN_VULKAN_SAFE_PATCH_OUTPUT
-        ERROR_VARIABLE MNN_VULKAN_SAFE_PATCH_ERROR
-    )
-    if (NOT MNN_VULKAN_SAFE_PATCH_RESULT EQUAL 0)
-        message(FATAL_ERROR
-            "Cannot apply the MNN Vulkan safety patch: "
-            "${MNN_VULKAN_SAFE_PATCH_OUTPUT}${MNN_VULKAN_SAFE_PATCH_ERROR}"
-        )
-    endif()
-endif()
-
 set(MNN_QWEN3_TTS_PATCH "${CMAKE_CURRENT_LIST_DIR}/mnn-qwen3-tts-backend.patch")
-execute_process(
-    COMMAND git -C "${MNN_ROOT}" apply --reverse --check "${MNN_QWEN3_TTS_PATCH}"
-    RESULT_VARIABLE MNN_QWEN3_TTS_PATCH_REVERSE_RESULT
-    OUTPUT_QUIET
-    ERROR_QUIET
+
+set(MNN_PATCH_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/apply-mnn-patches.cmake")
+add_custom_target(hreader_mnn_patches
+    COMMAND ${CMAKE_COMMAND}
+        -DMNN_ROOT=${MNN_ROOT}
+        -DMNN_VULKAN_SAFE_PATCH=${MNN_VULKAN_SAFE_PATCH}
+        -DMNN_QWEN3_TTS_PATCH=${MNN_QWEN3_TTS_PATCH}
+        -P ${MNN_PATCH_SCRIPT}
+    VERBATIM
 )
-if (NOT MNN_QWEN3_TTS_PATCH_REVERSE_RESULT EQUAL 0)
-    execute_process(
-        COMMAND git -C "${MNN_ROOT}" apply --check "${MNN_QWEN3_TTS_PATCH}"
-        RESULT_VARIABLE MNN_QWEN3_TTS_PATCH_CHECK_RESULT
-        OUTPUT_VARIABLE MNN_QWEN3_TTS_PATCH_CHECK_OUTPUT
-        ERROR_VARIABLE MNN_QWEN3_TTS_PATCH_CHECK_ERROR
-    )
-    if (NOT MNN_QWEN3_TTS_PATCH_CHECK_RESULT EQUAL 0)
-        message(FATAL_ERROR
-            "Cannot apply the MNN Qwen3-TTS backend patch: "
-            "${MNN_QWEN3_TTS_PATCH_CHECK_OUTPUT}${MNN_QWEN3_TTS_PATCH_CHECK_ERROR}"
-        )
-    endif()
-    execute_process(
-        COMMAND git -C "${MNN_ROOT}" apply "${MNN_QWEN3_TTS_PATCH}"
-        RESULT_VARIABLE MNN_QWEN3_TTS_PATCH_RESULT
-        OUTPUT_VARIABLE MNN_QWEN3_TTS_PATCH_OUTPUT
-        ERROR_VARIABLE MNN_QWEN3_TTS_PATCH_ERROR
-    )
-    if (NOT MNN_QWEN3_TTS_PATCH_RESULT EQUAL 0)
-        message(FATAL_ERROR
-            "Cannot apply the MNN Qwen3-TTS backend patch: "
-            "${MNN_QWEN3_TTS_PATCH_OUTPUT}${MNN_QWEN3_TTS_PATCH_ERROR}"
-        )
-    endif()
-endif()
 
 add_subdirectory("${MNN_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/mnn")
 
+foreach(mnn_target IN ITEMS MNN llm MNN_Vulkan MNNOpenCL)
+    if (TARGET ${mnn_target})
+        add_dependencies(${mnn_target} hreader_mnn_patches)
+    endif()
+endforeach()
+
 add_library(hreader_mnn_tts SHARED mnn_tts_jni.cpp)
+add_dependencies(hreader_mnn_tts hreader_mnn_patches)
 target_include_directories(hreader_mnn_tts PRIVATE
     "${MNN_ROOT}/include"
     "${MNN_ROOT}/transformers/llm/engine/include"
