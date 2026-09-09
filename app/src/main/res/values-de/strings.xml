@@ -333,6 +333,7 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="sync_health_status_failed">Synchronisierung fehlgeschlagen</string>
     <string name="sync_health_status_partial">Teilweise synchronisiert</string>
     <string name="sync_health_status_offline">Offline</string>
+    <string name="sync_health_status_cancelled">Synchronisierung abgebrochen</string>
     <string name="sync_health_explanation_never">Noch keine erfolgreiche Synchronisierung abgeschlossen.</string>
     <string name="sync_health_explanation_syncing">Eine Synchronisierung läuft. Die Liste zeigt weiterhin den zuletzt bekannten lokalen Cache.</string>
     <string name="sync_health_explanation_up_to_date">Die Artikelliste wurde innerhalb des konfigurierten Intervalls erfolgreich aktualisiert.</string>

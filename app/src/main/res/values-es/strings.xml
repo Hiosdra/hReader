@@ -324,6 +324,7 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="sync_health_status_failed">Error de sincronización</string>
     <string name="sync_health_status_partial">Sincronización parcial</string>
     <string name="sync_health_status_offline">Sin conexión</string>
+    <string name="sync_health_status_cancelled">Sincronización cancelada</string>
     <string name="sync_health_explanation_never">Aún no se ha completado ninguna sincronización correcta.</string>
     <string name="sync_health_explanation_syncing">Hay una sincronización en curso. La lista sigue mostrando la última caché local conocida.</string>
     <string name="sync_health_explanation_up_to_date">La lista de artículos se actualizó correctamente dentro del intervalo configurado.</string>

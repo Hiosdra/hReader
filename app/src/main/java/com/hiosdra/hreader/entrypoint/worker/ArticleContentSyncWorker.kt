@@ -138,7 +138,11 @@ class ArticleContentSyncWorker(
             val failure = e.toSyncFailure(SyncFailureStage.ARTICLE_CONTENT)
             val shouldRetry = failure.retryable && runAttemptCount < MAX_RUN_ATTEMPTS
             if (!shouldRetry) {
-                syncHealth.recordStageFailure(clock.instant().toEpochMilli(), failure)
+                syncHealth.recordStageFailure(
+                    completedAt = clock.instant().toEpochMilli(),
+                    failure = failure,
+                    runId = inputData.getString(KEY_SYNC_RUN_ID).orEmpty()
+                )
             }
             if (!shouldRetry) errorReportingManager.captureException(e, "article_content_sync")
             if (shouldRetry) {

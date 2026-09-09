@@ -225,11 +225,11 @@ private fun HourPicker(label: String, hours: List<Int>, selected: Int, onSelect:
 @Composable
 private fun formatInterval(minutes: Int): String = when {
     minutes < 60 -> pluralStringResource(R.plurals.sync_minutes, minutes, minutes)
-    minutes == 60 -> pluralStringResource(R.plurals.sync_hours, 1, 1)
     minutes % 60 == 0 && minutes < 1440 -> {
         val hours = minutes / 60
         pluralStringResource(R.plurals.sync_hours, hours, hours)
     }
+    minutes < 1440 -> pluralStringResource(R.plurals.sync_minutes, minutes, minutes)
     else -> stringResource(R.string.sync_one_day)
 }
 

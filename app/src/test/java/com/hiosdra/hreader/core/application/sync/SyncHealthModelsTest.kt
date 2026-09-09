@@ -1,5 +1,7 @@
 package com.hiosdra.hreader.core.application.sync
 
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -213,5 +215,70 @@ class SyncHealthModelsTest {
             SyncFreshnessState.FAILED,
             withoutPreviousSuccess.resolveFreshness(3_000L, true, false, 60)
         )
+    }
+
+    @Test
+    fun `run ids keep a stale completion from replacing the current run`() {
+        val firstRun = SyncHealthSnapshot()
+            .recordStarted(1_000L, "first")
+            .recordStarted(2_000L, "second")
+            .recordFinished(
+                completedAt = 3_000L,
+                result = ArticleSyncResult(
+                    activeFeedIds = setOf(10L),
+                    successfulFeedIds = setOf(10L)
+                ),
+                runId = "first"
+            )
+
+        assertEquals("second", firstRun.lastRun?.runId)
+        assertEquals(listOf("second"), firstRun.activeRuns.map { it.runId })
+        assertEquals(3_000L, firstRun.lastSuccessfulSyncAt)
+
+        val completed = firstRun.recordFinished(
+            completedAt = 4_000L,
+            result = ArticleSyncResult(
+                activeFeedIds = setOf(10L),
+                successfulFeedIds = setOf(10L)
+            ),
+            runId = "second"
+        )
+        assertEquals("second", completed.lastRun?.runId)
+        assertEquals(SyncRunState.SUCCEEDED, completed.lastRun?.state)
+        assertTrue(completed.activeRuns.isEmpty())
+    }
+
+    @Test
+    fun `cancelled run is persisted and resolves as failed without a prior success`() {
+        val snapshot = SyncHealthSnapshot()
+            .recordStarted(1_000L, "cancelled")
+            .recordCancelled(2_000L, "cancelled")
+
+        assertEquals(SyncRunState.CANCELLED, snapshot.lastRun?.state)
+        assertEquals(
+            SyncFreshnessState.FAILED,
+            snapshot.resolveFreshness(2_000L, true, false, 60)
+        )
+        assertTrue(snapshot.activeRuns.isEmpty())
+    }
+
+    @Test
+    fun `health snapshot round trips through the generated moshi adapter`() {
+        val snapshot = SyncHealthSnapshot()
+            .recordStarted(1_000L, "run")
+            .recordFinished(
+                completedAt = 2_000L,
+                result = ArticleSyncResult(
+                    activeFeedIds = setOf(10L),
+                    successfulFeedIds = setOf(10L)
+                ),
+                runId = "run"
+            )
+        val adapter = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+            .adapter(SyncHealthSnapshot::class.java)
+
+        assertEquals(snapshot, adapter.fromJson(adapter.toJson(snapshot)))
     }
 }

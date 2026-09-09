@@ -403,6 +403,7 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="sync_health_status_failed">Synchronizacja nieudana</string>
     <string name="sync_health_status_partial">Synchronizacja częściowa</string>
     <string name="sync_health_status_offline">Offline</string>
+    <string name="sync_health_status_cancelled">Synchronizacja anulowana</string>
     <string name="sync_health_explanation_never">Nie zakończyła się jeszcze żadna udana synchronizacja.</string>
     <string name="sync_health_explanation_syncing">Synchronizacja trwa. Lista pokazuje ostatnią znaną pamięć podręczną.</string>
     <string name="sync_health_explanation_up_to_date">Lista artykułów została pomyślnie odświeżona w skonfigurowanym odstępie.</string>

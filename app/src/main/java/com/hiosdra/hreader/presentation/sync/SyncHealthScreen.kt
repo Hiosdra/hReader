@@ -426,6 +426,8 @@ private fun runStateLabel(state: SyncRunState): String = when (state) {
         stringResource(R.string.sync_health_status_failed)
     SyncRunState.PARTIALLY_SUCCESSFUL ->
         stringResource(R.string.sync_health_status_partial)
+    SyncRunState.CANCELLED ->
+        stringResource(R.string.sync_health_status_cancelled)
 }
 
 private fun effectiveRunState(state: SyncHealthUiState, runState: SyncRunState): SyncRunState =
@@ -457,7 +459,11 @@ private fun failureReasonLabel(reason: SyncFailureReason): String = when (reason
 @Composable
 private fun formatInterval(minutes: Int): String = when {
     minutes < 60 -> pluralStringResource(R.plurals.sync_minutes, minutes, minutes)
-    minutes < 1440 -> pluralStringResource(R.plurals.sync_hours, minutes / 60, minutes / 60)
+    minutes < 1440 && minutes % 60 == 0 -> {
+        val hours = minutes / 60
+        pluralStringResource(R.plurals.sync_hours, hours, hours)
+    }
+    minutes < 1440 -> pluralStringResource(R.plurals.sync_minutes, minutes, minutes)
     else -> stringResource(R.string.sync_one_day)
 }
 

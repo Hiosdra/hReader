@@ -321,6 +321,7 @@
     <string name="sync_health_status_failed">Senkronizasyon başarısız</string>
     <string name="sync_health_status_partial">Kısmen senkronize</string>
     <string name="sync_health_status_offline">Çevrimdışı</string>
+    <string name="sync_health_status_cancelled">Senkronizasyon iptal edildi</string>
     <string name="sync_health_explanation_never">Henüz başarılı bir senkronizasyon tamamlanmadı.</string>
     <string name="sync_health_explanation_syncing">Senkronizasyon devam ediyor. Liste, bilinen son yerel önbelleği göstermeye devam ediyor.</string>
     <string name="sync_health_explanation_up_to_date">Makale listesi, yapılandırılan aralık içinde başarıyla güncellendi.</string>

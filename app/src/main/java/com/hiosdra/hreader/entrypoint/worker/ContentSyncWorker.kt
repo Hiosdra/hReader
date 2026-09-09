@@ -22,6 +22,7 @@ import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import java.time.Clock
 import java.time.LocalTime
+import java.util.UUID
 
 private const val MAX_RUN_ATTEMPTS = 5
 
@@ -34,7 +35,8 @@ class ContentSyncWorker(
     private val preferencesManager: SyncPreferences,
     private val errorReportingManager: ErrorReporter,
     private val clock: Clock,
-    private val syncHealth: SyncHealthStore
+    private val syncHealth: SyncHealthStore,
+    private val syncRunGate: SyncRunGate = SyncRunGate()
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -57,11 +59,21 @@ class ContentSyncWorker(
             Log.i(TAG, "Inside quiet hours; skipping this run")
             return Result.success()
         }
-        syncHealth.recordSyncStarted(clock.instant().toEpochMilli())
-        return runSync()
+        return syncRunGate.withLock {
+            val runId = inputData.getString(KEY_SYNC_RUN_ID)
+                ?.takeIf { it.isNotBlank() }
+                ?: UUID.randomUUID().toString()
+            syncHealth.recordSyncStarted(clock.instant().toEpochMilli(), runId)
+            try {
+                runSync(runId)
+            } catch (e: CancellationException) {
+                syncHealth.recordSyncCancelled(clock.instant().toEpochMilli(), runId)
+                throw e
+            }
+        }
     }
 
-    private suspend fun runSync(): Result {
+    private suspend fun runSync(runId: String): Result {
         val forceFullSync = inputData.getBoolean(KEY_FORCE_FULL_SYNC, false)
         Log.i(TAG, "Starting ContentSyncWorker (forceFullSync=$forceFullSync)")
         return try {
@@ -70,7 +82,7 @@ class ContentSyncWorker(
             val result = syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ARTICLE_REFRESH) {
                 repository.refreshArticles(forceFullSync)
             }
-            syncHealth.recordSyncFinished(clock.instant().toEpochMilli(), result)
+            syncHealth.recordSyncFinished(clock.instant().toEpochMilli(), result, runId)
             result.failure?.let { failure ->
                 val shouldRetry = failure.retryable && runAttemptCount < MAX_RUN_ATTEMPTS
                 if (!shouldRetry) {
@@ -91,7 +103,7 @@ class ContentSyncWorker(
             }
 
             if (inputData.getBoolean(KEY_ENQUEUE_PREFETCH, false)) {
-                syncScheduler.enqueuePrefetch()
+                syncScheduler.enqueuePrefetch(runId)
             }
 
             Log.i(TAG, "ContentSyncWorker completed successfully")
@@ -103,7 +115,8 @@ class ContentSyncWorker(
             val failure = e.toSyncFailure(SyncFailureStage.ARTICLE_SYNC)
             syncHealth.recordSyncFinished(
                 clock.instant().toEpochMilli(),
-                ArticleSyncResult(failure = failure)
+                ArticleSyncResult(failure = failure),
+                runId
             )
             val shouldRetry = failure.retryable && runAttemptCount < MAX_RUN_ATTEMPTS
             if (!shouldRetry) errorReportingManager.captureException(e, "content_sync")

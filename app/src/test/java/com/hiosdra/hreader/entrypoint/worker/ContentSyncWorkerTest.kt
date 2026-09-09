@@ -29,8 +29,10 @@ import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,7 +60,7 @@ class ContentSyncWorkerTest {
 
         assertTrue(result is Success)
         assertEquals(0, repository.refreshCount)
-        verify(exactly = 0) { scheduler.enqueuePrefetch() }
+        verify(exactly = 0) { scheduler.enqueuePrefetch(any()) }
         verify(exactly = 0) { errorReporter.captureException(any(), any()) }
     }
 
@@ -99,9 +101,25 @@ class ContentSyncWorkerTest {
         assertTrue(result is Success)
         assertEquals(1, repository.refreshCount)
         assertEquals(true, repository.lastForceFullSync)
-        verify(exactly = 1) { scheduler.enqueuePrefetch() }
-        verify(exactly = 1) { syncHealth.recordSyncStarted(attemptedAt) }
-        verify(exactly = 1) { syncHealth.recordSyncFinished(attemptedAt, any()) }
+        verify(exactly = 1) { scheduler.enqueuePrefetch(any()) }
+        verify(exactly = 1) { syncHealth.recordSyncStarted(attemptedAt, any()) }
+        verify(exactly = 1) { syncHealth.recordSyncFinished(attemptedAt, any(), any()) }
+    }
+
+    @Test
+    fun `cancellation closes the persisted health run`() = runBlocking {
+        val syncHealth = mockk<SyncHealthStore>(relaxed = true)
+        val attemptedAt = Instant.parse("2026-08-30T23:00:00Z").toEpochMilli()
+
+        try {
+            createWorker(
+                repository = RecordingArticleSyncStore(CancellationException("cancelled")),
+                syncHealth = syncHealth
+            ).doWork()
+            fail("Cancellation should be propagated")
+        } catch (_: CancellationException) {
+            verify(exactly = 1) { syncHealth.recordSyncCancelled(attemptedAt, any()) }
+        }
     }
 
     @Test
@@ -136,7 +154,7 @@ class ContentSyncWorkerTest {
         ).doWork()
 
         assertTrue(result is Retry)
-        verify(exactly = 1) { syncHealth.recordSyncFinished(attemptedAt, any()) }
+        verify(exactly = 1) { syncHealth.recordSyncFinished(attemptedAt, any(), any()) }
     }
 
     @Test

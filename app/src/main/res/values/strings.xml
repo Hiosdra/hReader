@@ -408,6 +408,7 @@
     <string name="sync_health_status_failed">Sync failed</string>
     <string name="sync_health_status_partial">Partially synced</string>
     <string name="sync_health_status_offline">Offline</string>
+    <string name="sync_health_status_cancelled">Sync cancelled</string>
     <string name="sync_health_explanation_never">No successful sync has completed yet.</string>
     <string name="sync_health_explanation_syncing">A sync is in progress. The list remains the last known local cache.</string>
     <string name="sync_health_explanation_up_to_date">The article list was refreshed successfully within the configured interval.</string>

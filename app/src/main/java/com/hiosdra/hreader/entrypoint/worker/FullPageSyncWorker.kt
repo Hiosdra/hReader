@@ -106,12 +106,13 @@ class FullPageSyncWorker(
                 shouldRetryFullPageSync(remaining, totalTargets, runAttemptCount) -> Result.retry()
                 else -> {
                     syncHealth.recordStageFailure(
-                        clock.instant().toEpochMilli(),
-                        SyncFailure(
+                        completedAt = clock.instant().toEpochMilli(),
+                        failure = SyncFailure(
                             stage = SyncFailureStage.FULL_PAGE,
                             reason = SyncFailureReason.UNKNOWN,
                             retryable = false
-                        )
+                        ),
+                        runId = inputData.getString(KEY_SYNC_RUN_ID).orEmpty()
                     )
                     val message = applicationContext.resources.getQuantityString(
                         R.plurals.offline_original_pages_failed_count,
@@ -128,7 +129,11 @@ class FullPageSyncWorker(
             val failure = e.toSyncFailure(SyncFailureStage.FULL_PAGE)
             val shouldRetry = failure.retryable && runAttemptCount < MAX_RUN_ATTEMPTS
             if (!shouldRetry) {
-                syncHealth.recordStageFailure(clock.instant().toEpochMilli(), failure)
+                syncHealth.recordStageFailure(
+                    completedAt = clock.instant().toEpochMilli(),
+                    failure = failure,
+                    runId = inputData.getString(KEY_SYNC_RUN_ID).orEmpty()
+                )
             }
             if (!shouldRetry) errorReportingManager.captureException(e, "full_page_sync")
             if (shouldRetry) {

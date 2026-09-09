@@ -28,6 +28,8 @@ class SyncHealthUseCase(
 
     fun getSyncIntervalMinutes(): Int = syncPreferences.getSyncIntervalMinutes()
 
+    fun observeSyncIntervalMinutes(): Flow<Int> = syncPreferences.observeSyncIntervalMinutes()
+
     suspend fun getCachedFeeds(): List<Feed> = feeds.getCachedFeeds()
 
     fun retry(): SyncOperationId? = sync.syncNow(userVisible = true)

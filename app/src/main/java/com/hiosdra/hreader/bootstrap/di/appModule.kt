@@ -93,6 +93,7 @@ import com.hiosdra.hreader.entrypoint.worker.FullPageSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadScheduler
 import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.SyncScheduler
+import com.hiosdra.hreader.entrypoint.worker.SyncRunGate
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadScheduler
 import org.koin.android.ext.koin.androidApplication
@@ -259,6 +260,7 @@ val appModule = module {
         )
     }
     single<SyncRequester> { get<SyncScheduler>() }
+    single { SyncRunGate() }
     single {
         ArticleReaderUseCase(
             articles = get<ArticleQueryStore>(),
@@ -299,11 +301,11 @@ val appModule = module {
             preferenceWrites = get()
         )
     }
-    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get()) }
-    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }

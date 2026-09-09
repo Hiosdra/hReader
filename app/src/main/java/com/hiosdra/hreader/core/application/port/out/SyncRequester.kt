@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 interface SyncRequester {
     fun start()
     fun schedulePeriodicSync()
-    fun enqueuePrefetch()
+    fun enqueuePrefetch(runId: String? = null)
     fun request(intent: SyncIntent): SyncOperationId?
     fun syncNow(
         forceFullSync: Boolean = false,

@@ -321,6 +321,7 @@
     <string name="sync_health_status_failed">同期失敗</string>
     <string name="sync_health_status_partial">一部同期済み</string>
     <string name="sync_health_status_offline">オフライン</string>
+    <string name="sync_health_status_cancelled">同期をキャンセルしました</string>
     <string name="sync_health_explanation_never">同期に成功したことはまだありません。</string>
     <string name="sync_health_explanation_syncing">同期中です。リストには引き続き最後に確認されたローカルキャッシュが表示されます。</string>
     <string name="sync_health_explanation_up_to_date">記事リストは設定した間隔内に正常に更新されました。</string>

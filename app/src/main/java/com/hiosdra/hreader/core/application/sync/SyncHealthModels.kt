@@ -1,5 +1,7 @@
 package com.hiosdra.hreader.core.application.sync
 
+import com.squareup.moshi.JsonClass
+
 enum class SyncFreshnessState {
     NEVER_SYNCED,
     SYNCING,
@@ -14,7 +16,8 @@ enum class SyncRunState {
     RUNNING,
     SUCCEEDED,
     FAILED,
-    PARTIALLY_SUCCESSFUL
+    PARTIALLY_SUCCESSFUL,
+    CANCELLED
 }
 
 enum class SyncFailureStage {
@@ -32,6 +35,7 @@ enum class SyncFailureReason {
     UNKNOWN
 }
 
+@JsonClass(generateAdapter = true)
 data class SyncFailure(
     val stage: SyncFailureStage,
     val reason: SyncFailureReason,
@@ -50,6 +54,7 @@ data class ArticleSyncResult(
     val failure: SyncFailure? = null
 )
 
+@JsonClass(generateAdapter = true)
 data class SyncFeedStatus(
     val feedId: Long,
     val lastSuccessfulSyncAt: Long = 0L,
@@ -59,6 +64,7 @@ data class SyncFeedStatus(
     val latestErrorStage: SyncFailureStage? = null
 )
 
+@JsonClass(generateAdapter = true)
 data class SyncRunSummary(
     val startedAt: Long,
     val completedAt: Long? = null,
@@ -68,25 +74,54 @@ data class SyncRunSummary(
     val skippedFeedIds: List<Long> = emptyList(),
     val newArticles: Int = 0,
     val failureStage: SyncFailureStage? = null,
-    val failureReason: SyncFailureReason? = null
+    val failureReason: SyncFailureReason? = null,
+    val runId: String = ""
 )
 
+@JsonClass(generateAdapter = true)
 data class SyncHealthSnapshot(
     val lastSuccessfulSyncAt: Long = 0L,
     val lastAttemptedSyncAt: Long = 0L,
     val lastRun: SyncRunSummary? = null,
-    val feeds: List<SyncFeedStatus> = emptyList()
+    val feeds: List<SyncFeedStatus> = emptyList(),
+    val activeRuns: List<SyncRunSummary> = emptyList()
 )
 
-fun SyncHealthSnapshot.recordStarted(attemptedAt: Long): SyncHealthSnapshot = copy(
-    lastAttemptedSyncAt = attemptedAt,
-    lastRun = SyncRunSummary(startedAt = attemptedAt)
-)
+fun SyncHealthSnapshot.recordStarted(
+    attemptedAt: Long,
+    runId: String = ""
+): SyncHealthSnapshot {
+    val normalizedRunId = runId.normalizedRunId()
+    if (normalizedRunId.isEmpty() && lastRun?.runId?.isNotEmpty() == true) return this
+    val startedRun = SyncRunSummary(startedAt = attemptedAt, runId = normalizedRunId)
+    return copy(
+        lastAttemptedSyncAt = maxOf(lastAttemptedSyncAt, attemptedAt),
+        lastRun = startedRun,
+        activeRuns = if (normalizedRunId.isEmpty()) {
+            activeRuns
+        } else {
+            activeRuns.filterNot { it.runId == normalizedRunId } + startedRun
+        }
+    )
+}
 
 fun SyncHealthSnapshot.recordFinished(
     completedAt: Long,
-    result: ArticleSyncResult
+    result: ArticleSyncResult,
+    runId: String = ""
 ): SyncHealthSnapshot {
+    val normalizedRunId = runId.normalizedRunId()
+    if (normalizedRunId.isEmpty() && lastRun?.runId?.isNotEmpty() == true) return this
+    val runningRun = if (normalizedRunId.isEmpty()) {
+        lastRun?.takeIf { it.state == SyncRunState.RUNNING }
+    } else {
+        activeRuns.firstOrNull { it.runId == normalizedRunId }
+            ?: lastRun?.takeIf {
+                it.runId == normalizedRunId && it.state == SyncRunState.RUNNING
+            }
+    }
+    if (normalizedRunId.isNotEmpty() && runningRun == null) return this
+
     val existingFeeds = feeds.associateBy { it.feedId }
     val resultFeedIds = result.activeFeedIds ?: (
         existingFeeds.keys + result.successfulFeedIds + result.updatedFeedIds +
@@ -103,28 +138,25 @@ fun SyncHealthSnapshot.recordFinished(
     } else {
         null
     }
-    val attemptedAt = if (lastRun?.state == SyncRunState.RUNNING) {
-        lastRun.startedAt
-    } else {
-        completedAt
-    }
+    val attemptedAt = runningRun?.startedAt ?: completedAt
     val nextFeeds = resultFeedIds.sorted().map { feedId ->
         val current = existingFeeds[feedId] ?: SyncFeedStatus(feedId = feedId)
+        val isNewerAttempt = attemptedAt >= current.lastAttemptedSyncAt
         when {
             feedId in successfulFeedIds -> current.copy(
-                lastSuccessfulSyncAt = completedAt,
+                lastSuccessfulSyncAt = maxOf(current.lastSuccessfulSyncAt, completedAt),
                 lastAttemptedSyncAt = maxOf(current.lastAttemptedSyncAt, attemptedAt),
                 latestArticlePublishedAt = maxOf(
                     current.latestArticlePublishedAt,
                     result.latestPublishedAtByFeed[feedId] ?: 0L
                 ),
-                latestErrorReason = null,
-                latestErrorStage = null
+                latestErrorReason = if (isNewerAttempt) null else current.latestErrorReason,
+                latestErrorStage = if (isNewerAttempt) null else current.latestErrorStage
             )
             feedId in result.failedFeedIds -> current.copy(
                 lastAttemptedSyncAt = maxOf(current.lastAttemptedSyncAt, attemptedAt),
-                latestErrorReason = failure?.reason,
-                latestErrorStage = failure?.stage
+                latestErrorReason = if (isNewerAttempt) failure?.reason else current.latestErrorReason,
+                latestErrorStage = if (isNewerAttempt) failure?.stage else current.latestErrorStage
             )
             else -> current.copy(
                 lastAttemptedSyncAt = current.lastAttemptedSyncAt
@@ -138,44 +170,117 @@ fun SyncHealthSnapshot.recordFinished(
         else -> SyncRunState.FAILED
     }
     val completeSuccess = failure == null && !result.isPartial
+    val completedRun = SyncRunSummary(
+        startedAt = attemptedAt,
+        completedAt = completedAt,
+        state = runState,
+        updatedFeedIds = updatedFeedIds.sorted(),
+        failedFeedIds = result.failedFeedIds.sorted(),
+        skippedFeedIds = result.skippedFeedIds.sorted(),
+        newArticles = result.newArticles,
+        failureStage = failure?.stage,
+        failureReason = failure?.reason,
+        runId = normalizedRunId.ifEmpty { runningRun?.runId.orEmpty() }
+    )
+    val shouldReplaceLastRun = normalizedRunId.isEmpty() ||
+        lastRun?.runId == normalizedRunId ||
+        (normalizedRunId.isEmpty() && lastRun == runningRun)
     return copy(
-        lastSuccessfulSyncAt = if (completeSuccess) completedAt else lastSuccessfulSyncAt,
+        lastSuccessfulSyncAt = if (completeSuccess) {
+            maxOf(lastSuccessfulSyncAt, completedAt)
+        } else {
+            lastSuccessfulSyncAt
+        },
         lastAttemptedSyncAt = maxOf(lastAttemptedSyncAt, attemptedAt),
-        lastRun = SyncRunSummary(
-            startedAt = attemptedAt,
-            completedAt = completedAt,
-            state = runState,
-            updatedFeedIds = updatedFeedIds.sorted(),
-            failedFeedIds = result.failedFeedIds.sorted(),
-            skippedFeedIds = result.skippedFeedIds.sorted(),
-            newArticles = result.newArticles,
-            failureStage = failure?.stage,
-            failureReason = failure?.reason
-        ),
-        feeds = nextFeeds
+        lastRun = if (shouldReplaceLastRun) completedRun else lastRun,
+        feeds = nextFeeds,
+        activeRuns = if (normalizedRunId.isEmpty()) {
+            activeRuns
+        } else {
+            activeRuns.filterNot { it.runId == normalizedRunId }
+        }
     )
 }
 
 fun SyncHealthSnapshot.recordStageFailure(
     completedAt: Long,
-    failure: SyncFailure
+    failure: SyncFailure,
+    runId: String = ""
 ): SyncHealthSnapshot {
-    val previousRun = lastRun
+    val normalizedRunId = runId.normalizedRunId()
+    if (normalizedRunId.isEmpty() && lastRun?.runId?.isNotEmpty() == true) return this
+    val previousRun = if (normalizedRunId.isEmpty()) {
+        lastRun
+    } else {
+        activeRuns.firstOrNull { it.runId == normalizedRunId }
+            ?: lastRun?.takeIf { it.runId == normalizedRunId }
+    }
+    if (normalizedRunId.isNotEmpty() && previousRun == null) return this
+
     val hasSuccessfulWork = lastSuccessfulSyncAt > 0L ||
         previousRun?.updatedFeedIds?.isNotEmpty() == true
-    val attemptedAt = lastAttemptedSyncAt.takeIf { it > 0L } ?: completedAt
+    val attemptedAt = previousRun?.startedAt
+        ?: lastAttemptedSyncAt.takeIf { it > 0L }
+        ?: completedAt
+    val failedRun = (previousRun ?: SyncRunSummary(startedAt = completedAt)).copy(
+        completedAt = completedAt,
+        state = if (hasSuccessfulWork) {
+            SyncRunState.PARTIALLY_SUCCESSFUL
+        } else {
+            SyncRunState.FAILED
+        },
+        failureStage = failure.stage,
+        failureReason = failure.reason,
+        runId = normalizedRunId.ifEmpty { previousRun?.runId.orEmpty() }
+    )
     return copy(
         lastAttemptedSyncAt = maxOf(lastAttemptedSyncAt, attemptedAt),
-        lastRun = (previousRun ?: SyncRunSummary(startedAt = completedAt)).copy(
-            completedAt = completedAt,
-            state = if (hasSuccessfulWork) {
-                SyncRunState.PARTIALLY_SUCCESSFUL
-            } else {
-                SyncRunState.FAILED
-            },
-            failureStage = failure.stage,
-            failureReason = failure.reason
-        )
+        lastRun = if (normalizedRunId.isEmpty() || lastRun?.runId == normalizedRunId) {
+            failedRun
+        } else {
+            lastRun
+        },
+        activeRuns = if (normalizedRunId.isEmpty()) {
+            activeRuns
+        } else {
+            activeRuns.filterNot { it.runId == normalizedRunId }
+        }
+    )
+}
+
+fun SyncHealthSnapshot.recordCancelled(
+    completedAt: Long,
+    runId: String = ""
+): SyncHealthSnapshot {
+    val normalizedRunId = runId.normalizedRunId()
+    if (normalizedRunId.isEmpty() && lastRun?.runId?.isNotEmpty() == true) return this
+    val previousRun = if (normalizedRunId.isEmpty()) {
+        lastRun?.takeIf { it.state == SyncRunState.RUNNING }
+    } else {
+        activeRuns.firstOrNull { it.runId == normalizedRunId }
+            ?: lastRun?.takeIf {
+                it.runId == normalizedRunId && it.state == SyncRunState.RUNNING
+            }
+    }
+    if (normalizedRunId.isNotEmpty() && previousRun == null) return this
+
+    val cancelledRun = (previousRun ?: SyncRunSummary(startedAt = completedAt)).copy(
+        completedAt = completedAt,
+        state = SyncRunState.CANCELLED,
+        runId = normalizedRunId.ifEmpty { previousRun?.runId.orEmpty() }
+    )
+    return copy(
+        lastAttemptedSyncAt = maxOf(lastAttemptedSyncAt, cancelledRun.startedAt),
+        lastRun = if (normalizedRunId.isEmpty() || lastRun?.runId == normalizedRunId) {
+            cancelledRun
+        } else {
+            lastRun
+        },
+        activeRuns = if (normalizedRunId.isEmpty()) {
+            activeRuns
+        } else {
+            activeRuns.filterNot { it.runId == normalizedRunId }
+        }
     )
 }
 
@@ -195,6 +300,11 @@ fun SyncHealthSnapshot.resolveFreshness(
         }
         SyncRunState.FAILED -> return SyncFreshnessState.FAILED
         SyncRunState.PARTIALLY_SUCCESSFUL -> return SyncFreshnessState.PARTIALLY_SUCCESSFUL
+        SyncRunState.CANCELLED -> return if (lastSuccessfulSyncAt > 0L) {
+            SyncFreshnessState.PARTIALLY_SUCCESSFUL
+        } else {
+            SyncFreshnessState.FAILED
+        }
         SyncRunState.SUCCEEDED,
         null -> Unit
     }
@@ -205,6 +315,8 @@ fun SyncHealthSnapshot.resolveFreshness(
         SyncFreshnessState.UP_TO_DATE
     }
 }
+
+private fun String.normalizedRunId(): String = trim()
 
 fun SyncFeedStatus.resolveFreshness(
     now: Long,

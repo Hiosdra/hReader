@@ -29,6 +29,7 @@ import com.hiosdra.hreader.core.application.sync.SyncFailure
 import com.hiosdra.hreader.core.application.sync.SyncHealthSnapshot
 import com.hiosdra.hreader.core.application.sync.SyncRunState
 import com.hiosdra.hreader.core.application.sync.SyncRunSummary
+import com.hiosdra.hreader.core.application.sync.recordCancelled
 import com.hiosdra.hreader.core.application.sync.recordFinished
 import com.hiosdra.hreader.core.application.sync.recordStageFailure
 import com.hiosdra.hreader.core.application.sync.recordStarted
@@ -345,16 +346,20 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         .map { it.toSyncHealthSnapshot() }
         .distinctUntilChanged()
 
-    override fun recordSyncStarted(attemptedAt: Long) {
-        updateSyncHealth { it.recordStarted(attemptedAt) }
+    override fun recordSyncStarted(attemptedAt: Long, runId: String) {
+        updateSyncHealth { it.recordStarted(attemptedAt, runId) }
     }
 
-    override fun recordSyncFinished(completedAt: Long, result: ArticleSyncResult) {
-        updateSyncHealth { it.recordFinished(completedAt, result) }
+    override fun recordSyncFinished(completedAt: Long, result: ArticleSyncResult, runId: String) {
+        updateSyncHealth { it.recordFinished(completedAt, result, runId) }
     }
 
-    override fun recordStageFailure(completedAt: Long, failure: SyncFailure) {
-        updateSyncHealth { it.recordStageFailure(completedAt, failure) }
+    override fun recordStageFailure(completedAt: Long, failure: SyncFailure, runId: String) {
+        updateSyncHealth { it.recordStageFailure(completedAt, failure, runId) }
+    }
+
+    override fun recordSyncCancelled(completedAt: Long, runId: String) {
+        updateSyncHealth { it.recordCancelled(completedAt, runId) }
     }
 
     override fun clear() {
@@ -426,6 +431,13 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             write = { this[syncIntervalMinutesKey] = normalizedMinutes }
         )
     }
+
+    override fun observeSyncIntervalMinutes(): Flow<Int> = preferencesDataStore.data
+        .map {
+            (it[syncIntervalMinutesKey] ?: SyncDefaults.INTERVAL_MINUTES)
+                .coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES)
+        }
+        .distinctUntilChanged()
 
     override fun getSyncOnUnmeteredOnly(): Boolean = preferenceState.get().syncOnUnmeteredOnly
 

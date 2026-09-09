@@ -162,6 +162,27 @@ class SyncSchedulerTest {
     }
 
     @Test
+    fun syncPipeline_propagatesOneRunIdToAllHealthStages() {
+        val syncRequest = slot<OneTimeWorkRequest>()
+        val stageRequests = mutableListOf<OneTimeWorkRequest>()
+
+        every {
+            workManager.beginUniqueWork(
+                "SyncPipeline",
+                ExistingWorkPolicy.REPLACE,
+                capture(syncRequest)
+            )
+        } returns workContinuation
+        every { workContinuation.then(capture(stageRequests)) } returns workContinuation
+
+        scheduler.syncNow()
+
+        val runId = syncRequest.captured.workSpec.input.getString(KEY_SYNC_RUN_ID)
+        assertNotNull(runId)
+        assertEquals(runId, stageRequests.first().workSpec.input.getString(KEY_SYNC_RUN_ID))
+    }
+
+    @Test
     fun gemmaOverviewPreloadDoesNotRequireNetwork() {
         every { aiPreferences.getAiModelId() } returns AiModel.GEMMA_4_E2B_ID
         val stageRequests = mutableListOf<OneTimeWorkRequest>()

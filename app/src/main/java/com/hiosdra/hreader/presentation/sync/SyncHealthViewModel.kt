@@ -50,7 +50,8 @@ private data class SyncHealthInputs(
     val feeds: List<Feed>,
     val isOnline: Boolean,
     val isSyncing: Boolean,
-    val nextScheduledSyncAt: Long?
+    val nextScheduledSyncAt: Long?,
+    val intervalMinutes: Int
 )
 
 class SyncHealthViewModel(
@@ -69,19 +70,27 @@ class SyncHealthViewModel(
         health.isOnline,
         isSyncing
     ) { currentSnapshot, cachedFeeds, online, syncing ->
-        SyncHealthInputs(currentSnapshot, cachedFeeds, online, syncing, null)
+        SyncHealthInputs(
+            snapshot = currentSnapshot,
+            feeds = cachedFeeds,
+            isOnline = online,
+            isSyncing = syncing,
+            nextScheduledSyncAt = null,
+            intervalMinutes = health.getSyncIntervalMinutes()
+        )
     }.combine(nextScheduledSyncAt) { current, nextSync ->
         current.copy(nextScheduledSyncAt = nextSync)
+    }.combine(health.observeSyncIntervalMinutes()) { current, intervalMinutes ->
+        current.copy(intervalMinutes = intervalMinutes)
     }
 
     val uiState: StateFlow<SyncHealthUiState> = inputs.combine(now) { current, currentTime ->
-        val intervalMinutes = health.getSyncIntervalMinutes()
         SyncHealthUiState(
             freshness = current.snapshot.resolveFreshness(
                 now = currentTime,
                 isOnline = current.isOnline,
                 isSyncing = current.isSyncing,
-                intervalMinutes = intervalMinutes
+                intervalMinutes = current.intervalMinutes
             ),
             snapshot = current.snapshot,
             feeds = current.feeds.map { feed ->
@@ -93,7 +102,7 @@ class SyncHealthViewModel(
                         now = currentTime,
                         isOnline = current.isOnline,
                         isSyncing = current.isSyncing,
-                        intervalMinutes = intervalMinutes
+                        intervalMinutes = current.intervalMinutes
                     ),
                     lastSuccessfulSyncAt = status.lastSuccessfulSyncAt,
                     lastAttemptedSyncAt = status.lastAttemptedSyncAt,
@@ -105,7 +114,7 @@ class SyncHealthViewModel(
             isOnline = current.isOnline,
             isSyncing = current.isSyncing,
             nextScheduledSyncAt = current.nextScheduledSyncAt,
-            intervalMinutes = intervalMinutes,
+            intervalMinutes = current.intervalMinutes,
             now = currentTime
         )
     }.stateIn(

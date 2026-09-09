@@ -321,6 +321,7 @@
     <string name="sync_health_status_failed">同步失败</string>
     <string name="sync_health_status_partial">部分同步</string>
     <string name="sync_health_status_offline">离线</string>
+    <string name="sync_health_status_cancelled">同步已取消</string>
     <string name="sync_health_explanation_never">尚未完成成功的同步。</string>
     <string name="sync_health_explanation_syncing">正在同步。列表仍显示最近一次已知的本地缓存。</string>
     <string name="sync_health_explanation_up_to_date">文章列表已在设置的时间间隔内成功更新。</string>

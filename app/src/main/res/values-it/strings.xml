@@ -321,6 +321,7 @@
     <string name="sync_health_status_failed">Sincronizzazione non riuscita</string>
     <string name="sync_health_status_partial">Sincronizzazione parziale</string>
     <string name="sync_health_status_offline">Offline</string>
+    <string name="sync_health_status_cancelled">Sincronizzazione annullata</string>
     <string name="sync_health_explanation_never">Non è ancora stata completata alcuna sincronizzazione riuscita.</string>
     <string name="sync_health_explanation_syncing">È in corso una sincronizzazione. L’elenco mostra ancora l’ultima cache locale conosciuta.</string>
     <string name="sync_health_explanation_up_to_date">L’elenco degli articoli è stato aggiornato correttamente nell’intervallo configurato.</string>
