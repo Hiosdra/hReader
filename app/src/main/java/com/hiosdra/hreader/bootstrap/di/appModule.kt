@@ -282,10 +282,7 @@ val appModule = module {
             cache = get<CacheStore>(),
             aiModels = get<AiModelCatalog>(),
             sync = get<SyncRequester>(),
-            network = get<NetworkStatus>(),
-            syncHealth = get<SyncHealthStore>(),
-            syncPreferences = get<SyncPreferences>(),
-            clock = get()
+            network = get<NetworkStatus>()
         )
     }
     single { FeedUseCase(get<FeedStore>(), get<NetworkStatus>()) }

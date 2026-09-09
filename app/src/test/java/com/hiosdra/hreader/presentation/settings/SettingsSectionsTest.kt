@@ -42,6 +42,7 @@ class SettingsSectionsTest {
         val context = RuntimeEnvironment.getApplication()
         val selectedInterval = AtomicInteger()
         val unmeteredOnly = AtomicReference<Boolean>()
+        val freshnessCalls = AtomicInteger()
 
         composeTestRule.setContent {
             HReaderTheme {
@@ -51,7 +52,8 @@ class SettingsSectionsTest {
                     onUnmeteredOnlyChange = unmeteredOnly::set,
                     onSyncWhileRoamingChange = {},
                     onQuietHoursEnabledChange = {},
-                    onQuietHoursChange = { _, _ -> }
+                    onQuietHoursChange = { _, _ -> },
+                    onOpenFreshness = { freshnessCalls.incrementAndGet() }
                 )
             }
         }
@@ -61,9 +63,11 @@ class SettingsSectionsTest {
             context.resources.getQuantityString(R.plurals.sync_hours, 1, 1)
         ).performClick()
         composeTestRule.onNodeWithText(context.getString(R.string.sync_wifi_only)).performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.sync_health)).performClick()
 
         assertEquals(60, selectedInterval.get())
         assertEquals(true, unmeteredOnly.get())
+        assertEquals(1, freshnessCalls.get())
     }
 
     @Test

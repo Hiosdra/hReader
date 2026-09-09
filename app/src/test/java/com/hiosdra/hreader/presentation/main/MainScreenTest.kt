@@ -3,7 +3,6 @@ package com.hiosdra.hreader.presentation.main
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation.NavController
@@ -15,7 +14,6 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
-import com.hiosdra.hreader.core.application.sync.SyncFreshnessState
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
@@ -80,24 +78,6 @@ class MainScreenTest {
         assertEquals(1, retries.get())
     }
 
-    @Test
-    fun `overflow menu opens the data freshness center`() {
-        val opened = AtomicInteger()
-        val viewModel = viewModel(MainUiState(freshnessState = SyncFreshnessState.UP_TO_DATE))
-        setContent(viewModel) { opened.incrementAndGet() }
-        val context = RuntimeEnvironment.getApplication()
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNodeWithContentDescription(
-            context.getString(R.string.action_more)
-        ).performClick()
-        composeTestRule.onNodeWithText(
-            context.getString(R.string.sync_health_open)
-        ).performClick()
-
-        assertEquals(1, opened.get())
-    }
-
     private fun viewModel(state: MainUiState): MainViewModel =
         mockk<MainViewModel>(relaxed = true).also {
             every { it.uiState } returns MutableStateFlow(state)
@@ -113,14 +93,13 @@ class MainScreenTest {
             )
         }
 
-    private fun setContent(viewModel: MainViewModel, onOpenFreshness: () -> Unit = {}) {
+    private fun setContent(viewModel: MainViewModel) {
         val context = RuntimeEnvironment.getApplication()
         composeTestRule.setContent {
             HReaderTheme {
                 MainScreen(
                     navController = mockk<NavController>(relaxed = true),
                     onOpenSubscriptions = {},
-                    onOpenFreshness = onOpenFreshness,
                     viewModel = viewModel,
                     imageDependencies = ArticleImageDependencies(
                         articleImageLoader = mockk<ArticleImageLoader>(relaxed = true),

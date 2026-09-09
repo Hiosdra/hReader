@@ -27,7 +27,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -81,7 +80,6 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
-import com.hiosdra.hreader.core.application.sync.SyncFreshnessState
 import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.article.ArticleListGrouped
@@ -95,7 +93,6 @@ import kotlinx.coroutines.launch
 internal fun MainScreen(
     navController: NavController,
     onOpenSubscriptions: () -> Unit,
-    onOpenFreshness: () -> Unit = {},
     onLeaveFeed: () -> Unit = {},
     onFeedMarkedRead: (Long) -> Unit = {},
     feedId: Long? = null,
@@ -184,14 +181,7 @@ internal fun MainScreen(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (!uiState.isOnline) {
-                    OfflineBanner(onOpen = onOpenFreshness)
-                } else if (uiState.freshnessState != SyncFreshnessState.UP_TO_DATE &&
-                    uiState.freshnessState != SyncFreshnessState.SYNCING
-                ) {
-                    SyncFreshnessBanner(
-                        state = uiState.freshnessState,
-                        onOpen = onOpenFreshness
-                    )
+                    OfflineBanner()
                 }
                 uiState.unavailableAiModelId?.let { modelId ->
                     AiModelUnavailableBanner(
@@ -310,25 +300,6 @@ internal fun MainScreen(
                                     .clip(MaterialTheme.shapes.small)
                                     .background(MaterialTheme.colorScheme.surfaceContainer)
                             ) {
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            stringResource(R.string.sync_health_open),
-                                            style = MaterialTheme.typography.labelLarge
-                                        )
-                                    },
-                                    onClick = {
-                                        expanded.value = false
-                                        onOpenFreshness()
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Filled.Info,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                )
                                 if (uiState.readCount > 0 || uiState.showReadArticles) {
                                     DropdownMenuItem(
                                         text = {
@@ -809,72 +780,20 @@ private fun ArticleScopeBar(
 }
 
 @Composable
-private fun OfflineBanner(onOpen: () -> Unit) {
+private fun OfflineBanner() {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Text(
+            text = stringResource(R.string.main_offline_banner),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.main_offline_banner),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(onClick = onOpen) {
-                Text(stringResource(R.string.sync_health_open))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SyncFreshnessBanner(
-    state: SyncFreshnessState,
-    onOpen: () -> Unit
-) {
-    Surface(
-        color = if (state == SyncFreshnessState.FAILED) {
-            MaterialTheme.colorScheme.errorContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
-        },
-        contentColor = if (state == SyncFreshnessState.FAILED) {
-            MaterialTheme.colorScheme.onErrorContainer
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = when (state) {
-                    SyncFreshnessState.NEVER_SYNCED -> stringResource(R.string.sync_health_status_never)
-                    SyncFreshnessState.STALE -> stringResource(R.string.sync_health_status_stale)
-                    SyncFreshnessState.FAILED -> stringResource(R.string.sync_health_status_failed)
-                    SyncFreshnessState.PARTIALLY_SUCCESSFUL ->
-                        stringResource(R.string.sync_health_status_partial)
-                    SyncFreshnessState.OFFLINE -> stringResource(R.string.sync_health_status_offline)
-                    SyncFreshnessState.SYNCING -> stringResource(R.string.sync_health_status_syncing)
-                    SyncFreshnessState.UP_TO_DATE -> stringResource(R.string.sync_health_status_up_to_date)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(onClick = onOpen) {
-                Text(stringResource(R.string.sync_health_open))
-            }
-        }
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
     }
 }
 

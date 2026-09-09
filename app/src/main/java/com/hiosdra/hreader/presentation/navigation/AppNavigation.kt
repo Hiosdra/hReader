@@ -322,7 +322,6 @@ private fun MainWithSubscriptions(
         MainScreen(
             navController = navController,
             onOpenSubscriptions = { scope.launch { drawerState.open() } },
-            onOpenFreshness = { navController.navigate(Routes.SYNC_HEALTH) },
             feedId = selectedFeedId,
             viewModel = mainViewModel,
             imageDependencies = imageDependencies,
