@@ -99,7 +99,7 @@ class TtsModelManager(
                     } catch (e: ModelIntegrityException) {
                         throw e
                     } catch (e: Exception) {
-                        if (artifact.archive == null) throw e
+                        val fallbackArchive = artifact.archive ?: throw e
                         staging.deleteRecursively()
                         staging.mkdirs()
                         downloadArchive(
@@ -107,7 +107,7 @@ class TtsModelManager(
                             artifact = artifact,
                             archive = archive,
                             staging = staging,
-                            progressTotal = checkNotNull(artifact.archive).size
+                            progressTotal = fallbackArchive.size
                         )
                     }
                 }

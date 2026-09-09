@@ -6,6 +6,7 @@ import android.media.AudioManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.PlaybackParams
 import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -202,6 +203,7 @@ class ArticleTtsController internal constructor(
 
     private fun stopPlayback() {
         playbackVersion++
+        neuralTts.cancel()
         playbackJob?.cancel()
         playbackJob = null
         audioTrack?.runCatching { stop() }
@@ -279,7 +281,11 @@ class ArticleTtsController internal constructor(
                 val playbackAudio = audio.withTrailingSilence(
                     if (index < chunks.lastIndex) INTER_CHUNK_PAUSE_MILLIS else 0
                 )
-                playSamples(playbackAudio.samples, playbackAudio.sampleRate)
+                playSamples(
+                    playbackAudio.samples,
+                    playbackAudio.sampleRate,
+                    playbackAudio.playbackSpeed
+                )
                 audio = nextAudio?.await() ?: return@coroutineScope
             }
         }
@@ -287,7 +293,11 @@ class ArticleTtsController internal constructor(
         _state.value = ArticleTtsState()
     }
 
-    private suspend fun playSamples(samples: FloatArray, sampleRate: Int) = withContext(Dispatchers.IO) {
+    private suspend fun playSamples(
+        samples: FloatArray,
+        sampleRate: Int,
+        playbackSpeed: Float
+    ) = withContext(Dispatchers.IO) {
         val minBuffer = AudioTrack.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_OUT_MONO,
@@ -314,6 +324,9 @@ class ArticleTtsController internal constructor(
             .build()
         try {
             audioTrack = track
+            if (playbackSpeed != 1f) {
+                track.playbackParams = PlaybackParams().setSpeed(playbackSpeed)
+            }
             val written = track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
             check(written == samples.size) { "Audio playback failed ($written/${samples.size})" }
             track.play()

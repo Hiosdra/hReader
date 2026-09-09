@@ -16,6 +16,8 @@ internal interface NeuralTtsEngine {
         settings: TtsAdvancedSettings
     ): TtsAudio
 
+    fun cancel() = Unit
+
     fun release()
 }
 
@@ -50,6 +52,10 @@ internal class NeuralTtsEngineRegistry(
         enginesByModel.values.distinct().forEach(NeuralTtsEngine::release)
     }
 
+    override fun cancel() {
+        enginesByModel.values.distinct().forEach(NeuralTtsEngine::cancel)
+    }
+
     private fun engineFor(model: TtsModel): NeuralTtsEngine = checkNotNull(enginesByModel[model]) {
         "No neural TTS engine registered for ${model.name}"
     }
@@ -57,7 +63,8 @@ internal class NeuralTtsEngineRegistry(
 
 internal data class TtsAudio(
     val samples: FloatArray,
-    val sampleRate: Int
+    val sampleRate: Int,
+    val playbackSpeed: Float = 1f
 )
 
 internal fun TtsAudio.withTrailingSilence(durationMillis: Int): TtsAudio {

@@ -368,6 +368,26 @@ private fun AdvancedTtsSettings(
             )
         }
         TtsEngineFamily.MATCHA -> Unit
+        TtsEngineFamily.VOXCPM2 -> {
+            AdvancedSlider(
+                label = stringResource(R.string.tts_voxcpm_cfg),
+                value = settings.voxCpmCfg,
+                displayValue = "%.1f".format(settings.voxCpmCfg),
+                valueRange = 1f..3f,
+                steps = 9,
+                onValueChange = { onSettingsChange(settings.copy(voxCpmCfg = it)) }
+            )
+            AdvancedSlider(
+                label = stringResource(R.string.tts_voxcpm_timesteps),
+                value = settings.voxCpmTimesteps.toFloat(),
+                displayValue = settings.voxCpmTimesteps.toString(),
+                valueRange = 2f..10f,
+                steps = 7,
+                onValueChange = {
+                    onSettingsChange(settings.copy(voxCpmTimesteps = it.roundToInt()))
+                }
+            )
+        }
         TtsEngineFamily.ANDROID -> Text(
             text = stringResource(R.string.tts_advanced_not_system),
             style = MaterialTheme.typography.bodySmall,

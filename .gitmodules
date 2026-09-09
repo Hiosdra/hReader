@@ -1,0 +1,3 @@
+[submodule "external/llama.cpp-omni"]
+	path = external/llama.cpp-omni
+	url = https://github.com/tc-mb/llama.cpp-omni.git

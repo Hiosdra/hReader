@@ -560,6 +560,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
                 this[ttsVitsDurationNoiseScaleKey] = normalizedSettings.vitsDurationNoiseScale
                 this.remove(legacyTtsVitsNoiseScaleKey)
                 this.remove(legacyTtsVitsDurationNoiseScaleKey)
+                this[ttsVoxCpmCfgKey] = normalizedSettings.voxCpmCfg
+                this[ttsVoxCpmTimestepsKey] = normalizedSettings.voxCpmTimesteps
             }
         )
     }
@@ -831,7 +833,9 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             ).coerceIn(0f, 1f),
             vitsDurationNoiseScale = (
                 this[ttsVitsDurationNoiseScaleKey] ?: this[legacyTtsVitsDurationNoiseScaleKey] ?: 0.8f
-            ).coerceIn(0f, 1f)
+            ).coerceIn(0f, 1f),
+            voxCpmCfg = (this[ttsVoxCpmCfgKey] ?: 2f).coerceIn(1f, 3f),
+            voxCpmTimesteps = (this[ttsVoxCpmTimestepsKey] ?: 5).coerceIn(2, 10)
         )
     )
 
@@ -965,7 +969,9 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         kokoroSpeaker = kokoroSpeaker.coerceIn(0, 102),
         kittenSpeaker = kittenSpeaker.coerceIn(0, 7),
         vitsNoiseScale = vitsNoiseScale.coerceIn(0f, 1f),
-        vitsDurationNoiseScale = vitsDurationNoiseScale.coerceIn(0f, 1f)
+        vitsDurationNoiseScale = vitsDurationNoiseScale.coerceIn(0f, 1f),
+        voxCpmCfg = voxCpmCfg.coerceIn(1f, 3f),
+        voxCpmTimesteps = voxCpmTimesteps.coerceIn(2, 10)
     )
 
     private data class PreferenceState(
@@ -1050,6 +1056,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val KEY_TTS_KITTEN_SPEAKER = "tts_kitten_speaker"
         private const val KEY_TTS_VITS_NOISE_SCALE = "tts_vits_noise_scale"
         private const val KEY_TTS_VITS_DURATION_NOISE_SCALE = "tts_vits_duration_noise_scale"
+        private const val KEY_TTS_VOXCPM_CFG = "tts_voxcpm_cfg"
+        private const val KEY_TTS_VOXCPM_TIMESTEPS = "tts_voxcpm_timesteps"
         private const val KEY_OFFLINE_BACKLOG_TARGET = "offline_backlog_target"
         private const val KEY_IMAGE_DOWNLOAD_ENABLED = "image_download_enabled"
         private const val KEY_IMAGE_CACHE_BUDGET_MB = "image_cache_budget_mb"
@@ -1101,6 +1109,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private val ttsVitsDurationNoiseScaleKey = floatPreferencesKey(KEY_TTS_VITS_DURATION_NOISE_SCALE)
         private val legacyTtsVitsNoiseScaleKey = floatPreferencesKey("tts_gosia_noise_scale")
         private val legacyTtsVitsDurationNoiseScaleKey = floatPreferencesKey("tts_gosia_duration_noise_scale")
+        private val ttsVoxCpmCfgKey = floatPreferencesKey(KEY_TTS_VOXCPM_CFG)
+        private val ttsVoxCpmTimestepsKey = intPreferencesKey(KEY_TTS_VOXCPM_TIMESTEPS)
         private val offlineBacklogTargetKey = intPreferencesKey(KEY_OFFLINE_BACKLOG_TARGET)
         private val imageDownloadEnabledKey = booleanPreferencesKey(KEY_IMAGE_DOWNLOAD_ENABLED)
         private val imageCacheBudgetMegabytesKey = intPreferencesKey(KEY_IMAGE_CACHE_BUDGET_MB)

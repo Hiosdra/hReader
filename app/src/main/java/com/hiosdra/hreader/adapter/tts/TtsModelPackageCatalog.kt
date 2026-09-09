@@ -3,7 +3,9 @@ package com.hiosdra.hreader.adapter.tts
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import java.io.File
 
-internal sealed interface SherpaModelFiles {
+internal sealed interface TtsModelFiles
+
+internal sealed interface SherpaModelFiles : TtsModelFiles {
     data class Supertonic(
         val durationPredictor: String,
         val textEncoder: String,
@@ -45,9 +47,14 @@ internal sealed interface SherpaModelFiles {
     ) : SherpaModelFiles
 }
 
+internal data class VoxCpm2ModelFiles(
+    val baseLm: String,
+    val acoustic: String
+) : TtsModelFiles
+
 internal data class TtsModelPackage(
     val directoryName: String,
-    val engineFiles: SherpaModelFiles,
+    val engineFiles: TtsModelFiles,
     val requiredFiles: List<String>,
     val requiredDirectories: List<String> = emptyList(),
     val files: List<RemoteFile> = emptyList(),
@@ -154,6 +161,15 @@ internal object TtsModelPackageCatalog {
                 sha256 = "ea75702da7456a8b1874728278a835220dc8a26f4e8bd93c83bf53dc27679845",
                 size = 76_741_121
             )
+        ),
+        TtsModel.VOXCPM2 to TtsModelPackage(
+            directoryName = "voxcpm2",
+            engineFiles = VoxCpm2ModelFiles(
+                baseLm = VOXCPM2_BASE_LM.name,
+                acoustic = VOXCPM2_ACOUSTIC.name
+            ),
+            requiredFiles = listOf(VOXCPM2_BASE_LM.name, VOXCPM2_ACOUSTIC.name),
+            files = listOf(VOXCPM2_BASE_LM, VOXCPM2_ACOUSTIC)
         )
     )
 
@@ -223,6 +239,23 @@ private const val SUPERTONIC_HF_ROOT =
 internal const val TTS_STORAGE_HEADROOM_BYTES = 128L * 1024 * 1024
 private const val COQUI_HF_ROOT =
     "https://huggingface.co/csukuangfj/vits-coqui-pl-mai_female/resolve/$COQUI_HF_REVISION"
+private const val VOXCPM2_HF_REVISION = "9be2d674cbd61274fed419e20b97cfe2c71518bd"
+private const val VOXCPM2_HF_ROOT =
+    "https://huggingface.co/tc-mb/MiniCPM-V-Apps-gguf/resolve/$VOXCPM2_HF_REVISION"
+
+private val VOXCPM2_BASE_LM = RemoteFile(
+    name = "VoxCPM2-BaseLM-Q4_K_M.gguf",
+    url = "$VOXCPM2_HF_ROOT/VoxCPM2-BaseLM-Q4_K_M.gguf",
+    sha256 = "75806a47e11d48499a9ebcb9c0ca0750117975d08364043ecf7229625aaa160d",
+    size = 1_002_374_880
+)
+
+private val VOXCPM2_ACOUSTIC = RemoteFile(
+    name = "VoxCPM2-Acoustic-F16.gguf",
+    url = "$VOXCPM2_HF_ROOT/VoxCPM2-Acoustic-F16.gguf",
+    sha256 = "5bde898488ad635ff55d24da53543768fa33d5e5cdc538ce190e5ef831038e85",
+    size = 1_825_096_352
+)
 
 private val VOCOS_FILE = RemoteFile(
     name = "vocos-22khz-univ.onnx",

@@ -445,6 +445,8 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="tts_voice_id">ID de voz</string>
     <string name="tts_voice_variation">Variación de voz</string>
     <string name="tts_duration_variation">Variación de duración</string>
+    <string name="tts_voxcpm_cfg">VoxCPM CFG guidance</string>
+    <string name="tts_voxcpm_timesteps">VoxCPM inference steps</string>
     <string name="tts_advanced_not_system">Los ajustes avanzados no afectan a la voz del sistema.</string>
     <string name="tts_changes_next_start">Los cambios se aplicarán la próxima vez que empiece la lectura.</string>
     <string name="tts_reset_settings">Restablecer ajustes de voz</string>
@@ -469,9 +471,11 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
     <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_voxcpm2_name">VoxCPM2</string>
     <string name="tts_model_piper_english_high_description">Voz inglesa de Piper · descarga de 35 MB</string>
     <string name="tts_model_kitten_description">Voz inglesa de KittenTTS · descarga de 68 MB</string>
     <string name="tts_model_matcha_description">Voz inglesa de Matcha · descarga de 131 MB</string>
+    <string name="tts_model_voxcpm2_description">Multilingual neural voice · 2.8 GB download · 6 GB RAM recommended</string>
     <string name="tts_model_android_name">Voz del sistema</string>
     <string name="tts_model_android_description">Voz integrada · siempre disponible</string>
     <string name="tts_speech_playback_failed">Falló la reproducción de voz.</string>

@@ -30,6 +30,7 @@ class TtsModelPackageCatalogTest {
         assertEquals("piper-lessac-high", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_LESSAC_HIGH))
         assertEquals("kitten-mini-en-v0_8", TtsModelPackageCatalog.directoryName(TtsModel.KITTEN_MINI))
         assertEquals("matcha-icefall-en_US-ljspeech", TtsModelPackageCatalog.directoryName(TtsModel.MATCHA_LJSPEECH))
+        assertEquals("voxcpm2", TtsModelPackageCatalog.directoryName(TtsModel.VOXCPM2))
         assertNull(TtsModelPackageCatalog.packageFor(TtsModel.ANDROID))
     }
 
@@ -44,6 +45,12 @@ class TtsModelPackageCatalogTest {
         assertNull(coqui.archive)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KITTEN_MINI)?.engineFiles is SherpaModelFiles.Kitten)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)?.engineFiles is SherpaModelFiles.Matcha)
+        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.VOXCPM2)?.engineFiles is VoxCpm2ModelFiles)
+        assertEquals(
+            listOf("VoxCPM2-BaseLM-Q4_K_M.gguf", "VoxCPM2-Acoustic-F16.gguf"),
+            TtsModelPackageCatalog.packageFor(TtsModel.VOXCPM2)?.requiredFiles
+        )
+        assertNull(TtsModelPackageCatalog.packageFor(TtsModel.VOXCPM2)?.archive)
         assertEquals(
             listOf("vocos-22khz-univ.onnx"),
             TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)

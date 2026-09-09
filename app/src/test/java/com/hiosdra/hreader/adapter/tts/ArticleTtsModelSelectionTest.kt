@@ -21,6 +21,20 @@ class ArticleTtsModelSelectionTest {
     }
 
     @Test
+    fun `selects VoxCPM2 for an installed Polish model on arm64`() {
+        assertEquals(
+            TtsModel.VOXCPM2,
+            resolveArticleTtsModel(
+                modelOverride = TtsModel.VOXCPM2,
+                settingsModel = TtsModel.SUPERTONIC,
+                language = "pl",
+                statuses = mapOf(TtsModel.VOXCPM2 to TtsModelStatus.Available),
+                supportsArm64 = true
+            )
+        )
+    }
+
+    @Test
     fun `falls back to Android when the requested model is not installed`() {
         assertEquals(
             TtsModel.ANDROID,

@@ -434,6 +434,8 @@
     <string name="tts_voice_id">语音 ID</string>
     <string name="tts_voice_variation">语音变化</string>
     <string name="tts_duration_variation">时长变化</string>
+    <string name="tts_voxcpm_cfg">VoxCPM CFG guidance</string>
+    <string name="tts_voxcpm_timesteps">VoxCPM inference steps</string>
     <string name="tts_advanced_not_system">高级语音设置不会影响系统语音。</string>
     <string name="tts_changes_next_start">更改将在下次开始朗读时生效。</string>
     <string name="tts_reset_settings">重置语音设置</string>
@@ -458,9 +460,11 @@
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
     <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_voxcpm2_name">VoxCPM2</string>
     <string name="tts_model_piper_english_high_description">英语 Piper 语音 · 下载 35 MB</string>
     <string name="tts_model_kitten_description">英语 KittenTTS 语音 · 下载 68 MB</string>
     <string name="tts_model_matcha_description">英语 Matcha 语音 · 下载 131 MB</string>
+    <string name="tts_model_voxcpm2_description">Multilingual neural voice · 2.8 GB download · 6 GB RAM recommended</string>
     <string name="tts_model_android_name">系统语音</string>
     <string name="tts_model_android_description">内置语音 · 始终可用</string>
     <string name="tts_speech_playback_failed">语音播放失败。</string>

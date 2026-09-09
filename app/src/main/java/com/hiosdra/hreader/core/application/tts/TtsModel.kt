@@ -6,6 +6,7 @@ enum class TtsEngineFamily {
     VITS,
     KITTEN,
     MATCHA,
+    VOXCPM2,
     ANDROID
 }
 
@@ -19,6 +20,7 @@ enum class TtsModel(
     PIPER_LESSAC_HIGH(false, TtsEngineFamily.VITS),
     KITTEN_MINI(false, TtsEngineFamily.KITTEN),
     MATCHA_LJSPEECH(false, TtsEngineFamily.MATCHA),
+    VOXCPM2(false, TtsEngineFamily.VOXCPM2),
     ANDROID(true, TtsEngineFamily.ANDROID);
 
     companion object {
@@ -41,7 +43,9 @@ data class TtsAdvancedSettings(
     val kokoroSpeaker: Int = 0,
     val kittenSpeaker: Int = 0,
     val vitsNoiseScale: Float = 0.667f,
-    val vitsDurationNoiseScale: Float = 0.8f
+    val vitsDurationNoiseScale: Float = 0.8f,
+    val voxCpmCfg: Float = 2f,
+    val voxCpmTimesteps: Int = 5
 )
 
 internal fun parseTtsLanguageOverrides(entries: Set<String>): Map<String, TtsModel> =

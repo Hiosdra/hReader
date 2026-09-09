@@ -38,6 +38,14 @@ object TtsModelCatalog {
             supportedLanguages = setOf("en")
         ),
         TtsModelDefinition(
+            model = TtsModel.VOXCPM2,
+            supportedLanguages = setOf(
+                "ar", "my", "zh", "da", "nl", "en", "fi", "fr", "de", "el", "he",
+                "hi", "id", "it", "ja", "km", "ko", "lo", "ms", "no", "pl", "pt",
+                "ru", "es", "sw", "sv", "tl", "th", "tr", "vi"
+            )
+        ),
+        TtsModelDefinition(
             model = TtsModel.ANDROID,
             supportedLanguages = emptySet()
         )

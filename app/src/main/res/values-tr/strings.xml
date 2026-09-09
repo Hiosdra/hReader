@@ -438,6 +438,8 @@
     <string name="tts_voice_id">Ses kimliği</string>
     <string name="tts_voice_variation">Ses değişkenliği</string>
     <string name="tts_duration_variation">Süre değişkenliği</string>
+    <string name="tts_voxcpm_cfg">VoxCPM CFG guidance</string>
+    <string name="tts_voxcpm_timesteps">VoxCPM inference steps</string>
     <string name="tts_advanced_not_system">Gelişmiş ses ayarları sistem sesini etkilemez.</string>
     <string name="tts_changes_next_start">Değişiklikler bir sonraki sesli okuma başlangıcında uygulanır.</string>
     <string name="tts_reset_settings">Ses ayarlarını sıfırla</string>
@@ -462,9 +464,11 @@
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
     <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_voxcpm2_name">VoxCPM2</string>
     <string name="tts_model_piper_english_high_description">İngilizce Piper sesi · 35 MB indirme</string>
     <string name="tts_model_kitten_description">İngilizce KittenTTS sesi · 68 MB indirme</string>
     <string name="tts_model_matcha_description">İngilizce Matcha sesi · 131 MB indirme</string>
+    <string name="tts_model_voxcpm2_description">Multilingual neural voice · 2.8 GB download · 6 GB RAM recommended</string>
     <string name="tts_model_android_name">Sistem sesi</string>
     <string name="tts_model_android_description">Yerleşik ses · her zaman kullanılabilir</string>
     <string name="tts_speech_playback_failed">Konuşma oynatılamadı.</string>

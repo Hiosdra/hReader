@@ -434,6 +434,8 @@
     <string name="tts_voice_id">음성 ID</string>
     <string name="tts_voice_variation">음성 변화</string>
     <string name="tts_duration_variation">길이 변화</string>
+    <string name="tts_voxcpm_cfg">VoxCPM CFG guidance</string>
+    <string name="tts_voxcpm_timesteps">VoxCPM inference steps</string>
     <string name="tts_advanced_not_system">고급 음성 설정은 시스템 음성에 영향을 주지 않습니다.</string>
     <string name="tts_changes_next_start">변경 사항은 다음 읽기 시작 시 적용됩니다.</string>
     <string name="tts_reset_settings">음성 설정 재설정</string>
@@ -458,9 +460,11 @@
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
     <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
+    <string name="tts_model_voxcpm2_name">VoxCPM2</string>
     <string name="tts_model_piper_english_high_description">영어 Piper 음성 · 35MB 다운로드</string>
     <string name="tts_model_kitten_description">영어 KittenTTS 음성 · 68MB 다운로드</string>
     <string name="tts_model_matcha_description">영어 Matcha 음성 · 131MB 다운로드</string>
+    <string name="tts_model_voxcpm2_description">Multilingual neural voice · 2.8 GB download · 6 GB RAM recommended</string>
     <string name="tts_model_android_name">시스템 음성</string>
     <string name="tts_model_android_description">내장 음성 · 항상 사용 가능</string>
     <string name="tts_speech_playback_failed">음성 재생에 실패했습니다.</string>

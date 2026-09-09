@@ -10,3 +10,10 @@ https://github.com/coqui-ai/TTS/blob/dev/TTS/.models.json
 sherpa-onnx Android runtime
 Copyright (c) 2022-2026 Xiaomi Corporation
 Licensed under the Apache License 2.0.
+
+VoxCPM2 model files are downloaded separately from the upstream model source.
+They are distributed under the Apache License 2.0.
+
+llama.cpp-omni VoxCPM2 runtime
+Copyright (c) 2023-2026 The ggml authors
+Licensed under the MIT License.

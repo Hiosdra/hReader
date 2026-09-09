@@ -63,6 +63,7 @@ android {
     // core-ktx 1.19 and the other AndroidX bumps require API 37.
     compileSdk = 37
     compileSdkMinor = 1
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "com.hiosdra.hreader"
@@ -74,6 +75,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     signingConfigs {
@@ -117,6 +121,12 @@ android {
         buildConfig = true
         resValues = true
     }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -143,7 +153,10 @@ android {
                 "**/libsherpa-onnx-c-api.so",
                 "**/libsherpa-onnx-cxx-api.so",
                 "**/libsherpa-onnx-jni.so",
-                "**/liblitertlm_jni.so"
+                "**/liblitertlm_jni.so",
+                "**/libhreader_voxcpm.so",
+                "**/libllama.so",
+                "**/libggml*.so"
             )
         }
     }
