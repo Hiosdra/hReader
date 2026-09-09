@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.tts
 
 import android.content.Context
+import android.os.StatFs
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
@@ -70,6 +71,8 @@ class TtsModelManager(
                 _statuses.value = _statuses.value + (model to TtsModelStatus.Downloading(0f))
                 staging.deleteRecursively()
                 staging.mkdirs()
+                archive.delete()
+                ensureStorageAvailable(artifact)
                 if (artifact.files.isEmpty()) {
                     val archiveSize = checkNotNull(artifact.archive).size
                     downloadArchive(
@@ -84,7 +87,8 @@ class TtsModelManager(
                         downloadFiles(model, artifact.files, staging)
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        if (artifact.archive == null) throw e
                         staging.deleteRecursively()
                         staging.mkdirs()
                         downloadArchive(
@@ -134,6 +138,7 @@ class TtsModelManager(
         var downloaded = 0L
         files.forEach { remote ->
             val output = File(staging, remote.name)
+            output.parentFile?.mkdirs()
             downloadTo(remote.url, output, remote.size) { count ->
                 downloaded += count
                 updateProgress(model, progressBase + downloaded, progressTotal)
@@ -195,6 +200,15 @@ class TtsModelManager(
         _statuses.value = _statuses.value + (
             model to TtsModelStatus.Downloading((downloaded.toFloat() / total).coerceIn(0f, 1f))
         )
+    }
+
+    private fun ensureStorageAvailable(artifact: TtsModelPackage) {
+        val requiredBytes = artifact.requiredStorageBytes()
+        val availableBytes = StatFs(modelRoot.path).availableBytes
+        check(hasEnoughTtsModelStorage(availableBytes, requiredBytes)) {
+            "Not enough storage for ${artifact.directoryName}: " +
+                "$requiredBytes required, $availableBytes available"
+        }
     }
 
     override suspend fun remove(model: TtsModel) = withContext(Dispatchers.IO) {

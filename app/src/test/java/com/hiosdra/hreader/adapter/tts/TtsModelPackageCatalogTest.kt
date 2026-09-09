@@ -4,6 +4,7 @@ import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -46,5 +47,21 @@ class TtsModelPackageCatalogTest {
             .forEach { model ->
                 assertTrue(TtsModelPackageCatalog.packageFor(model)?.engineFiles is SherpaModelFiles.Vits)
             }
+    }
+
+    @Test
+    fun `preflight includes model bytes and staging headroom`() {
+        val packageDefinition =
+            checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.SUPERTONIC))
+        val downloadBytes =
+            (packageDefinition.archive?.size ?: 0L) +
+                packageDefinition.files.sumOf(RemoteFile::size) +
+                packageDefinition.supplementalFiles.sumOf(RemoteFile::size)
+        val requiredBytes = packageDefinition.requiredStorageBytes()
+
+        assertTrue(requiredBytes > downloadBytes)
+        assertTrue(requiredBytes - downloadBytes >= 128L * 1024 * 1024)
+        assertFalse(hasEnoughTtsModelStorage(downloadBytes, requiredBytes))
+        assertTrue(hasEnoughTtsModelStorage(requiredBytes, requiredBytes))
     }
 }
