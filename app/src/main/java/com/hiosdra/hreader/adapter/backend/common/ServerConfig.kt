@@ -55,7 +55,11 @@ class ServerConfig(private val preferencesManager: BackendPreferences) : Backend
                 }
             }
             ?: serverUrlFor(backend).trim().lowercase().trimEnd('/')
-        val identity = if (backend.requiresUsername) username() else ""
+        val identity = if (backend.requiresUsername) {
+            username()
+        } else {
+            "token:${secretFor(backend).sha256()}"
+        }
         return CacheScope(backend, server, identity).key
     }
 

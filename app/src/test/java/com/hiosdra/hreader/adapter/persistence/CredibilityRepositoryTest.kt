@@ -113,6 +113,16 @@ class CredibilityRepositoryTest {
     }
 
     @Test
+    fun invalidateForEntries_deletesAllModelsInSqliteSafeChunks() = runBlocking {
+        val deletedChunks = mutableListOf<List<Long>>()
+        coEvery { dao.deleteAll(capture(deletedChunks)) } returns Unit
+
+        repo.invalidateForEntries((1L..501L).toList())
+
+        assertEquals(listOf(500, 1), deletedChunks.map(List<Long>::size))
+    }
+
+    @Test
     fun multilineTextSurvivesTheRoundTripAsOneItem() = runBlocking {
         val noisy = report.copy(reasons = listOf("First line\nsecond line", "  padded  "))
         coEvery { dao.getForEntry(7L, modelId) } returns null

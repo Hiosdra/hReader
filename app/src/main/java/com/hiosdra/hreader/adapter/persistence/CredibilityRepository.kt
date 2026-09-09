@@ -22,6 +22,12 @@ class CredibilityRepository(
     private val articleCredibilityDao: ArticleCredibilityDao,
     private val articleAiGateway: ArticleAiGateway
 ) : CredibilityStore {
+    override suspend fun invalidateForEntries(entryIds: List<Long>) {
+        entryIds.chunked(DELETE_CHUNK).forEach { chunk ->
+            articleCredibilityDao.deleteAll(chunk)
+        }
+    }
+
     override suspend fun getCached(entryId: Long, modelId: String): CredibilityReport? =
         articleCredibilityDao.getForEntry(entryId, modelId)?.toDomain()
 

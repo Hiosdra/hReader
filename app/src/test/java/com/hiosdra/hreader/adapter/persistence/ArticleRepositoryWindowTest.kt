@@ -1,13 +1,8 @@
 package com.hiosdra.hreader.adapter.persistence
 
-import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
-import com.hiosdra.hreader.core.application.port.out.FeedBackend
-import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
-import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
-import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -22,13 +17,8 @@ class ArticleRepositoryWindowTest {
     private val articleDao = mockk<ArticleDao>(relaxed = true)
     private val repository = ArticleRepository(
         articleDao = articleDao,
-        articleContentDao = mockk<ArticleContentDao>(relaxed = true),
         feedDao = mockk<FeedDao>(relaxed = true),
-        api = mockk<FeedBackend>(relaxed = true),
-        db = mockk<AppDatabase>(relaxed = true),
-        preferencesManager = mockk<SyncPreferences>(relaxed = true),
-        syncPerformanceLogger = mockk<SyncPerformanceTracker>(relaxed = true),
-        articleImageStore = mockk<ArticleImageStore>(relaxed = true)
+        syncEngine = mockk<ArticleSyncStore>(relaxed = true)
     )
     private val selectedAt = Instant.parse("2026-08-22T12:00:00Z")
     private val query = ArticleListQuery(sessionStart = Instant.parse("2026-08-22T00:00:00Z"))

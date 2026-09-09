@@ -117,6 +117,14 @@ class ArticlePageRepository(
             entries.filterNot { (entryId, url) -> stored[entryId] == url }
         }
 
+    override suspend fun getMissingPageTargets(limit: Int): List<Pair<Long, String>> =
+        articleDao.getPrefetchTargetsMissingPages(limit).mapNotNull { target ->
+            target.id.toLongOrNull()?.let { it to target.url }
+        }
+
+    override suspend fun countMissingPageTargets(): Int =
+        articleDao.countPrefetchTargetsMissingPages()
+
     override suspend fun prefetchPages(
         entries: List<Pair<Long, String>>,
         limit: Int?,

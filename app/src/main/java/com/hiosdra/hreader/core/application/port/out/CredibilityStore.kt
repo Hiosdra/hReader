@@ -4,6 +4,7 @@ import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
 
 interface CredibilityStore {
+    suspend fun invalidateForEntries(entryIds: List<Long>)
     suspend fun getCached(entryId: Long, modelId: String): CredibilityReport?
     suspend fun getCached(entryIds: List<Long>, modelId: String): Map<Long, CredibilityReport>
     suspend fun analyze(

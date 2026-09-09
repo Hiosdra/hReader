@@ -12,6 +12,7 @@ import com.hiosdra.hreader.adapter.persistence.CacheDataCleaner
 import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleSyncEngine
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
 import com.hiosdra.hreader.adapter.persistence.OfflineReadinessRepository
 import com.hiosdra.hreader.adapter.paywall.PaywallBypassService
@@ -123,7 +124,21 @@ val appModule = module {
     single { RemoteResourcePolicyAdapter(get<AppPreferences>()) }
     single<RemoteResourcePolicy> { get<RemoteResourcePolicyAdapter>() }
     single { get<AppDatabase>().articleReadingPositionDao() }
-    single { ArticleRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
+    single {
+        ArticleSyncEngine(
+            articleDao = get(),
+            articleContentDao = get(),
+            feedDao = get(),
+            api = get(),
+            db = get(),
+            preferences = get(),
+            performance = get(),
+            imageStore = get(),
+            credibilityStore = get(),
+            backendIdentity = get()
+        )
+    }
+    single { ArticleRepository(get(), get(), get<ArticleSyncEngine>()) }
     single<ArticleStore> { get<ArticleRepository>() }
     single<ArticleQueryStore> { get<ArticleRepository>() }
     single<ArticleMutationStore> { get<ArticleRepository>() }
@@ -281,7 +296,7 @@ val appModule = module {
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get()) }
-    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }

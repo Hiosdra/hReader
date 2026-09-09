@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.core.application.port.out
 
+import com.hiosdra.hreader.core.application.sync.SyncCheckpoint
 import kotlinx.coroutines.flow.Flow
 
 interface SyncPreferences {
@@ -12,6 +13,9 @@ interface SyncPreferences {
     fun observeLastSyncTimestamp(): Flow<Long>
     fun getLastFullSyncTimestamp(): Long
     fun setLastFullSyncTimestamp(timestamp: Long)
+    fun getSyncCheckpoint(): SyncCheckpoint?
+    fun setSyncCheckpoint(checkpoint: SyncCheckpoint)
+    fun clearSyncCheckpoint()
     fun getOfflineBacklogTarget(): Int
     fun setOfflineBacklogTarget(target: Int)
     fun getImageDownloadEnabled(): Boolean

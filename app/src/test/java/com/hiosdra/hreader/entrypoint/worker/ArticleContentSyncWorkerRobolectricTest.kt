@@ -117,6 +117,27 @@ class ArticleContentSyncWorkerRobolectricTest {
     }
 
     @Test
+    fun `background prefetch still visits enclosure images when content is already cached`() = runBlocking {
+        val target = target(
+            enclosures = listOf(Enclosure("https://example.com/one.jpg", "image/jpeg"))
+        )
+        val contentStore = ArticleContentStoreFake()
+        val repository = ArticleContentMaintenanceStore(
+            prefetchTargets = emptyList(),
+            enclosureTargets = listOf(target)
+        )
+
+        val result = createWorker(repository, contentStore).doWork()
+
+        assertTrue(result is Success)
+        assertEquals(
+            listOf(listOf(target.id to listOf("https://example.com/one.jpg"))),
+            contentStore.imageBatches
+        )
+        assertEquals(0, contentStore.prefetchCalls)
+    }
+
+    @Test
     fun `draining a bounded content batch retries when work remains`() = runBlocking {
         val outstanding = pairs(501)
         val contentStore = ArticleContentStoreFake(missingContent = outstanding)
@@ -273,7 +294,8 @@ class ArticleContentSyncWorkerRobolectricTest {
 }
 
 private class ArticleContentMaintenanceStore(
-    private val prefetchTargets: List<PrefetchTarget>
+    private val prefetchTargets: List<PrefetchTarget>,
+    private val enclosureTargets: List<PrefetchTarget> = emptyList()
 ) : ArticleMaintenanceStore {
     var targetCalls = 0
 
@@ -283,6 +305,9 @@ private class ArticleContentMaintenanceStore(
     }
 
     override suspend fun backfillMissingPreviews(limit: Int): Int = 0
+
+    override suspend fun getPrefetchTargetsWithEnclosures(limit: Int): List<PrefetchTarget> =
+        enclosureTargets.take(limit)
 }
 
 private class ArticleContentStoreFake(

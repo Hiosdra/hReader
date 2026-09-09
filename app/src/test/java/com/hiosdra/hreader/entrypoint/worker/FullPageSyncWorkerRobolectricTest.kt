@@ -13,7 +13,6 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.observability.ArticleSyncStats
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
-import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
@@ -42,9 +41,8 @@ class FullPageSyncWorkerRobolectricTest {
     @Test
     fun `empty page backlog completes without prefetching`() = runBlocking {
         val pageStore = FullPagePageStore(mutableListOf(emptyList()))
-        val repository = FullPageMaintenanceStore(targets(2))
 
-        val result = createWorker(repository, pageStore).doWork()
+        val result = createWorker(pageStore).doWork()
 
         assertTrue(result is Success)
         assertEquals(0, pageStore.prefetchCalls)
@@ -54,9 +52,8 @@ class FullPageSyncWorkerRobolectricTest {
     fun `page prefetch is limited to one hundred entries`() = runBlocking {
         val outstanding = pairs(150)
         val pageStore = FullPagePageStore(mutableListOf(outstanding, emptyList()))
-        val repository = FullPageMaintenanceStore(targets(150))
 
-        val result = createWorker(repository, pageStore).doWork()
+        val result = createWorker(pageStore).doWork()
 
         assertTrue(result is Success)
         assertEquals(1, pageStore.prefetchCalls)
@@ -70,11 +67,9 @@ class FullPageSyncWorkerRobolectricTest {
             missingPagesResults = mutableListOf(pairs(1)),
             prefetchFailure = IOException("connection lost")
         )
-        val repository = FullPageMaintenanceStore(targets(1))
         val errorReporter = mockk<ErrorReporter>(relaxed = true)
 
         val result = createWorker(
-            repository = repository,
             pageStore = pageStore,
             errorReporter = errorReporter
         ).doWork()
@@ -91,10 +86,8 @@ class FullPageSyncWorkerRobolectricTest {
                 pairs(1)
             )
         )
-        val repository = FullPageMaintenanceStore(targets(2))
 
         val result = createWorker(
-            repository = repository,
             pageStore = pageStore,
             runAttemptCount = 5
         ).doWork()
@@ -106,11 +99,9 @@ class FullPageSyncWorkerRobolectricTest {
     fun `unchanged pages at the attempt cap return a localized failure`() = runBlocking {
         val outstanding = pairs(2)
         val pageStore = FullPagePageStore(mutableListOf(outstanding, outstanding))
-        val repository = FullPageMaintenanceStore(targets(2))
         val errorReporter = mockk<ErrorReporter>(relaxed = true)
 
         val result = createWorker(
-            repository = repository,
             pageStore = pageStore,
             errorReporter = errorReporter,
             runAttemptCount = 5
@@ -133,21 +124,17 @@ class FullPageSyncWorkerRobolectricTest {
         every { preferences.getQuietHoursStartHour() } returns 22
         every { preferences.getQuietHoursEndHour() } returns 7
         val pageStore = FullPagePageStore(mutableListOf(pairs(1)))
-        val repository = FullPageMaintenanceStore(targets(1))
 
         val result = createWorker(
-            repository = repository,
             pageStore = pageStore,
             preferences = preferences
         ).doWork()
 
         assertTrue(result is Success)
-        assertEquals(0, repository.targetCalls)
         assertEquals(0, pageStore.missingPageCalls)
     }
 
     private fun createWorker(
-        repository: FullPageMaintenanceStore,
         pageStore: FullPagePageStore,
         preferences: SyncPreferences = mockk(relaxed = true),
         errorReporter: ErrorReporter = mockk(relaxed = true),
@@ -163,7 +150,6 @@ class FullPageSyncWorkerRobolectricTest {
                 FullPageSyncWorker(
                     appContext = appContext,
                     params = workerParameters,
-                    articleRepository = repository,
                     articlePageRepository = pageStore,
                     syncPerformanceLogger = FullPagePerformanceTracker(),
                     preferencesManager = preferences,
@@ -202,19 +188,6 @@ class FullPageSyncWorkerRobolectricTest {
     }
 }
 
-private class FullPageMaintenanceStore(
-    private val prefetchTargets: List<PrefetchTarget>
-) : ArticleMaintenanceStore {
-    var targetCalls = 0
-
-    override suspend fun getPrefetchTargets(): List<PrefetchTarget> {
-        targetCalls += 1
-        return prefetchTargets
-    }
-
-    override suspend fun backfillMissingPreviews(limit: Int): Int = 0
-}
-
 private class FullPagePageStore(
     private val missingPagesResults: MutableList<List<Pair<Long, String>>>,
     private val prefetchFailure: Throwable? = null
@@ -227,6 +200,12 @@ private class FullPagePageStore(
         missingPageCalls += 1
         return missingPagesResults.removeAt(0)
     }
+
+    override suspend fun getMissingPageTargets(limit: Int): List<Pair<Long, String>> =
+        missingPagesResults.removeAt(0).take(limit)
+
+    override suspend fun countMissingPageTargets(): Int =
+        missingPagesResults.firstOrNull()?.size ?: 0
 
     override suspend fun prefetchPages(
         entries: List<Pair<Long, String>>,
