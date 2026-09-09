@@ -121,6 +121,7 @@ val appModule = module {
     single { get<AppDatabase>().articleCredibilityDao() }
     single { get<AppDatabase>().articleAiOverviewDao() }
     single { get<AppDatabase>().articlePageSnapshotDao() }
+    single { get<AppDatabase>().fullSyncSeenDao() }
     single { RemoteResourcePolicyAdapter(get<AppPreferences>()) }
     single<RemoteResourcePolicy> { get<RemoteResourcePolicyAdapter>() }
     single { get<AppDatabase>().articleReadingPositionDao() }
@@ -129,6 +130,7 @@ val appModule = module {
             articleDao = get(),
             articleContentDao = get(),
             feedDao = get(),
+            fullSyncSeenDao = get(),
             api = get(),
             db = get(),
             preferences = get(),

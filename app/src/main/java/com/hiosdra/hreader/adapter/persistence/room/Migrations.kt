@@ -259,13 +259,28 @@ val MIGRATION_20_21 = object : Migration(20, 21) {
     }
 }
 
+val MIGRATION_21_22 = object : Migration(21, 22) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE `full_sync_seen` (
+                `runId` TEXT NOT NULL,
+                `articleId` TEXT NOT NULL,
+                PRIMARY KEY(`runId`, `articleId`)
+            )
+            """.trimIndent()
+        )
+    }
+}
+
 val APP_MIGRATIONS = arrayOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
     MIGRATION_17_18,
     MIGRATION_18_19,
     MIGRATION_19_20,
-    MIGRATION_20_21
+    MIGRATION_20_21,
+    MIGRATION_21_22
 )
 
 private const val ENCLOSURE_RECORD_SEPARATOR = "\u001e"

@@ -837,13 +837,14 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             checkpoint.mode.name,
             checkpoint.startedAt.toString(),
             checkpoint.changedAfter?.toString().orEmpty(),
-            checkpoint.cursor?.let(::encode).orEmpty()
+            checkpoint.cursor?.let(::encode).orEmpty(),
+            checkpoint.fullSyncRunId?.let(::encode).orEmpty()
         ).joinToString(".")
     }
 
     private fun decodeSyncCheckpoint(value: String): SyncCheckpoint? = runCatching {
-        val parts = value.split('.', limit = 5)
-        require(parts.size == 5)
+        val parts = value.split('.', limit = 6)
+        require(parts.size == 5 || parts.size == 6)
         fun decode(encoded: String): String =
             String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8)
 
@@ -852,7 +853,8 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             mode = SyncCheckpointMode.valueOf(parts[1]),
             startedAt = parts[2].toLong(),
             changedAfter = parts[3].takeIf { it.isNotEmpty() }?.toLong(),
-            cursor = parts[4].takeIf { it.isNotEmpty() }?.let(::decode)
+            cursor = parts[4].takeIf { it.isNotEmpty() }?.let(::decode),
+            fullSyncRunId = parts.getOrNull(5)?.takeIf { it.isNotEmpty() }?.let(::decode)
         )
     }.getOrNull()
 

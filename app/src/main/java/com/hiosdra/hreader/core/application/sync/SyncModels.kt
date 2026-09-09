@@ -40,7 +40,8 @@ data class SyncCheckpoint(
     val mode: SyncCheckpointMode,
     val startedAt: Long,
     val changedAfter: Long?,
-    val cursor: String?
+    val cursor: String?,
+    val fullSyncRunId: String? = null
 )
 
 class SyncCoordinator {
