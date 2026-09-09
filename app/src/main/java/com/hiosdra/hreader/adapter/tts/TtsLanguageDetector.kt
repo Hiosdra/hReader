@@ -22,6 +22,6 @@ internal class TtsLanguageDetector(context: Context) {
     }
 
     private companion object {
-        const val MAX_TEXT_LENGTH = 1_000
+        const val MAX_TEXT_LENGTH = 4_000
     }
 }

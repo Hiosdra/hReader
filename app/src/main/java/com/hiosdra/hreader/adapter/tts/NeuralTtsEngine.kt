@@ -59,3 +59,12 @@ internal data class TtsAudio(
     val samples: FloatArray,
     val sampleRate: Int
 )
+
+internal fun TtsAudio.withTrailingSilence(durationMillis: Int): TtsAudio {
+    if (durationMillis <= 0 || samples.isEmpty() || sampleRate <= 0) return this
+    val silenceSamples = (sampleRate.toLong() * durationMillis / 1_000L)
+        .coerceAtMost(Int.MAX_VALUE.toLong())
+        .toInt()
+    if (silenceSamples == 0) return this
+    return copy(samples = samples.copyOf(samples.size + silenceSamples))
+}

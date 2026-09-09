@@ -82,7 +82,8 @@ class ArticleTtsController internal constructor(
             scheduleWarmRelease()
             return
         }
-        val chunks = TtsTextProcessor.fromHtml(title, html)
+        val articleText = TtsTextProcessor.fromHtml(title, html)
+        val chunks = articleText.chunks
         if (chunks.isEmpty()) {
             _state.value = ArticleTtsState(error = appContext.getString(R.string.tts_no_article_text))
             scheduleWarmRelease()
@@ -114,7 +115,7 @@ class ArticleTtsController internal constructor(
         playbackJob = scope.launch {
             try {
                 val language = withContext(Dispatchers.Default) {
-                    languageDetector.detect(chunks.take(2).joinToString(" "))
+                    languageDetector.detect(articleText.languageSample)
                 }
                 val model = resolveArticleTtsModel(
                     modelOverride = modelOverride,
@@ -273,7 +274,10 @@ class ArticleTtsController internal constructor(
                     isPlaying = !_state.value.isPaused,
                     currentChunk = index
                 )
-                playSamples(audio.samples, audio.sampleRate)
+                val playbackAudio = audio.withTrailingSilence(
+                    if (index < chunks.lastIndex) INTER_CHUNK_PAUSE_MILLIS else 0
+                )
+                playSamples(playbackAudio.samples, playbackAudio.sampleRate)
                 audio = nextAudio?.await() ?: return@coroutineScope
             }
         }
@@ -436,6 +440,7 @@ class ArticleTtsController internal constructor(
     private companion object {
         const val TAG = "ArticleTtsController"
         const val MODEL_WARM_TIMEOUT_MS = 5 * 60 * 1_000L
+        const val INTER_CHUNK_PAUSE_MILLIS = 300
     }
 }
 
