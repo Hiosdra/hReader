@@ -20,10 +20,20 @@ internal object PolishTtsTextNormalizer {
     private val timePattern = Regex("(?<![\\p{L}\\d])(\\d{1,2}):(\\d{2})(?![\\p{L}\\d])")
     private val decimalPattern = Regex("(?<![\\p{L}\\d])(\\d+)[,.](\\d+)(?![\\p{L}\\d])")
     private val rangePattern = Regex("(?<![\\p{L}\\d])(\\d+)\\s*[-–—]\\s*(\\d+)(?![\\p{L}\\d])")
-    private val integerPattern = Regex("\\d+")
+    private val integerPattern = Regex("(?<![\\p{L}\\d])\\d+(?![\\p{L}\\d])")
+    private val protectedPattern = Regex(
+        "(?i)(?:https?://|www\\.)\\S+|[\\w.+-]+@[\\w.-]+\\.[a-z]{2,}|" +
+            "(?<![\\p{L}\\d])(?:[a-z]+)?\\d+(?:\\.\\d+){2,}(?![\\p{L}\\d])"
+    )
 
     fun normalize(text: String): String {
-        var normalized = text
+        val protectedValues = mutableListOf<String>()
+        val masked = protectedPattern.replace(text) {
+            val index = protectedValues.size
+            protectedValues += it.value
+            protectedPlaceholder(index)
+        }
+        var normalized = masked
         abbreviationReplacements.forEach { (pattern, replacement) ->
             normalized = normalized.replace(pattern) { match ->
                 replacementFor(match.value, replacement)
@@ -55,7 +65,22 @@ internal object PolishTtsTextNormalizer {
         normalized = normalized.replace(rangePattern) { match ->
             "${spokenNumber(match.groupValues[1])} do ${spokenNumber(match.groupValues[2])}"
         }
-        return normalized.replace(integerPattern) { match -> spokenNumber(match.value) }
+        normalized = normalized.replace(integerPattern) { match -> spokenNumber(match.value) }
+        protectedValues.forEachIndexed { index, value ->
+            normalized = normalized.replace(protectedPlaceholder(index), value)
+        }
+        return normalized
+    }
+
+    private fun protectedPlaceholder(index: Int): String {
+        var remaining = index
+        return buildString {
+            append('\uE000')
+            do {
+                append(('A'.code + remaining % 26).toChar())
+                remaining = remaining / 26 - 1
+            } while (remaining >= 0)
+        }
     }
 
     private fun replacementFor(matched: String, replacement: String): String =

@@ -34,16 +34,25 @@ internal object TtsTextProcessor {
         )
     }
 
-    fun forModel(model: TtsModel, chunks: List<String>): List<String> =
+    fun forModel(model: TtsModel, sourceChunks: List<String>): List<String> =
         if (model == TtsModel.COQUI_PL_MAI_FEMALE) {
-            chunks.map(PolishTtsTextNormalizer::normalize)
+            sourceChunks.flatMap { chunk ->
+                chunks(
+                    PolishTtsTextNormalizer.normalize(chunk),
+                    addTerminalPunctuation = false
+                )
+            }
         } else {
-            chunks
+            sourceChunks
         }
 
-    fun chunks(text: String, maxCharacters: Int = DEFAULT_MAX_CHARACTERS): List<String> {
+    fun chunks(
+        text: String,
+        maxCharacters: Int = DEFAULT_MAX_CHARACTERS,
+        addTerminalPunctuation: Boolean = true
+    ): List<String> {
         require(maxCharacters > 0)
-        val normalized = normalize(text)
+        val normalized = normalize(text, addTerminalPunctuation)
         if (normalized.isEmpty()) return emptyList()
         val result = mutableListOf<String>()
         var buffer = StringBuilder()
@@ -146,7 +155,7 @@ internal object TtsTextProcessor {
         }
     }
 
-    private fun normalize(text: String): String {
+    private fun normalize(text: String, addTerminalPunctuation: Boolean = true): String {
         if (text.isBlank()) return ""
         val prepared = removeEmoji(
             Normalizer.normalize(text, Normalizer.Form.NFKC)
@@ -167,7 +176,13 @@ internal object TtsTextProcessor {
             .mapNotNull { paragraph ->
                 paragraph.replace(Regex("\\s+"), " ").trim()
                     .takeIf(String::isNotBlank)
-                    ?.let(::ensureTerminalPunctuation)
+                    ?.let { paragraphText ->
+                        if (addTerminalPunctuation) {
+                            ensureTerminalPunctuation(paragraphText)
+                        } else {
+                            paragraphText
+                        }
+                    }
             }
             .joinToString(PARAGRAPH_SEPARATOR)
             .replace(Regex("[ \\t]+([,.;:!?])"), "$1")

@@ -97,4 +97,30 @@ class TtsTextProcessorTest {
             TtsTextProcessor.forModel(TtsModel.GOSIA, listOf("Np. w roku 2026."))
         )
     }
+
+    @Test
+    fun `rechunks expanded Polish text to the model limit`() {
+        val chunks = TtsTextProcessor.forModel(
+            TtsModel.COQUI_PL_MAI_FEMALE,
+            listOf("2026 ".repeat(80))
+        )
+
+        assertTrue(chunks.size > 1)
+        assertTrue(chunks.all { it.length <= 300 })
+        assertTrue(chunks.joinToString(" ").none(Char::isDigit))
+    }
+
+    @Test
+    fun `does not rewrite numbers inside technical identifiers`() {
+        val text = PolishTtsTextNormalizer.normalize(
+            "Odwiedź https://example.com/v2/2026, napisz e-mail a12@example.com " +
+                "i użyj wersji v2.0.1 oraz hosta 192.168.1.10. Kod A123B pozostaje."
+        )
+
+        assertTrue(text.contains("https://example.com/v2/2026"))
+        assertTrue(text.contains("a12@example.com"))
+        assertTrue(text.contains("v2.0.1"))
+        assertTrue(text.contains("192.168.1.10"))
+        assertTrue(text.contains("A123B"))
+    }
 }

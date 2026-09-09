@@ -130,6 +130,7 @@ class ArticleTtsController internal constructor(
                     error = null
                 )
                 val synthesisChunks = TtsTextProcessor.forModel(model, chunks)
+                _state.value = _state.value.copy(totalChunks = synthesisChunks.size)
                 runCatchingCancellable {
                     if (model == TtsModel.ANDROID) {
                         speakWithAndroid(chunks, language)
