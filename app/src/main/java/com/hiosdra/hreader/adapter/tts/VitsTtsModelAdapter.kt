@@ -19,7 +19,7 @@ internal object VitsTtsModelAdapter : SherpaTtsModelAdapter {
         vits = OfflineTtsVitsModelConfig(
             model = root.file(files.model),
             tokens = root.file(files.tokens),
-            dataDir = root.file(files.dataDir),
+            dataDir = files.dataDir.takeIf(String::isNotBlank)?.let(root::file).orEmpty(),
             noiseScale = settings.vitsNoiseScale,
             noiseScaleW = settings.vitsDurationNoiseScale
         )

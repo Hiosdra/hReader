@@ -16,6 +16,7 @@ enum class TtsModel(
     SUPERTONIC(false, TtsEngineFamily.SUPERTONIC),
     KOKORO(false, TtsEngineFamily.KOKORO),
     GOSIA(false, TtsEngineFamily.VITS),
+    COQUI_PL_MAI_FEMALE(false, TtsEngineFamily.VITS),
     PIPER_LESSAC_HIGH(false, TtsEngineFamily.VITS),
     KITTEN_MINI(false, TtsEngineFamily.KITTEN),
     MATCHA_LJSPEECH(false, TtsEngineFamily.MATCHA),

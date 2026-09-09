@@ -2,6 +2,9 @@ Supertonic 3 model files are downloaded separately.
 Copyright (c) 2025 Supertone Inc.
 Licensed under OpenRAIL-M. The license is included with the model download.
 
+Coqui vits-coqui-pl-mai_female model files are downloaded separately.
+Licensed under BSD-3-Clause according to the original Coqui TTS model metadata.
+
 sherpa-onnx Android runtime
 Copyright (c) 2022-2026 Xiaomi Corporation
 Licensed under the Apache License 2.0.

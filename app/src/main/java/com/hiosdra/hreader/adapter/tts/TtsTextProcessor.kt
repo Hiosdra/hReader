@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.adapter.tts
 
+import com.hiosdra.hreader.core.application.tts.TtsModel
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
@@ -32,6 +33,13 @@ internal object TtsTextProcessor {
             languageSample = languageSample
         )
     }
+
+    fun forModel(model: TtsModel, chunks: List<String>): List<String> =
+        if (model == TtsModel.COQUI_PL_MAI_FEMALE) {
+            chunks.map(PolishTtsTextNormalizer::normalize)
+        } else {
+            chunks
+        }
 
     fun chunks(text: String, maxCharacters: Int = DEFAULT_MAX_CHARACTERS): List<String> {
         require(maxCharacters > 0)

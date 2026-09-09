@@ -24,6 +24,10 @@ class TtsModelPackageCatalogTest {
         assertEquals("supertonic", TtsModelPackageCatalog.directoryName(TtsModel.SUPERTONIC))
         assertEquals("kokoro", TtsModelPackageCatalog.directoryName(TtsModel.KOKORO))
         assertEquals("gosia", TtsModelPackageCatalog.directoryName(TtsModel.GOSIA))
+        assertEquals(
+            "vits-coqui-pl-mai_female",
+            TtsModelPackageCatalog.directoryName(TtsModel.COQUI_PL_MAI_FEMALE)
+        )
         assertEquals("piper-lessac-high", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_LESSAC_HIGH))
         assertEquals("kitten-mini-en-v0_8", TtsModelPackageCatalog.directoryName(TtsModel.KITTEN_MINI))
         assertEquals("matcha-icefall-en_US-ljspeech", TtsModelPackageCatalog.directoryName(TtsModel.MATCHA_LJSPEECH))
@@ -35,6 +39,11 @@ class TtsModelPackageCatalogTest {
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.SUPERTONIC)?.engineFiles is SherpaModelFiles.Supertonic)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO)?.engineFiles is SherpaModelFiles.Kokoro)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.GOSIA)?.engineFiles is SherpaModelFiles.Vits)
+        val coqui = TtsModelPackageCatalog.packageFor(TtsModel.COQUI_PL_MAI_FEMALE)
+        assertTrue(coqui?.engineFiles is SherpaModelFiles.Vits)
+        assertEquals(listOf("model.onnx", "tokens.txt"), coqui?.files?.map(RemoteFile::name))
+        assertEquals("", (coqui?.engineFiles as SherpaModelFiles.Vits).dataDir)
+        assertNull(coqui.archive)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KITTEN_MINI)?.engineFiles is SherpaModelFiles.Kitten)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)?.engineFiles is SherpaModelFiles.Matcha)
         assertEquals(

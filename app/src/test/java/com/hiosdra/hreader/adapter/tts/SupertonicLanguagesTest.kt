@@ -61,6 +61,7 @@ class SupertonicLanguagesTest {
             listOf(
                 TtsModel.SUPERTONIC,
                 TtsModel.GOSIA,
+                TtsModel.COQUI_PL_MAI_FEMALE,
                 TtsModel.ANDROID
             ),
             TtsLanguages.compatibleModels("pl")
