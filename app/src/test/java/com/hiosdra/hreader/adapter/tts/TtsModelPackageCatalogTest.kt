@@ -9,6 +9,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.file.Files
 
 class TtsModelPackageCatalogTest {
     @Test
@@ -63,5 +64,27 @@ class TtsModelPackageCatalogTest {
         assertTrue(requiredBytes - downloadBytes >= 128L * 1024 * 1024)
         assertFalse(hasEnoughTtsModelStorage(downloadBytes, requiredBytes))
         assertTrue(hasEnoughTtsModelStorage(requiredBytes, requiredBytes))
+    }
+
+    @Test
+    fun `installed package requires expected downloaded file sizes`() {
+        val root = Files.createTempDirectory("hreader-tts-package").toFile()
+        try {
+            val packageDefinition = TtsModelPackage(
+                directoryName = "test",
+                engineFiles = SherpaModelFiles.Vits("model.onnx", "tokens.txt", "data"),
+                requiredFiles = listOf("model.onnx"),
+                files = listOf(RemoteFile("model.onnx", "https://example.invalid/model", "hash", 3))
+            )
+            val model = root.resolve("model.onnx")
+
+            model.writeText("12")
+            assertFalse(packageDefinition.isComplete(root))
+
+            model.writeText("123")
+            assertTrue(packageDefinition.isComplete(root))
+        } finally {
+            root.deleteRecursively()
+        }
     }
 }

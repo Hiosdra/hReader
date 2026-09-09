@@ -8,12 +8,15 @@ import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.TtsModelStatus
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -25,6 +28,7 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.security.MessageDigest
 
 class TtsModelManager(
@@ -36,7 +40,12 @@ class TtsModelManager(
     private val modelRoot = File(appContext.filesDir, "tts_models")
     private val modelLocks = TtsModelCatalog.models.associateWith { Mutex() }
     private val _statuses = MutableStateFlow(currentStatuses())
+    private val statusScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     override val statuses: StateFlow<Map<TtsModel, TtsModelStatus>> = _statuses.asStateFlow()
+
+    init {
+        statusScope.launch { refreshInstalledStatuses() }
+    }
 
     fun directory(model: TtsModel): File = File(modelRoot, TtsModelPackageCatalog.directoryName(model))
 
@@ -86,6 +95,8 @@ class TtsModelManager(
                     try {
                         downloadFiles(model, artifact.files, staging)
                     } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: ModelIntegrityException) {
                         throw e
                     } catch (e: Exception) {
                         if (artifact.archive == null) throw e
@@ -143,8 +154,8 @@ class TtsModelManager(
                 downloaded += count
                 updateProgress(model, progressBase + downloaded, progressTotal)
             }
-            check(output.sha256() == remote.sha256) {
-                "Downloaded ${remote.name} failed integrity check"
+            if (output.sha256() != remote.sha256) {
+                throw ModelIntegrityException("Downloaded ${remote.name} failed integrity check")
             }
         }
     }
@@ -163,7 +174,9 @@ class TtsModelManager(
             downloaded += count
             updateProgress(model, progressBase + downloaded, progressTotal)
         }
-        check(archive.sha256() == source.sha256) { "Downloaded model failed integrity check" }
+        if (archive.sha256() != source.sha256) {
+            throw ModelIntegrityException("Downloaded model failed integrity check")
+        }
         extract(archive, staging)
     }
 
@@ -172,8 +185,8 @@ class TtsModelManager(
         client.newCall(request).execute().use { response ->
             check(response.isSuccessful) { "Download failed (${response.code})" }
             val body = checkNotNull(response.body)
-            check(body.contentLength() < 0 || body.contentLength() <= expectedSize) {
-                "Download exceeds the expected model size"
+            if (body.contentLength() >= 0 && body.contentLength() > expectedSize) {
+                throw ModelIntegrityException("Download exceeds the expected model size")
             }
             body.byteStream().use { input ->
                 FileOutputStream(output).use { target ->
@@ -184,8 +197,8 @@ class TtsModelManager(
                         val count = input.read(buffer)
                         if (count < 0) break
                         downloaded += count
-                        check(downloaded <= expectedSize) {
-                            "Download exceeds the expected model size"
+                        if (downloaded > expectedSize) {
+                            throw ModelIntegrityException("Download exceeds the expected model size")
                         }
                         target.write(buffer, 0, count)
                         onBytes(count.toLong())
@@ -235,6 +248,12 @@ class TtsModelManager(
     }
 
     private fun extract(archive: File, destination: File) {
+        val uncompressedBytes = archiveUncompressedBytes(archive)
+        val availableBytes = StatFs(destination.path).availableBytes
+        val requiredBytes = Math.addExact(uncompressedBytes, TTS_STORAGE_HEADROOM_BYTES)
+        check(hasEnoughTtsModelStorage(availableBytes, requiredBytes)) {
+            "Not enough storage to extract model: $requiredBytes required, $availableBytes available"
+        }
         TarArchiveInputStream(BZip2CompressorInputStream(BufferedInputStream(FileInputStream(archive)))).use { tar ->
             var entry = tar.nextEntry
             while (entry != null) {
@@ -253,6 +272,18 @@ class TtsModelManager(
             }
         }
     }
+
+    private fun archiveUncompressedBytes(archive: File): Long =
+        TarArchiveInputStream(BZip2CompressorInputStream(BufferedInputStream(FileInputStream(archive)))).use { tar ->
+            var total = 0L
+            var entry = tar.nextEntry
+            while (entry != null) {
+                check(entry.size >= 0) { "Invalid size in model archive" }
+                total = Math.addExact(total, entry.size)
+                entry = tar.nextEntry
+            }
+            total
+        }
 
     private fun replaceInstallation(model: TtsModel, content: File) {
         val target = directory(model)
@@ -276,6 +307,30 @@ class TtsModelManager(
         }
     }
 
+    internal fun hasValidIntegrity(model: TtsModel): Boolean {
+        if (model.bundled) return true
+        val artifact = TtsModelPackageCatalog.packageFor(model) ?: return false
+        val content = directory(model)
+        if (!artifact.isComplete(content)) return false
+        return (artifact.files + artifact.supplementalFiles).all { remote ->
+            File(content, remote.name).sha256() == remote.sha256
+        }
+    }
+
+    private suspend fun refreshInstalledStatuses() {
+        TtsModelCatalog.models.filterNot(TtsModel::bundled).forEach { model ->
+            modelLocks.getValue(model).withLock {
+                if (_statuses.value[model] is TtsModelStatus.Downloading) return@withLock
+                val status = if (hasValidIntegrity(model)) {
+                    TtsModelStatus.Available
+                } else {
+                    TtsModelStatus.NotInstalled
+                }
+                _statuses.value = _statuses.value + (model to status)
+            }
+        }
+    }
+
     private fun File.singleFileOrSelf(): File = listFiles()?.singleOrNull()?.takeIf { it.isDirectory } ?: this
 
     private fun File.sha256(): String {
@@ -290,4 +345,6 @@ class TtsModelManager(
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
+
+    private class ModelIntegrityException(message: String) : IOException(message)
 }
