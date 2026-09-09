@@ -3,7 +3,9 @@ Copyright (c) 2025 Supertone Inc.
 Licensed under OpenRAIL-M. The license is included with the model download.
 
 Coqui vits-coqui-pl-mai_female model files are downloaded separately.
-Licensed under BSD-3-Clause according to the original Coqui TTS model metadata.
+Licensed under BSD-3-Clause according to the original Coqui TTS model metadata
+for tts_models/pl/mai_female/vits:
+https://github.com/coqui-ai/TTS/blob/dev/TTS/.models.json
 
 sherpa-onnx Android runtime
 Copyright (c) 2022-2026 Xiaomi Corporation
