@@ -237,7 +237,7 @@ val appModule = module {
     }
     single<GemmaModelDownloadRequester> { get<GemmaModelDownloadScheduler>() }
     single { SherpaTtsEngine(get()) }
-    single { VoxCpmTtsEngine(get()) }
+    single { VoxCpmTtsEngine(androidApplication(), get()) }
     single<NeuralTtsEngine> {
         NeuralTtsEngineRegistry(
             listOf(get<SherpaTtsEngine>(), get<VoxCpmTtsEngine>())
