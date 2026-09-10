@@ -204,13 +204,28 @@ internal fun TtsModelPackage.isComplete(directory: File): Boolean =
         requiredDirectories.all {
             val required = File(directory, it)
             required.isDirectory && required.walkTopDown().any(File::isFile)
+        } &&
+        (files + supplementalFiles).all { remote ->
+            File(directory, remote.name).let { it.isFile && it.length() == remote.size }
         }
+
+internal fun TtsModelPackage.requiredStorageBytes(): Long {
+    val downloadBytes = (archive?.size ?: 0L) +
+        files.sumOf(RemoteFile::size) +
+        supplementalFiles.sumOf(RemoteFile::size)
+    val extractionHeadroom = archive?.size ?: 0L
+    return downloadBytes + extractionHeadroom + TTS_STORAGE_HEADROOM_BYTES
+}
+
+internal fun hasEnoughTtsModelStorage(availableBytes: Long, requiredBytes: Long): Boolean =
+    availableBytes >= requiredBytes
 
 private const val SUPERTONIC_HF_REVISION = "cca5a0e6c96e1d2c720986bf7e75fcc81dee3ae4"
 private const val TTS_RELEASE_ROOT =
     "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models"
 private const val SUPERTONIC_HF_ROOT =
     "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/$SUPERTONIC_HF_REVISION"
+internal const val TTS_STORAGE_HEADROOM_BYTES = 128L * 1024 * 1024
 
 private val VOCOS_FILE = RemoteFile(
     name = "vocos-22khz-univ.onnx",

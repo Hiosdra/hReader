@@ -66,6 +66,9 @@ internal class SherpaTtsEngine(
         val modelPackage = checkNotNull(TtsModelPackageCatalog.packageFor(model)) {
             "No model package registered for ${model.name}"
         }
+        check(modelManager.hasValidIntegrity(model)) {
+            "Model ${model.name} is missing or corrupt"
+        }
         return OfflineTts(
             null,
             OfflineTtsConfig(

@@ -67,6 +67,7 @@ retrofit-converter-moshi = { module = "com.squareup.retrofit2:converter-moshi", 
 moshi-kotlin = { module = "com.squareup.moshi:moshi-kotlin", version.ref = "moshi" }
 moshi-kotlin-codegen = { module = "com.squareup.moshi:moshi-kotlin-codegen", version.ref = "moshi" }
 sentry-android-core = { module = "io.sentry:sentry-android-core", version.ref = "sentry" }
+sentry-android-ndk = { module = "io.sentry:sentry-android-ndk", version.ref = "sentry" }
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-androidx-compose-navigation = { module = "io.insert-koin:koin-androidx-compose-navigation" }

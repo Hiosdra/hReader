@@ -57,4 +57,13 @@ class TtsTextProcessorTest {
         assertTrue(chunks.all { it.length <= 32 })
         assertTrue(chunks.dropLast(1).all { it.last() != 'w' })
     }
+
+    @Test
+    fun `splits long sentences on word boundaries`() {
+        val text = "one two three four five six seven eight nine ten."
+        val chunks = TtsTextProcessor.chunks(text, 20)
+
+        assertTrue(chunks.all { it.length <= 20 })
+        assertEquals(text, chunks.joinToString(" "))
+    }
 }
