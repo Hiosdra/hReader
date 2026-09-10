@@ -8,6 +8,10 @@ updates:
       day: "thursday"
       time: "04:00"
       timezone: "Europe/Warsaw"
+    ignore:
+      - dependency-name: "androidx.baselineprofile:*"
+        versions:
+          - "[1.5.0-rc01,1.5.0)"
     groups:
       androidx-testing:
         applies-to: "version-updates"
