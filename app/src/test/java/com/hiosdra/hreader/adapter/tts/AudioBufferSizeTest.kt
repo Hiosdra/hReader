@@ -18,7 +18,7 @@ class AudioBufferSizeTest {
     }
 
     @Test
-    fun `aligns Gosia buffer to float sample frames`() {
+    fun `aligns PCM float buffer to sample frames`() {
         val size = pcmFloatMonoBufferSize(sampleRate = 22_050, minimumSize = 8_192)
 
         assertEquals(0, size % Float.SIZE_BYTES)

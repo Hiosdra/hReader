@@ -101,22 +101,6 @@ internal object TtsModelPackageCatalog {
                 size = 147_031_220
             )
         ),
-        TtsModel.GOSIA to TtsModelPackage(
-            directoryName = "gosia",
-            engineFiles = SherpaModelFiles.Vits(
-                model = "pl_PL-gosia-medium.onnx",
-                tokens = "tokens.txt",
-                dataDir = "espeak-ng-data"
-            ),
-            requiredFiles = listOf("pl_PL-gosia-medium.onnx", "tokens.txt"),
-            requiredDirectories = listOf("espeak-ng-data"),
-            archive = RemoteFile(
-                name = "vits-piper-pl_PL-gosia-medium-int8.tar.bz2",
-                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pl_PL-gosia-medium-int8.tar.bz2",
-                sha256 = "72acac4c4b031725c41a61b3af0314a3d30e1ec2cd83ee410ea5f9e6d2d9d4fb",
-                size = 21_109_262
-            )
-        ),
         TtsModel.COQUI_PL_MAI_FEMALE to TtsModelPackage(
             directoryName = "vits-coqui-pl-mai_female",
             engineFiles = SherpaModelFiles.Vits(

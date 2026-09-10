@@ -453,8 +453,6 @@
     <string name="tts_model_supertonic_description">多语言神经语音 · 下载 129 MB</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
     <string name="tts_model_kokoro_description">英语和中文神经语音 · 下载 140 MB</string>
-    <string name="tts_model_gosia_name">Gosia</string>
-    <string name="tts_model_gosia_description">波兰语神经语音 · 下载 21 MB</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS（女声）</string>
     <string name="tts_model_coqui_pl_mai_female_description">波兰语 Coqui 神经语音 · 下载 71 MB</string>
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>

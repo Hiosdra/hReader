@@ -7,9 +7,14 @@ import org.junit.Test
 
 class TtsModelTest {
     @Test
-    fun `ignores malformed and unknown language overrides`() {
+    fun `falls back when a stored model has been removed`() {
+        assertEquals(TtsModel.SUPERTONIC, TtsModel.fromName("GOSIA"))
+    }
+
+    @Test
+    fun `ignores malformed removed and unknown language overrides`() {
         assertEquals(
-            mapOf("pl" to TtsModel.GOSIA),
+            emptyMap<String, TtsModel>(),
             parseTtsLanguageOverrides(
                 setOf("pl=GOSIA", "en=REMOVED_MODEL", "invalid", "=KOKORO")
             )

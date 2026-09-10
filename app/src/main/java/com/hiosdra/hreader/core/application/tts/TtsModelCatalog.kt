@@ -22,10 +22,6 @@ object TtsModelCatalog {
             supportedLanguages = setOf("en", "zh")
         ),
         TtsModelDefinition(
-            model = TtsModel.GOSIA,
-            supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
             model = TtsModel.COQUI_PL_MAI_FEMALE,
             supportedLanguages = setOf("pl")
         ),

@@ -23,7 +23,6 @@ class TtsModelPackageCatalogTest {
     fun `registers one package for every neural model`() {
         assertEquals("supertonic", TtsModelPackageCatalog.directoryName(TtsModel.SUPERTONIC))
         assertEquals("kokoro", TtsModelPackageCatalog.directoryName(TtsModel.KOKORO))
-        assertEquals("gosia", TtsModelPackageCatalog.directoryName(TtsModel.GOSIA))
         assertEquals(
             "vits-coqui-pl-mai_female",
             TtsModelPackageCatalog.directoryName(TtsModel.COQUI_PL_MAI_FEMALE)
@@ -38,7 +37,6 @@ class TtsModelPackageCatalogTest {
     fun `keeps package engine family data typed`() {
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.SUPERTONIC)?.engineFiles is SherpaModelFiles.Supertonic)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO)?.engineFiles is SherpaModelFiles.Kokoro)
-        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.GOSIA)?.engineFiles is SherpaModelFiles.Vits)
         val coqui = TtsModelPackageCatalog.packageFor(TtsModel.COQUI_PL_MAI_FEMALE)
         assertTrue(coqui?.engineFiles is SherpaModelFiles.Vits)
         assertEquals(listOf("model.onnx", "tokens.txt"), coqui?.files?.map(RemoteFile::name))

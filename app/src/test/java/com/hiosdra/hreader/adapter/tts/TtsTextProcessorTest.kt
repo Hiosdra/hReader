@@ -94,7 +94,7 @@ class TtsTextProcessorTest {
         )
         assertEquals(
             listOf("Np. w roku 2026."),
-            TtsTextProcessor.forModel(TtsModel.GOSIA, listOf("Np. w roku 2026."))
+            TtsTextProcessor.forModel(TtsModel.PIPER_LESSAC_HIGH, listOf("Np. w roku 2026."))
         )
     }
 

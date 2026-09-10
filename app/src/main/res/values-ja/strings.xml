@@ -453,8 +453,6 @@
     <string name="tts_model_supertonic_description">多言語ニューラル音声 · 129 MBのダウンロード</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
     <string name="tts_model_kokoro_description">英語と中国語のニューラル音声 · 140 MBのダウンロード</string>
-    <string name="tts_model_gosia_name">Gosia</string>
-    <string name="tts_model_gosia_description">ポーランド語のニューラル音声 · 21 MBのダウンロード</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS（女性）</string>
     <string name="tts_model_coqui_pl_mai_female_description">ポーランド語のCoquiニューラル音声 · 71 MBのダウンロード</string>
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>

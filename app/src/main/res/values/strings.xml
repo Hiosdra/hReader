@@ -576,8 +576,6 @@
     <string name="tts_model_supertonic_description">Multilingual neural voice · 129 MB download</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
     <string name="tts_model_kokoro_description">English and Chinese neural voices · 140 MB download</string>
-    <string name="tts_model_gosia_name">Gosia</string>
-    <string name="tts_model_gosia_description">Polish neural voice · 21 MB download</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (female)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Polish Coqui neural voice · 71 MB download</string>
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>

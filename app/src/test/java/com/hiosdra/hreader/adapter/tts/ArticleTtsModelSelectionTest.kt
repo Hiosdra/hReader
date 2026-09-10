@@ -54,7 +54,7 @@ class ArticleTtsModelSelectionTest {
             TtsModel.ANDROID,
             resolveArticleTtsModel(
                 modelOverride = TtsModel.SUPERTONIC,
-                settingsModel = TtsModel.GOSIA,
+                settingsModel = TtsModel.SUPERTONIC,
                 language = "pl",
                 statuses = mapOf(TtsModel.SUPERTONIC to TtsModelStatus.Available),
                 supportsArm64 = false
@@ -65,12 +65,12 @@ class ArticleTtsModelSelectionTest {
     @Test
     fun `uses language setting when there is no temporary override`() {
         assertEquals(
-            TtsModel.GOSIA,
+            TtsModel.SUPERTONIC,
             resolveArticleTtsModel(
                 modelOverride = null,
-                settingsModel = TtsModel.GOSIA,
+                settingsModel = TtsModel.SUPERTONIC,
                 language = "pl",
-                statuses = mapOf(TtsModel.GOSIA to TtsModelStatus.Available),
+                statuses = mapOf(TtsModel.SUPERTONIC to TtsModelStatus.Available),
                 supportsArm64 = true
             )
         )
