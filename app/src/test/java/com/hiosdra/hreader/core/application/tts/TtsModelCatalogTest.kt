@@ -13,7 +13,7 @@ class TtsModelCatalogTest {
     @Test
     fun `keeps model family separate from model id`() {
         assertEquals(TtsEngineFamily.SUPERTONIC, TtsModelCatalog.definition(TtsModel.SUPERTONIC).model.family)
-        assertEquals(TtsEngineFamily.VITS, TtsModelCatalog.definition(TtsModel.GOSIA).model.family)
+        assertEquals(TtsEngineFamily.VITS, TtsModelCatalog.definition(TtsModel.PIPER_LESSAC_HIGH).model.family)
         assertEquals(TtsEngineFamily.KITTEN, TtsModelCatalog.definition(TtsModel.KITTEN_MINI).model.family)
         assertEquals(TtsEngineFamily.MATCHA, TtsModelCatalog.definition(TtsModel.MATCHA_LJSPEECH).model.family)
     }
@@ -23,7 +23,6 @@ class TtsModelCatalogTest {
         assertEquals(
             listOf(
                 TtsModel.SUPERTONIC,
-                TtsModel.GOSIA,
                 TtsModel.COQUI_PL_MAI_FEMALE,
                 TtsModel.ANDROID
             ),

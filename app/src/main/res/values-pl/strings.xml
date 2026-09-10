@@ -549,8 +549,6 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="tts_model_supertonic_description">Wielojęzyczny głos neuronowy · pobranie 129 MB</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
     <string name="tts_model_kokoro_description">Angielskie i chińskie głosy neuronowe · pobranie 140 MB</string>
-    <string name="tts_model_gosia_name">Gosia</string>
-    <string name="tts_model_gosia_description">Polski głos neuronowy · pobranie 21 MB</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (żeński)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Polski głos neuronowy Coqui · pobranie 71 MB</string>
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
