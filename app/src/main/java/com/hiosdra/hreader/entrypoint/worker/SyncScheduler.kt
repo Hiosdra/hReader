@@ -36,6 +36,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -45,6 +46,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
+import java.util.UUID
 
 private const val CONTENT_SYNC_WORK = "ContentSyncWorker"
 private const val SYNC_PIPELINE_WORK = "SyncPipeline"
@@ -69,6 +71,7 @@ internal const val KEY_USER_VISIBLE = "user_visible"
 internal const val KEY_OPERATION_TITLE = "operation_title"
 internal const val KEY_ERROR_MESSAGE = "error_message"
 internal const val KEY_AI_MODEL_ID = "ai_model_id"
+internal const val KEY_SYNC_RUN_ID = "sync_run_id"
 
 internal fun offlinePreparationStage(tags: Set<String>): OfflinePreparationStage = when {
     OFFLINE_SYNC_STAGE_TAG in tags -> OfflinePreparationStage.SYNCING
@@ -187,11 +190,12 @@ class SyncScheduler(
      * Prefetching runs after a sync rather than on its own schedule: on an independent timer it
      * regularly fired against the previous article set and re-fetched nothing useful.
      */
-    override fun enqueuePrefetch() {
+    override fun enqueuePrefetch(runId: String?) {
+        val syncRunId = runId ?: UUID.randomUUID().toString()
         workManager.beginUniqueWork(
             SYNC_PIPELINE_WORK,
             ExistingWorkPolicy.KEEP,
-            prefetchRequest()
+            prefetchRequest(runId = syncRunId)
         ).then(aiOverviewPreloadRequest()).then(maintenanceRequest()).enqueue()
     }
 
@@ -223,13 +227,14 @@ class SyncScheduler(
         operationTitle: String,
         policy: ExistingWorkPolicy
     ): SyncOperationId {
-        val syncWork = syncRequest(plan, operationTitle)
+        val syncRunId = UUID.randomUUID().toString()
+        val syncWork = syncRequest(plan, operationTitle, syncRunId)
         var continuation = workManager
             .beginUniqueWork(SYNC_PIPELINE_WORK, policy, syncWork)
-            .then(prefetchRequest(plan, operationTitle))
+            .then(prefetchRequest(plan, operationTitle, syncRunId))
             .then(aiOverviewPreloadRequest())
         if (plan.includeFullPages) {
-            continuation = continuation.then(fullPageRequest(plan, operationTitle))
+            continuation = continuation.then(fullPageRequest(plan, operationTitle, syncRunId))
         }
         continuation.then(maintenanceRequest()).enqueue()
         return SyncOperationId(syncWork.id)
@@ -237,6 +242,29 @@ class SyncScheduler(
 
     override fun observeRequestedSync(): Flow<SyncOperationStatus> =
         observeSyncPipeline().map { it.status }
+
+    override fun observeSyncActivity(): Flow<Boolean> = combine(
+        workManager.getWorkInfosForUniqueWorkFlow(CONTENT_SYNC_WORK),
+        workManager.getWorkInfosForUniqueWorkFlow(SYNC_PIPELINE_WORK)
+    ) { periodic, pipeline ->
+        periodic.any { it.state == WorkInfo.State.RUNNING } || pipeline.any { info ->
+            info.state == WorkInfo.State.RUNNING ||
+                info.state == WorkInfo.State.ENQUEUED ||
+                info.state == WorkInfo.State.BLOCKED
+        }
+    }.distinctUntilChanged()
+
+    override fun observeNextScheduledSync(): Flow<Long?> =
+        workManager.getWorkInfosForUniqueWorkFlow(CONTENT_SYNC_WORK)
+            .map { infos ->
+                infos.firstOrNull {
+                    it.periodicityInfo != null &&
+                        (it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING)
+                }
+                    ?.nextScheduleTimeMillis
+                    ?.takeIf { it > 0L }
+            }
+            .distinctUntilChanged()
 
     /** Stops everything in flight. What is queued has no account left to run against. */
     override suspend fun cancelAllSync() {
@@ -296,7 +324,8 @@ class SyncScheduler(
 
     private fun syncRequest(
         plan: SyncPlan,
-        operationTitle: String
+        operationTitle: String,
+        runId: String
     ) = OneTimeWorkRequestBuilder<ContentSyncWorker>()
         .setConstraints(networkConstraints())
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
@@ -307,6 +336,7 @@ class SyncScheduler(
                 .putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
                 .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
                 .putString(KEY_OPERATION_TITLE, operationTitle)
+                .putString(KEY_SYNC_RUN_ID, runId)
                 .build()
         )
         .apply {
@@ -340,7 +370,8 @@ class SyncScheduler(
 
     private fun prefetchRequest(
         plan: SyncPlan = syncCoordinator.plan(SyncIntent.Periodic),
-        operationTitle: String = context.getString(R.string.notification_sync_title)
+        operationTitle: String = context.getString(R.string.notification_sync_title),
+        runId: String? = null
     ) =
         OneTimeWorkRequestBuilder<ArticleContentSyncWorker>()
             .setConstraints(
@@ -357,6 +388,7 @@ class SyncScheduler(
                     .putBoolean(KEY_DOWNLOAD_ALL_IMAGES, plan.fullOfflinePreparation)
                     .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
                     .putString(KEY_OPERATION_TITLE, operationTitle)
+                    .apply { runId?.let { putString(KEY_SYNC_RUN_ID, it) } }
                     .build()
             )
             .apply {
@@ -389,7 +421,8 @@ class SyncScheduler(
 
     private fun fullPageRequest(
         plan: SyncPlan,
-        operationTitle: String
+        operationTitle: String,
+        runId: String? = null
     ) = OneTimeWorkRequestBuilder<FullPageSyncWorker>()
         .setConstraints(
             networkConstraints(
@@ -403,6 +436,7 @@ class SyncScheduler(
                 .putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
                 .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
                 .putString(KEY_OPERATION_TITLE, operationTitle)
+                .apply { runId?.let { putString(KEY_SYNC_RUN_ID, it) } }
                 .build()
         )
         .apply {

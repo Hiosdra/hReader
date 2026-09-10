@@ -5,11 +5,14 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.sync.SyncIntent
 import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 interface SyncRequester {
     fun start()
     fun schedulePeriodicSync()
-    fun enqueuePrefetch()
+    fun enqueuePrefetch(runId: String? = null)
     fun request(intent: SyncIntent): SyncOperationId?
     fun syncNow(
         forceFullSync: Boolean = false,
@@ -18,6 +21,10 @@ interface SyncRequester {
     ): SyncOperationId? = request(SyncIntent.User(forceFullSync, userVisible, operationTitle))
     fun resyncNow(): SyncOperationId? = request(SyncIntent.Resync)
     fun observeRequestedSync(): Flow<SyncOperationStatus>
+    fun observeSyncActivity(): Flow<Boolean> = observeRequestedSync()
+        .map { it.isRunning }
+        .distinctUntilChanged()
+    fun observeNextScheduledSync(): Flow<Long?> = flowOf(null)
     fun observeOfflinePreparation(): Flow<OfflinePreparationProgress>
     suspend fun cancelAllSync()
     fun enqueueBackgroundSyncChain()

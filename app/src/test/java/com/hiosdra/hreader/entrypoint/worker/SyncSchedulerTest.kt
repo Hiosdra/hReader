@@ -30,6 +30,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import java.util.UUID
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 @RunWith(JUnit4::class)
@@ -161,6 +162,27 @@ class SyncSchedulerTest {
     }
 
     @Test
+    fun syncPipeline_propagatesOneRunIdToAllHealthStages() {
+        val syncRequest = slot<OneTimeWorkRequest>()
+        val stageRequests = mutableListOf<OneTimeWorkRequest>()
+
+        every {
+            workManager.beginUniqueWork(
+                "SyncPipeline",
+                ExistingWorkPolicy.REPLACE,
+                capture(syncRequest)
+            )
+        } returns workContinuation
+        every { workContinuation.then(capture(stageRequests)) } returns workContinuation
+
+        scheduler.syncNow()
+
+        val runId = syncRequest.captured.workSpec.input.getString(KEY_SYNC_RUN_ID)
+        assertNotNull(runId)
+        assertEquals(runId, stageRequests.first().workSpec.input.getString(KEY_SYNC_RUN_ID))
+    }
+
+    @Test
     fun gemmaOverviewPreloadDoesNotRequireNetwork() {
         every { aiPreferences.getAiModelId() } returns AiModel.GEMMA_4_E2B_ID
         val stageRequests = mutableListOf<OneTimeWorkRequest>()
@@ -255,6 +277,18 @@ class SyncSchedulerTest {
         val status = operationStatus(listOf(workInfo(WorkInfo.State.CANCELLED)))
 
         assertEquals(SyncOperationState.CANCELLED, status.state)
+    }
+
+    @Test
+    fun nextScheduledSync_remainsVisibleWhilePeriodicWorkRuns() = runBlocking {
+        val periodicity = mockk<WorkInfo.PeriodicityInfo>(relaxed = true)
+        val info = workInfo(WorkInfo.State.RUNNING).also {
+            every { it.periodicityInfo } returns periodicity
+            every { it.nextScheduleTimeMillis } returns 42_000L
+        }
+        every { workManager.getWorkInfosForUniqueWorkFlow("ContentSyncWorker") } returns flowOf(listOf(info))
+
+        assertEquals(42_000L, scheduler.observeNextScheduledSync().first())
     }
 
     private fun workInfo(workState: WorkInfo.State, errorMessage: String? = null): WorkInfo =

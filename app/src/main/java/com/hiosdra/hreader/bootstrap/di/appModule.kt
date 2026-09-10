@@ -32,6 +32,7 @@ import com.hiosdra.hreader.presentation.feeds.FeedsViewModel
 import com.hiosdra.hreader.presentation.feeds.add.AddFeedViewModel
 import com.hiosdra.hreader.presentation.main.MainViewModel
 import com.hiosdra.hreader.presentation.settings.SettingsViewModel
+import com.hiosdra.hreader.presentation.sync.SyncHealthViewModel
 import com.hiosdra.hreader.adapter.observability.ErrorReportingManager
 import com.hiosdra.hreader.adapter.image.ImageLoader
 import com.hiosdra.hreader.adapter.system.NetworkMonitor
@@ -73,6 +74,7 @@ import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.SentryPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
@@ -82,6 +84,7 @@ import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.feeds.FeedUseCase
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
+import com.hiosdra.hreader.core.application.usecase.sync.SyncHealthUseCase
 import com.hiosdra.hreader.entrypoint.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.ArticleAiOverviewPreloadWorker
 import com.hiosdra.hreader.entrypoint.worker.ContentSyncWorker
@@ -90,6 +93,7 @@ import com.hiosdra.hreader.entrypoint.worker.FullPageSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadScheduler
 import com.hiosdra.hreader.entrypoint.worker.GemmaModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.SyncScheduler
+import com.hiosdra.hreader.entrypoint.worker.SyncRunGate
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadWorker
 import com.hiosdra.hreader.entrypoint.worker.TtsModelDownloadScheduler
 import org.koin.android.ext.koin.androidApplication
@@ -195,6 +199,7 @@ val appModule = module {
         CacheOwnershipCoordinator(
             dataCleaner = get(),
             preferences = get(),
+            syncHealth = get(),
             backendIdentity = get(),
             preferenceWrites = get()
         )
@@ -213,6 +218,7 @@ val appModule = module {
     single<SentryPreferences> { get<PreferencesManager>() }
     single<PerformancePreferences> { get<PreferencesManager>() }
     single<SyncPreferences> { get<PreferencesManager>() }
+    single<SyncHealthStore> { get<PreferencesManager>() }
     single<TtsPreferences> { get<PreferencesManager>() }
     single { ErrorReportingManager(androidApplication(), get()) }
     single<ErrorReporter> { get<ErrorReportingManager>() }
@@ -254,6 +260,7 @@ val appModule = module {
         )
     }
     single<SyncRequester> { get<SyncScheduler>() }
+    single { SyncRunGate() }
     single {
         ArticleReaderUseCase(
             articles = get<ArticleQueryStore>(),
@@ -294,11 +301,11 @@ val appModule = module {
             preferenceWrites = get()
         )
     }
-    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
-    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get()) }
-    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get()) }
+    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }
@@ -306,4 +313,6 @@ val appModule = module {
     viewModel { ArticleViewModel(get()) }
     viewModel { AddFeedViewModel(get()) }
     viewModel { SettingsViewModel(get()) }
+    single { SyncHealthUseCase(get(), get(), get(), get(), get()) }
+    viewModel { SyncHealthViewModel(get(), get()) }
 }

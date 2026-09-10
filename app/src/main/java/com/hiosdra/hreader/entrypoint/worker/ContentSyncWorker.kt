@@ -14,10 +14,15 @@ import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
+import com.hiosdra.hreader.core.application.sync.ArticleSyncResult
+import com.hiosdra.hreader.core.application.sync.SyncFailureStage
+import com.hiosdra.hreader.core.application.sync.toSyncFailure
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import java.time.Clock
 import java.time.LocalTime
+import java.util.UUID
 
 private const val MAX_RUN_ATTEMPTS = 5
 
@@ -29,7 +34,9 @@ class ContentSyncWorker(
     private val syncScheduler: SyncRequester,
     private val preferencesManager: SyncPreferences,
     private val errorReportingManager: ErrorReporter,
-    private val clock: Clock
+    private val clock: Clock,
+    private val syncHealth: SyncHealthStore,
+    private val syncRunGate: SyncRunGate = SyncRunGate()
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -52,40 +59,76 @@ class ContentSyncWorker(
             Log.i(TAG, "Inside quiet hours; skipping this run")
             return Result.success()
         }
-        return runSync()
+        return syncRunGate.withLock {
+            val runId = inputData.getString(KEY_SYNC_RUN_ID)
+                ?.takeIf { it.isNotBlank() }
+                ?: UUID.randomUUID().toString()
+            syncHealth.recordSyncStarted(clock.instant().toEpochMilli(), runId)
+            try {
+                runSync(runId)
+            } catch (e: CancellationException) {
+                syncHealth.recordSyncCancelled(clock.instant().toEpochMilli(), runId)
+                throw e
+            }
+        }
     }
 
-    private suspend fun runSync(): Result = try {
+    private suspend fun runSync(runId: String): Result {
         val forceFullSync = inputData.getBoolean(KEY_FORCE_FULL_SYNC, false)
         Log.i(TAG, "Starting ContentSyncWorker (forceFullSync=$forceFullSync)")
-        if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
+        return try {
+            if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
 
-        syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ARTICLE_REFRESH) {
-            repository.refreshArticles(forceFullSync)
-        }
+            val result = syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ARTICLE_REFRESH) {
+                repository.refreshArticles(forceFullSync)
+            }
+            syncHealth.recordSyncFinished(clock.instant().toEpochMilli(), result, runId)
+            result.failure?.let { failure ->
+                val shouldRetry = failure.retryable && runAttemptCount < MAX_RUN_ATTEMPTS
+                if (!shouldRetry) {
+                    errorReportingManager.captureMessage(
+                        "${failure.stage}:${failure.reason}",
+                        "content_sync"
+                    )
+                }
+                return if (shouldRetry) {
+                    Result.retry()
+                } else {
+                    Result.failure(
+                        workDataOf(
+                            KEY_ERROR_MESSAGE to applicationContext.getString(R.string.sync_content_failed)
+                        )
+                    )
+                }
+            }
 
-        if (inputData.getBoolean(KEY_ENQUEUE_PREFETCH, false)) {
-            syncScheduler.enqueuePrefetch()
-        }
+            if (inputData.getBoolean(KEY_ENQUEUE_PREFETCH, false)) {
+                syncScheduler.enqueuePrefetch(runId)
+            }
 
-        Log.i(TAG, "ContentSyncWorker completed successfully")
-        Result.success()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        Log.e(TAG, "ContentSyncWorker failed: ${e.message}", e)
-        // A 5xx or a dropped connection is worth another attempt; a 4xx (bad token, bad request)
-        // will fail identically every time, so it waits for the next period instead.
-        val shouldRetry = e.isRetryable() && runAttemptCount < MAX_RUN_ATTEMPTS
-        if (!shouldRetry) errorReportingManager.captureException(e, "content_sync")
-        if (shouldRetry) {
-            Result.retry()
-        } else {
-            Result.failure(
-                workDataOf(
-                    KEY_ERROR_MESSAGE to applicationContext.getString(R.string.sync_content_failed)
-                )
+            Log.i(TAG, "ContentSyncWorker completed successfully")
+            Result.success()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "ContentSyncWorker failed: ${e.message}", e)
+            val failure = e.toSyncFailure(SyncFailureStage.ARTICLE_SYNC)
+            syncHealth.recordSyncFinished(
+                clock.instant().toEpochMilli(),
+                ArticleSyncResult(failure = failure),
+                runId
             )
+            val shouldRetry = failure.retryable && runAttemptCount < MAX_RUN_ATTEMPTS
+            if (!shouldRetry) errorReportingManager.captureException(e, "content_sync")
+            if (shouldRetry) {
+                Result.retry()
+            } else {
+                Result.failure(
+                    workDataOf(
+                        KEY_ERROR_MESSAGE to applicationContext.getString(R.string.sync_content_failed)
+                    )
+                )
+            }
         }
     }
 

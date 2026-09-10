@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.persistence
 
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -16,9 +17,10 @@ import org.junit.Test
 class CacheOwnershipCoordinatorTest {
     private val cleaner = mockk<CacheDataCleaner>(relaxed = true)
     private val preferences = mockk<SyncPreferences>(relaxed = true)
+    private val syncHealth = mockk<SyncHealthStore>(relaxed = true)
     private val identity = mockk<BackendIdentity>(relaxed = true)
     private val writes = mockk<PreferenceWriteBarrier>(relaxed = true)
-    private val coordinator = CacheOwnershipCoordinator(cleaner, preferences, identity, writes)
+    private val coordinator = CacheOwnershipCoordinator(cleaner, preferences, syncHealth, identity, writes)
 
     @Test
     fun `same owner repairs without clearing the cache`() = runBlocking {
@@ -43,6 +45,7 @@ class CacheOwnershipCoordinatorTest {
 
         assertTrue(changed)
         coVerify { cleaner.clearAll() }
+        coVerify { syncHealth.clear() }
         verify { preferences.setCacheOwnerKey("new-owner") }
         verify { preferences.clearSyncCheckpoint() }
         coVerify { writes.awaitWrites() }

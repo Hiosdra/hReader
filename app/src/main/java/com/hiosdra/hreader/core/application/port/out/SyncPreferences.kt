@@ -24,6 +24,7 @@ interface SyncPreferences {
     fun setImageCacheBudgetMegabytes(megabytes: Int)
     fun getSyncIntervalMinutes(): Int
     fun setSyncIntervalMinutes(minutes: Int)
+    fun observeSyncIntervalMinutes(): Flow<Int>
     fun getSyncOnUnmeteredOnly(): Boolean
     fun setSyncOnUnmeteredOnly(enabled: Boolean)
     fun getSyncWhileRoaming(): Boolean
