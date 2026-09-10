@@ -459,6 +459,8 @@
     <string name="tts_model_kokoro_description">İngilizce ve Çince için sinirsel sesler · 140 MB indirme</string>
     <string name="tts_model_gosia_name">Gosia</string>
     <string name="tts_model_gosia_description">Lehçe sinirsel ses · 21 MB indirme</string>
+    <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (kadın)</string>
+    <string name="tts_model_coqui_pl_mai_female_description">Lehçe Coqui sinirsel sesi · 71 MB indirme</string>
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
     <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>

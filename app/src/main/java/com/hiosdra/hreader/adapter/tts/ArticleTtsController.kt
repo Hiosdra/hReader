@@ -129,11 +129,13 @@ class ArticleTtsController internal constructor(
                     isPreparing = true,
                     error = null
                 )
+                val synthesisChunks = TtsTextProcessor.forModel(model, chunks)
+                _state.value = _state.value.copy(totalChunks = synthesisChunks.size)
                 runCatchingCancellable {
                     if (model == TtsModel.ANDROID) {
                         speakWithAndroid(chunks, language)
                     } else {
-                        speakWithNeuralTts(model, chunks, language)
+                        speakWithNeuralTts(model, synthesisChunks, language)
                     }
                 }.onFailure failure@{
                     if (version != playbackVersion) return@failure

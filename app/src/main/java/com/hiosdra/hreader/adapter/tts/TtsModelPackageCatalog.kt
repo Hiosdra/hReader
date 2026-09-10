@@ -117,6 +117,16 @@ internal object TtsModelPackageCatalog {
                 size = 21_109_262
             )
         ),
+        TtsModel.COQUI_PL_MAI_FEMALE to TtsModelPackage(
+            directoryName = "vits-coqui-pl-mai_female",
+            engineFiles = SherpaModelFiles.Vits(
+                model = "model.onnx",
+                tokens = "tokens.txt",
+                dataDir = ""
+            ),
+            requiredFiles = listOf("model.onnx", "tokens.txt"),
+            files = COQUI_FILES
+        ),
         TtsModel.PIPER_LESSAC_HIGH to piperPackage(
             directoryName = "piper-lessac-high",
             modelName = "en_US-lessac-high.onnx",
@@ -221,11 +231,14 @@ internal fun hasEnoughTtsModelStorage(availableBytes: Long, requiredBytes: Long)
     availableBytes >= requiredBytes
 
 private const val SUPERTONIC_HF_REVISION = "cca5a0e6c96e1d2c720986bf7e75fcc81dee3ae4"
+private const val COQUI_HF_REVISION = "19e9a1a8e697491e5b9849f8f904584792d60fb8"
 private const val TTS_RELEASE_ROOT =
     "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models"
 private const val SUPERTONIC_HF_ROOT =
     "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/$SUPERTONIC_HF_REVISION"
 internal const val TTS_STORAGE_HEADROOM_BYTES = 128L * 1024 * 1024
+private const val COQUI_HF_ROOT =
+    "https://huggingface.co/csukuangfj/vits-coqui-pl-mai_female/resolve/$COQUI_HF_REVISION"
 
 private val VOCOS_FILE = RemoteFile(
     name = "vocos-22khz-univ.onnx",
@@ -282,5 +295,20 @@ private val SUPERTONIC_FILES = listOf(
         "$SUPERTONIC_HF_ROOT/voice.bin",
         "67d5209b0ee8ce6c74105ffbe12fe6a7628aea3b4ba2fcb308a4a67938a93ce8",
         517_168
+    )
+)
+
+private val COQUI_FILES = listOf(
+    RemoteFile(
+        name = "model.onnx",
+        url = "$COQUI_HF_ROOT/model.onnx",
+        sha256 = "74bd98e84c42961d58b3523ec2a9a98549480b23c3d9e8e1dd52e2f03eb00575",
+        size = 71_024_119
+    ),
+    RemoteFile(
+        name = "tokens.txt",
+        url = "$COQUI_HF_ROOT/tokens.txt",
+        sha256 = "4b4ba3385bf661b87735835de24365e25623d250be0621bc184dff050df4c2fb",
+        size = 1_410
     )
 )

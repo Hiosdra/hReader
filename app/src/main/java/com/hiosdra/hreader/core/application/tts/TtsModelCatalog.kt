@@ -26,6 +26,10 @@ object TtsModelCatalog {
             supportedLanguages = setOf("pl")
         ),
         TtsModelDefinition(
+            model = TtsModel.COQUI_PL_MAI_FEMALE,
+            supportedLanguages = setOf("pl")
+        ),
+        TtsModelDefinition(
             model = TtsModel.PIPER_LESSAC_HIGH,
             supportedLanguages = setOf("en")
         ),

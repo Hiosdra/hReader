@@ -24,6 +24,7 @@ class TtsModelCatalogTest {
             listOf(
                 TtsModel.SUPERTONIC,
                 TtsModel.GOSIA,
+                TtsModel.COQUI_PL_MAI_FEMALE,
                 TtsModel.ANDROID
             ),
             TtsModelCatalog.compatibleModels("PL")
