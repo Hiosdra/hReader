@@ -44,6 +44,7 @@ class CacheOwnershipCoordinatorTest {
         assertTrue(changed)
         coVerify { cleaner.clearAll() }
         verify { preferences.setCacheOwnerKey("new-owner") }
+        verify { preferences.clearSyncCheckpoint() }
         coVerify { writes.awaitWrites() }
     }
 

@@ -482,9 +482,11 @@ class SettingsViewModel(
         cacheOwnerCheckJob?.cancel()
         cacheOwnerCheckJob = viewModelScope.launch {
             delay(500)
-            val result = runCatchingCancellable { settings.ensureCacheOwnerWhenConfigured() }
-            if (result.getOrDefault(false)) {
+            val result = runCatchingCancellable {
                 settings.cancelAllSync()
+                settings.ensureCacheOwnerWhenConfigured()
+            }
+            if (result.getOrDefault(false)) {
                 _uiState.value = _uiState.value.copy(
                     statusMessage = UiText.Resource(R.string.settings_data_cleared_new_account)
                 )
@@ -493,6 +495,8 @@ class SettingsViewModel(
                 _uiState.value = _uiState.value.copy(
                     statusMessage = UiText.Resource(R.string.settings_cache_update_failed)
                 )
+            } else {
+                settings.schedulePeriodicSync()
             }
         }
     }

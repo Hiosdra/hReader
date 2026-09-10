@@ -201,6 +201,7 @@ class ArticleContentRepository(
         allowNetwork: Boolean,
         downloadAllImages: Boolean
     ): ArticleText {
+        credibilityStore.invalidateForEntries(listOf(entryId))
         val prepared = prepare(entryId, sourceContent, url)
         articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
         if (allowNetwork) {

@@ -11,6 +11,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiOverviewDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleReadingPositionDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.FullSyncSeenDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleCredibility
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
@@ -21,6 +22,7 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleAiOverview
 import com.hiosdra.hreader.adapter.persistence.room.entity.FeedEntity
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticlePageSnapshot
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleReadingPosition
+import com.hiosdra.hreader.adapter.persistence.room.entity.FullSyncSeenEntity
 
 @Database(
     entities = [
@@ -33,9 +35,10 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleReadingPositio
         ArticleCredibility::class,
         ArticleAiOverview::class,
         ArticlePageSnapshot::class,
-        ArticleReadingPosition::class
+        ArticleReadingPosition::class,
+        FullSyncSeenEntity::class
     ],
-    version = 20
+    version = 22
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -47,4 +50,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun articleAiOverviewDao(): ArticleAiOverviewDao
     abstract fun articlePageSnapshotDao(): ArticlePageSnapshotDao
     abstract fun articleReadingPositionDao(): ArticleReadingPositionDao
+    abstract fun fullSyncSeenDao(): FullSyncSeenDao
 }

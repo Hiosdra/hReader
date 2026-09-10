@@ -54,6 +54,7 @@ internal class CacheOwnershipCoordinator(
         preferences.setCacheOwnerKey("")
         preferences.setLastSyncTimestamp(0L)
         preferences.setLastFullSyncTimestamp(0L)
+        preferences.clearSyncCheckpoint()
         preferenceWrites.awaitWrites()
         preferences.setCacheCleanupPending(false)
         preferenceWrites.awaitWrites()

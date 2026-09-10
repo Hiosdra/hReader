@@ -102,6 +102,24 @@ class ServerConfigTest {
     }
 
     @Test
+    fun `miniflux cache owner changes when its token changes`() {
+        val before = configFor(
+            backendType = BackendType.MINIFLUX,
+            serverUrl = "miniflux.example.com",
+            secret = "token-one"
+        ).cacheOwnerKey()
+        val after = configFor(
+            backendType = BackendType.MINIFLUX,
+            serverUrl = "miniflux.example.com",
+            secret = "token-two"
+        ).cacheOwnerKey()
+
+        assertTrue(before != after)
+        assertFalse(before.contains("token-one"))
+        assertFalse(after.contains("token-two"))
+    }
+
+    @Test
     fun `cache owner treats a configured reader endpoint as the same server`() {
         val root = configFor(serverUrl = "https://rss.example.com")
         val endpoint = configFor(serverUrl = "https://rss.example.com/api/greader.php")

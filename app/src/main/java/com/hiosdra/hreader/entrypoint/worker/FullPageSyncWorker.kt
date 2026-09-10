@@ -10,7 +10,6 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.entrypoint.notification.AppNotificationFactory
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
-import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
@@ -39,7 +38,6 @@ internal fun shouldRetryFullPageSync(
 class FullPageSyncWorker(
     appContext: Context,
     params: WorkerParameters,
-    private val articleRepository: ArticleMaintenanceStore,
     private val articlePageRepository: ArticlePageStore,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val preferencesManager: SyncPreferences,
@@ -66,16 +64,13 @@ class FullPageSyncWorker(
 
         return try {
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
-            val targets = articleRepository.getPrefetchTargets()
-            val outstanding = articlePageRepository.entriesMissingPages(
-                targets.map { it.id to it.url }
-            )
-            val batch = outstanding.take(MAX_PAGES_PER_RUN)
+            articlePageRepository.cleanupOrphanedPages()
+            val totalTargets = articlePageRepository.countMissingPageTargets()
+            val batch = articlePageRepository.getMissingPageTargets(MAX_PAGES_PER_RUN)
             if (batch.isEmpty()) return Result.success()
 
-            val completedBeforeRun = (targets.size - outstanding.size).coerceAtLeast(0)
-            total.set(targets.size)
-            done.set(completedBeforeRun)
+            total.set(totalTargets)
+            done.set(0)
             coroutineScope {
                 val reporter = launch {
                     while (isActive) {
@@ -89,7 +84,7 @@ class FullPageSyncWorker(
                         articlePageRepository.prefetchPages(
                             entries = batch,
                             limit = null,
-                            onProgress = { completed, _ -> done.set(completedBeforeRun + completed) }
+                            onProgress = { completed, _ -> done.set(completed) }
                         )
                     }
                 } finally {
@@ -97,14 +92,12 @@ class FullPageSyncWorker(
                 }
             }
 
-            val remaining = articlePageRepository.entriesMissingPages(
-                targets.map { it.id to it.url }
-            ).size
-            done.set((targets.size - remaining).coerceIn(0, targets.size))
+            val remaining = articlePageRepository.countMissingPageTargets()
+            done.set((totalTargets - remaining).coerceIn(0, totalTargets))
             publishProgress()
             when {
                 remaining == 0 -> Result.success()
-                shouldRetryFullPageSync(remaining, outstanding.size, runAttemptCount) -> Result.retry()
+                shouldRetryFullPageSync(remaining, totalTargets, runAttemptCount) -> Result.retry()
                 else -> {
                     val message = applicationContext.resources.getQuantityString(
                         R.plurals.offline_original_pages_failed_count,

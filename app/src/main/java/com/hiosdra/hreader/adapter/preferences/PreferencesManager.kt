@@ -21,6 +21,8 @@ import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.sync.SyncDefaults
+import com.hiosdra.hreader.core.application.sync.SyncCheckpoint
+import com.hiosdra.hreader.core.application.sync.SyncCheckpointMode
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.parseTtsLanguageOverrides
@@ -40,6 +42,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 
 class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarrier {
     private val applicationContext = context.applicationContext
@@ -307,6 +311,22 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         updatePreferences(
             transform = { it.copy(lastFullSyncTimestamp = timestamp) },
             write = { this[lastFullSyncTimestampKey] = timestamp }
+        )
+    }
+
+    override fun getSyncCheckpoint(): SyncCheckpoint? = preferenceState.get().syncCheckpoint
+
+    override fun setSyncCheckpoint(checkpoint: SyncCheckpoint) {
+        updatePreferences(
+            transform = { it.copy(syncCheckpoint = checkpoint) },
+            write = { this[syncCheckpointKey] = encodeSyncCheckpoint(checkpoint) }
+        )
+    }
+
+    override fun clearSyncCheckpoint() {
+        updatePreferences(
+            transform = { it.copy(syncCheckpoint = null) },
+            write = { remove(syncCheckpointKey) }
         )
     }
 
@@ -721,6 +741,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         cacheOwnerKey = this[cacheOwnerKey].orEmpty(),
         cacheCleanupPending = this[cacheCleanupPendingKey] ?: false,
         lastFullSyncTimestamp = this[lastFullSyncTimestampKey] ?: 0L,
+        syncCheckpoint = this[syncCheckpointKey]?.let(::decodeSyncCheckpoint),
         syncPerformanceRecords = decodeSyncPerformanceRecords(this[syncPerformanceRecordsKey]),
         offlineBacklogTarget = (this[offlineBacklogTargetKey] ?: DEFAULT_OFFLINE_BACKLOG_TARGET)
             .coerceAtLeast(0),
@@ -806,6 +827,37 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
             .getOrDefault(emptyList())
     }
 
+    private fun encodeSyncCheckpoint(checkpoint: SyncCheckpoint): String {
+        fun encode(value: String): String =
+            Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(value.toByteArray(StandardCharsets.UTF_8))
+
+        return listOf(
+            encode(checkpoint.ownerKey),
+            checkpoint.mode.name,
+            checkpoint.startedAt.toString(),
+            checkpoint.changedAfter?.toString().orEmpty(),
+            checkpoint.cursor?.let(::encode).orEmpty(),
+            checkpoint.fullSyncRunId?.let(::encode).orEmpty()
+        ).joinToString(".")
+    }
+
+    private fun decodeSyncCheckpoint(value: String): SyncCheckpoint? = runCatching {
+        val parts = value.split('.', limit = 6)
+        require(parts.size == 5 || parts.size == 6)
+        fun decode(encoded: String): String =
+            String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8)
+
+        SyncCheckpoint(
+            ownerKey = decode(parts[0]),
+            mode = SyncCheckpointMode.valueOf(parts[1]),
+            startedAt = parts[2].toLong(),
+            changedAfter = parts[3].takeIf { it.isNotEmpty() }?.toLong(),
+            cursor = parts[4].takeIf { it.isNotEmpty() }?.let(::decode),
+            fullSyncRunId = parts.getOrNull(5)?.takeIf { it.isNotEmpty() }?.let(::decode)
+        )
+    }.getOrNull()
+
     private fun String?.toPaywallBypassMethod(): PaywallBypassMethod =
         PaywallBypassMethod.entries.firstOrNull { it.name == this } ?: PaywallBypassMethod.SMRY_AI
 
@@ -842,6 +894,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         val cacheOwnerKey: String = "",
         val cacheCleanupPending: Boolean = false,
         val lastFullSyncTimestamp: Long = 0L,
+        val syncCheckpoint: SyncCheckpoint? = null,
         val syncPerformanceRecords: List<SyncPerformanceRecord> = emptyList(),
         val offlineBacklogTarget: Int = DEFAULT_OFFLINE_BACKLOG_TARGET,
         val imageDownloadEnabled: Boolean = true,
@@ -893,6 +946,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val KEY_CACHE_OWNER = "cache_owner"
         private const val KEY_CACHE_CLEANUP_PENDING = "cache_cleanup_pending"
         private const val KEY_LAST_FULL_SYNC_TIMESTAMP = "last_full_sync_timestamp"
+        private const val KEY_SYNC_CHECKPOINT = "sync_checkpoint"
         private const val KEY_SYNC_PERFORMANCE_RECORDS = "sync_performance_records"
         private const val KEY_CREDIBILITY_SCORE_ENABLED = "credibility_score_enabled"
         private const val KEY_TTS_MODEL = "tts_model"
@@ -940,6 +994,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private val cacheOwnerKey = stringPreferencesKey(KEY_CACHE_OWNER)
         private val cacheCleanupPendingKey = booleanPreferencesKey(KEY_CACHE_CLEANUP_PENDING)
         private val lastFullSyncTimestampKey = longPreferencesKey(KEY_LAST_FULL_SYNC_TIMESTAMP)
+        private val syncCheckpointKey = stringPreferencesKey(KEY_SYNC_CHECKPOINT)
         private val syncPerformanceRecordsKey = stringPreferencesKey(KEY_SYNC_PERFORMANCE_RECORDS)
         private val credibilityScoreEnabledKey = booleanPreferencesKey(KEY_CREDIBILITY_SCORE_ENABLED)
         private val ttsModelKey = stringPreferencesKey(KEY_TTS_MODEL)

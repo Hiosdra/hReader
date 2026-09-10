@@ -89,8 +89,18 @@ class ArticleContentSyncWorker(
         Log.i(TAG, "Starting ArticleContentSyncWorker")
         return try {
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
-            val targets = articleRepository.getPrefetchTargets()
-            Log.i(TAG, "Found ${targets.size} local unread articles")
+            val downloadAllImages = inputData.getBoolean(KEY_DOWNLOAD_ALL_IMAGES, false)
+            val contentTargets = articleRepository.getPrefetchTargets(
+                limit = MAX_ARTICLES_PER_RUN,
+                downloadAllImages = downloadAllImages
+            )
+            val imageTargets = if (downloadAllImages) {
+                emptyList()
+            } else {
+                articleRepository.getPrefetchTargetsWithEnclosures(MAX_ARTICLES_PER_RUN)
+            }
+            val targets = (contentTargets + imageTargets).distinctBy { it.id }
+            Log.i(TAG, "Found ${targets.size} local articles to prefetch")
 
             if (targets.isEmpty()) {
                 Log.i(TAG, "No articles to prefetch")
@@ -101,7 +111,7 @@ class ArticleContentSyncWorker(
             // behind an unbounded article-text stage they never ran at all.
             downloadEnclosureImages(
                 targets = targets,
-                downloadAllImages = inputData.getBoolean(KEY_DOWNLOAD_ALL_IMAGES, false)
+                downloadAllImages = downloadAllImages
             )
             val remaining = prefetchArticleContent(targets)
 

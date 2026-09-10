@@ -30,6 +30,20 @@ data class SyncPlan(
     val includeFullPages: Boolean = false
 )
 
+enum class SyncCheckpointMode {
+    FULL,
+    INCREMENTAL
+}
+
+data class SyncCheckpoint(
+    val ownerKey: String,
+    val mode: SyncCheckpointMode,
+    val startedAt: Long,
+    val changedAfter: Long?,
+    val cursor: String?,
+    val fullSyncRunId: String? = null
+)
+
 class SyncCoordinator {
     fun plan(intent: SyncIntent): SyncPlan = when (intent) {
         SyncIntent.Periodic,
