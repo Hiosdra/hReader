@@ -167,8 +167,8 @@ class ArticlePageRepositoryTest {
                 every { context.filesDir } returns root
                 val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
                 val articleDao = mockk<ArticleDao>(relaxed = true)
-                coEvery { articleDao.getAllIds() } returns listOf("42")
-                coEvery { snapshotDao.getAll() } returns listOf(
+                coEvery { articleDao.getExistingIds(listOf("42")) } returns listOf("42")
+                coEvery { snapshotDao.getBatch(Long.MIN_VALUE, 500) } returns listOf(
                     ArticlePageSnapshot(
                         entryId = 42L,
                         originalUrl = ARTICLE_URL,

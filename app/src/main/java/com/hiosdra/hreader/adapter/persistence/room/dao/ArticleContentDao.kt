@@ -54,6 +54,13 @@ interface ArticleContentDao {
     @Query("SELECT entryId FROM article_contents")
     suspend fun getAllContentEntryIds(): List<Long>
 
+    @Query(
+        "SELECT c.entryId FROM article_contents c " +
+            "LEFT JOIN articles a ON a.id = CAST(c.entryId AS TEXT) " +
+            "WHERE a.id IS NULL ORDER BY c.entryId ASC LIMIT :limit"
+    )
+    suspend fun getOrphanedEntryIds(limit: Int): List<Long>
+
     @Query("SELECT COUNT(*) FROM article_contents")
     fun observeContentCount(): Flow<Int>
 

@@ -151,32 +151,43 @@ class ArticlePageRepository(
     }
 
     override suspend fun cleanupOrphanedPages() = withContext(Dispatchers.IO) {
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
-        val snapshots = snapshotDao.getAll()
-        val invalidSnapshots = snapshots.filterNot { snapshot ->
-            pageDirectory(snapshot.entryId, snapshot.directoryPath)
-                ?.resolve(INDEX_FILE)
-                ?.isFile == true
-        }.filterNot { snapshot -> hasTemporaryPageDirectory(snapshot.entryId) }
-        invalidSnapshots.mapNotNull { snapshot ->
-            pageDirectory(snapshot.entryId, snapshot.directoryPath)
-        }.forEach(File::deleteRecursively)
-        invalidSnapshots.map { it.entryId }.chunked(DELETE_CHUNK).forEach { chunk ->
-            snapshotDao.deleteForEntries(chunk)
-        }
-        val validSnapshots = snapshots - invalidSnapshots.toSet()
-        val snapshotsById = validSnapshots.associateBy { it.entryId }
-        val orphaned = snapshotsById.keys.filterNot(currentEntryIds::contains)
-        orphaned.chunked(DELETE_CHUNK).forEach { chunk ->
-            chunk.mapNotNull { entryId -> snapshotsById[entryId] }
-                .mapNotNull { snapshot -> pageDirectory(snapshot.entryId, snapshot.directoryPath) }
-                .forEach(File::deleteRecursively)
-            snapshotDao.deleteForEntries(chunk)
+        val referencedDirectories = mutableSetOf<String>()
+        var afterEntryId = Long.MIN_VALUE
+        while (true) {
+            val snapshots = snapshotDao.getBatch(afterEntryId, DELETE_CHUNK)
+            if (snapshots.isEmpty()) break
+            val currentEntryIds = articleDao.getExistingIds(snapshots.map { it.entryId.toString() })
+                .mapNotNull(String::toLongOrNull)
+                .toHashSet()
+            val entriesToDelete = mutableListOf<Long>()
+            snapshots.forEach { snapshot ->
+                val directory = pageDirectory(snapshot.entryId, snapshot.directoryPath)
+                val hasIndex = directory?.resolve(INDEX_FILE)?.isFile == true
+                when {
+                    !hasIndex && !hasTemporaryPageDirectory(snapshot.entryId) -> {
+                        directory?.deleteRecursively()
+                        entriesToDelete += snapshot.entryId
+                    }
+                    !hasIndex -> {
+                        runCatching { directory?.canonicalPath }
+                            .getOrNull()
+                            ?.let(referencedDirectories::add)
+                    }
+                    hasIndex && snapshot.entryId in currentEntryIds -> {
+                        runCatching { directory.canonicalPath }
+                            .getOrNull()
+                            ?.let(referencedDirectories::add)
+                    }
+                    hasIndex -> {
+                        directory.deleteRecursively()
+                        entriesToDelete += snapshot.entryId
+                    }
+                }
+            }
+            if (entriesToDelete.isNotEmpty()) snapshotDao.deleteForEntries(entriesToDelete)
+            afterEntryId = snapshots.last().entryId
         }
 
-        val referencedDirectories = validSnapshots.mapNotNull { snapshot ->
-            pageDirectory(snapshot.entryId, snapshot.directoryPath)?.canonicalPath
-        }.toSet()
         pagesDirectory.listFiles()
             ?.filterNot { file ->
                 isTemporaryPageDirectory(file) ||

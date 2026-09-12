@@ -282,11 +282,15 @@ class ArticleImageRepository(
         var storedBytes = articleImageDao.getTotalImageBytes()
         if (storedBytes <= budgetBytes) return@withLock
 
-        for (image in articleImageDao.getImagesOldestFirst()) {
-            if (storedBytes <= budgetBytes) break
-            File(image.localFilePath).delete()
-            articleImageDao.deleteArticleImage(image)
-            storedBytes -= image.fileSize ?: 0L
+        while (storedBytes > budgetBytes) {
+            val images = articleImageDao.getImagesOldestFirst(DELETE_CHUNK)
+            if (images.isEmpty()) break
+            for (image in images) {
+                if (storedBytes <= budgetBytes) break
+                File(image.localFilePath).delete()
+                articleImageDao.deleteArticleImage(image)
+                storedBytes -= image.fileSize ?: 0L
+            }
         }
         Log.i(TAG, "Image cache trimmed to $storedBytes bytes")
     }
@@ -296,19 +300,17 @@ class ArticleImageRepository(
      * than the image rows: retention and full-sync reconciliation can orphan thousands at once.
      */
     override suspend fun cleanupOrphanedImages() {
-        val storedEntryIds = (
-            articleImageDao.getAllImageEntryIds() + articleImageDao.getAllExpectedImageEntryIds()
-            ).distinct()
-        if (storedEntryIds.isEmpty()) return
-
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
-        val orphaned = storedEntryIds.filterNot { currentEntryIds.contains(it) }
-        if (orphaned.isEmpty()) return
-
-        orphaned.chunked(DELETE_CHUNK).forEach { chunk ->
-            articleImageDao.getImagePathsForArticles(chunk).forEach { File(it).delete() }
-            articleImageDao.deleteImagesForArticles(chunk)
-            articleImageDao.deleteExpectedImagesForArticles(chunk)
+        while (true) {
+            val orphaned = articleImageDao.getOrphanedImageEntryIds(DELETE_CHUNK)
+            if (orphaned.isEmpty()) break
+            articleImageDao.getImagePathsForArticles(orphaned).forEach { File(it).delete() }
+            articleImageDao.deleteImagesForArticles(orphaned)
+            articleImageDao.deleteExpectedImagesForArticles(orphaned)
+        }
+        while (true) {
+            val orphaned = articleImageDao.getOrphanedExpectedEntryIds(DELETE_CHUNK)
+            if (orphaned.isEmpty()) break
+            articleImageDao.deleteExpectedImagesForArticles(orphaned)
         }
     }
 
