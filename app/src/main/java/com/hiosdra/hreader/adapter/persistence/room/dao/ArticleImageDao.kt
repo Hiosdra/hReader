@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageManifest
+import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageFile
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -23,6 +24,12 @@ interface ArticleImageDao {
     @Query("SELECT * FROM article_images")
     suspend fun getAllImages(): List<ArticleImage>
 
+    @Query(
+        "SELECT id, localFilePath FROM article_images " +
+            "WHERE id > :afterId ORDER BY id ASC LIMIT :limit"
+    )
+    suspend fun getImageFilesAfterId(afterId: String, limit: Int): List<ArticleImageFile>
+
     @Query("DELETE FROM article_images WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<String>)
 
@@ -36,8 +43,22 @@ interface ArticleImageDao {
     @Query("SELECT DISTINCT entryId FROM article_images")
     suspend fun getAllImageEntryIds(): List<Long>
 
+    @Query(
+        "SELECT DISTINCT i.entryId FROM article_images i " +
+            "LEFT JOIN articles a ON a.id = CAST(i.entryId AS TEXT) " +
+            "WHERE a.id IS NULL ORDER BY i.entryId ASC LIMIT :limit"
+    )
+    suspend fun getOrphanedImageEntryIds(limit: Int): List<Long>
+
     @Query("SELECT DISTINCT entryId FROM article_image_manifest")
     suspend fun getAllExpectedImageEntryIds(): List<Long>
+
+    @Query(
+        "SELECT DISTINCT m.entryId FROM article_image_manifest m " +
+            "LEFT JOIN articles a ON a.id = CAST(m.entryId AS TEXT) " +
+            "WHERE a.id IS NULL ORDER BY m.entryId ASC LIMIT :limit"
+    )
+    suspend fun getOrphanedExpectedEntryIds(limit: Int): List<Long>
 
     @Query("SELECT localFilePath FROM article_images WHERE entryId IN (:entryIds)")
     suspend fun getImagePathsForArticles(entryIds: List<Long>): List<String>
@@ -89,6 +110,6 @@ interface ArticleImageDao {
     suspend fun getTotalImageBytes(): Long
 
     /** Oldest first: what the cache budget evicts when it has to make room. */
-    @Query("SELECT * FROM article_images ORDER BY downloadedAt ASC")
-    suspend fun getImagesOldestFirst(): List<ArticleImage>
+    @Query("SELECT * FROM article_images ORDER BY downloadedAt ASC LIMIT :limit")
+    suspend fun getImagesOldestFirst(limit: Int): List<ArticleImage>
 }
