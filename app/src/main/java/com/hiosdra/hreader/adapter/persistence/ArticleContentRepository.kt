@@ -362,12 +362,10 @@ class ArticleContentRepository(
 
         // Only the ids: every row here holds a full article body, and reading all of them to
         // compare a number put the entire offline cache in memory inside a background worker.
-        val orphanedContent = articleContentDao.getAllContentEntryIds()
-            .filterNot { currentEntryIds.contains(it) }
-        // Chunked: retention and full-sync reconciliation can orphan thousands of rows at once,
-        // and one statement for all of them would exceed SQLite's bound-variable ceiling.
-        orphanedContent.chunked(DELETE_CHUNK).forEach { chunk ->
-            articleContentDao.deleteArticlesContent(chunk)
+        while (true) {
+            val orphanedContent = articleContentDao.getOrphanedEntryIds(DELETE_CHUNK)
+            if (orphanedContent.isEmpty()) break
+            articleContentDao.deleteArticlesContent(orphanedContent)
         }
 
         // Runs unconditionally: images outlive their content rows, and bailing out when no

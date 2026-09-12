@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.persistence
 
 import androidx.room.withTransaction
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
+import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageFile
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -34,15 +35,19 @@ internal class CacheDataCleaner(
 
     suspend fun repair() {
         contentStore?.cleanupOrphanedContent()
-        val images = db.articleImageDao().getAllImages()
-        val missing = images.filterNot { File(it.localFilePath).isFile }
-        missing.chunked(500).forEach { chunk ->
-            db.articleImageDao().deleteByIds(chunk.map { it.id })
+        val referencedPaths = mutableSetOf<String>()
+        var afterId = ""
+        while (true) {
+            val images = db.articleImageDao().getImageFilesAfterId(afterId, 500)
+            if (images.isEmpty()) break
+            val missingIds = images.filterNot { File(it.localFilePath).isFile }.map(ArticleImageFile::id)
+            if (missingIds.isNotEmpty()) db.articleImageDao().deleteByIds(missingIds)
+            images.asSequence()
+                .filterNot { it.id in missingIds }
+                .mapNotNull { runCatching { File(it.localFilePath).canonicalPath }.getOrNull() }
+                .forEach(referencedPaths::add)
+            afterId = images.last().id
         }
-        val referencedPaths = images
-            .filter { it !in missing }
-            .mapNotNull { runCatching { File(it.localFilePath).canonicalPath }.getOrNull() }
-            .toSet()
         withContext(Dispatchers.IO) {
             imagesDir.listFiles()?.forEach { file ->
                 val path = runCatching { file.canonicalPath }.getOrNull() ?: return@forEach
