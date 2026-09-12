@@ -348,6 +348,7 @@
     <string name="settings_configure_server">Configure a feed server first.</string>
     <string name="settings_data_cleared_new_account">Downloaded data was cleared for the new account.</string>
     <string name="settings_cache_update_failed">Could not update the local cache.</string>
+    <string name="settings_server_settings_saved">Server settings saved.</string>
     <string name="settings_prepare_cache_failed">Could not prepare the local cache.</string>
     <plurals name="settings_connected">
         <item quantity="one">Connected. Found %1$d subscription.</item>
@@ -361,6 +362,7 @@
     <string name="server_username">Username</string>
     <string name="server_testing">Testing…</string>
     <string name="server_test_connection">Test connection</string>
+    <string name="settings_save_server_settings">Save server settings</string>
     <string name="backend_switch_title">Switch to %1$s?</string>
     <string name="backend_switch_message">hReader syncs with one server at a time. Switching signs you out of %1$s and deletes every article, feed and image downloaded from it. Your %2$s credentials are kept and a fresh sync starts afterwards.</string>
 

@@ -19,6 +19,7 @@ import com.hiosdra.hreader.core.application.ai.GemmaBackend
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.settings.BackendConfiguration
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.SyncDefaults
@@ -204,6 +205,46 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         updateSecrets(
             transform = { it.copy(freshRssUsername = username) },
             write = { writeSecret(freshRssUsernameKey, username) }
+        )
+    }
+
+    override fun getBackendConfiguration(): BackendConfiguration = BackendConfiguration(
+        backendType = getBackendType(),
+        freshRssServerUrl = getServerUrl(BackendType.FRESHRSS),
+        freshRssUsername = getFreshRssUsername(),
+        freshRssSecret = getBackendSecret(BackendType.FRESHRSS),
+        minifluxServerUrl = getServerUrl(BackendType.MINIFLUX),
+        minifluxSecret = getBackendSecret(BackendType.MINIFLUX)
+    )
+
+    override fun setBackendConfiguration(configuration: BackendConfiguration) {
+        updatePreferences(
+            transform = {
+                it.copy(
+                    backendType = configuration.backendType,
+                    freshRssServerUrl = configuration.freshRssServerUrl,
+                    minifluxServerUrl = configuration.minifluxServerUrl
+                )
+            },
+            write = {
+                this[backendTypeKey] = configuration.backendType.name
+                this[freshRssServerUrlKey] = configuration.freshRssServerUrl
+                this[minifluxServerUrlKey] = configuration.minifluxServerUrl
+            }
+        )
+        updateSecrets(
+            transform = {
+                it.copy(
+                    freshRssUsername = configuration.freshRssUsername,
+                    freshRssApiPassword = configuration.freshRssSecret,
+                    minifluxApiToken = configuration.minifluxSecret
+                )
+            },
+            write = {
+                writeSecret(freshRssUsernameKey, configuration.freshRssUsername)
+                writeSecret(freshRssApiPasswordKey, configuration.freshRssSecret)
+                writeSecret(minifluxApiTokenKey, configuration.minifluxSecret)
+            }
         )
     }
 

@@ -156,6 +156,7 @@ fun SettingsScreen(
                         onUsernameChange = settingsViewModel::onUsernameChange,
                         onSecretChange = settingsViewModel::onSecretChange,
                         onTestConnection = settingsViewModel::testConnection,
+                        onApplySettings = settingsViewModel::applyServerSettings,
                         modifier = Modifier.padding(16.dp)
                     )
                 }

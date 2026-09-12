@@ -275,6 +275,7 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="settings_configure_server">Configura primero un servidor de fuentes.</string>
     <string name="settings_data_cleared_new_account">Se borraron los datos para la nueva cuenta.</string>
     <string name="settings_cache_update_failed">No se pudo actualizar la caché local.</string>
+    <string name="settings_server_settings_saved">Configuración del servidor guardada.</string>
     <string name="settings_prepare_cache_failed">No se pudo preparar la caché local.</string>
     <plurals name="settings_connected"><item quantity="one">Conectado. Se encontró %1$d suscripción.</item><item quantity="many">Conectado. Se encontraron %1$d suscripciones.</item><item quantity="other">Conectado. Se encontraron %1$d suscripciones.</item></plurals>
     <string name="settings_connect_failed">No se pudo conectar al servidor.</string>
@@ -284,6 +285,7 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="server_username">Nombre de usuario</string>
     <string name="server_testing">Probando…</string>
     <string name="server_test_connection">Probar conexión</string>
+    <string name="settings_save_server_settings">Guardar configuración del servidor</string>
     <string name="backend_switch_title">¿Cambiar a %1$s?</string>
     <string name="backend_switch_message">hReader se sincroniza con un solo servidor. Cambiar cerrará tu sesión de %1$s y eliminará todos los artículos, fuentes e imágenes descargados. Tus credenciales de %2$s se conservarán y después comenzará una sincronización nueva.</string>
     <string name="sync_automatic">Sincronización automática</string>
