@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.persistence
 import android.util.Log
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleCredibilityDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleCredibility
+import com.hiosdra.hreader.core.application.ai.credibilityInputFingerprint
 import com.hiosdra.hreader.core.domain.model.CredibilityConfidence
 import com.hiosdra.hreader.core.domain.model.CredibilityFactor
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
@@ -10,6 +11,8 @@ import com.hiosdra.hreader.core.domain.model.CredibilitySource
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import kotlinx.coroutines.CancellationException
+import java.time.Clock
+import java.time.LocalDate
 
 private const val TAG = "CredibilityRepo"
 private const val LINE_SEPARATOR = "\n"
@@ -20,7 +23,8 @@ private const val FIELD_SEPARATOR = "\u001f"
 
 class CredibilityRepository(
     private val articleCredibilityDao: ArticleCredibilityDao,
-    private val articleAiGateway: ArticleAiGateway
+    private val articleAiGateway: ArticleAiGateway,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : CredibilityStore {
     override suspend fun invalidateForEntries(entryIds: List<Long>) {
         entryIds.chunked(DELETE_CHUNK).forEach { chunk ->
@@ -28,13 +32,28 @@ class CredibilityRepository(
         }
     }
 
-    override suspend fun getCached(entryId: Long, modelId: String): CredibilityReport? =
-        articleCredibilityDao.getForEntry(entryId, modelId)?.toDomain()
+    override suspend fun getCached(
+        entryId: Long,
+        source: CredibilitySource,
+        modelId: String
+    ): CredibilityReport? = articleCredibilityDao
+        .getForEntry(entryId, modelId, fingerprint(source))
+        ?.toDomain()
 
-    override suspend fun getCached(entryIds: List<Long>, modelId: String): Map<Long, CredibilityReport> {
-        if (entryIds.isEmpty()) return emptyMap()
-        return articleCredibilityDao.getForEntries(entryIds, modelId)
-            .associate { it.entryId to it.toDomain() }
+    override suspend fun getCached(
+        sources: Map<Long, CredibilitySource>,
+        modelId: String
+    ): Map<Long, CredibilityReport> {
+        if (sources.isEmpty()) return emptyMap()
+        val currentDate = LocalDate.now(clock)
+        val cached = articleCredibilityDao.getForEntries(sources.keys.toList(), modelId)
+            .associateBy { it.entryId }
+        return sources.mapNotNull { (entryId, source) ->
+            cached[entryId]
+                ?.takeIf { it.contentFingerprint == credibilityInputFingerprint(source, currentDate) }
+                ?.toDomain()
+                ?.let { entryId to it }
+        }.toMap()
     }
 
     override suspend fun analyze(
@@ -43,14 +62,18 @@ class CredibilityRepository(
         modelId: String,
         forceRefresh: Boolean
     ): Result<CredibilityReport> {
+        val contentFingerprint = fingerprint(source)
         if (!forceRefresh) {
-            getCached(entryId, modelId)?.let { return Result.success(it) }
+            articleCredibilityDao
+                .getForEntry(entryId, modelId, contentFingerprint)
+                ?.toDomain()
+                ?.let { return Result.success(it) }
         }
 
         return articleAiGateway.analyzeCredibility(source, modelId)
             .onSuccess { report ->
                 try {
-                    articleCredibilityDao.upsert(report.toEntity(entryId))
+                    articleCredibilityDao.upsert(report.toEntity(entryId, contentFingerprint))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -79,7 +102,7 @@ class CredibilityRepository(
         modelId: String
     ): Result<CredibilityReport> = analyze(entryId, source, modelId, forceRefresh = false)
 
-    private fun CredibilityReport.toEntity(entryId: Long) = ArticleCredibility(
+    private fun CredibilityReport.toEntity(entryId: Long, contentFingerprint: String) = ArticleCredibility(
         entryId = entryId,
         score = score,
         confidence = confidence.name,
@@ -89,7 +112,8 @@ class CredibilityRepository(
         factors = factors.joinToString(LINE_SEPARATOR) { "${it.name.toSingleLine()}$FIELD_SEPARATOR${it.score}" },
         modelId = modelId,
         analyzedAt = analyzedAt,
-        contentTruncated = contentTruncated
+        contentTruncated = contentTruncated,
+        contentFingerprint = contentFingerprint
     )
 
     private fun ArticleCredibility.toDomain() = CredibilityReport(
@@ -110,6 +134,9 @@ class CredibilityRepository(
         analyzedAt = analyzedAt,
         contentTruncated = contentTruncated
     )
+
+    private fun fingerprint(source: CredibilitySource): String =
+        credibilityInputFingerprint(source, LocalDate.now(clock))
 
     private fun String.toLines(): List<String> =
         split(LINE_SEPARATOR).map { it.trim() }.filter { it.isNotEmpty() }

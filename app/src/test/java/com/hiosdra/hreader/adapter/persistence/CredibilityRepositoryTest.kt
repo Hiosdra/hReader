@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.persistence
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleCredibilityDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleCredibility
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
+import com.hiosdra.hreader.core.application.ai.credibilityInputFingerprint
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.domain.model.CredibilityConfidence
 import com.hiosdra.hreader.core.domain.model.CredibilityFactor
@@ -60,7 +61,7 @@ class CredibilityRepositoryTest {
 
     @Test
     fun analyze_storesReportAndReadsItBackUnchanged() = runBlocking {
-        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns null
         coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(report)
         val stored = slot<ArticleCredibility>()
         coEvery { dao.upsert(capture(stored)) } returns Unit
@@ -68,13 +69,17 @@ class CredibilityRepositoryTest {
         val analyzed = repo.analyze(7L, source, modelId)
         assertEquals(report, analyzed.getOrNull())
 
-        coEvery { dao.getForEntry(7L, modelId) } returns stored.captured
-        assertEquals(report, repo.getCached(7L, modelId))
+        coEvery {
+            dao.getForEntry(7L, modelId, credibilityInputFingerprint(source))
+        } returns stored.captured
+        assertEquals(report, repo.getCached(7L, source, modelId))
     }
 
     @Test
     fun analyze_servesCacheWithoutCallingTheModel() = runBlocking {
-        coEvery { dao.getForEntry(7L, modelId) } returns entityFor(7L)
+        coEvery {
+            dao.getForEntry(7L, modelId, credibilityInputFingerprint(source))
+        } returns entityFor(7L)
 
         val result = repo.analyze(7L, source, modelId)
 
@@ -89,13 +94,13 @@ class CredibilityRepositoryTest {
 
         repo.analyze(7L, source, modelId, forceRefresh = true)
 
-        coVerify(exactly = 0) { dao.getForEntry(any(), any()) }
+        coVerify(exactly = 0) { dao.getForEntry(any(), any(), any()) }
         coVerify(exactly = 1) { aiService.analyzeCredibility(source, modelId) }
     }
 
     @Test
     fun analyze_stillReturnsTheReportWhenCachingFails() = runBlocking {
-        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns null
         coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(report)
         coEvery { dao.upsert(any()) } throws IllegalStateException("disk full")
 
@@ -104,7 +109,7 @@ class CredibilityRepositoryTest {
 
     @Test
     fun analyze_doesNotCacheFailures() = runBlocking {
-        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns null
         coEvery { aiService.analyzeCredibility(source, modelId) } returns
             Result.failure(IllegalStateException("no verdict"))
 
@@ -125,15 +130,38 @@ class CredibilityRepositoryTest {
     @Test
     fun multilineTextSurvivesTheRoundTripAsOneItem() = runBlocking {
         val noisy = report.copy(reasons = listOf("First line\nsecond line", "  padded  "))
-        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns null
         coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(noisy)
         val stored = slot<ArticleCredibility>()
         coEvery { dao.upsert(capture(stored)) } returns Unit
 
         repo.analyze(7L, source, modelId)
-        coEvery { dao.getForEntry(7L, modelId) } returns stored.captured
+        coEvery {
+            dao.getForEntry(7L, modelId, credibilityInputFingerprint(source))
+        } returns stored.captured
 
-        assertEquals(listOf("First line second line", "padded"), repo.getCached(7L, modelId)?.reasons)
+        assertEquals(
+            listOf("First line second line", "padded"),
+            repo.getCached(7L, source, modelId)?.reasons
+        )
+    }
+
+    @Test
+    fun changedSourceDoesNotServeTheOldReport() = runBlocking {
+        coEvery {
+            dao.getForEntry(7L, modelId, credibilityInputFingerprint(source.copy(content = "new body")))
+        } returns null
+        val updated = report.copy(summary = "Updated")
+        coEvery { aiService.analyzeCredibility(source.copy(content = "new body"), modelId) } returns
+            Result.success(updated)
+        coEvery { dao.upsert(any()) } returns Unit
+
+        val result = repo.analyze(7L, source.copy(content = "new body"), modelId)
+
+        assertEquals(updated, result.getOrNull())
+        coVerify(exactly = 1) {
+            aiService.analyzeCredibility(source.copy(content = "new body"), modelId)
+        }
     }
 
     @Test
@@ -179,6 +207,7 @@ class CredibilityRepositoryTest {
         factors = "",
         modelId = "test/model",
         analyzedAt = Instant.ofEpochSecond(1_700_000_500),
-        contentTruncated = true
+        contentTruncated = true,
+        contentFingerprint = credibilityInputFingerprint(source)
     )
 }
