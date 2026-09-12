@@ -272,6 +272,7 @@
     <string name="settings_configure_server">请先配置订阅源服务器。</string>
     <string name="settings_data_cleared_new_account">已为新账户清除下载数据。</string>
     <string name="settings_cache_update_failed">无法更新本地缓存。</string>
+    <string name="settings_server_settings_saved">服务器设置已保存。</string>
     <string name="settings_prepare_cache_failed">无法准备本地缓存。</string>
     <plurals name="settings_connected"><item quantity="other">已连接。找到 %1$d 个订阅。</item></plurals>
     <string name="settings_connect_failed">无法连接服务器。</string>
@@ -281,6 +282,7 @@
     <string name="server_username">用户名</string>
     <string name="server_testing">正在测试…</string>
     <string name="server_test_connection">测试连接</string>
+    <string name="settings_save_server_settings">保存服务器设置</string>
     <string name="backend_switch_title">切换到 %1$s？</string>
     <string name="backend_switch_message">hReader 一次只与一台服务器同步。切换会让你退出 %1$s，并删除从该服务器下载的所有文章、订阅源和图片。你的 %2$s 凭据会保留，之后会开始新的同步。</string>
     <string name="sync_automatic">自动同步</string>

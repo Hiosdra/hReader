@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.AiModel
+import com.hiosdra.hreader.core.application.settings.BackendConfiguration
 import com.hiosdra.hreader.core.application.sync.SyncDefaults
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
@@ -15,8 +16,6 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import com.hiosdra.hreader.presentation.text.UiText
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,6 +32,8 @@ data class ServerSettingsUiState(
     val isConnected: Boolean = false,
     val pendingBackendType: BackendType? = null,
     val isSwitchingBackend: Boolean = false,
+    val isApplying: Boolean = false,
+    val isDirty: Boolean = false,
     val signOutCompleted: Boolean = false
 ) {
     val hasAllFields: Boolean
@@ -92,8 +93,8 @@ data class SyncUiState(
 class SettingsViewModel(
     private val settings: SettingsUseCase
 ) : ViewModel() {
-    private var cacheOwnerCheckJob: Job? = null
-    private val _uiState = MutableStateFlow(currentSettings())
+    private var serverDraft = settings.getBackendConfiguration()
+    private val _uiState = MutableStateFlow(currentSettings(serverDraft))
     val uiState: StateFlow<ServerSettingsUiState> = _uiState.asStateFlow()
 
     private val _openRouterApiKey = MutableStateFlow(settings.getOpenRouterApiKey())
@@ -321,7 +322,7 @@ class SettingsViewModel(
                     )
                 )
             }
-            _uiState.value = currentSettings().withClearFailure(cleared.exceptionOrNull())
+            _uiState.value = currentSettings(serverDraft).withClearFailure(cleared.exceptionOrNull())
         }
     }
 
@@ -419,132 +420,125 @@ class SettingsViewModel(
     private fun switchBackendTo(backendType: BackendType) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, pendingBackendType = null)
-            // In flight work belongs to the backend being left, and would write its articles back
-            // into the cache that was just emptied.
+            serverDraft = serverDraft.copy(backendType = backendType)
             val switched = runCatchingCancellable {
-                settings.cancelAndClearBackendData()
-                settings.setBackendType(backendType)
-                settings.awaitPreferenceWrites()
+                settings.applyBackendConfiguration(serverDraft)
             }
-            // The switch wipes everything downloaded, so the new backend is fetched from scratch
-            // rather than leaving the reader with an empty list until the next scheduled run.
             settings.schedulePeriodicSync()
             if (switched.isSuccess) {
                 settings.syncNow(forceFullSync = true, userVisible = true)
             }
-            _uiState.value = currentSettings().withClearFailure(switched.exceptionOrNull())
+            serverDraft = settings.getBackendConfiguration()
+            _uiState.value = currentSettings(serverDraft)
+                .withClearFailure(switched.exceptionOrNull())
+                .copy(isSwitchingBackend = false)
         }
     }
 
     fun signOut() {
-        val backendType = _uiState.value.backendType
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSwitchingBackend = true, signOutCompleted = false)
-            val cleared = runCatchingCancellable { settings.cancelAndClearBackendData() }
-            val signedOut = if (cleared.isSuccess) {
-                runCatchingCancellable {
-                    settings.setBackendSecret(backendType, "")
-                    if (backendType.requiresUsername) settings.setFreshRssUsername("")
-                    settings.awaitPreferenceWrites()
-                }
-            } else {
-                Result.failure(cleared.exceptionOrNull() ?: IllegalStateException("Cache clear failed"))
+            val signedOut = runCatchingCancellable {
+                val configuration = settings.getBackendConfiguration()
+                settings.applyBackendConfiguration(
+                    configuration.copy(
+                        freshRssUsername = "",
+                        freshRssSecret = if (configuration.backendType == BackendType.FRESHRSS) "" else configuration.freshRssSecret,
+                        minifluxSecret = if (configuration.backendType == BackendType.MINIFLUX) "" else configuration.minifluxSecret
+                    )
+                )
             }
-            // Deregisters the periodic worker: without credentials every run wakes the radio only
-            // to fail on a missing token, hourly, for as long as the app stays installed.
             settings.schedulePeriodicSync()
-            val failure = cleared.exceptionOrNull() ?: signedOut.exceptionOrNull()
-            _uiState.value = currentSettings()
-                .withClearFailure(failure)
-                .copy(signOutCompleted = cleared.isSuccess && signedOut.isSuccess)
+            serverDraft = settings.getBackendConfiguration()
+            _uiState.value = currentSettings(serverDraft)
+                .withClearFailure(signedOut.exceptionOrNull())
+                .copy(
+                    isSwitchingBackend = false,
+                    signOutCompleted = signedOut.isSuccess
+                )
         }
     }
 
     fun onServerUrlChange(serverUrl: String) {
-        settings.setServerUrl(_uiState.value.backendType, serverUrl)
-        _uiState.value = _uiState.value.copy(serverUrl = serverUrl).cleared()
-        scheduleCacheOwnerCheck()
-    }
-
-    fun onUsernameChange(username: String) {
-        settings.setFreshRssUsername(username)
-        _uiState.value = _uiState.value.copy(username = username).cleared()
-        scheduleCacheOwnerCheck()
-    }
-
-    fun onSecretChange(secret: String) {
-        settings.setBackendSecret(_uiState.value.backendType, secret)
-        _uiState.value = _uiState.value.copy(secret = secret).cleared()
-        scheduleCacheOwnerCheck()
-    }
-
-    private fun scheduleCacheOwnerCheck() {
-        cacheOwnerCheckJob?.cancel()
-        cacheOwnerCheckJob = viewModelScope.launch {
-            delay(500)
-            val result = runCatchingCancellable {
-                settings.cancelAllSync()
-                settings.ensureCacheOwnerWhenConfigured()
-            }
-            if (result.getOrDefault(false)) {
-                _uiState.value = _uiState.value.copy(
-                    statusMessage = UiText.Resource(R.string.settings_data_cleared_new_account)
-                )
-                settings.schedulePeriodicSync()
-            } else if (result.isFailure) {
-                _uiState.value = _uiState.value.copy(
-                    statusMessage = UiText.Resource(R.string.settings_cache_update_failed)
-                )
-            } else {
-                settings.schedulePeriodicSync()
+        updateServerDraft { draft ->
+            when (draft.backendType) {
+                BackendType.FRESHRSS -> draft.copy(freshRssServerUrl = serverUrl)
+                BackendType.MINIFLUX -> draft.copy(minifluxServerUrl = serverUrl)
             }
         }
     }
 
-    /**
-     * Credentials are stored as they are typed, but the periodic worker is only registered where
-     * there is an account to sync — so finishing setup, or signing back in, has to say so. The
-     * first sync is started here too rather than leaving a new install empty for an hour.
-     */
+    fun onUsernameChange(username: String) {
+        updateServerDraft { it.copy(freshRssUsername = username) }
+    }
+
+    fun onSecretChange(secret: String) {
+        updateServerDraft { draft ->
+            when (draft.backendType) {
+                BackendType.FRESHRSS -> draft.copy(freshRssSecret = secret)
+                BackendType.MINIFLUX -> draft.copy(minifluxSecret = secret)
+            }
+        }
+    }
+
+    private fun updateServerDraft(transform: (BackendConfiguration) -> BackendConfiguration) {
+        serverDraft = transform(serverDraft)
+        _uiState.value = currentSettings(serverDraft).cleared()
+    }
+
     fun onSetupFinished(onFinished: () -> Unit = {}) {
         viewModelScope.launch {
-            val writes = runCatchingCancellable { settings.awaitPreferenceWrites() }
-            if (writes.isFailure) {
+            val applied = runCatchingCancellable {
+                settings.applyBackendConfiguration(serverDraft)
+            }
+            if (applied.isFailure) {
                 _uiState.value = _uiState.value.copy(
                     statusMessage = UiText.Resource(R.string.settings_prepare_cache_failed)
                 )
                 return@launch
             }
-            val ownerCheck = runCatchingCancellable { settings.ensureCacheOwner() }
-            if (ownerCheck.isFailure) {
-                _uiState.value = _uiState.value.copy(
-                    statusMessage = UiText.Resource(R.string.settings_prepare_cache_failed)
-                )
-                return@launch
-            }
+            serverDraft = settings.getBackendConfiguration()
             settings.schedulePeriodicSync()
             settings.syncNow(forceFullSync = true, userVisible = true)
             onFinished()
         }
     }
 
+    fun applyServerSettings() {
+        if (
+            !_uiState.value.hasAllFields ||
+            _uiState.value.isSwitchingBackend ||
+            _uiState.value.isApplying ||
+            _uiState.value.isTesting
+        ) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isApplying = true, statusMessage = null)
+            val applied = runCatchingCancellable { settings.applyBackendConfiguration(serverDraft) }
+            if (applied.isSuccess) settings.schedulePeriodicSync()
+            serverDraft = settings.getBackendConfiguration()
+            val ownerChanged = applied.getOrDefault(false)
+            _uiState.value = currentSettings(serverDraft).copy(
+                isApplying = false,
+                statusMessage = when {
+                    applied.isFailure -> UiText.Resource(R.string.settings_cache_update_failed)
+                    ownerChanged -> UiText.Resource(R.string.settings_data_cleared_new_account)
+                    else -> UiText.Resource(R.string.settings_server_settings_saved)
+                }
+            )
+            if (applied.isSuccess && ownerChanged) {
+                settings.syncNow(forceFullSync = true, userVisible = true)
+            }
+        }
+    }
+
     fun testConnection() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isTesting = true, statusMessage = null)
-            val result = runCatchingCancellable { settings.verifyConnection() }
-            val ownerCheck = if (result.isSuccess) {
-                runCatchingCancellable { settings.ensureCacheOwner() }
-            } else {
-                Result.success(false)
-            }
-            if (result.isSuccess && ownerCheck.isSuccess) {
-                settings.schedulePeriodicSync()
-            }
-            val failure = result.exceptionOrNull() ?: ownerCheck.exceptionOrNull()
+            val result = runCatchingCancellable { settings.verifyConnection(serverDraft) }
             _uiState.value = _uiState.value.copy(
                 isTesting = false,
-                isConnected = result.isSuccess && ownerCheck.isSuccess,
-                statusMessage = if (failure == null) {
+                isConnected = result.isSuccess,
+                statusMessage = if (result.isSuccess) {
                     val subscriptionCount = result.getOrThrow()
                     UiText.Plural(
                         id = R.plurals.settings_connected,
@@ -558,13 +552,14 @@ class SettingsViewModel(
         }
     }
 
-    private fun currentSettings(): ServerSettingsUiState {
-        val backendType = settings.getBackendType()
+    private fun currentSettings(configuration: BackendConfiguration): ServerSettingsUiState {
+        val backendType = configuration.backendType
         return ServerSettingsUiState(
             backendType = backendType,
-            serverUrl = settings.getServerUrl(backendType),
-            username = settings.getFreshRssUsername(),
-            secret = settings.getBackendSecret(backendType)
+            serverUrl = configuration.serverUrlFor(backendType),
+            username = configuration.freshRssUsername,
+            secret = configuration.secretFor(backendType),
+            isDirty = configuration != settings.getBackendConfiguration()
         )
     }
 }

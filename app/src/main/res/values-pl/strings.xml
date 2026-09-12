@@ -343,6 +343,7 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="settings_configure_server">Najpierw skonfiguruj serwer kanałów.</string>
     <string name="settings_data_cleared_new_account">Dane zostały wyczyszczone dla nowego konta.</string>
     <string name="settings_cache_update_failed">Nie można zaktualizować pamięci lokalnej.</string>
+    <string name="settings_server_settings_saved">Ustawienia serwera zapisane.</string>
     <string name="settings_prepare_cache_failed">Nie można przygotować pamięci lokalnej.</string>
     <plurals name="settings_connected"><item quantity="one">Połączono. Znaleziono %1$d subskrypcję.</item><item quantity="few">Połączono. Znaleziono %1$d subskrypcje.</item><item quantity="many">Połączono. Znaleziono %1$d subskrypcji.</item><item quantity="other">Połączono. Znaleziono %1$d subskrypcji.</item></plurals>
     <string name="settings_connect_failed">Nie można połączyć się z serwerem.</string>
@@ -352,6 +353,7 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="server_username">Nazwa użytkownika</string>
     <string name="server_testing">Testowanie…</string>
     <string name="server_test_connection">Testuj połączenie</string>
+    <string name="settings_save_server_settings">Zapisz ustawienia serwera</string>
     <string name="backend_switch_title">Przełączyć na %1$s?</string>
     <string name="backend_switch_message">hReader synchronizuje się tylko z jednym serwerem naraz. Przełączenie wyloguje Cię z %1$s i usunie wszystkie pobrane artykuły, kanały oraz obrazy. Dane logowania %2$s zostaną zachowane, a potem rozpocznie się nowa synchronizacja.</string>
 

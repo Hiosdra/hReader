@@ -284,6 +284,7 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="settings_configure_server">Zuerst einen Feed-Server konfigurieren.</string>
     <string name="settings_data_cleared_new_account">Daten für das neue Konto wurden gelöscht.</string>
     <string name="settings_cache_update_failed">Lokaler Cache konnte nicht aktualisiert werden.</string>
+    <string name="settings_server_settings_saved">Servereinstellungen gespeichert.</string>
     <string name="settings_prepare_cache_failed">Lokaler Cache konnte nicht vorbereitet werden.</string>
     <plurals name="settings_connected"><item quantity="one">Verbunden. %1$d Abonnement gefunden.</item><item quantity="other">Verbunden. %1$d Abonnements gefunden.</item></plurals>
     <string name="settings_connect_failed">Verbindung zum Server fehlgeschlagen.</string>
@@ -293,6 +294,7 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="server_username">Benutzername</string>
     <string name="server_testing">Wird getestet…</string>
     <string name="server_test_connection">Verbindung testen</string>
+    <string name="settings_save_server_settings">Servereinstellungen speichern</string>
     <string name="backend_switch_title">Zu %1$s wechseln?</string>
     <string name="backend_switch_message">hReader synchronisiert immer nur mit einem Server. Der Wechsel meldet dich von %1$s ab und löscht alle davon heruntergeladenen Artikel, Feeds und Bilder. Deine %2$s-Zugangsdaten bleiben erhalten; danach beginnt eine neue Synchronisierung.</string>
     <string name="sync_automatic">Automatische Synchronisierung</string>

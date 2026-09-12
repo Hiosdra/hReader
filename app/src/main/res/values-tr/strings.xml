@@ -272,6 +272,7 @@
     <string name="settings_configure_server">Önce bir akış sunucusu yapılandırın.</string>
     <string name="settings_data_cleared_new_account">Yeni hesap için indirilen veriler temizlendi.</string>
     <string name="settings_cache_update_failed">Yerel önbellek güncellenemedi.</string>
+    <string name="settings_server_settings_saved">Sunucu ayarları kaydedildi.</string>
     <string name="settings_prepare_cache_failed">Yerel önbellek hazırlanamadı.</string>
     <plurals name="settings_connected"><item quantity="one">Bağlandı. %1$d abonelik bulundu.</item><item quantity="other">Bağlandı. %1$d abonelik bulundu.</item></plurals>
     <string name="settings_connect_failed">Sunucuya bağlanılamadı.</string>
@@ -281,6 +282,7 @@
     <string name="server_username">Kullanıcı adı</string>
     <string name="server_testing">Test ediliyor…</string>
     <string name="server_test_connection">Bağlantıyı test et</string>
+    <string name="settings_save_server_settings">Sunucu ayarlarını kaydet</string>
     <string name="backend_switch_title">%1$s hizmetine geçilsin mi?</string>
     <string name="backend_switch_message">hReader aynı anda tek bir sunucuyla senkronize olur. Geçiş, %1$s oturumunuzu kapatır ve oradan indirilen tüm makaleleri, akışları ve görselleri siler. %2$s kimlik bilgileriniz korunur ve ardından yeni bir senkronizasyon başlar.</string>
     <string name="sync_automatic">Otomatik senkronizasyon</string>

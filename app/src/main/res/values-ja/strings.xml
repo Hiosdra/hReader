@@ -272,6 +272,7 @@
     <string name="settings_configure_server">先にフィードサーバーを設定してください。</string>
     <string name="settings_data_cleared_new_account">新しいアカウントのダウンロード済みデータを消去しました。</string>
     <string name="settings_cache_update_failed">ローカルキャッシュを更新できませんでした。</string>
+    <string name="settings_server_settings_saved">サーバー設定を保存しました。</string>
     <string name="settings_prepare_cache_failed">ローカルキャッシュを準備できませんでした。</string>
     <plurals name="settings_connected"><item quantity="other">接続しました。%1$d 件の購読が見つかりました。</item></plurals>
     <string name="settings_connect_failed">サーバーに接続できませんでした。</string>
@@ -281,6 +282,7 @@
     <string name="server_username">ユーザー名</string>
     <string name="server_testing">テスト中…</string>
     <string name="server_test_connection">接続をテスト</string>
+    <string name="settings_save_server_settings">サーバー設定を保存</string>
     <string name="backend_switch_title">%1$s に切り替えますか？</string>
     <string name="backend_switch_message">hReaderは一度に1台のサーバーと同期します。切り替えると %1$s からログアウトし、そこからダウンロードした記事・フィード・画像をすべて削除します。%2$s の認証情報は保持され、その後に新しい同期を開始します。</string>
     <string name="sync_automatic">自動同期</string>
