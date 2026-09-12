@@ -59,6 +59,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.BackendPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendSessionStore
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
@@ -290,7 +291,7 @@ val appModule = module {
     single { FeedUseCase(get<FeedStore>(), get<NetworkStatus>()) }
     single {
         SettingsUseCase(
-            backendPreferences = get<BackendPreferences>(),
+            backendSession = get<BackendSessionStore>(),
             aiPreferences = get<AiPreferences>(),
             syncPreferences = get<SyncPreferences>(),
             feeds = get<FeedStore>(),
