@@ -52,6 +52,32 @@ class CacheOwnershipCoordinatorTest {
     }
 
     @Test
+    fun `blank owner clears unidentified cache before assigning the new owner`() = runBlocking {
+        every { preferences.isCacheCleanupPending() } returns false
+        every { preferences.getCacheOwnerKey() } returns ""
+        every { identity.cacheOwnerKey() } returns "new-owner"
+
+        val changed = coordinator.ensureCacheOwner()
+
+        assertTrue(changed)
+        coVerify { cleaner.clearAll() }
+        verify { preferences.setCacheOwnerKey("new-owner") }
+    }
+
+    @Test
+    fun `pending cleanup resumes once before assigning the new owner`() = runBlocking {
+        every { preferences.isCacheCleanupPending() } returns true
+        every { preferences.getCacheOwnerKey() } returns "old-owner"
+        every { identity.cacheOwnerKey() } returns "new-owner"
+
+        val changed = coordinator.ensureCacheOwner()
+
+        assertTrue(changed)
+        coVerify(exactly = 1) { cleaner.clearAll() }
+        verify { preferences.setCacheOwnerKey("new-owner") }
+    }
+
+    @Test
     fun `a failed cleanup keeps the recovery marker set`() = runBlocking {
         every { preferences.isCacheCleanupPending() } returns false
         every { preferences.getCacheOwnerKey() } returns "old-owner"

@@ -4,21 +4,33 @@ import android.util.Log
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiOverviewDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleAiOverview
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
+import com.hiosdra.hreader.core.application.port.out.SyncSession
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import kotlinx.coroutines.CancellationException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Instant
 
 class ArticleAiOverviewRepository(
-    private val dao: ArticleAiOverviewDao
+    private val dao: ArticleAiOverviewDao,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : ArticleAiOverviewStore {
     companion object {
         private const val TAG = "ArticleAiOverviewRepo"
         private const val DELETE_CHUNK = 500
     }
 
-    override suspend fun get(entryId: Long, content: String, modelId: String): String? = try {
-        dao.get(entryId, modelId, content.sha256())?.overview
+    override suspend fun get(
+        entryId: Long,
+        content: String,
+        modelId: String,
+        session: SyncSession?
+    ): String? = try {
+        val activeSession = session ?: sessionGate.currentSession()
+        sessionGate.withSession(activeSession) {
+            dao.get(entryId, modelId, content.sha256())?.overview
+        }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
@@ -26,17 +38,26 @@ class ArticleAiOverviewRepository(
         null
     }
 
-    override suspend fun save(entryId: Long, content: String, modelId: String, overview: String) {
+    override suspend fun save(
+        entryId: Long,
+        content: String,
+        modelId: String,
+        overview: String,
+        session: SyncSession?
+    ) {
         try {
-            dao.insert(
-                ArticleAiOverview(
-                    entryId = entryId,
-                    overview = overview,
-                    modelId = modelId,
-                    contentHash = content.sha256(),
-                    generatedAt = Instant.now()
+            val activeSession = session ?: sessionGate.currentSession()
+            sessionGate.withSession(activeSession) {
+                dao.insert(
+                    ArticleAiOverview(
+                        entryId = entryId,
+                        overview = overview,
+                        modelId = modelId,
+                        contentHash = content.sha256(),
+                        generatedAt = Instant.now()
+                    )
                 )
-            )
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -44,9 +65,15 @@ class ArticleAiOverviewRepository(
         }
     }
 
-    override suspend fun cleanupOrphaned(currentEntryIds: Set<Long>) {
-        val orphaned = dao.getAllEntryIds().filterNot(currentEntryIds::contains)
-        orphaned.chunked(DELETE_CHUNK).forEach { chunk -> dao.deleteForEntries(chunk) }
+    override suspend fun cleanupOrphaned(session: SyncSession?) {
+        val activeSession = session ?: sessionGate.currentSession()
+        sessionGate.withSession(activeSession) {
+            while (true) {
+                val orphaned = dao.getOrphanedEntryIds(DELETE_CHUNK)
+                if (orphaned.isEmpty()) break
+                dao.deleteForEntries(orphaned)
+            }
+        }
     }
 
     private fun String.sha256(): String = MessageDigest.getInstance("SHA-256")

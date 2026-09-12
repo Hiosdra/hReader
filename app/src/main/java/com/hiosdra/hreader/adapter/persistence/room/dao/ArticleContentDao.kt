@@ -18,9 +18,12 @@ interface ArticleContentDao {
 
     @Query(
         "SELECT entryId FROM article_contents " +
-            "WHERE source = :source"
+            "WHERE entryId IN (:entryIds) AND source = :source"
     )
-    suspend fun getContentEntryIds(source: ArticleContentSource): List<Long>
+    suspend fun getContentEntryIds(
+        entryIds: List<Long>,
+        source: ArticleContentSource
+    ): List<Long>
 
     @Query(
         "SELECT entryId FROM article_contents " +
@@ -46,13 +49,12 @@ interface ArticleContentDao {
     @Query("DELETE FROM article_contents WHERE entryId IN (:entryIds)")
     suspend fun deleteArticlesContent(entryIds: List<Long>)
 
-    /**
-     * Which articles have their text stored. Orphan detection needs the ids and nothing else, and
-     * every row here carries a full article body — reading them all to compare a number is how a
-     * cache stocked for a long trip runs the worker out of memory.
-     */
-    @Query("SELECT entryId FROM article_contents")
-    suspend fun getAllContentEntryIds(): List<Long>
+    @Query(
+        "SELECT c.entryId FROM article_contents c " +
+            "LEFT JOIN articles a ON a.id = CAST(c.entryId AS TEXT) " +
+            "WHERE a.id IS NULL ORDER BY c.entryId ASC LIMIT :limit"
+    )
+    suspend fun getOrphanedEntryIds(limit: Int): List<Long>
 
     @Query("SELECT COUNT(*) FROM article_contents")
     fun observeContentCount(): Flow<Int>

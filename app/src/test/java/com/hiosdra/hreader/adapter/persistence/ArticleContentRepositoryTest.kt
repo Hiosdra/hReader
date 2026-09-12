@@ -333,6 +333,13 @@ class ArticleContentRepositoryTest {
             )
         )
 
+        coVerify(exactly = 1) {
+            articleContentDao.getFullyImagePreparedEntryIds(
+                listOf(entryId, secondEntryId),
+                ArticleContentSource.FULL
+            )
+        }
+
         assertEquals(
             listOf(secondEntryId to "https://example.com/posts/two"),
             missing

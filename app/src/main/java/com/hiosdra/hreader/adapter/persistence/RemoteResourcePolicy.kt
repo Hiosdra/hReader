@@ -1,6 +1,6 @@
 package com.hiosdra.hreader.adapter.persistence
 
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendSessionStore
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy as RemoteResourcePolicyPort
 import okhttp3.Dns
 import java.net.InetAddress
@@ -14,11 +14,11 @@ class RemoteResourcePolicyAdapter(
         InetAddress.getAllByName(host).toList()
     }
 ) : RemoteResourcePolicyPort {
-    constructor(preferences: AppPreferences) : this(
+    constructor(sessionStore: BackendSessionStore) : this(
         allowedHosts = {
             runCatching {
-                val backendType = preferences.getBackendType()
-                normalizedConfiguredHost(preferences.getServerUrl(backendType))
+                val configuration = sessionStore.getBackendConfiguration()
+                normalizedConfiguredHost(configuration.serverUrlFor(configuration.backendType))
                     ?.let(::setOf)
                     ?: emptySet()
             }.getOrDefault(emptySet())

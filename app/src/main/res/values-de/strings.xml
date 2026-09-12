@@ -288,6 +288,8 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <plurals name="settings_connected"><item quantity="one">Verbunden. %1$d Abonnement gefunden.</item><item quantity="other">Verbunden. %1$d Abonnements gefunden.</item></plurals>
     <string name="settings_connect_failed">Verbindung zum Server fehlgeschlagen.</string>
     <string name="settings_clear_articles_failed">Heruntergeladene Artikel konnten nicht gelöscht werden.</string>
+    <string name="settings_save_server">Servereinstellungen speichern</string>
+    <string name="settings_server_settings_saved">Servereinstellungen gespeichert.</string>
     <string name="server_url">Server-URL</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">Benutzername</string>

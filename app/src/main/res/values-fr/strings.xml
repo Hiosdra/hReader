@@ -276,6 +276,8 @@
     <plurals name="settings_connected"><item quantity="one">Connecté. %1$d abonnement trouvé.</item><item quantity="many">Connecté. %1$d abonnements trouvés.</item><item quantity="other">Connecté. %1$d abonnements trouvés.</item></plurals>
     <string name="settings_connect_failed">Impossible de se connecter au serveur.</string>
     <string name="settings_clear_articles_failed">Impossible d’effacer les articles téléchargés.</string>
+    <string name="settings_save_server">Enregistrer les paramètres du serveur</string>
+    <string name="settings_server_settings_saved">Paramètres du serveur enregistrés.</string>
     <string name="server_url">URL du serveur</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">Nom d’utilisateur</string>

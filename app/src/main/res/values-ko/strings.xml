@@ -276,6 +276,8 @@
     <plurals name="settings_connected"><item quantity="other">연결됨. 구독 %1$d개를 찾았습니다.</item></plurals>
     <string name="settings_connect_failed">서버에 연결할 수 없습니다.</string>
     <string name="settings_clear_articles_failed">다운로드한 기사를 지울 수 없습니다.</string>
+    <string name="settings_save_server">서버 설정 저장</string>
+    <string name="settings_server_settings_saved">서버 설정이 저장되었습니다.</string>
     <string name="server_url">서버 URL</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">사용자 이름</string>

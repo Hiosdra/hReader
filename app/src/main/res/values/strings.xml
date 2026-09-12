@@ -355,6 +355,8 @@
     </plurals>
     <string name="settings_connect_failed">Could not connect to the server.</string>
     <string name="settings_clear_articles_failed">Could not clear the downloaded articles.</string>
+    <string name="settings_save_server">Save server settings</string>
+    <string name="settings_server_settings_saved">Server settings saved.</string>
 
     <string name="server_url">Server URL</string>
     <string name="server_url_placeholder">https://rss.example.com</string>

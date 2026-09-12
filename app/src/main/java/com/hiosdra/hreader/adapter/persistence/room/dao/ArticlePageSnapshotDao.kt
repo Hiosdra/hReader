@@ -15,8 +15,15 @@ interface ArticlePageSnapshotDao {
     @Query("SELECT * FROM article_page_snapshots WHERE entryId = :entryId")
     suspend fun get(entryId: Long): ArticlePageSnapshot?
 
-    @Query("SELECT * FROM article_page_snapshots")
-    suspend fun getAll(): List<ArticlePageSnapshot>
+    @Query(
+        "SELECT * FROM article_page_snapshots " +
+            "WHERE (:afterEntryId IS NULL OR entryId > :afterEntryId) " +
+            "ORDER BY entryId ASC LIMIT :limit"
+    )
+    suspend fun getBatch(afterEntryId: Long?, limit: Int): List<ArticlePageSnapshot>
+
+    @Query("SELECT * FROM article_page_snapshots WHERE entryId IN (:entryIds)")
+    suspend fun getForEntries(entryIds: List<Long>): List<ArticlePageSnapshot>
 
     @Query("DELETE FROM article_page_snapshots WHERE entryId IN (:entryIds)")
     suspend fun deleteForEntries(entryIds: List<Long>)

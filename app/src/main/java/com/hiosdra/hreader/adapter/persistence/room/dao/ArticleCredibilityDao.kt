@@ -11,8 +11,12 @@ interface ArticleCredibilityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(credibility: ArticleCredibility)
 
-    @Query("SELECT * FROM article_credibility WHERE entryId = :entryId AND modelId = :modelId")
-    suspend fun getForEntry(entryId: Long, modelId: String): ArticleCredibility?
+    @Query("SELECT * FROM article_credibility WHERE entryId = :entryId AND modelId = :modelId AND contentFingerprint = :contentFingerprint")
+    suspend fun getForEntry(
+        entryId: Long,
+        modelId: String,
+        contentFingerprint: String
+    ): ArticleCredibility?
 
     @Query("SELECT * FROM article_credibility WHERE entryId IN (:entryIds) AND modelId = :modelId")
     suspend fun getForEntries(entryIds: List<Long>, modelId: String): List<ArticleCredibility>
@@ -20,8 +24,12 @@ interface ArticleCredibilityDao {
     @Query("DELETE FROM article_credibility")
     suspend fun clearAll()
 
-    @Query("SELECT DISTINCT entryId FROM article_credibility")
-    suspend fun getAllEntryIds(): List<Long>
+    @Query(
+        "SELECT DISTINCT c.entryId FROM article_credibility c " +
+            "LEFT JOIN articles a ON a.id = CAST(c.entryId AS TEXT) " +
+            "WHERE a.id IS NULL ORDER BY c.entryId ASC LIMIT :limit"
+    )
+    suspend fun getOrphanedEntryIds(limit: Int): List<Long>
 
     @Query("DELETE FROM article_credibility WHERE entryId IN (:entryIds)")
     suspend fun deleteAll(entryIds: List<Long>)

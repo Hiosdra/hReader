@@ -347,6 +347,8 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <plurals name="settings_connected"><item quantity="one">Połączono. Znaleziono %1$d subskrypcję.</item><item quantity="few">Połączono. Znaleziono %1$d subskrypcje.</item><item quantity="many">Połączono. Znaleziono %1$d subskrypcji.</item><item quantity="other">Połączono. Znaleziono %1$d subskrypcji.</item></plurals>
     <string name="settings_connect_failed">Nie można połączyć się z serwerem.</string>
     <string name="settings_clear_articles_failed">Nie można usunąć pobranych artykułów.</string>
+    <string name="settings_save_server">Zapisz ustawienia serwera</string>
+    <string name="settings_server_settings_saved">Ustawienia serwera zapisane.</string>
     <string name="server_url">URL serwera</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">Nazwa użytkownika</string>

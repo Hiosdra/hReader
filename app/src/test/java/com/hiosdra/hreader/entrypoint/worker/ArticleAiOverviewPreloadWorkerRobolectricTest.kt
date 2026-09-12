@@ -49,9 +49,11 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
         every { aiPreferences.getAiModelId() } returns AiModel.GEMMA_4_E2B_ID
         coEvery { targetStore.getAiOverviewPrefetchTargets(any(), any()) } returns listOf(target)
         coEvery {
-            contentStore.getArticleContent(target.id, target.url, allowNetwork = false)
+            contentStore.getArticleContent(target.id, target.url, allowNetwork = false, session = any())
         } returns ArticleText("<p>Body</p>", null, ArticleContentSource.FULL)
-        coEvery { overviewStore.get(target.id, "<p>Body</p>", AiModel.GEMMA_4_E2B_ID) } returns null
+        coEvery {
+            overviewStore.get(target.id, "<p>Body</p>", AiModel.GEMMA_4_E2B_ID, session = any())
+        } returns null
         coEvery {
             aiGateway.generateArticleOverview(
                 target.title,
@@ -61,7 +63,13 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
             )
         } returns Result.success("Summary")
         coEvery {
-            overviewStore.save(target.id, "<p>Body</p>", AiModel.GEMMA_4_E2B_ID, "Summary")
+            overviewStore.save(
+                target.id,
+                "<p>Body</p>",
+                AiModel.GEMMA_4_E2B_ID,
+                "Summary",
+                session = any()
+            )
         } just runs
 
         val result = createWorker(
@@ -74,8 +82,18 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
         ).doWork()
 
         assertTrue(result is ListenableWorker.Result.Success)
-        coVerify { contentStore.getArticleContent(target.id, target.url, allowNetwork = false) }
-        coVerify { overviewStore.save(target.id, "<p>Body</p>", AiModel.GEMMA_4_E2B_ID, "Summary") }
+        coVerify {
+            contentStore.getArticleContent(target.id, target.url, allowNetwork = false, session = any())
+        }
+        coVerify {
+            overviewStore.save(
+                target.id,
+                "<p>Body</p>",
+                AiModel.GEMMA_4_E2B_ID,
+                "Summary",
+                session = any()
+            )
+        }
         verify(exactly = 0) { errorReporter.captureException(any(), any()) }
     }
 
@@ -114,12 +132,12 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
 
         every { aiPreferences.getAiModelId() } returns AiModel.GEMMA_4_E2B_ID
         coEvery { targetStore.getAiOverviewPrefetchTargets(any(), any()) } returns targets
-        coEvery { contentStore.getArticleContent(any(), any(), allowNetwork = false) } returns
+        coEvery { contentStore.getArticleContent(any(), any(), allowNetwork = false, session = any()) } returns
             ArticleText("<p>Body</p>", null, ArticleContentSource.FULL)
-        coEvery { overviewStore.get(any(), any(), any()) } returns null
+        coEvery { overviewStore.get(any(), any(), any(), session = any()) } returns null
         coEvery { aiGateway.generateArticleOverview(any(), any(), any(), any()) } returns
             Result.success("Summary")
-        coEvery { overviewStore.save(any(), any(), any(), any()) } just runs
+        coEvery { overviewStore.save(any(), any(), any(), any(), session = any()) } just runs
 
         val result = createWorker(
             targetStore = targetStore,

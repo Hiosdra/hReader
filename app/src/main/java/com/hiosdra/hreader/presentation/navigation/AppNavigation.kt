@@ -33,7 +33,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
-import com.hiosdra.hreader.core.application.port.out.BackendPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
@@ -70,7 +70,7 @@ import org.koin.compose.koinInject
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     entryPoint: EntryPoint = EntryPoint.ArticleList,
-    backendPreferences: BackendPreferences = koinInject(),
+    backendIdentity: BackendIdentity = koinInject(),
     preferenceWriteBarrier: PreferenceWriteBarrier = koinInject(),
     readerPreferences: ReaderPreferences = koinInject(),
     ttsPreferences: TtsPreferences = koinInject(),
@@ -110,7 +110,7 @@ fun AppNavigation(
         return
     }
 
-    val configured = remember { backendPreferences.hasBackendCredentials() }
+    val configured = remember { backendIdentity.isComplete() }
     val startDestination = remember(entryPoint) {
         when {
             !configured -> Routes.SERVER_SETUP

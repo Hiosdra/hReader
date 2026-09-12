@@ -276,6 +276,8 @@
     <plurals name="settings_connected"><item quantity="one">Connesso. Trovato %1$d abbonamento.</item><item quantity="many">Connesso. Trovati %1$d abbonamenti.</item><item quantity="other">Connesso. Trovati %1$d abbonamenti.</item></plurals>
     <string name="settings_connect_failed">Impossibile connettersi al server.</string>
     <string name="settings_clear_articles_failed">Impossibile cancellare gli articoli scaricati.</string>
+    <string name="settings_save_server">Salva impostazioni server</string>
+    <string name="settings_server_settings_saved">Impostazioni server salvate.</string>
     <string name="server_url">URL server</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">Nome utente</string>

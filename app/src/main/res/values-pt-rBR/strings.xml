@@ -276,6 +276,8 @@
     <plurals name="settings_connected"><item quantity="one">Conectado. %1$d assinatura encontrada.</item><item quantity="many">Conectado. %1$d assinaturas encontradas.</item><item quantity="other">Conectado. %1$d assinaturas encontradas.</item></plurals>
     <string name="settings_connect_failed">Não foi possível conectar ao servidor.</string>
     <string name="settings_clear_articles_failed">Não foi possível limpar os artigos baixados.</string>
+    <string name="settings_save_server">Salvar configurações do servidor</string>
+    <string name="settings_server_settings_saved">Configurações do servidor salvas.</string>
     <string name="server_url">URL do servidor</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">Nome de usuário</string>

@@ -104,7 +104,7 @@ class ArticlePageRepositoryTest {
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
             val articleDao = mockk<ArticleDao>(relaxed = true)
-            coEvery { snapshotDao.getAll() } returns listOf(
+            coEvery { snapshotDao.getForEntries(listOf(42L)) } returns listOf(
                 ArticlePageSnapshot(
                     entryId = 42L,
                     originalUrl = ARTICLE_URL,
@@ -167,8 +167,8 @@ class ArticlePageRepositoryTest {
                 every { context.filesDir } returns root
                 val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
                 val articleDao = mockk<ArticleDao>(relaxed = true)
-                coEvery { articleDao.getAllIds() } returns listOf("42")
-                coEvery { snapshotDao.getAll() } returns listOf(
+                coEvery { articleDao.getExistingIds(listOf("42")) } returns listOf("42")
+                coEvery { snapshotDao.getBatch(null, 500) } returns listOf(
                     ArticlePageSnapshot(
                         entryId = 42L,
                         originalUrl = ARTICLE_URL,
@@ -179,6 +179,7 @@ class ArticlePageRepositoryTest {
                         isComplete = true
                     )
                 )
+                coEvery { snapshotDao.getBatch(42L, 500) } returns emptyList()
                 val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
 
                 repository.cleanupOrphanedPages()

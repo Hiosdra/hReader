@@ -19,6 +19,7 @@ import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
+import com.hiosdra.hreader.core.application.port.out.SyncSession
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
 import com.hiosdra.hreader.core.domain.model.Enclosure
 import io.mockk.every
@@ -302,9 +303,12 @@ private class ArticleContentMaintenanceStore(
 ) : ArticleMaintenanceStore {
     var targetCalls = 0
 
-    override suspend fun getPrefetchTargets(): List<PrefetchTarget> {
+    override suspend fun getPrefetchTargets(
+        limit: Int,
+        downloadAllImages: Boolean
+    ): List<PrefetchTarget> {
         targetCalls += 1
-        return prefetchTargets
+        return prefetchTargets.take(limit)
     }
 
     override suspend fun backfillMissingPreviews(limit: Int): Int = 0
@@ -326,16 +330,25 @@ private class ArticleContentStoreFake(
     var prefetchedEntries: List<Pair<Long, String>> = emptyList()
     val imageBatches = mutableListOf<List<Pair<Long, List<String>>>>()
 
-    override suspend fun getArticleContent(entryId: Long, url: String, allowNetwork: Boolean) =
+    override suspend fun getArticleContent(
+        entryId: Long,
+        url: String,
+        allowNetwork: Boolean,
+        session: SyncSession?
+    ) =
         error("unused in worker test")
 
-    override suspend fun entriesMissingContent(entries: List<Pair<Long, String>>): List<Pair<Long, String>> {
+    override suspend fun entriesMissingContent(
+        entries: List<Pair<Long, String>>,
+        session: SyncSession?
+    ): List<Pair<Long, String>> {
         missingContentCalls += 1
         return missingContent
     }
 
     override suspend fun entriesMissingFullOfflinePreparation(
-        entries: List<Pair<Long, String>>
+        entries: List<Pair<Long, String>>,
+        session: SyncSession?
     ): List<Pair<Long, String>> {
         missingFullPreparationCalls += 1
         return missingFullPreparation
@@ -345,7 +358,8 @@ private class ArticleContentStoreFake(
         entries: List<Pair<Long, String>>,
         limit: Int?,
         downloadAllImages: Boolean,
-        onProgress: (done: Int, total: Int) -> Unit
+        onProgress: (done: Int, total: Int) -> Unit,
+        session: SyncSession?
     ) {
         prefetchCalls += 1
         prefetchedEntries = entries
@@ -354,7 +368,10 @@ private class ArticleContentStoreFake(
         onProgress(entries.size, entries.size)
     }
 
-    override suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>) {
+    override suspend fun downloadEnclosureImages(
+        entries: List<Pair<Long, List<String>>>,
+        session: SyncSession?
+    ) {
         imageDownloadCalls += 1
         imageBatches += entries
     }

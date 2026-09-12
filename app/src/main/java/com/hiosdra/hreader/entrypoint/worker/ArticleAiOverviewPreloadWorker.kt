@@ -19,6 +19,8 @@ import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewPrefetchSt
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import kotlinx.coroutines.CancellationException
 import java.io.IOException
@@ -37,7 +39,8 @@ class ArticleAiOverviewPreloadWorker(
     private val ai: ArticleAiGateway,
     private val overviews: ArticleAiOverviewStore,
     private val aiPreferences: AiPreferences,
-    private val errorReporter: ErrorReporter
+    private val errorReporter: ErrorReporter,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         if (!batteryAllowsPreloading()) {
@@ -53,6 +56,7 @@ class ArticleAiOverviewPreloadWorker(
             Log.i(TAG, "Skipping AI overview preload because OpenRouter is not configured")
             return Result.success()
         }
+        val session = sessionGate.currentSession()
 
         return try {
             val allowNetworkForContent = provider == AiProvider.OPENROUTER
@@ -64,10 +68,12 @@ class ArticleAiOverviewPreloadWorker(
 
             while (generated < MAX_OVERVIEWS_PER_RUN && scanned < MAX_TARGETS_SCANNED_PER_RUN) {
                 val batchSize = minOf(TARGET_SCAN_BATCH_SIZE, MAX_TARGETS_SCANNED_PER_RUN - scanned)
-                val preloadTargets = targets.getAiOverviewPrefetchTargets(
-                    limit = batchSize,
-                    offset = offset
-                )
+                val preloadTargets = sessionGate.withSession(session) {
+                    targets.getAiOverviewPrefetchTargets(
+                        limit = batchSize,
+                        offset = offset
+                    )
+                }
                 if (preloadTargets.isEmpty()) break
                 scanned += preloadTargets.size
                 offset += preloadTargets.size
@@ -79,7 +85,8 @@ class ArticleAiOverviewPreloadWorker(
                         content.getArticleContent(
                             entryId = target.id,
                             url = target.url,
-                            allowNetwork = allowNetworkForContent
+                            allowNetwork = allowNetworkForContent,
+                            session = session
                         )
                     } catch (failure: CancellationException) {
                         throw failure
@@ -92,7 +99,7 @@ class ArticleAiOverviewPreloadWorker(
                         Log.d(TAG, "Skipping AI overview ${target.id}; full article content is unavailable")
                         continue
                     }
-                    if (overviews.get(target.id, articleText.html, modelId) != null) continue
+                    if (overviews.get(target.id, articleText.html, modelId, session) != null) continue
 
                     val result = ai.generateArticleOverview(
                         title = target.title,
@@ -120,7 +127,7 @@ class ArticleAiOverviewPreloadWorker(
                     val overview = result.getOrNull() ?: continue
 
                     if (overview.isBlank()) continue
-                    overviews.save(target.id, articleText.html, modelId, overview)
+                    overviews.save(target.id, articleText.html, modelId, overview, session)
                     generated++
                 }
 

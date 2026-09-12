@@ -12,6 +12,9 @@ import com.hiosdra.hreader.adapter.opml.parseOpml
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.port.out.FeedStore
 import com.hiosdra.hreader.core.application.feeds.OpmlImportResult
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
+import com.hiosdra.hreader.core.application.port.out.SyncSession
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -23,17 +26,25 @@ class FeedRepository(
     private val backend: FeedBackend,
     private val feedDao: FeedDao,
     private val articleDao: ArticleDao,
-    private val db: AppDatabase
+    private val db: AppDatabase,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : FeedStore {
     /**
      * The subscription list as last synced. Serving it from the cache is what lets the screen open
      * without a connection at all: it used to go straight to the backend and show an error.
      */
-    override suspend fun getCachedFeeds(): List<Feed> = feedDao.getAllFeeds().first().map { it.toFeed() }
+    override suspend fun getCachedFeeds(): List<Feed> {
+        val session = sessionGate.currentSession()
+        return sessionGate.withSession(session) {
+            feedDao.getAllFeeds().first().map { it.toFeed() }
+        }
+    }
 
     /** Unread counts from the cached articles, so the list still adds up while offline. */
-    override suspend fun getCachedUnreadCounts(): Map<Long, Int> =
-        observeUnreadCounts().first()
+    override suspend fun getCachedUnreadCounts(): Map<Long, Int> {
+        val session = sessionGate.currentSession()
+        return sessionGate.withSession(session) { observeUnreadCounts().first() }
+    }
 
     override fun observeUnreadCounts(): Flow<Map<Long, Int>> =
         articleDao.observeUnreadCountsPerFeed().map { counts ->
@@ -41,30 +52,45 @@ class FeedRepository(
         }
 
     override suspend fun refreshFeeds(): List<Feed> {
-        val feeds = backend.getFeeds()
-        val incoming = db.withTransaction {
-            val existingSettings = feedDao.getAllFeedsImmediate()
-                .associate { it.id to it.preloadAiOverview }
-            val persistedFeeds = feeds.map { feed ->
-                feed.toFeedEntity().copy(
-                    preloadAiOverview = existingSettings[feed.id] ?: feed.preloadAiOverview
-                )
+        val session = sessionGate.currentSession()
+        return sessionGate.withSession(session) {
+            val feeds = backend.getFeeds()
+            val incoming = db.withTransaction {
+                val existingSettings = feedDao.getAllFeedsImmediate()
+                    .associate { it.id to it.preloadAiOverview }
+                val persistedFeeds = feeds.map { feed ->
+                    feed.toFeedEntity().copy(
+                        preloadAiOverview = existingSettings[feed.id] ?: feed.preloadAiOverview
+                    )
+                }
+                val incomingIds = persistedFeeds.mapTo(hashSetOf()) { it.id }
+                val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
+                if (persistedFeeds.isNotEmpty()) feedDao.insertFeeds(persistedFeeds)
+                staleIds.chunked(DELETE_FEED_CHUNK).forEach { feedIds ->
+                    articleDao.deleteByFeedIds(feedIds)
+                    feedDao.deleteByIds(feedIds)
+                }
+                persistedFeeds
             }
-            val incomingIds = persistedFeeds.mapTo(hashSetOf()) { it.id }
-            val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
-            if (persistedFeeds.isNotEmpty()) feedDao.insertFeeds(persistedFeeds)
-            staleIds.chunked(DELETE_FEED_CHUNK).forEach { feedIds ->
-                articleDao.deleteByFeedIds(feedIds)
-                feedDao.deleteByIds(feedIds)
-            }
-            persistedFeeds
+            incoming.map { it.toFeed() }
         }
-        return incoming.map { it.toFeed() }
     }
 
-    override suspend fun getUnreadCounts(): Map<Long, Int> = backend.getUnreadCounts()
-    override suspend fun createFeed(url: String) = backend.createFeed(url)
-    override suspend fun discoverFeeds(url: String): List<DiscoveredFeed> = backend.discoverFeeds(url)
+    override suspend fun getUnreadCounts(): Map<Long, Int> {
+        val session = sessionGate.currentSession()
+        return sessionGate.withSession(session) { backend.getUnreadCounts() }
+    }
+
+    override suspend fun createFeed(url: String) {
+        val session = sessionGate.currentSession()
+        sessionGate.withSession(session) { backend.createFeed(url) }
+    }
+
+    override suspend fun discoverFeeds(url: String): List<DiscoveredFeed> {
+        val session = sessionGate.currentSession()
+        return sessionGate.withSession(session) { backend.discoverFeeds(url) }
+    }
+
     override suspend fun verifyConnection(): Int = backend.verifyConnection()
 
     /**
@@ -72,20 +98,29 @@ class FeedRepository(
      * bring it back on the next sync, along with every article in it.
      */
     override suspend fun deleteFeed(feedId: Long) {
-        backend.deleteFeed(feedId)
-        db.withTransaction {
-            articleDao.deleteByFeedId(feedId)
-            feedDao.deleteById(feedId)
+        val session = sessionGate.currentSession()
+        sessionGate.withSession(session) {
+            backend.deleteFeed(feedId)
+            db.withTransaction {
+                articleDao.deleteByFeedId(feedId)
+                feedDao.deleteById(feedId)
+            }
         }
     }
 
     override suspend fun renameFeed(feedId: Long, title: String) {
-        backend.renameFeed(feedId, title)
-        feedDao.updateTitle(feedId, title)
+        val session = sessionGate.currentSession()
+        sessionGate.withSession(session) {
+            backend.renameFeed(feedId, title)
+            feedDao.updateTitle(feedId, title)
+        }
     }
 
     override suspend fun setAiOverviewPreloading(feedId: Long, enabled: Boolean) {
-        feedDao.updateAiOverviewPreloading(feedId, enabled)
+        val session = sessionGate.currentSession()
+        sessionGate.withSession(session) {
+            feedDao.updateAiOverviewPreloading(feedId, enabled)
+        }
     }
 
     override suspend fun exportOpml(title: String): String = buildOpml(getCachedFeeds(), title)
@@ -99,7 +134,10 @@ class FeedRepository(
         val parsed = parseOpml(xml)
         if (parsed.isEmpty()) return OpmlImportResult(added = 0, skipped = 0, failed = emptyList())
 
-        val existing = getCachedFeeds().map { it.feedUrl }.toHashSet()
+        val session = sessionGate.currentSession()
+        val existing = sessionGate.withSession(session) {
+            getCachedFeeds().map { it.feedUrl }.toHashSet()
+        }
         var added = 0
         var skipped = 0
         val failed = mutableListOf<String>()
@@ -109,7 +147,7 @@ class FeedRepository(
                 return@forEach
             }
             try {
-                backend.createFeed(feed.feedUrl)
+                sessionGate.withSession(session) { backend.createFeed(feed.feedUrl) }
                 added++
             } catch (e: CancellationException) {
                 throw e
@@ -118,7 +156,7 @@ class FeedRepository(
             }
         }
         if (added > 0) {
-            runCatching { refreshFeeds() }
+            runCatching { sessionGate.withSession(session) { refreshFeeds() } }
                 .onFailure { if (it is CancellationException) throw it }
         }
         return OpmlImportResult(added = added, skipped = skipped, failed = failed)

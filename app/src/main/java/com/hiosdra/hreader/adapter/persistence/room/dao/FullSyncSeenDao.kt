@@ -19,10 +19,12 @@ interface FullSyncSeenDao {
             "AND a.backlogFetchedAt IS NULL " +
             "AND NOT EXISTS (" +
             "SELECT 1 FROM full_sync_seen s " +
-            "WHERE s.runId = :runId AND s.articleId = a.id)"
+            "WHERE s.runId = :runId AND s.articleId = a.id)" +
+            " LIMIT :limit"
     )
     suspend fun getSyncedUnreadIdsMissingFrom(
         runId: String,
+        limit: Int,
         readStatus: ArticleStatus = ArticleStatus.READ
     ): List<String>
 

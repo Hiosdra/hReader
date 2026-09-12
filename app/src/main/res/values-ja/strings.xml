@@ -276,6 +276,8 @@
     <plurals name="settings_connected"><item quantity="other">接続しました。%1$d 件の購読が見つかりました。</item></plurals>
     <string name="settings_connect_failed">サーバーに接続できませんでした。</string>
     <string name="settings_clear_articles_failed">ダウンロード済みの記事を消去できませんでした。</string>
+    <string name="settings_save_server">サーバー設定を保存</string>
+    <string name="settings_server_settings_saved">サーバー設定を保存しました。</string>
     <string name="server_url">サーバーURL</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">ユーザー名</string>

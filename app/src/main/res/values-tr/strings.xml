@@ -276,6 +276,8 @@
     <plurals name="settings_connected"><item quantity="one">Bağlandı. %1$d abonelik bulundu.</item><item quantity="other">Bağlandı. %1$d abonelik bulundu.</item></plurals>
     <string name="settings_connect_failed">Sunucuya bağlanılamadı.</string>
     <string name="settings_clear_articles_failed">İndirilen makaleler temizlenemedi.</string>
+    <string name="settings_save_server">Sunucu ayarlarını kaydet</string>
+    <string name="settings_server_settings_saved">Sunucu ayarları kaydedildi.</string>
     <string name="server_url">Sunucu URL’si</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">Kullanıcı adı</string>

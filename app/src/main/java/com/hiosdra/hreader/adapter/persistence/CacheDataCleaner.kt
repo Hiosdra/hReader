@@ -2,6 +2,7 @@ package com.hiosdra.hreader.adapter.persistence
 
 import androidx.room.withTransaction
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
+import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageFile
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,10 @@ internal class CacheDataCleaner(
     private val pagesDir: File,
     private val contentStore: ArticleContentStore? = null
 ) {
+    private companion object {
+        const val CLEANUP_BATCH_SIZE = 500
+    }
+
     suspend fun clearAll() {
         withContext(Dispatchers.IO) {
             imagesDir.listFiles()?.forEach { it.deleteRecursively() }
@@ -34,15 +39,23 @@ internal class CacheDataCleaner(
 
     suspend fun repair() {
         contentStore?.cleanupOrphanedContent()
-        val images = db.articleImageDao().getAllImages()
-        val missing = images.filterNot { File(it.localFilePath).isFile }
-        missing.chunked(500).forEach { chunk ->
-            db.articleImageDao().deleteByIds(chunk.map { it.id })
+        val articleImageDao = db.articleImageDao()
+        val referencedPaths = mutableSetOf<String>()
+        var afterId = ""
+        while (true) {
+            val images = articleImageDao.getImageFilesAfterId(afterId, CLEANUP_BATCH_SIZE)
+            if (images.isEmpty()) break
+            afterId = images.last().id
+            val missing = images.filterNot { image -> File(image.localFilePath).isFile }
+            val missingIds = missing.mapTo(hashSetOf()) { it.id }
+            missing.chunked(CLEANUP_BATCH_SIZE).forEach { chunk ->
+                articleImageDao.deleteByIds(chunk.map(ArticleImageFile::id))
+            }
+            images.asSequence()
+                .filterNot { it.id in missingIds }
+                .mapNotNull { image -> runCatching { File(image.localFilePath).canonicalPath }.getOrNull() }
+                .forEach(referencedPaths::add)
         }
-        val referencedPaths = images
-            .filter { it !in missing }
-            .mapNotNull { runCatching { File(it.localFilePath).canonicalPath }.getOrNull() }
-            .toSet()
         withContext(Dispatchers.IO) {
             imagesDir.listFiles()?.forEach { file ->
                 val path = runCatching { file.canonicalPath }.getOrNull() ?: return@forEach

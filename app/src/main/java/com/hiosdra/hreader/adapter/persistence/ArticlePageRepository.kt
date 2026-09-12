@@ -6,6 +6,8 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticlePageSnapshot
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +37,8 @@ class ArticlePageRepository(
     private val snapshotDao: ArticlePageSnapshotDao,
     private val articleDao: ArticleDao,
     httpClient: OkHttpClient,
-    private val remoteResourcePolicy: RemoteResourcePolicyAdapter
+    private val remoteResourcePolicy: RemoteResourcePolicyAdapter,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : ArticlePageStore {
     companion object {
         const val OFFLINE_PAGE_HOST = "offline.hreader.local"
@@ -72,124 +75,147 @@ class ArticlePageRepository(
         .build()
 
     override suspend fun getOfflinePage(entryId: Long, originalUrl: String): OfflinePage? =
-        withContext(Dispatchers.IO) {
-            val snapshot = snapshotDao.get(entryId) ?: return@withContext null
-            if (snapshot.originalUrl != originalUrl) return@withContext null
+        withCurrentSession {
+            withContext(Dispatchers.IO) {
+                val snapshot = snapshotDao.get(entryId) ?: return@withContext null
+                if (snapshot.originalUrl != originalUrl) return@withContext null
 
-            val directory = pageDirectory(entryId, snapshot.directoryPath) ?: run {
-                snapshotDao.deleteForEntries(listOf(entryId))
-                return@withContext null
-            }
-            val htmlFile = File(directory, INDEX_FILE)
-            if (!htmlFile.isFile) {
-                snapshotDao.deleteForEntries(listOf(entryId))
-                directory.deleteRecursively()
-                return@withContext null
-            }
-            if (htmlFile.length() > MAX_HTML_BYTES) {
-                snapshotDao.deleteForEntries(listOf(entryId))
-                directory.deleteRecursively()
-                return@withContext null
-            }
+                val directory = pageDirectory(entryId, snapshot.directoryPath) ?: run {
+                    snapshotDao.deleteForEntries(listOf(entryId))
+                    return@withContext null
+                }
+                val htmlFile = File(directory, INDEX_FILE)
+                if (!htmlFile.isFile) {
+                    snapshotDao.deleteForEntries(listOf(entryId))
+                    directory.deleteRecursively()
+                    return@withContext null
+                }
+                if (htmlFile.length() > MAX_HTML_BYTES) {
+                    snapshotDao.deleteForEntries(listOf(entryId))
+                    directory.deleteRecursively()
+                    return@withContext null
+                }
 
-            val html = runCatching { htmlFile.readText(UTF_8) }.getOrNull()
-                ?: return@withContext null
-            OfflinePage(
-                entryId = entryId,
-                originalUrl = snapshot.originalUrl,
-                baseUrl = baseUrl(entryId),
-                html = html,
-                resourceDirectory = directory.absolutePath,
-                isComplete = snapshot.isComplete
-            )
+                val html = runCatching { htmlFile.readText(UTF_8) }.getOrNull()
+                    ?: return@withContext null
+                OfflinePage(
+                    entryId = entryId,
+                    originalUrl = snapshot.originalUrl,
+                    baseUrl = baseUrl(entryId),
+                    html = html,
+                    resourceDirectory = directory.absolutePath,
+                    isComplete = snapshot.isComplete
+                )
+            }
         }
 
     override suspend fun entriesMissingPages(entries: List<Pair<Long, String>>): List<Pair<Long, String>> =
-        withContext(Dispatchers.IO) {
-            val stored = snapshotDao.getAll()
-                .filter { snapshot ->
-                    snapshot.isComplete &&
-                        pageDirectory(snapshot.entryId, snapshot.directoryPath)
-                            ?.resolve(INDEX_FILE)
-                            ?.isFile == true
-                }
-                .associate { it.entryId to it.originalUrl }
-            entries.filterNot { (entryId, url) -> stored[entryId] == url }
+        withCurrentSession {
+            withContext(Dispatchers.IO) {
+                if (entries.isEmpty()) return@withContext emptyList()
+                val stored = entries
+                    .map { it.first }
+                    .chunked(DELETE_CHUNK)
+                    .flatMap { chunk -> snapshotDao.getForEntries(chunk) }
+                    .filter { snapshot ->
+                        snapshot.isComplete &&
+                            pageDirectory(snapshot.entryId, snapshot.directoryPath)
+                                ?.resolve(INDEX_FILE)
+                                ?.isFile == true
+                    }
+                    .associate { it.entryId to it.originalUrl }
+                entries.filterNot { (entryId, url) -> stored[entryId] == url }
+            }
         }
 
     override suspend fun getMissingPageTargets(limit: Int): List<Pair<Long, String>> =
-        articleDao.getPrefetchTargetsMissingPages(limit).mapNotNull { target ->
-            target.id.toLongOrNull()?.let { it to target.url }
+        withCurrentSession {
+            articleDao.getPrefetchTargetsMissingPages(limit).mapNotNull { target ->
+                target.id.toLongOrNull()?.let { it to target.url }
+            }
         }
 
     override suspend fun countMissingPageTargets(): Int =
-        articleDao.countPrefetchTargetsMissingPages()
+        withCurrentSession { articleDao.countPrefetchTargetsMissingPages() }
 
     override suspend fun prefetchPages(
         entries: List<Pair<Long, String>>,
         limit: Int?,
         onProgress: (done: Int, total: Int) -> Unit
-    ) = coroutineScope {
-        val selected = if (limit == null) entries else entries.take(limit)
-        val total = selected.size
-        val done = AtomicInteger()
-        selected.map { (entryId, url) ->
-            async(Dispatchers.IO) {
-                pageLimiter.withPermit {
-                    try {
-                        downloadPage(entryId, url)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to archive page for entry $entryId", e)
+    ) = withCurrentSession {
+        coroutineScope {
+            val selected = if (limit == null) entries else entries.take(limit)
+            val total = selected.size
+            val done = AtomicInteger()
+            selected.map { (entryId, url) ->
+                async(Dispatchers.IO) {
+                    pageLimiter.withPermit {
+                        try {
+                            downloadPage(entryId, url)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to archive page for entry $entryId", e)
+                        }
+                    }
+                    onProgress(done.incrementAndGet(), total)
+                }
+            }.awaitAll()
+            Unit
+        }
+    }
+
+    override suspend fun cleanupOrphanedPages() = withCurrentSession {
+        withContext(Dispatchers.IO) {
+            val temporaryEntryIds = pagesDirectory.listFiles().orEmpty()
+                .mapNotNull { temporaryPageEntryId(it.name) }
+                .toSet()
+            val referencedEntryIds = mutableSetOf<Long>()
+            var afterEntryId: Long? = null
+            while (true) {
+                val snapshots = snapshotDao.getBatch(afterEntryId, DELETE_CHUNK)
+                if (snapshots.isEmpty()) break
+                afterEntryId = snapshots.last().entryId
+                val currentEntryIds = articleDao.getExistingIds(
+                    snapshots.map { it.entryId.toString() }
+                ).mapNotNull { it.toLongOrNull() }.toHashSet()
+                val invalidEntryIds = mutableListOf<Long>()
+                val orphanedEntryIds = mutableListOf<Long>()
+                snapshots.forEach { snapshot ->
+                    val directory = pageDirectory(snapshot.entryId, snapshot.directoryPath)
+                    val hasIndex = directory?.resolve(INDEX_FILE)?.isFile == true
+                    when {
+                        !hasIndex && snapshot.entryId !in temporaryEntryIds -> {
+                            directory?.deleteRecursively()
+                            invalidEntryIds += snapshot.entryId
+                        }
+                        hasIndex && snapshot.entryId in currentEntryIds -> {
+                            referencedEntryIds += snapshot.entryId
+                        }
+                        hasIndex -> {
+                            directory.deleteRecursively()
+                            orphanedEntryIds += snapshot.entryId
+                        }
                     }
                 }
-                onProgress(done.incrementAndGet(), total)
+                (invalidEntryIds + orphanedEntryIds).chunked(DELETE_CHUNK).forEach { chunk ->
+                    snapshotDao.deleteForEntries(chunk)
+                }
             }
-        }.awaitAll()
-        Unit
+
+            pagesDirectory.listFiles()
+                ?.filterNot { file ->
+                    isTemporaryPageDirectory(file) ||
+                        file.name.toLongOrNull()?.let(referencedEntryIds::contains) == true
+                }
+                ?.forEach(File::deleteRecursively)
+            Unit
+        }
     }
 
-    override suspend fun cleanupOrphanedPages() = withContext(Dispatchers.IO) {
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
-        val snapshots = snapshotDao.getAll()
-        val invalidSnapshots = snapshots.filterNot { snapshot ->
-            pageDirectory(snapshot.entryId, snapshot.directoryPath)
-                ?.resolve(INDEX_FILE)
-                ?.isFile == true
-        }.filterNot { snapshot -> hasTemporaryPageDirectory(snapshot.entryId) }
-        invalidSnapshots.mapNotNull { snapshot ->
-            pageDirectory(snapshot.entryId, snapshot.directoryPath)
-        }.forEach(File::deleteRecursively)
-        invalidSnapshots.map { it.entryId }.chunked(DELETE_CHUNK).forEach { chunk ->
-            snapshotDao.deleteForEntries(chunk)
-        }
-        val validSnapshots = snapshots - invalidSnapshots.toSet()
-        val snapshotsById = validSnapshots.associateBy { it.entryId }
-        val orphaned = snapshotsById.keys.filterNot(currentEntryIds::contains)
-        orphaned.chunked(DELETE_CHUNK).forEach { chunk ->
-            chunk.mapNotNull { entryId -> snapshotsById[entryId] }
-                .mapNotNull { snapshot -> pageDirectory(snapshot.entryId, snapshot.directoryPath) }
-                .forEach(File::deleteRecursively)
-            snapshotDao.deleteForEntries(chunk)
-        }
-
-        val referencedDirectories = validSnapshots.mapNotNull { snapshot ->
-            pageDirectory(snapshot.entryId, snapshot.directoryPath)?.canonicalPath
-        }.toSet()
-        pagesDirectory.listFiles()
-            ?.filterNot { file ->
-                isTemporaryPageDirectory(file) ||
-                    runCatching { file.canonicalPath in referencedDirectories }.getOrDefault(true)
-            }
-            ?.forEach(File::deleteRecursively)
-        Unit
-    }
-
-    private fun hasTemporaryPageDirectory(entryId: Long): Boolean =
-        pagesDirectory.listFiles()?.any { file ->
-            file.name.startsWith(".staging-$entryId-") || file.name.startsWith(".backup-$entryId-")
-        } == true
+    private fun temporaryPageEntryId(name: String): Long? = listOf(".staging-", ".backup-")
+        .firstOrNull(name::startsWith)
+        ?.let { prefix -> name.removePrefix(prefix).substringBefore('-').toLongOrNull() }
 
     private fun isTemporaryPageDirectory(file: File): Boolean =
         file.name.startsWith(".staging-") || file.name.startsWith(".backup-")
@@ -201,11 +227,16 @@ class ArticlePageRepository(
         return directory.takeIf { it == expected }
     }
 
-    override suspend fun clearAll() = withContext(Dispatchers.IO) {
-        pagesDirectory.listFiles()?.forEach(File::deleteRecursively)
-        snapshotDao.clearAll()
-        Unit
+    override suspend fun clearAll() = withCurrentSession {
+        withContext(Dispatchers.IO) {
+            pagesDirectory.listFiles()?.forEach(File::deleteRecursively)
+            snapshotDao.clearAll()
+            Unit
+        }
     }
+
+    private suspend fun <T> withCurrentSession(block: suspend () -> T): T =
+        sessionGate.withSession(sessionGate.currentSession(), block)
 
     suspend fun prefetchPages(entries: List<Pair<Long, String>>): Unit =
         prefetchPages(entries, limit = null, onProgress = { _, _ -> })

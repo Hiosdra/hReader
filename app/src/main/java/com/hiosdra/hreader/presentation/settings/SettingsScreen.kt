@@ -156,6 +156,7 @@ fun SettingsScreen(
                         onUsernameChange = settingsViewModel::onUsernameChange,
                         onSecretChange = settingsViewModel::onSecretChange,
                         onTestConnection = settingsViewModel::testConnection,
+                        onApply = settingsViewModel::applyServerSettings,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -275,7 +276,9 @@ fun SettingsScreen(
                     LocalDataSection(
                         state = sync,
                         canSignOut = serverSettings.hasAllFields,
-                        isBusy = serverSettings.isSwitchingBackend,
+                        isBusy = serverSettings.isSwitchingBackend ||
+                            serverSettings.isApplying ||
+                            serverSettings.isTesting,
                         onResyncFromScratch = {
                             requestNotificationPermission(settingsViewModel::resyncFromScratch)
                         },
@@ -335,7 +338,9 @@ fun SettingsScreen(
                             showSignOutDialog = false
                             settingsViewModel.signOut()
                         },
-                        enabled = !serverSettings.isSwitchingBackend
+                        enabled = !serverSettings.isSwitchingBackend &&
+                            !serverSettings.isApplying &&
+                            !serverSettings.isTesting
                     ) {
                         Text(stringResource(R.string.action_sign_out))
                     }

@@ -12,6 +12,8 @@ import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
 import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
 import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
@@ -26,10 +28,11 @@ private const val TAG = "ArticleRepository"
 class ArticleRepository(
     articleDao: ArticleDao,
     feedDao: FeedDao,
-    private val syncEngine: ArticleSyncStore
+    private val syncEngine: ArticleSyncStore,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : ArticleStore, ArticleAiOverviewPrefetchStore {
     private val queryRepository: ArticleQueryStore = ArticleQueryRepository(articleDao, feedDao)
-    private val mutationRepository: ArticleMutationStore = ArticleMutationRepository(articleDao)
+    private val mutationRepository: ArticleMutationStore = ArticleMutationRepository(articleDao, sessionGate)
     private val articleDao = articleDao
 
     override fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> =
@@ -65,22 +68,17 @@ class ArticleRepository(
         mutationRepository.idsStillReadSince(articleIds, readBefore)
 
     override suspend fun backfillMissingPreviews(limit: Int): Int {
-        val stale = articleDao.getArticlesMissingPreview(limit)
-        if (stale.isEmpty()) return 0
-        stale.forEach { article ->
-            articleDao.setPreview(article.id, extractArticlePreview(article.content).orEmpty())
-        }
-        Log.d(TAG, "Backfilled ${stale.size} article previews")
-        return stale.size
-    }
-
-    override suspend fun getPrefetchTargets(): List<PrefetchTarget> = articleDao
-        .getPrefetchTargets()
-        .mapNotNull { target ->
-            target.id.toLongOrNull()?.let { id ->
-                PrefetchTarget(id = id, url = target.url, enclosures = target.enclosures)
+        val session = sessionGate.currentSession()
+        return sessionGate.withSession(session) {
+            val stale = articleDao.getArticlesMissingPreview(limit)
+            if (stale.isEmpty()) return@withSession 0
+            stale.forEach { article ->
+                articleDao.setPreview(article.id, extractArticlePreview(article.content).orEmpty())
             }
+            Log.d(TAG, "Backfilled ${stale.size} article previews")
+            stale.size
         }
+    }
 
     override suspend fun getPrefetchTargets(
         limit: Int,

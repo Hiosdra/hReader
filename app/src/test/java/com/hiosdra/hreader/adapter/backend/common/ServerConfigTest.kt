@@ -1,9 +1,14 @@
 package com.hiosdra.hreader.adapter.backend.common
 
 import com.hiosdra.hreader.core.domain.model.BackendType
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
+import com.hiosdra.hreader.core.application.settings.BackendConfiguration
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import com.hiosdra.hreader.adapter.preferences.PreferencesManager
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -127,6 +132,69 @@ class ServerConfigTest {
         assertEquals(root.cacheOwnerKey(), endpoint.cacheOwnerKey())
     }
 
+    @Test
+    fun `committing a configuration invalidates the previous session`() = runBlocking {
+        val preferencesManager = mockk<BackendPreferences>(relaxed = true)
+        val first = BackendConfiguration(
+            backendType = BackendType.FRESHRSS,
+            freshRssServerUrl = "https://rss.example.com",
+            freshRssUsername = "reader",
+            freshRssSecret = "secret"
+        )
+        val second = first.copy(freshRssUsername = "other-reader")
+        every { preferencesManager.getBackendConfiguration() } returns first
+        every { preferencesManager.setBackendConfiguration(second) } returns Unit
+        val config = ServerConfig(preferencesManager)
+        val oldSession = config.currentSession()
+
+        config.commitBackendConfiguration(second)
+
+        assertFalse(config.isCurrent(oldSession))
+        assertTrue(config.isCurrent(config.currentSession()))
+    }
+
+    @Test
+    fun `temporary configuration is restored without persisting it`() = runBlocking {
+        val preferencesManager = mockk<BackendPreferences>(relaxed = true)
+        val first = BackendConfiguration(
+            backendType = BackendType.FRESHRSS,
+            freshRssServerUrl = "https://rss.example.com",
+            freshRssUsername = "reader",
+            freshRssSecret = "secret"
+        )
+        val second = first.copy(freshRssUsername = "other-reader")
+        every { preferencesManager.getBackendConfiguration() } returns first
+        val config = ServerConfig(preferencesManager)
+        val originalSession = config.currentSession()
+
+        val observed: String = config.withTemporaryBackendConfiguration(second) {
+            assertEquals(second, config.getBackendConfiguration())
+            assertFalse(config.isCurrent(originalSession))
+            "verified"
+        }
+
+        assertEquals("verified", observed)
+        assertEquals(first, config.getBackendConfiguration())
+        assertTrue(config.isCurrent(originalSession))
+        verify(exactly = 0) { preferencesManager.setBackendConfiguration(any()) }
+    }
+
+    @Test
+    fun `session operations can be composed inside a configuration change`() = runBlocking {
+        val config = configFor(serverUrl = "rss.example.com")
+
+        val observed = withTimeout(1_000) {
+            config.withSessionChange {
+                val session = config.currentSession()
+                config.withSession(session) {
+                    config.withSessionChange { config.getBackendConfiguration() }
+                }
+            }
+        }
+
+        assertEquals(config.getBackendConfiguration(), observed)
+    }
+
     private fun configFor(
         backendType: BackendType = BackendType.FRESHRSS,
         serverUrl: String,
@@ -138,6 +206,14 @@ class ServerConfigTest {
         every { preferencesManager.getServerUrl(any()) } returns serverUrl
         every { preferencesManager.getFreshRssUsername() } returns username
         every { preferencesManager.getBackendSecret(any()) } returns secret
+        every { preferencesManager.getBackendConfiguration() } returns BackendConfiguration(
+            backendType = backendType,
+            freshRssServerUrl = serverUrl,
+            freshRssUsername = username,
+            freshRssSecret = secret,
+            minifluxServerUrl = serverUrl,
+            minifluxSecret = secret
+        )
         return ServerConfig(preferencesManager)
     }
 }

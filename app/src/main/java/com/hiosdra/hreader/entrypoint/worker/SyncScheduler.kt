@@ -21,7 +21,7 @@ import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
-import com.hiosdra.hreader.core.application.port.out.BackendPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
@@ -87,7 +87,7 @@ internal fun offlinePreparationStage(tags: Set<String>): OfflinePreparationStage
  */
 class SyncScheduler(
     private val context: Context,
-    private val backendPreferences: BackendPreferences,
+    private val backendIdentity: BackendIdentity,
     private val syncPreferences: SyncPreferences,
     private val networkMonitor: NetworkStatus,
     private val aiPreferences: AiPreferences,
@@ -109,7 +109,7 @@ class SyncScheduler(
             .drop(1)
             .distinctUntilChanged()
             .filter { it }
-            .onEach { if (backendPreferences.hasBackendCredentials()) syncNow() }
+            .onEach { if (backendIdentity.isComplete()) syncNow() }
             .launchIn(scope)
     }
 
@@ -159,7 +159,7 @@ class SyncScheduler(
      */
     override fun schedulePeriodicSync() {
         enqueueMaintenance()
-        if (!backendPreferences.hasBackendCredentials()) {
+        if (!backendIdentity.isComplete()) {
             workManager.cancelUniqueWork(CONTENT_SYNC_WORK)
             return
         }
@@ -204,7 +204,7 @@ class SyncScheduler(
      * — rather than one the clock asked for. Unthrottled, because it answers an action.
      */
     override fun request(intent: SyncIntent): SyncOperationId? {
-        if (!backendPreferences.hasBackendCredentials()) return null
+        if (!backendIdentity.isComplete()) return null
         val plan = syncCoordinator.plan(intent)
         val defaultTitleRes = when (intent) {
             SyncIntent.Resync -> R.string.notification_resync_title
@@ -280,7 +280,7 @@ class SyncScheduler(
 
     /** Sync then prefetch when the app goes to the background, at most once every two minutes. */
     override fun enqueueBackgroundSyncChain() {
-        if (!backendPreferences.hasBackendCredentials()) return
+        if (!backendIdentity.isComplete()) return
         val now = System.currentTimeMillis()
         // Held in preferences rather than in memory: the throttle used to live in a static field,
         // which reset on every process death and let the chain run far more often than intended.

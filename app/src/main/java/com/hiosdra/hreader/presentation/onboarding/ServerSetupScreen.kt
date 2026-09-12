@@ -130,7 +130,10 @@ fun ServerSetupScreen(
                         settingsViewModel.onSetupFinished(onSetupFinished)
                     }
                 },
-                enabled = serverSettings.hasAllFields,
+                enabled = serverSettings.hasAllFields &&
+                    !serverSettings.isApplying &&
+                    !serverSettings.isSwitchingBackend &&
+                    !serverSettings.isTesting,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(

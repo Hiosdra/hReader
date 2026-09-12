@@ -59,6 +59,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.BackendPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendSessionStore
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
@@ -126,7 +127,7 @@ val appModule = module {
     single { get<AppDatabase>().articleAiOverviewDao() }
     single { get<AppDatabase>().articlePageSnapshotDao() }
     single { get<AppDatabase>().fullSyncSeenDao() }
-    single { RemoteResourcePolicyAdapter(get<AppPreferences>()) }
+    single { RemoteResourcePolicyAdapter(get<BackendSessionStore>()) }
     single<RemoteResourcePolicy> { get<RemoteResourcePolicyAdapter>() }
     single { get<AppDatabase>().articleReadingPositionDao() }
     single {
@@ -141,10 +142,13 @@ val appModule = module {
             performance = get(),
             imageStore = get(),
             credibilityStore = get(),
-            backendIdentity = get()
+            backendIdentity = get(),
+            cacheStore = get(),
+            preferenceWrites = get(),
+            sessionGate = get()
         )
     }
-    single { ArticleRepository(get(), get(), get<ArticleSyncEngine>()) }
+    single { ArticleRepository(get(), get(), get<ArticleSyncEngine>(), get()) }
     single<ArticleStore> { get<ArticleRepository>() }
     single<ArticleQueryStore> { get<ArticleRepository>() }
     single<ArticleMutationStore> { get<ArticleRepository>() }
@@ -163,7 +167,7 @@ val appModule = module {
             }
             .build()
     }
-    single { CredibilityRepository(get(), get()) }
+    single { CredibilityRepository(get(), get(), get(), get()) }
     single<CredibilityStore> { get<CredibilityRepository>() }
     single {
         ArticleContentRepository(
@@ -175,17 +179,18 @@ val appModule = module {
             get(),
             get(),
             get(),
-            get(named("applicationScope"))
+            imageScope = get(named("applicationScope")),
+            sessionGate = get()
         )
     }
     single<ArticleContentStore> { get<ArticleContentRepository>() }
-    single { ArticlePageRepository(androidApplication(), get(), get(), get(), get()) }
+    single { ArticlePageRepository(androidApplication(), get(), get(), get(), get(), get()) }
     single<ArticlePageStore> { get<ArticlePageRepository>() }
-    single { ArticleReadingPositionRepository(get()) }
+    single { ArticleReadingPositionRepository(get(), get()) }
     single<ArticleReadingPositionStore> { get<ArticleReadingPositionRepository>() }
     single { OfflineReadinessRepository(get(), get(), get(), get(), get()) }
     single<OfflineReadinessStore> { get<OfflineReadinessRepository>() }
-    single<FeedRepository> { FeedRepository(get(), get(), get(), get()) }
+    single<FeedRepository> { FeedRepository(get(), get(), get(), get(), get()) }
     single<FeedStore> { get<FeedRepository>() }
     single {
         CacheDataCleaner(
@@ -201,11 +206,12 @@ val appModule = module {
             preferences = get(),
             syncHealth = get(),
             backendIdentity = get(),
-            preferenceWrites = get()
+            preferenceWrites = get(),
+            sessionGate = get()
         )
     }
     single<CacheStore> { get<CacheOwnershipCoordinator>() }
-    single { ArticleAiOverviewRepository(get()) }
+    single { ArticleAiOverviewRepository(get(), get()) }
     single<ArticleAiOverviewStore> { get<ArticleAiOverviewRepository>() }
     single { PaywallBypassService() }
     single<PaywallBypass> { get<PaywallBypassService>() }
@@ -252,7 +258,7 @@ val appModule = module {
     single {
         SyncScheduler(
             context = androidApplication(),
-            backendPreferences = get(),
+            backendIdentity = get(),
             syncPreferences = get(),
             networkMonitor = get(),
             aiPreferences = get(),
@@ -274,7 +280,8 @@ val appModule = module {
             preferences = get<ReaderPreferences>(),
             aiPreferences = get<AiPreferences>(),
             images = get<ArticleImageLoader>(),
-            network = get<NetworkStatus>()
+            network = get<NetworkStatus>(),
+            sessionGate = get()
         )
     }
     single {
@@ -290,7 +297,7 @@ val appModule = module {
     single { FeedUseCase(get<FeedStore>(), get<NetworkStatus>()) }
     single {
         SettingsUseCase(
-            backendPreferences = get<BackendPreferences>(),
+            backendSession = get(),
             aiPreferences = get<AiPreferences>(),
             syncPreferences = get<SyncPreferences>(),
             feeds = get<FeedStore>(),
@@ -298,14 +305,15 @@ val appModule = module {
             cache = get<CacheStore>(),
             offlineReadiness = get<OfflineReadinessStore>(),
             sync = get<SyncRequester>(),
-            preferenceWrites = get()
+            preferenceWrites = get(),
+            sessionGate = get()
         )
     }
     worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
-    worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get()) }
-    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get(), get()) }
+    worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get()) }

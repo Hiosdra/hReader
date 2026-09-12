@@ -13,7 +13,9 @@ import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
 import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
@@ -35,7 +37,8 @@ class ArticleReaderUseCase(
     private val preferences: ReaderPreferences,
     private val aiPreferences: AiPreferences,
     private val images: ArticleImageLoader,
-    network: NetworkStatus
+    network: NetworkStatus,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) {
     val isOnline: StateFlow<Boolean> = network.isOnline
 
@@ -65,8 +68,10 @@ class ArticleReaderUseCase(
     fun observeLocalImagePaths(entryId: Long): Flow<Map<String, String>> =
         images.observeLocalImagePaths(entryId)
 
-    suspend fun getCachedOverview(entryId: Long, body: String, modelId: String = getAiModelId()): String? =
-        overviews.get(entryId, body, modelId)
+    suspend fun getCachedOverview(entryId: Long, body: String, modelId: String = getAiModelId()): String? {
+        val session = sessionGate.currentSession()
+        return overviews.get(entryId, body, modelId, session)
+    }
 
     suspend fun generateOverview(
         entryId: Long,
@@ -75,9 +80,10 @@ class ArticleReaderUseCase(
         modelId: String = getAiModelId(),
         onProgress: suspend (ArticleAiProgress) -> Unit = {}
     ): Result<String> {
-        overviews.get(entryId, body, modelId)?.let { return Result.success(it) }
+        val session = sessionGate.currentSession()
+        overviews.get(entryId, body, modelId, session)?.let { return Result.success(it) }
         return ai.generateArticleOverview(title, body, modelId, onProgress).onSuccess { overview ->
-            overviews.save(entryId, body, modelId, overview)
+            overviews.save(entryId, body, modelId, overview, session)
         }
     }
 
@@ -90,13 +96,18 @@ class ArticleReaderUseCase(
         entryId = entryId,
         source = source,
         modelId = modelId,
-        forceRefresh = forceRefresh
+        forceRefresh = forceRefresh,
+        session = sessionGate.currentSession()
     )
 
     suspend fun getCachedCredibility(
-        ids: List<Long>,
+        sources: Map<Long, CredibilitySource>,
         modelId: String = getAiModelId()
-    ): Map<Long, CredibilityReport> = credibility.getCached(ids, modelId)
+    ): Map<Long, CredibilityReport> = credibility.getCached(
+        sources,
+        modelId,
+        sessionGate.currentSession()
+    )
 
     suspend fun updateReadStatus(entryId: Long, status: ArticleStatus) {
         articleMutations.updateReadStatus(entryId.toString(), status)

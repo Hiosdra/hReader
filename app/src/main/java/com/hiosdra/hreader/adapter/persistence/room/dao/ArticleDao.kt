@@ -314,9 +314,12 @@ interface ArticleDao {
             "WHERE (status IS NULL OR status != :readStatus) " +
             "OR backlogFetchedAt IS NOT NULL " +
             "ORDER BY CASE WHEN (status IS NULL OR status != :readStatus) THEN 0 " +
-            "ELSE 1 END, publishedAt DESC, id DESC"
+            "ELSE 1 END, publishedAt DESC, id DESC LIMIT :limit"
     )
-    suspend fun getPrefetchTargets(readStatus: ArticleStatus = ArticleStatus.READ): List<PrefetchTarget>
+    suspend fun getPrefetchTargets(
+        limit: Int,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): List<PrefetchTarget>
 
     @Query(
         "SELECT a.id, a.url, a.enclosures FROM articles a " +
@@ -383,9 +386,6 @@ interface ArticleDao {
 
     @Query("SELECT * FROM articles WHERE id IN (:ids)")
     suspend fun getArticlesImmediate(ids: List<String>): List<ArticleEntity>
-
-    @Query("SELECT id FROM articles")
-    suspend fun getAllIds(): List<String>
 
     @Query("SELECT id FROM articles WHERE id IN (:ids)")
     suspend fun getExistingIds(ids: List<String>): List<String>

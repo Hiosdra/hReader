@@ -3,12 +3,13 @@ package com.hiosdra.hreader.adapter.persistence
 import android.content.Context
 import android.util.Log
 import com.hiosdra.hreader.BuildConfig
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageManifest
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
@@ -34,10 +35,10 @@ import java.util.UUID
 class ArticleImageRepository(
     context: Context,
     private val articleImageDao: ArticleImageDao,
-    private val articleDao: ArticleDao,
     private val okHttpClient: OkHttpClient,
     private val preferencesManager: SyncPreferences,
     private val remoteResourcePolicy: RemoteResourcePolicyAdapter,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate,
     private val fileExists: (String) -> Boolean = { path -> File(path).exists() }
 ) : ArticleImageStore {
     companion object {
@@ -92,7 +93,8 @@ class ArticleImageRepository(
         .build()
 
     override suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): Unit =
-        withContext(Dispatchers.IO) {
+        withCurrentSession {
+            withContext(Dispatchers.IO) {
             var localFile: File? = null
             var stored = false
             try {
@@ -168,42 +170,49 @@ class ArticleImageRepository(
             } finally {
                 if (!stored) localFile?.delete()
             }
+            }
         }
 
     override suspend fun getLocalImagePath(entryId: Long, imageUrl: String): String? =
-        articleImageDao.getImageForArticleByUrl(entryId, imageUrl)?.let { image ->
-            if (fileExists(image.localFilePath)) image.localFilePath
-            else {
-                articleImageDao.deleteArticleImage(image)
-                null
+        withCurrentSession {
+            articleImageDao.getImageForArticleByUrl(entryId, imageUrl)?.let { image ->
+                if (fileExists(image.localFilePath)) image.localFilePath
+                else {
+                    articleImageDao.deleteArticleImage(image)
+                    null
+                }
             }
         }
 
     /** Every downloaded image of one article, keyed by the address it was published under. */
     override suspend fun getLocalImagePaths(entryId: Long): Map<String, String> =
-        articleImageDao.getImagesForArticle(entryId).mapNotNull { image ->
-            if (fileExists(image.localFilePath)) {
-                image.originalUrl to image.localFilePath
-            } else {
-                articleImageDao.deleteArticleImage(image)
-                null
-            }
-        }.toMap()
+        withCurrentSession {
+            articleImageDao.getImagesForArticle(entryId).mapNotNull { image ->
+                if (fileExists(image.localFilePath)) {
+                    image.originalUrl to image.localFilePath
+                } else {
+                    articleImageDao.deleteArticleImage(image)
+                    null
+                }
+            }.toMap()
+        }
 
     override suspend fun getLocalImagePaths(entryIds: List<Long>): Map<Long, Map<String, String>> {
-        if (entryIds.isEmpty()) return emptyMap()
-        val images = articleImageDao.getImagesForArticles(entryIds.distinct())
-        val missingImageIds = images.filterNot { image -> fileExists(image.localFilePath) }
-            .map { it.id }
-        missingImageIds.chunked(DELETE_CHUNK).forEach { chunk ->
-            articleImageDao.deleteByIds(chunk)
-        }
-        return images.asSequence()
-            .filter { image -> image.id !in missingImageIds }
-            .groupBy { it.entryId }
-            .mapValues { (_, images) ->
-                images.associate { image -> image.originalUrl to image.localFilePath }
+        return withCurrentSession {
+            if (entryIds.isEmpty()) return@withCurrentSession emptyMap()
+            val images = articleImageDao.getImagesForArticles(entryIds.distinct())
+            val missingImageIds = images.filterNot { image -> fileExists(image.localFilePath) }
+                .mapTo(hashSetOf()) { it.id }
+            missingImageIds.chunked(DELETE_CHUNK).forEach { chunk ->
+                articleImageDao.deleteByIds(chunk)
             }
+            images.asSequence()
+                .filter { image -> image.id !in missingImageIds }
+                .groupBy { it.entryId }
+                .mapValues { (_, images) ->
+                    images.associate { image -> image.originalUrl to image.localFilePath }
+                }
+        }
     }
 
     override fun observeLocalImagePaths(entryId: Long): Flow<Map<String, String>> =
@@ -215,16 +224,20 @@ class ArticleImageRepository(
         }
 
     override suspend fun setExpectedImages(entryId: Long, imageUrls: List<String>) {
-        articleImageDao.deleteExpectedImagesForArticle(entryId)
-        val expected = imageUrls.distinct().map { url -> ArticleImageManifest(entryId, url) }
-        if (expected.isNotEmpty()) articleImageDao.insertExpectedImages(expected)
+        withCurrentSession {
+            articleImageDao.deleteExpectedImagesForArticle(entryId)
+            val expected = imageUrls.distinct().map { url -> ArticleImageManifest(entryId, url) }
+            if (expected.isNotEmpty()) articleImageDao.insertExpectedImages(expected)
+        }
     }
 
-    override suspend fun invalidateArticleImages(entryId: Long) = withContext(Dispatchers.IO) {
-        val entryIds = listOf(entryId)
-        articleImageDao.getImagePathsForArticles(entryIds).forEach { path -> File(path).delete() }
-        articleImageDao.deleteImagesForArticles(entryIds)
-        articleImageDao.deleteExpectedImagesForArticles(entryIds)
+    override suspend fun invalidateArticleImages(entryId: Long) = withCurrentSession {
+        withContext(Dispatchers.IO) {
+            val entryIds = listOf(entryId)
+            articleImageDao.getImagePathsForArticles(entryIds).forEach { path -> File(path).delete() }
+            articleImageDao.deleteImagesForArticles(entryIds)
+            articleImageDao.deleteExpectedImagesForArticles(entryIds)
+        }
     }
 
     /**
@@ -275,42 +288,47 @@ class ArticleImageRepository(
      * and deleted the same files, cutting the cache to a fraction of its budget — including images
      * downloaded moments earlier for the trip the reader was packing for.
      */
-    override suspend fun enforceCacheBudget(): Unit = cacheBudgetMutex.withLock {
-        val budgetBytes = preferencesManager.getImageCacheBudgetMegabytes() * BYTES_PER_MEGABYTE
-        if (budgetBytes <= 0) return@withLock
+    override suspend fun enforceCacheBudget(): Unit = withCurrentSession {
+        cacheBudgetMutex.withLock {
+            val budgetBytes = preferencesManager.getImageCacheBudgetMegabytes() * BYTES_PER_MEGABYTE
+            if (budgetBytes <= 0) return@withLock
 
-        var storedBytes = articleImageDao.getTotalImageBytes()
-        if (storedBytes <= budgetBytes) return@withLock
+            var storedBytes = articleImageDao.getTotalImageBytes()
+            if (storedBytes <= budgetBytes) return@withLock
 
-        for (image in articleImageDao.getImagesOldestFirst()) {
-            if (storedBytes <= budgetBytes) break
-            File(image.localFilePath).delete()
-            articleImageDao.deleteArticleImage(image)
-            storedBytes -= image.fileSize ?: 0L
+            while (storedBytes > budgetBytes) {
+                val images = articleImageDao.getImagesOldestFirst(DELETE_CHUNK)
+                if (images.isEmpty()) break
+                for (image in images) {
+                    if (storedBytes <= budgetBytes) break
+                    File(image.localFilePath).delete()
+                    articleImageDao.deleteArticleImage(image)
+                    storedBytes -= image.fileSize ?: 0L
+                }
+            }
+            Log.i(TAG, "Image cache trimmed to $storedBytes bytes")
         }
-        Log.i(TAG, "Image cache trimmed to $storedBytes bytes")
     }
 
-    /**
-     * Drops what is stored for articles the cache no longer holds. Reads the article ids rather
-     * than the image rows: retention and full-sync reconciliation can orphan thousands at once.
-     */
+    /** Drops stored files and manifests whose article was removed from the cache. */
     override suspend fun cleanupOrphanedImages() {
-        val storedEntryIds = (
-            articleImageDao.getAllImageEntryIds() + articleImageDao.getAllExpectedImageEntryIds()
-            ).distinct()
-        if (storedEntryIds.isEmpty()) return
-
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
-        val orphaned = storedEntryIds.filterNot { currentEntryIds.contains(it) }
-        if (orphaned.isEmpty()) return
-
-        orphaned.chunked(DELETE_CHUNK).forEach { chunk ->
-            articleImageDao.getImagePathsForArticles(chunk).forEach { File(it).delete() }
-            articleImageDao.deleteImagesForArticles(chunk)
-            articleImageDao.deleteExpectedImagesForArticles(chunk)
+        withCurrentSession {
+            while (true) {
+                val orphaned = articleImageDao.getOrphanedImageFiles(DELETE_CHUNK)
+                if (orphaned.isEmpty()) break
+                orphaned.forEach { File(it.localFilePath).delete() }
+                articleImageDao.deleteByIds(orphaned.map { it.id })
+            }
+            while (true) {
+                val orphanedEntryIds = articleImageDao.getOrphanedExpectedEntryIds(DELETE_CHUNK)
+                if (orphanedEntryIds.isEmpty()) break
+                articleImageDao.deleteExpectedImagesForArticles(orphanedEntryIds)
+            }
         }
     }
+
+    private suspend fun <T> withCurrentSession(block: suspend () -> T): T =
+        sessionGate.withSession(sessionGate.currentSession(), block)
 
     private fun generateImageId(entryId: Long, imageUrl: String): String {
         val input = "$entryId-$imageUrl"

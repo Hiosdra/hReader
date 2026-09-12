@@ -15,7 +15,7 @@ import androidx.work.WorkManager
 import com.hiosdra.hreader.adapter.system.NetworkMonitor
 import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
-import com.hiosdra.hreader.core.application.port.out.BackendPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import io.mockk.every
 import io.mockk.mockk
@@ -38,7 +38,7 @@ class SyncSchedulerTest {
     private fun <T> completedFuture(value: T) = SettableFuture.create<T>().also { it.set(value) }
 
     private val context = mockk<Context>(relaxed = true)
-    private val backendPreferences = mockk<BackendPreferences>(relaxed = true)
+    private val backendIdentity = mockk<BackendIdentity>(relaxed = true)
     private val syncPreferences = mockk<SyncPreferences>(relaxed = true)
     private val aiPreferences = mockk<AiPreferences>(relaxed = true)
     private val networkMonitor = mockk<NetworkMonitor>(relaxed = true)
@@ -47,7 +47,7 @@ class SyncSchedulerTest {
     private val cancelOperation = mockk<Operation>()
     private val scheduler = SyncScheduler(
         context = context,
-        backendPreferences = backendPreferences,
+        backendIdentity = backendIdentity,
         syncPreferences = syncPreferences,
         networkMonitor = networkMonitor,
         aiPreferences = aiPreferences,
@@ -55,7 +55,7 @@ class SyncSchedulerTest {
     )
 
     init {
-        every { backendPreferences.hasBackendCredentials() } returns true
+        every { backendIdentity.isComplete() } returns true
         every { syncPreferences.getSyncWhileRoaming() } returns true
         every { context.getString(any()) } returns "Sync"
         every { cancelOperation.result } returns completedFuture(Operation.SUCCESS)

@@ -7,70 +7,114 @@ import com.hiosdra.hreader.core.domain.model.CredibilityConfidence
 import com.hiosdra.hreader.core.domain.model.CredibilityFactor
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
+import com.hiosdra.hreader.core.application.ai.credibilityInputFingerprint
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
+import com.hiosdra.hreader.core.application.port.out.SyncSession
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import kotlinx.coroutines.CancellationException
+import java.time.Clock
+import java.time.LocalDate
 
 private const val TAG = "CredibilityRepo"
 private const val LINE_SEPARATOR = "\n"
+private const val FIELD_SEPARATOR = "\u001f"
 
 /** Below SQLite's 999 bound-variable ceiling on Android. */
 private const val DELETE_CHUNK = 500
-private const val FIELD_SEPARATOR = "\u001f"
 
 class CredibilityRepository(
     private val articleCredibilityDao: ArticleCredibilityDao,
-    private val articleAiGateway: ArticleAiGateway
+    private val articleAiGateway: ArticleAiGateway,
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : CredibilityStore {
-    override suspend fun invalidateForEntries(entryIds: List<Long>) {
-        entryIds.chunked(DELETE_CHUNK).forEach { chunk ->
-            articleCredibilityDao.deleteAll(chunk)
+    override suspend fun invalidateForEntries(entryIds: List<Long>, session: SyncSession?) {
+        if (entryIds.isEmpty()) return
+        val activeSession = session ?: sessionGate.currentSession()
+        sessionGate.withSession(activeSession) {
+            entryIds.chunked(DELETE_CHUNK).forEach { chunk ->
+                articleCredibilityDao.deleteAll(chunk)
+            }
         }
     }
 
-    override suspend fun getCached(entryId: Long, modelId: String): CredibilityReport? =
-        articleCredibilityDao.getForEntry(entryId, modelId)?.toDomain()
+    override suspend fun getCached(
+        entryId: Long,
+        source: CredibilitySource,
+        modelId: String,
+        session: SyncSession?
+    ): CredibilityReport? {
+        val activeSession = session ?: sessionGate.currentSession()
+        return sessionGate.withSession(activeSession) {
+            articleCredibilityDao
+                .getForEntry(entryId, modelId, fingerprint(source))
+                ?.toDomain()
+        }
+    }
 
-    override suspend fun getCached(entryIds: List<Long>, modelId: String): Map<Long, CredibilityReport> {
-        if (entryIds.isEmpty()) return emptyMap()
-        return articleCredibilityDao.getForEntries(entryIds, modelId)
-            .associate { it.entryId to it.toDomain() }
+    override suspend fun getCached(
+        sources: Map<Long, CredibilitySource>,
+        modelId: String,
+        session: SyncSession?
+    ): Map<Long, CredibilityReport> {
+        if (sources.isEmpty()) return emptyMap()
+        val activeSession = session ?: sessionGate.currentSession()
+        return sessionGate.withSession(activeSession) {
+            val currentDate = LocalDate.now(clock)
+            val cached = articleCredibilityDao.getForEntries(sources.keys.toList(), modelId)
+                .associateBy { it.entryId }
+            sources.mapNotNull { (entryId, source) ->
+                cached[entryId]
+                    ?.takeIf {
+                        it.contentFingerprint == credibilityInputFingerprint(source, currentDate)
+                    }
+                    ?.toDomain()
+                    ?.let { entryId to it }
+            }.toMap()
+        }
     }
 
     override suspend fun analyze(
         entryId: Long,
         source: CredibilitySource,
         modelId: String,
-        forceRefresh: Boolean
+        forceRefresh: Boolean,
+        session: SyncSession?
     ): Result<CredibilityReport> {
+        val activeSession = session ?: sessionGate.currentSession()
+        val contentFingerprint = fingerprint(source)
         if (!forceRefresh) {
-            getCached(entryId, modelId)?.let { return Result.success(it) }
+            val cached = sessionGate.withSession(activeSession) {
+                articleCredibilityDao.getForEntry(entryId, modelId, contentFingerprint)?.toDomain()
+            }
+            cached?.let { return Result.success(it) }
         }
 
-        return articleAiGateway.analyzeCredibility(source, modelId)
-            .onSuccess { report ->
-                try {
-                    articleCredibilityDao.upsert(report.toEntity(entryId))
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to cache credibility for entry $entryId", e)
-                }
+        val result = articleAiGateway.analyzeCredibility(source, modelId)
+        val report = result.getOrNull() ?: return result
+        try {
+            sessionGate.withSession(activeSession) {
+                articleCredibilityDao.upsert(report.toEntity(entryId, contentFingerprint))
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to cache credibility for entry $entryId", e)
+        }
+        return result
     }
 
-    /**
-     * An empty [currentEntryIds] is not treated as suspicious. It used to be — nothing deleted
-     * articles then, so an empty table could only mean something had gone wrong. Retention and
-     * full-sync reconciliation delete them routinely now, which makes "no articles left" a normal
-     * state and exactly the point at which every stored report has become an orphan.
-     */
-    override suspend fun cleanupOrphanedReports(currentEntryIds: Set<Long>) {
-        val stored = articleCredibilityDao.getAllEntryIds()
-        val orphaned = stored.filterNot { currentEntryIds.contains(it) }
-        if (orphaned.isEmpty()) return
-        // Chunked below SQLite's 999 bound-variable ceiling: a prune can orphan thousands at once.
-        orphaned.chunked(DELETE_CHUNK).forEach { articleCredibilityDao.deleteAll(it) }
+    override suspend fun cleanupOrphanedReports(session: SyncSession?) {
+        val activeSession = session ?: sessionGate.currentSession()
+        sessionGate.withSession(activeSession) {
+            while (true) {
+                val orphaned = articleCredibilityDao.getOrphanedEntryIds(DELETE_CHUNK)
+                if (orphaned.isEmpty()) break
+                articleCredibilityDao.deleteAll(orphaned)
+            }
+        }
     }
 
     suspend fun analyze(
@@ -79,7 +123,7 @@ class CredibilityRepository(
         modelId: String
     ): Result<CredibilityReport> = analyze(entryId, source, modelId, forceRefresh = false)
 
-    private fun CredibilityReport.toEntity(entryId: Long) = ArticleCredibility(
+    private fun CredibilityReport.toEntity(entryId: Long, contentFingerprint: String) = ArticleCredibility(
         entryId = entryId,
         score = score,
         confidence = confidence.name,
@@ -89,7 +133,8 @@ class CredibilityRepository(
         factors = factors.joinToString(LINE_SEPARATOR) { "${it.name.toSingleLine()}$FIELD_SEPARATOR${it.score}" },
         modelId = modelId,
         analyzedAt = analyzedAt,
-        contentTruncated = contentTruncated
+        contentTruncated = contentTruncated,
+        contentFingerprint = contentFingerprint
     )
 
     private fun ArticleCredibility.toDomain() = CredibilityReport(
@@ -110,6 +155,9 @@ class CredibilityRepository(
         analyzedAt = analyzedAt,
         contentTruncated = contentTruncated
     )
+
+    private fun fingerprint(source: CredibilitySource): String =
+        credibilityInputFingerprint(source, LocalDate.now(clock))
 
     private fun String.toLines(): List<String> =
         split(LINE_SEPARATOR).map { it.trim() }.filter { it.isNotEmpty() }

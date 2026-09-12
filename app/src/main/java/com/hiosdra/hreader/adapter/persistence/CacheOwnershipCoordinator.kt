@@ -3,8 +3,10 @@ package com.hiosdra.hreader.adapter.persistence
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -13,40 +15,52 @@ internal class CacheOwnershipCoordinator(
     private val preferences: SyncPreferences,
     private val syncHealth: SyncHealthStore,
     private val backendIdentity: BackendIdentity,
-    private val preferenceWrites: PreferenceWriteBarrier
+    private val preferenceWrites: PreferenceWriteBarrier,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : CacheStore {
     private val ownerMutex = Mutex()
 
-    override suspend fun ensureCacheOwner(): Boolean = ownerMutex.withLock {
+    override suspend fun ensureCacheOwner(): Boolean {
         preferenceWrites.awaitReady()
+        return sessionGate.withSessionChange {
+            ownerMutex.withLock { ensureCacheOwnerLocked() }
+        }
+    }
+
+    private suspend fun ensureCacheOwnerLocked(): Boolean {
+        val ownerKey = backendIdentity.cacheOwnerKey()
         if (preferences.isCacheCleanupPending()) {
             clearBackendDataLocked()
-        }
-
-        val ownerKey = backendIdentity.cacheOwnerKey()
-        val storedOwner = preferences.getCacheOwnerKey()
-        if (storedOwner.isBlank()) {
             preferences.setCacheOwnerKey(ownerKey)
             preferenceWrites.awaitWrites()
-            dataCleaner.repair()
-            return@withLock false
+            return true
+        }
+
+        val storedOwner = preferences.getCacheOwnerKey()
+        if (storedOwner.isBlank()) {
+            clearBackendDataLocked()
+            preferences.setCacheOwnerKey(ownerKey)
+            preferenceWrites.awaitWrites()
+            return true
         }
         if (storedOwner == ownerKey) {
             dataCleaner.repair()
-            return@withLock false
+            return false
         }
 
         clearBackendDataLocked()
         preferences.setCacheOwnerKey(ownerKey)
         preferenceWrites.awaitWrites()
-        true
+        return true
     }
 
-    override suspend fun ensureCacheOwnerWhenConfigured(): Boolean =
-        if (backendIdentity.isComplete()) ensureCacheOwner() else false
+    override suspend fun ensureCacheOwnerWhenConfigured(): Boolean {
+        preferenceWrites.awaitReady()
+        return if (backendIdentity.isComplete()) ensureCacheOwner() else false
+    }
 
-    override suspend fun clearBackendData() = ownerMutex.withLock {
-        clearBackendDataLocked()
+    override suspend fun clearBackendData() = sessionGate.withSessionChange {
+        ownerMutex.withLock { clearBackendDataLocked() }
     }
 
     private suspend fun clearBackendDataLocked() {

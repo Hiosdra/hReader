@@ -4,6 +4,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleCredibilityDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleCredibility
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
+import com.hiosdra.hreader.core.application.ai.credibilityInputFingerprint
 import com.hiosdra.hreader.core.domain.model.CredibilityConfidence
 import com.hiosdra.hreader.core.domain.model.CredibilityFactor
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
@@ -60,7 +61,7 @@ class CredibilityRepositoryTest {
 
     @Test
     fun analyze_storesReportAndReadsItBackUnchanged() = runBlocking {
-        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns null
         coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(report)
         val stored = slot<ArticleCredibility>()
         coEvery { dao.upsert(capture(stored)) } returns Unit
@@ -68,13 +69,13 @@ class CredibilityRepositoryTest {
         val analyzed = repo.analyze(7L, source, modelId)
         assertEquals(report, analyzed.getOrNull())
 
-        coEvery { dao.getForEntry(7L, modelId) } returns stored.captured
-        assertEquals(report, repo.getCached(7L, modelId))
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns stored.captured
+        assertEquals(report, repo.getCached(7L, source, modelId))
     }
 
     @Test
     fun analyze_servesCacheWithoutCallingTheModel() = runBlocking {
-        coEvery { dao.getForEntry(7L, modelId) } returns entityFor(7L)
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns entityFor(7L)
 
         val result = repo.analyze(7L, source, modelId)
 
@@ -89,13 +90,28 @@ class CredibilityRepositoryTest {
 
         repo.analyze(7L, source, modelId, forceRefresh = true)
 
-        coVerify(exactly = 0) { dao.getForEntry(any(), any()) }
+        coVerify(exactly = 0) { dao.getForEntry(any(), any(), any()) }
         coVerify(exactly = 1) { aiService.analyzeCredibility(source, modelId) }
     }
 
     @Test
+    fun analyze_ignoresAReportForAChangedSource() = runBlocking {
+        val changedSource = source.copy(content = "Changed body")
+        coEvery {
+            dao.getForEntry(7L, modelId, credibilityInputFingerprint(changedSource))
+        } returns null
+        coEvery { aiService.analyzeCredibility(changedSource, modelId) } returns Result.success(report)
+        coEvery { dao.upsert(any()) } returns Unit
+
+        val result = repo.analyze(7L, changedSource, modelId)
+
+        assertEquals(report, result.getOrNull())
+        coVerify(exactly = 1) { aiService.analyzeCredibility(changedSource, modelId) }
+    }
+
+    @Test
     fun analyze_stillReturnsTheReportWhenCachingFails() = runBlocking {
-        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns null
         coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(report)
         coEvery { dao.upsert(any()) } throws IllegalStateException("disk full")
 
@@ -104,7 +120,7 @@ class CredibilityRepositoryTest {
 
     @Test
     fun analyze_doesNotCacheFailures() = runBlocking {
-        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns null
         coEvery { aiService.analyzeCredibility(source, modelId) } returns
             Result.failure(IllegalStateException("no verdict"))
 
@@ -125,35 +141,44 @@ class CredibilityRepositoryTest {
     @Test
     fun multilineTextSurvivesTheRoundTripAsOneItem() = runBlocking {
         val noisy = report.copy(reasons = listOf("First line\nsecond line", "  padded  "))
-        coEvery { dao.getForEntry(7L, modelId) } returns null
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns null
         coEvery { aiService.analyzeCredibility(source, modelId) } returns Result.success(noisy)
         val stored = slot<ArticleCredibility>()
         coEvery { dao.upsert(capture(stored)) } returns Unit
 
         repo.analyze(7L, source, modelId)
-        coEvery { dao.getForEntry(7L, modelId) } returns stored.captured
+        coEvery { dao.getForEntry(7L, modelId, credibilityInputFingerprint(source)) } returns stored.captured
 
-        assertEquals(listOf("First line second line", "padded"), repo.getCached(7L, modelId)?.reasons)
+        assertEquals(
+            listOf("First line second line", "padded"),
+            repo.getCached(7L, source, modelId)?.reasons
+        )
     }
 
     @Test
     fun cleanupOrphanedReports_deletesOnlyUnknownEntries() = runBlocking {
-        coEvery { dao.getAllEntryIds() } returns listOf(1L, 2L, 3L)
+        coEvery { dao.getOrphanedEntryIds(500) } returnsMany listOf(
+            listOf(1L, 3L),
+            emptyList()
+        )
         val deleted = slot<List<Long>>()
         coEvery { dao.deleteAll(capture(deleted)) } returns Unit
 
-        repo.cleanupOrphanedReports(setOf(2L))
+        repo.cleanupOrphanedReports()
 
         assertEquals(listOf(1L, 3L), deleted.captured)
     }
 
     @Test
     fun cleanupOrphanedReports_deletesEverythingWhenThereAreNoArticles() = runBlocking {
-        coEvery { dao.getAllEntryIds() } returns listOf(1L, 2L)
+        coEvery { dao.getOrphanedEntryIds(500) } returnsMany listOf(
+            listOf(1L, 2L),
+            emptyList()
+        )
         val deleted = slot<List<Long>>()
         coEvery { dao.deleteAll(capture(deleted)) } returns Unit
 
-        repo.cleanupOrphanedReports(emptySet())
+        repo.cleanupOrphanedReports()
 
         // Articles are deleted routinely now — by retention and by full-sync reconciliation — so
         // an empty article table is a normal state, not a signal that something went wrong.
@@ -162,9 +187,9 @@ class CredibilityRepositoryTest {
 
     @Test
     fun cleanupOrphanedReports_deletesNothingWhenNoReportsAreStored() = runBlocking {
-        coEvery { dao.getAllEntryIds() } returns emptyList()
+        coEvery { dao.getOrphanedEntryIds(500) } returns emptyList()
 
-        repo.cleanupOrphanedReports(emptySet())
+        repo.cleanupOrphanedReports()
 
         coVerify(exactly = 0) { dao.deleteAll(any()) }
     }
@@ -179,6 +204,7 @@ class CredibilityRepositoryTest {
         factors = "",
         modelId = "test/model",
         analyzedAt = Instant.ofEpochSecond(1_700_000_500),
-        contentTruncated = true
+        contentTruncated = true,
+        contentFingerprint = credibilityInputFingerprint(source)
     )
 }

@@ -5,6 +5,7 @@ import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
+import com.hiosdra.hreader.core.application.exception.StaleSyncSessionException
 import com.hiosdra.hreader.core.application.content.articlePreviewHtml
 import com.hiosdra.hreader.core.application.content.ArticleHtmlTransformer
 import com.hiosdra.hreader.core.application.content.leadImageUrl
@@ -15,6 +16,9 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
+import com.hiosdra.hreader.core.application.port.out.SyncSession
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import com.hiosdra.hreader.core.domain.model.ArticleText
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +48,8 @@ class ArticleContentRepository(
     private val credibilityStore: CredibilityStore,
     private val articleAiOverviewStore: ArticleAiOverviewStore,
     private val articlePageStore: ArticlePageStore,
-    private val imageScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+    private val imageScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : ArticleContentStore {
     companion object {
         private const val TAG = "ArticleContentRepo"
@@ -69,28 +74,35 @@ class ArticleContentRepository(
     override suspend fun getArticleContent(
         entryId: Long,
         url: String,
-        allowNetwork: Boolean
-    ): ArticleText = getArticleContent(
-        entryId = entryId,
-        url = url,
-        allowNetwork = allowNetwork,
-        downloadAllImages = true
-    )
+        allowNetwork: Boolean,
+        session: SyncSession?
+    ): ArticleText {
+        val activeSession = session ?: sessionGate.currentSession()
+        checkSession(activeSession)
+        return getArticleContent(
+            entryId = entryId,
+            url = url,
+            allowNetwork = allowNetwork,
+            downloadAllImages = true,
+            session = activeSession
+        )
+    }
 
     private suspend fun getArticleContent(
         entryId: Long,
         url: String,
         allowNetwork: Boolean,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        session: SyncSession
     ): ArticleText {
         val localContent = articleContentDao.getArticleContent(entryId)
         if (localContent != null && localContent.url == url && localContent.content.isNotBlank()) {
             if (localContent.source == ArticleContentSource.FULL) {
-                return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages)
+                return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages, session)
             }
 
             if (allowNetwork) {
-                val fullContent = fetchFullContent(entryId, url)
+                val fullContent = fetchFullContent(entryId, url, session)
                 if (fullContent != null) {
                     return storeContent(
                         entryId,
@@ -98,7 +110,8 @@ class ArticleContentRepository(
                         fullContent,
                         ArticleContentSource.FULL,
                         true,
-                        downloadAllImages
+                        downloadAllImages,
+                        session
                     )
                 }
             }
@@ -111,14 +124,15 @@ class ArticleContentRepository(
                     cachedContent.content,
                     cachedContent.source,
                     allowNetwork,
-                    downloadAllImages
+                    downloadAllImages,
+                    session
                 )
             }
-            return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages)
+            return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages, session)
         }
 
         if (allowNetwork) {
-            val fullContent = fetchFullContent(entryId, url)
+            val fullContent = fetchFullContent(entryId, url, session)
             if (fullContent != null) {
                 return storeContent(
                     entryId,
@@ -126,7 +140,8 @@ class ArticleContentRepository(
                     fullContent,
                     ArticleContentSource.FULL,
                     true,
-                    downloadAllImages
+                    downloadAllImages,
+                    session
                 )
             }
         }
@@ -139,13 +154,20 @@ class ArticleContentRepository(
             cachedContent.content,
             cachedContent.source,
             allowNetwork,
-            downloadAllImages
+            downloadAllImages,
+            session
         )
     }
 
-    private suspend fun fetchFullContent(entryId: Long, url: String): String? {
+    private suspend fun fetchFullContent(
+        entryId: Long,
+        url: String,
+        session: SyncSession
+    ): String? {
         return try {
-            backend.fetchFullContent(entryId, url)?.takeIf { it.isNotBlank() }
+            sessionGate.withSession(session) {
+                backend.fetchFullContent(entryId, url)?.takeIf { it.isNotBlank() }
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -158,7 +180,8 @@ class ArticleContentRepository(
         entryId: Long,
         stored: ArticleContent,
         allowNetwork: Boolean,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        session: SyncSession
     ): ArticleText {
         val storedImageUrls = stored.imageUrls.toImageUrls()
         val hasImageManifest = stored.imageUrls.isNotEmpty()
@@ -179,17 +202,25 @@ class ArticleContentRepository(
         } else {
             prepare(entryId, stored.content, stored.url)
         }
-        articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
-        if (allowNetwork) {
-            scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl, downloadAllImages)
-        }
         val updated = stored.copy(
             content = prepared.html,
             isPrepared = true,
             leadImageUrl = prepared.leadImageUrl,
             imageUrls = prepared.imageUrls.toImageManifest()
         )
-        if (updated != stored) articleContentDao.insertArticleContent(updated)
+        sessionGate.withSession(session) {
+            articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
+            if (updated != stored) articleContentDao.insertArticleContent(updated)
+        }
+        if (allowNetwork) {
+            scheduleImageDownloads(
+                entryId,
+                prepared.imageUrls,
+                prepared.leadImageUrl,
+                downloadAllImages,
+                session
+            )
+        }
         return ArticleText(prepared.html, prepared.leadImageUrl, stored.source)
     }
 
@@ -199,27 +230,36 @@ class ArticleContentRepository(
         sourceContent: String,
         source: ArticleContentSource,
         allowNetwork: Boolean,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        session: SyncSession
     ): ArticleText {
-        credibilityStore.invalidateForEntries(listOf(entryId))
         val prepared = prepare(entryId, sourceContent, url)
-        articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
-        if (allowNetwork) {
-            scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl, downloadAllImages)
-        }
-        articleContentDao.insertArticleContent(
-            ArticleContent(
-                entryId = entryId,
-                content = prepared.html,
-                fetchedAt = Instant.now(),
-                url = url,
-                source = source,
-                isPrepared = true,
-                leadImageUrl = prepared.leadImageUrl,
-                imageUrls = prepared.imageUrls.toImageManifest()
+        sessionGate.withSession(session) {
+            credibilityStore.invalidateForEntries(listOf(entryId), session)
+            articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
+            articleContentDao.insertArticleContent(
+                ArticleContent(
+                    entryId = entryId,
+                    content = prepared.html,
+                    fetchedAt = Instant.now(),
+                    url = url,
+                    source = source,
+                    isPrepared = true,
+                    leadImageUrl = prepared.leadImageUrl,
+                    imageUrls = prepared.imageUrls.toImageManifest()
+                )
             )
-        )
-        if (source == ArticleContentSource.FULL) articleDao.setFullContent(entryId.toString(), sourceContent)
+            if (source == ArticleContentSource.FULL) articleDao.setFullContent(entryId.toString(), sourceContent)
+        }
+        if (allowNetwork) {
+            scheduleImageDownloads(
+                entryId,
+                prepared.imageUrls,
+                prepared.leadImageUrl,
+                downloadAllImages,
+                session
+            )
+        }
         return ArticleText(prepared.html, prepared.leadImageUrl, source)
     }
 
@@ -279,21 +319,42 @@ class ArticleContentRepository(
      * The entries whose text is not stored yet, in the order given. Prefetching a bounded slice of
      * a large backlog only makes progress if the slice is taken from what is actually outstanding.
      */
-    override suspend fun entriesMissingContent(entries: List<Pair<Long, String>>): List<Pair<Long, String>> {
-        val full = articleContentDao.getContentEntryIds(ArticleContentSource.FULL).toHashSet()
-        return entries.filterNot { (entryId, _) -> entryId in full }
+    override suspend fun entriesMissingContent(
+        entries: List<Pair<Long, String>>,
+        session: SyncSession?
+    ): List<Pair<Long, String>> {
+        if (entries.isEmpty()) return emptyList()
+        val activeSession = session ?: sessionGate.currentSession()
+        return sessionGate.withSession(activeSession) {
+            val full = entries
+                .map { it.first }
+                .chunked(DELETE_CHUNK)
+                .flatMap { chunk ->
+                    articleContentDao.getContentEntryIds(chunk, ArticleContentSource.FULL)
+                }
+                .toHashSet()
+            entries.filterNot { (entryId, _) -> entryId in full }
+        }
     }
 
     override suspend fun entriesMissingFullOfflinePreparation(
-        entries: List<Pair<Long, String>>
+        entries: List<Pair<Long, String>>,
+        session: SyncSession?
     ): List<Pair<Long, String>> {
-        val prepared = entries
-            .chunked(DELETE_CHUNK)
-            .flatMap { chunk ->
-                articleContentDao.getFullyImagePreparedEntryIds(chunk.map { it.first })
-            }
-            .toHashSet()
-        return entries.filterNot { (entryId, _) -> entryId in prepared }
+        if (entries.isEmpty()) return emptyList()
+        val activeSession = session ?: sessionGate.currentSession()
+        return sessionGate.withSession(activeSession) {
+            val prepared = entries
+                .chunked(DELETE_CHUNK)
+                .flatMap { chunk ->
+                    articleContentDao.getFullyImagePreparedEntryIds(
+                        chunk.map { it.first },
+                        ArticleContentSource.FULL
+                    )
+                }
+                .toHashSet()
+            entries.filterNot { (entryId, _) -> entryId in prepared }
+        }
     }
 
     /**
@@ -305,8 +366,11 @@ class ArticleContentRepository(
         entries: List<Pair<Long, String>>,
         limit: Int?,
         downloadAllImages: Boolean,
-        onProgress: (done: Int, total: Int) -> Unit
+        onProgress: (done: Int, total: Int) -> Unit,
+        session: SyncSession?
     ) = coroutineScope {
+        val activeSession = session ?: sessionGate.currentSession()
+        checkSession(activeSession)
         val limitedEntries = if (limit != null) entries.take(limit) else entries
         val total = limitedEntries.size
         val done = AtomicInteger()
@@ -315,16 +379,18 @@ class ArticleContentRepository(
                 async(Dispatchers.IO) {
                     prefetchLimiter.withPermit {
                         try {
+                            checkSession(activeSession)
                             val stored = articleContentDao.getArticleContent(entryId)
                             if (downloadAllImages || stored == null || stored.source != ArticleContentSource.FULL) {
                                 getArticleContent(
                                     entryId = entryId,
                                     url = url,
                                     allowNetwork = true,
-                                    downloadAllImages = downloadAllImages
+                                    downloadAllImages = downloadAllImages,
+                                    session = activeSession
                                 )
                                 awaitImageDownloads(entryId)
-                                if (downloadAllImages) markAllImagesPreparedIfComplete(entryId)
+                                if (downloadAllImages) markAllImagesPreparedIfComplete(entryId, activeSession)
                             }
                         } catch (e: CancellationException) {
                             throw e
@@ -340,11 +406,18 @@ class ArticleContentRepository(
         Unit
     }
 
-    override suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>) = coroutineScope {
+    override suspend fun downloadEnclosureImages(
+        entries: List<Pair<Long, List<String>>>,
+        session: SyncSession?
+    ) = coroutineScope {
+        val activeSession = session ?: sessionGate.currentSession()
+        checkSession(activeSession)
         val deferredResults = entries.map { (entryId, imageUrls) ->
             async(Dispatchers.IO) {
-                prefetchLimiter.withPermit {
-                    downloadImagesForEntry(entryId, imageUrls)
+                sessionGate.withSession(activeSession) {
+                    prefetchLimiter.withPermit {
+                        downloadImagesForEntry(entryId, imageUrls)
+                    }
                 }
             }
         }
@@ -353,30 +426,21 @@ class ArticleContentRepository(
     }
 
     override suspend fun cleanupOrphanedContent() {
-        // No early return on an empty article set: retention and full-sync reconciliation both
-        // delete articles now, so "no articles left" is precisely when everything stored here has
-        // become an orphan.
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
-        credibilityStore.cleanupOrphanedReports(currentEntryIds)
-        articleAiOverviewStore.cleanupOrphaned(currentEntryIds)
+        val session = sessionGate.currentSession()
+        sessionGate.withSession(session) {
+            credibilityStore.cleanupOrphanedReports(session)
+            articleAiOverviewStore.cleanupOrphaned(session)
 
-        // Only the ids: every row here holds a full article body, and reading all of them to
-        // compare a number put the entire offline cache in memory inside a background worker.
-        val orphanedContent = articleContentDao.getAllContentEntryIds()
-            .filterNot { currentEntryIds.contains(it) }
-        // Chunked: retention and full-sync reconciliation can orphan thousands of rows at once,
-        // and one statement for all of them would exceed SQLite's bound-variable ceiling.
-        orphanedContent.chunked(DELETE_CHUNK).forEach { chunk ->
-            articleContentDao.deleteArticlesContent(chunk)
+            while (true) {
+                val orphaned = articleContentDao.getOrphanedEntryIds(DELETE_CHUNK)
+                if (orphaned.isEmpty()) break
+                articleContentDao.deleteArticlesContent(orphaned)
+            }
+
+            articleImageStore.cleanupOrphanedImages()
+            articlePageStore.cleanupOrphanedPages()
+            articleImageStore.enforceCacheBudget()
         }
-
-        // Runs unconditionally: images outlive their content rows, and bailing out when no
-        // articles are left is exactly when every stored image has become an orphan.
-        articleImageStore.cleanupOrphanedImages()
-        articlePageStore.cleanupOrphanedPages()
-        // Also here, not only after each download: lowering the budget in settings has to shrink a
-        // cache that is already over it, even when nothing new is being fetched.
-        articleImageStore.enforceCacheBudget()
     }
 
     suspend fun getArticleContent(entryId: Long, url: String): ArticleText =
@@ -403,7 +467,8 @@ class ArticleContentRepository(
         entryId: Long,
         imageUrls: List<String>,
         leadImageUrl: String?,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        session: SyncSession
     ) {
         val urls = if (downloadAllImages) {
             (listOfNotNull(leadImageUrl) + imageUrls).distinct()
@@ -414,7 +479,9 @@ class ArticleContentRepository(
         imageJobsMutex.withLock {
             if (imageJobs[entryId]?.isActive == true) return@withLock
             val job = imageScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                downloadImagesForEntry(entryId, urls)
+                sessionGate.withSession(session) {
+                    downloadImagesForEntry(entryId, urls)
+                }
             }
             imageJobs[entryId] = job
             job.invokeOnCompletion {
@@ -432,12 +499,20 @@ class ArticleContentRepository(
         job?.join()
     }
 
-    private suspend fun markAllImagesPreparedIfComplete(entryId: Long) {
-        val content = articleContentDao.getArticleContent(entryId) ?: return
-        val expectedUrls = (content.imageUrls.toImageUrls() + listOfNotNull(content.leadImageUrl)).distinct()
-        val storedUrls = articleImageStore.getLocalImagePaths(entryId).keys
-        if (expectedUrls.all { it in storedUrls }) {
-            articleContentDao.markAllImagesPrepared(entryId)
+    private suspend fun markAllImagesPreparedIfComplete(entryId: Long, session: SyncSession) {
+        sessionGate.withSession(session) {
+            val content = articleContentDao.getArticleContent(entryId) ?: return@withSession
+            val expectedUrls = (content.imageUrls.toImageUrls() + listOfNotNull(content.leadImageUrl)).distinct()
+            val storedUrls = articleImageStore.getLocalImagePaths(entryId).keys
+            if (expectedUrls.all { it in storedUrls }) {
+                articleContentDao.markAllImagesPrepared(entryId)
+            }
+        }
+    }
+
+    private fun checkSession(session: SyncSession) {
+        if (!sessionGate.isCurrent(session)) {
+            throw StaleSyncSessionException()
         }
     }
 

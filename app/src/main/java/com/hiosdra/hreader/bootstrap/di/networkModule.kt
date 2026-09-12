@@ -31,8 +31,10 @@ import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
+import com.hiosdra.hreader.core.application.port.out.BackendSessionStore
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -56,6 +58,8 @@ private const val WRITE_TIMEOUT_SECONDS = 30L
 val networkModule = module {
     single { ServerConfig(get()) }
     single<BackendIdentity> { get<ServerConfig>() }
+    single<BackendSessionStore> { get<ServerConfig>() }
+    single<SyncSessionGate> { get<ServerConfig>() }
     // The login call carries credentials in its form body and gets the auth token back in the
     // response body, so it uses a client without the app's auth and logging interceptors. The
     // connection pool and dispatcher are still shared, since newBuilder keeps them.

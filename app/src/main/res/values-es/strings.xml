@@ -279,6 +279,8 @@ Sincroniza artículos para ver las métricas.</string>
     <plurals name="settings_connected"><item quantity="one">Conectado. Se encontró %1$d suscripción.</item><item quantity="many">Conectado. Se encontraron %1$d suscripciones.</item><item quantity="other">Conectado. Se encontraron %1$d suscripciones.</item></plurals>
     <string name="settings_connect_failed">No se pudo conectar al servidor.</string>
     <string name="settings_clear_articles_failed">No se pudieron borrar los artículos descargados.</string>
+    <string name="settings_save_server">Guardar configuración del servidor</string>
+    <string name="settings_server_settings_saved">Configuración del servidor guardada.</string>
     <string name="server_url">URL del servidor</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">Nombre de usuario</string>

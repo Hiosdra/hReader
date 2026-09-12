@@ -1,9 +1,9 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import android.content.Context
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
+import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageFile
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import io.mockk.coEvery
@@ -26,13 +26,11 @@ class ArticleImageRepositoryTest {
         every { filesDir } returns File("/tmp/androidstudio")
     }
     private val articleImageDao = mockk<ArticleImageDao>(relaxed = true)
-    private val articleDao = mockk<ArticleDao>()
     private val okHttpClient = OkHttpClient()
     private val preferencesManager = mockk<SyncPreferences>(relaxed = true)
     private val repo: ArticleImageRepository = ArticleImageRepository(
         context,
         articleImageDao,
-        articleDao,
         okHttpClient,
         preferencesManager,
         RemoteResourcePolicyAdapter(allowedHosts = { setOf("example.com") })
@@ -93,32 +91,32 @@ class ArticleImageRepositoryTest {
 
     @Test
     fun cleanupOrphanedImages_deletesImagesNotInArticles() = runBlocking {
-        coEvery { articleImageDao.getAllImageEntryIds() } returns listOf(99L)
-        coEvery { articleDao.getAllIds() } returns emptyList()
-        coEvery { articleImageDao.getImagePathsForArticles(listOf(99L)) } returns listOf("/tmp/orphan.jpg")
-        coEvery { articleImageDao.deleteImagesForArticles(listOf(99L)) } returns Unit
+        coEvery { articleImageDao.getOrphanedImageFiles(500) } returnsMany listOf(
+            listOf(ArticleImageFile("orphan", "/tmp/orphan.jpg")),
+            emptyList()
+        )
 
         repo.cleanupOrphanedImages()
 
-        coVerify { articleImageDao.deleteImagesForArticles(listOf(99L)) }
+        coVerify { articleImageDao.deleteByIds(listOf("orphan")) }
     }
 
     @Test
     fun cleanupOrphanedImages_keepsImagesOfArticlesStillCached() = runBlocking {
-        coEvery { articleImageDao.getAllImageEntryIds() } returns listOf(7L)
-        coEvery { articleImageDao.getAllExpectedImageEntryIds() } returns emptyList()
-        coEvery { articleDao.getAllIds() } returns listOf("7")
+        coEvery { articleImageDao.getOrphanedImageFiles(500) } returns emptyList()
 
         repo.cleanupOrphanedImages()
 
-        coVerify(exactly = 0) { articleImageDao.deleteImagesForArticles(any()) }
+        coVerify(exactly = 0) { articleImageDao.deleteByIds(any()) }
     }
 
     @Test
     fun cleanupOrphanedImages_removesManifestOnlyEntries() = runBlocking {
-        coEvery { articleImageDao.getAllImageEntryIds() } returns emptyList()
-        coEvery { articleImageDao.getAllExpectedImageEntryIds() } returns listOf(99L)
-        coEvery { articleDao.getAllIds() } returns emptyList()
+        coEvery { articleImageDao.getOrphanedImageFiles(500) } returns emptyList()
+        coEvery { articleImageDao.getOrphanedExpectedEntryIds(500) } returnsMany listOf(
+            listOf(99L),
+            emptyList()
+        )
 
         repo.cleanupOrphanedImages()
 

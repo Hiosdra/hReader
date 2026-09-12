@@ -64,6 +64,15 @@ internal fun mergeReaderEntries(
 internal fun readerFallbackContent(entry: Entry): String? =
     entry.content?.takeIf { it.isNotBlank() } ?: articlePreviewHtml(entry.preview)
 
+private fun Entry.toCredibilitySource(content: String): CredibilitySource = CredibilitySource(
+    title = title,
+    content = content,
+    author = author,
+    feedTitle = feed.title,
+    url = url,
+    publishedAt = publishedAt
+)
+
 enum class ArticleContentLoadState {
     LOADING,
     FULL,
@@ -670,14 +679,7 @@ class ArticleViewModel(
         viewModelScope.launch {
             val result = reader.analyzeCredibility(
                 entryId = entryId,
-                source = CredibilitySource(
-                    title = entry.title,
-                    content = content,
-                    author = entry.author,
-                    feedTitle = entry.feed.title,
-                    url = entry.url,
-                    publishedAt = entry.publishedAt
-                ),
+                source = entry.toCredibilitySource(content),
                 forceRefresh = forceRefresh,
                 modelId = modelId
             )
@@ -733,9 +735,16 @@ class ArticleViewModel(
             .filterNot { _uiState.value.credibilityReports.containsKey(it) }
             .filter { checkedCredibilityIds.add(it) }
         if (missing.isEmpty()) return
+        val sources = missing.mapNotNull { entryId ->
+            val entry = _uiState.value.entries.find { it.id == entryId } ?: return@mapNotNull null
+            val content = getContentForEntry(entryId)?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            entryId to entry.toCredibilitySource(content)
+        }.toMap()
+        if (sources.isEmpty()) return
         viewModelScope.launch {
             val cached = runCatchingCancellable {
-                reader.getCachedCredibility(missing, modelId)
+                reader.getCachedCredibility(sources, modelId)
             }.getOrElse { emptyMap() }
             if (generation != aiModelGeneration) return@launch
             if (cached.isEmpty()) return@launch

@@ -8,13 +8,17 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.entrypoint.notification.AppNotificationFactory
+import com.hiosdra.hreader.core.application.exception.StaleSyncSessionException
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
+import com.hiosdra.hreader.core.application.port.out.NoopSyncSessionGate
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
+import com.hiosdra.hreader.core.application.port.out.SyncSession
+import com.hiosdra.hreader.core.application.port.out.SyncSessionGate
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
 import com.hiosdra.hreader.core.application.sync.SyncFailureStage
 import com.hiosdra.hreader.core.application.sync.toSyncFailure
@@ -59,7 +63,8 @@ class ArticleContentSyncWorker(
     private val preferencesManager: SyncPreferences,
     private val errorReportingManager: ErrorReporter,
     private val clock: Clock,
-    private val syncHealth: SyncHealthStore
+    private val syncHealth: SyncHealthStore,
+    private val sessionGate: SyncSessionGate = NoopSyncSessionGate
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -91,18 +96,25 @@ class ArticleContentSyncWorker(
         }
 
         Log.i(TAG, "Starting ArticleContentSyncWorker")
+        val session = sessionGate.currentSession()
         return try {
+            checkSession(session)
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
             val downloadAllImages = inputData.getBoolean(KEY_DOWNLOAD_ALL_IMAGES, false)
-            val contentTargets = articleRepository.getPrefetchTargets(
-                limit = MAX_ARTICLES_PER_RUN,
-                downloadAllImages = downloadAllImages
-            )
+            val contentTargets = sessionGate.withSession(session) {
+                articleRepository.getPrefetchTargets(
+                    limit = MAX_ARTICLES_PER_RUN,
+                    downloadAllImages = downloadAllImages
+                )
+            }
             val imageTargets = if (downloadAllImages) {
                 emptyList()
             } else {
-                articleRepository.getPrefetchTargetsWithEnclosures(MAX_ARTICLES_PER_RUN)
+                sessionGate.withSession(session) {
+                    articleRepository.getPrefetchTargetsWithEnclosures(MAX_ARTICLES_PER_RUN)
+                }
             }
+            checkSession(session)
             val targets = (contentTargets + imageTargets).distinctBy { it.id }
             Log.i(TAG, "Found ${targets.size} local articles to prefetch")
 
@@ -115,9 +127,10 @@ class ArticleContentSyncWorker(
             // behind an unbounded article-text stage they never ran at all.
             downloadEnclosureImages(
                 targets = targets,
-                downloadAllImages = downloadAllImages
+                downloadAllImages = downloadAllImages,
+                session = session
             )
-            val remaining = prefetchArticleContent(targets)
+            val remaining = prefetchArticleContent(targets, session)
 
             // Only when the reader asked for the whole cache. A background run leaves the rest to
             // the next sync rather than spending backoff and radio time chasing a backlog nobody
@@ -169,19 +182,26 @@ class ArticleContentSyncWorker(
         )
     }
 
+    private fun checkSession(session: SyncSession) {
+        if (!sessionGate.isCurrent(session)) throw StaleSyncSessionException()
+    }
+
     /**
      * Progress is published on a timer rather than per article: the prefetch runs bounded parallel
      * downloads, and a WorkManager write per completion would cost more than the work.
      *
      * Returns how many articles are still without stored text once this run's slice is done.
      */
-    private suspend fun prefetchArticleContent(targets: List<PrefetchTarget>): Int = coroutineScope {
+    private suspend fun prefetchArticleContent(
+        targets: List<PrefetchTarget>,
+        session: SyncSession
+    ): Int = coroutineScope {
         val downloadAllImages = inputData.getBoolean(KEY_DOWNLOAD_ALL_IMAGES, false)
         val targetEntries = targets.map { it.id to it.url }
         val outstanding = if (downloadAllImages) {
-            articleContentRepository.entriesMissingFullOfflinePreparation(targetEntries)
+            articleContentRepository.entriesMissingFullOfflinePreparation(targetEntries, session)
         } else {
-            articleContentRepository.entriesMissingContent(targetEntries)
+            articleContentRepository.entriesMissingContent(targetEntries, session)
         }
         val batch = outstanding.take(MAX_ARTICLES_PER_RUN)
         if (batch.isEmpty()) return@coroutineScope 0
@@ -202,7 +222,8 @@ class ArticleContentSyncWorker(
                     entries = batch,
                     limit = null,
                     downloadAllImages = downloadAllImages,
-                    onProgress = { completed, _ -> done.set(completed) }
+                    onProgress = { completed, _ -> done.set(completed) },
+                    session = session
                 )
             }
         } finally {
@@ -240,7 +261,8 @@ class ArticleContentSyncWorker(
      */
     private suspend fun downloadEnclosureImages(
         targets: List<PrefetchTarget>,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        session: SyncSession
     ) {
         val enclosureImageEntries = targets.mapNotNull { target ->
             target.imageEnclosureUrls(downloadAllImages).takeIf { it.isNotEmpty() }?.let { urls ->
@@ -257,7 +279,7 @@ class ArticleContentSyncWorker(
                     Log.i(TAG, "Image budget spent after $handled articles; the rest waits for the next run")
                     break
                 }
-                articleContentRepository.downloadEnclosureImages(chunk)
+                articleContentRepository.downloadEnclosureImages(chunk, session)
                 handled += chunk.size
             }
         }

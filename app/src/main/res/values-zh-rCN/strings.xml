@@ -276,6 +276,8 @@
     <plurals name="settings_connected"><item quantity="other">已连接。找到 %1$d 个订阅。</item></plurals>
     <string name="settings_connect_failed">无法连接服务器。</string>
     <string name="settings_clear_articles_failed">无法清除下载的文章。</string>
+    <string name="settings_save_server">保存服务器设置</string>
+    <string name="settings_server_settings_saved">服务器设置已保存。</string>
     <string name="server_url">服务器网址</string>
     <string name="server_url_placeholder">https://rss.example.com</string>
     <string name="server_username">用户名</string>
