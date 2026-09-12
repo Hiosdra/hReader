@@ -272,6 +272,7 @@
     <string name="settings_configure_server">Configura prima un server feed.</string>
     <string name="settings_data_cleared_new_account">I dati scaricati sono stati cancellati per il nuovo account.</string>
     <string name="settings_cache_update_failed">Impossibile aggiornare la cache locale.</string>
+    <string name="settings_server_settings_saved">Impostazioni del server salvate.</string>
     <string name="settings_prepare_cache_failed">Impossibile preparare la cache locale.</string>
     <plurals name="settings_connected"><item quantity="one">Connesso. Trovato %1$d abbonamento.</item><item quantity="many">Connesso. Trovati %1$d abbonamenti.</item><item quantity="other">Connesso. Trovati %1$d abbonamenti.</item></plurals>
     <string name="settings_connect_failed">Impossibile connettersi al server.</string>
@@ -281,6 +282,7 @@
     <string name="server_username">Nome utente</string>
     <string name="server_testing">Test in corso…</string>
     <string name="server_test_connection">Testa connessione</string>
+    <string name="settings_save_server_settings">Salva impostazioni del server</string>
     <string name="backend_switch_title">Passare a %1$s?</string>
     <string name="backend_switch_message">hReader sincronizza con un solo server alla volta. Il cambio disconnette da %1$s ed elimina tutti gli articoli, feed e immagini scaricati da lì. Le credenziali %2$s vengono conservate e poi parte una nuova sincronizzazione.</string>
     <string name="sync_automatic">Sincronizzazione automatica</string>

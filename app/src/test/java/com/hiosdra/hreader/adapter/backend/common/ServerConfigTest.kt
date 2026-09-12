@@ -2,8 +2,10 @@ package com.hiosdra.hreader.adapter.backend.common
 
 import com.hiosdra.hreader.core.domain.model.BackendType
 import com.hiosdra.hreader.adapter.preferences.PreferencesManager
+import com.hiosdra.hreader.core.application.settings.BackendConfiguration
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -127,6 +129,27 @@ class ServerConfigTest {
         assertEquals(root.cacheOwnerKey(), endpoint.cacheOwnerKey())
     }
 
+    @Test
+    fun `temporary configuration is visible only inside its block`() = runBlocking {
+        val initial = BackendConfiguration(
+            backendType = BackendType.FRESHRSS,
+            freshRssServerUrl = "rss.example.com",
+            freshRssUsername = "reader",
+            freshRssSecret = "secret"
+        )
+        val temporary = initial.copy(freshRssServerUrl = "staging.example.com")
+        val preferencesManager = mockk<PreferencesManager>()
+        every { preferencesManager.getBackendConfiguration() } returns initial
+        val config = ServerConfig(preferencesManager)
+
+        val observed = config.withTemporaryBackendConfiguration(temporary) {
+            config.getBackendConfiguration()
+        }
+
+        assertEquals(temporary, observed)
+        assertEquals(initial, config.getBackendConfiguration())
+    }
+
     private fun configFor(
         backendType: BackendType = BackendType.FRESHRSS,
         serverUrl: String,
@@ -138,6 +161,14 @@ class ServerConfigTest {
         every { preferencesManager.getServerUrl(any()) } returns serverUrl
         every { preferencesManager.getFreshRssUsername() } returns username
         every { preferencesManager.getBackendSecret(any()) } returns secret
+        every { preferencesManager.getBackendConfiguration() } returns BackendConfiguration(
+            backendType = backendType,
+            freshRssServerUrl = if (backendType == BackendType.FRESHRSS) serverUrl else "",
+            freshRssUsername = username,
+            freshRssSecret = if (backendType == BackendType.FRESHRSS) secret else "",
+            minifluxServerUrl = if (backendType == BackendType.MINIFLUX) serverUrl else "",
+            minifluxSecret = if (backendType == BackendType.MINIFLUX) secret else ""
+        )
         return ServerConfig(preferencesManager)
     }
 }

@@ -2,7 +2,7 @@ package com.hiosdra.hreader.core.application.usecase.settings
 
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
-import com.hiosdra.hreader.core.application.port.out.BackendPreferences
+import com.hiosdra.hreader.core.application.port.out.BackendSessionStore
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.FeedStore
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
@@ -10,10 +10,11 @@ import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.sync.SyncIntent
+import com.hiosdra.hreader.core.application.settings.BackendConfiguration
 import com.hiosdra.hreader.core.domain.model.BackendType
 
 class SettingsUseCase(
-    private val backendPreferences: BackendPreferences,
+    private val backendSession: BackendSessionStore,
     private val aiPreferences: AiPreferences,
     private val syncPreferences: SyncPreferences,
     private val feeds: FeedStore,
@@ -27,19 +28,13 @@ class SettingsUseCase(
     fun setOpenRouterApiKey(apiKey: String) = aiPreferences.setOpenRouterApiKey(apiKey)
     fun getAiModelId() = aiPreferences.getAiModelId()
     fun setAiModelId(modelId: String) = aiPreferences.setAiModelId(modelId)
-    fun getBackendType() = backendPreferences.getBackendType()
-    fun setBackendType(backendType: BackendType) =
-        backendPreferences.setBackendType(backendType)
+    fun getBackendType() = backendSession.getBackendConfiguration().backendType
     fun getServerUrl(backendType: BackendType) =
-        backendPreferences.getServerUrl(backendType)
-    fun setServerUrl(backendType: BackendType, url: String) =
-        backendPreferences.setServerUrl(backendType, url)
-    fun getFreshRssUsername() = backendPreferences.getFreshRssUsername()
-    fun setFreshRssUsername(username: String) = backendPreferences.setFreshRssUsername(username)
+        backendSession.getBackendConfiguration().serverUrlFor(backendType)
+    fun getFreshRssUsername() = backendSession.getBackendConfiguration().freshRssUsername
     fun getBackendSecret(backendType: BackendType) =
-        backendPreferences.getBackendSecret(backendType)
-    fun setBackendSecret(backendType: BackendType, secret: String) =
-        backendPreferences.setBackendSecret(backendType, secret)
+        backendSession.getBackendConfiguration().secretFor(backendType)
+    fun getBackendConfiguration(): BackendConfiguration = backendSession.getBackendConfiguration()
     fun getLastSyncTimestamp() = syncPreferences.getLastSyncTimestamp()
     fun getSyncIntervalMinutes() = syncPreferences.getSyncIntervalMinutes()
     fun setSyncIntervalMinutes(minutes: Int) = syncPreferences.setSyncIntervalMinutes(minutes)
@@ -66,6 +61,21 @@ class SettingsUseCase(
     fun prepareFullOffline() = sync.request(SyncIntent.PrepareFullOffline)
     fun schedulePeriodicSync() = sync.schedulePeriodicSync()
     suspend fun cancelAllSync() = sync.cancelAllSync()
+
+    suspend fun applyBackendConfiguration(configuration: BackendConfiguration): Boolean {
+        if (configuration == backendSession.getBackendConfiguration()) return false
+        sync.cancelAllSync()
+        preferenceWrites?.awaitWrites()
+        backendSession.commitBackendConfiguration(configuration)
+        preferenceWrites?.awaitWrites()
+        return cache.ensureCacheOwner()
+    }
+
+    suspend fun verifyConnection(configuration: BackendConfiguration): Int =
+        backendSession.withTemporaryBackendConfiguration(configuration) {
+            feeds.verifyConnection()
+        }
+
     suspend fun cancelAndClearBackendData() {
         sync.cancelAllSync()
         cache.clearBackendData()

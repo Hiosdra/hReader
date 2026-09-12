@@ -272,6 +272,7 @@
     <string name="settings_configure_server">Configurez d’abord un serveur de flux.</string>
     <string name="settings_data_cleared_new_account">Les données téléchargées ont été effacées pour le nouveau compte.</string>
     <string name="settings_cache_update_failed">Impossible de mettre à jour le cache local.</string>
+    <string name="settings_server_settings_saved">Paramètres du serveur enregistrés.</string>
     <string name="settings_prepare_cache_failed">Impossible de préparer le cache local.</string>
     <plurals name="settings_connected"><item quantity="one">Connecté. %1$d abonnement trouvé.</item><item quantity="many">Connecté. %1$d abonnements trouvés.</item><item quantity="other">Connecté. %1$d abonnements trouvés.</item></plurals>
     <string name="settings_connect_failed">Impossible de se connecter au serveur.</string>
@@ -281,6 +282,7 @@
     <string name="server_username">Nom d’utilisateur</string>
     <string name="server_testing">Test en cours…</string>
     <string name="server_test_connection">Tester la connexion</string>
+    <string name="settings_save_server_settings">Enregistrer les paramètres du serveur</string>
     <string name="backend_switch_title">Passer à %1$s ?</string>
     <string name="backend_switch_message">hReader se synchronise avec un seul serveur à la fois. Le changement vous déconnecte de %1$s et supprime tous les articles, flux et images téléchargés depuis celui-ci. Vos identifiants %2$s sont conservés et une nouvelle synchronisation démarre ensuite.</string>
     <string name="sync_automatic">Synchronisation automatique</string>

@@ -28,6 +28,7 @@ fun BackendServerFields(
     onUsernameChange: (String) -> Unit,
     onSecretChange: (String) -> Unit,
     onTestConnection: () -> Unit,
+    onApplySettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -39,7 +40,7 @@ fun BackendServerFields(
                 FilterChip(
                     selected = state.backendType == backendType,
                     onClick = { onBackendTypeChange(backendType) },
-                    enabled = !state.isSwitchingBackend,
+                    enabled = !state.isSwitchingBackend && !state.isApplying,
                     label = { Text(stringResource(backendType.displayNameRes)) }
                 )
             }
@@ -51,6 +52,7 @@ fun BackendServerFields(
             placeholder = { Text(stringResource(R.string.server_url_placeholder)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            enabled = !state.isSwitchingBackend && !state.isApplying,
             modifier = Modifier.fillMaxWidth()
         )
         if (state.backendType.requiresUsername) {
@@ -59,6 +61,7 @@ fun BackendServerFields(
                 onValueChange = onUsernameChange,
                 label = { Text(stringResource(R.string.server_username)) },
                 singleLine = true,
+                enabled = !state.isSwitchingBackend && !state.isApplying,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -70,14 +73,24 @@ fun BackendServerFields(
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            enabled = !state.isSwitchingBackend && !state.isApplying,
             modifier = Modifier.fillMaxWidth()
         )
         Button(
             onClick = onTestConnection,
-            enabled = !state.isTesting && state.hasAllFields,
+            enabled = !state.isTesting && !state.isApplying && state.hasAllFields,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(if (state.isTesting) R.string.server_testing else R.string.server_test_connection))
+        }
+        onApplySettings?.let { apply ->
+            Button(
+                onClick = apply,
+                enabled = !state.isTesting && !state.isApplying && state.isDirty && state.hasAllFields,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.settings_save_server_settings))
+            }
         }
         state.statusMessage?.let { message ->
             Text(
