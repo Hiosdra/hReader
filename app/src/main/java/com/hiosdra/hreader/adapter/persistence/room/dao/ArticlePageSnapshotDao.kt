@@ -30,6 +30,9 @@ interface ArticlePageSnapshotDao {
     @Query("DELETE FROM article_page_snapshots")
     suspend fun clearAll()
 
+    @Query("SELECT COUNT(*) FROM article_page_snapshots")
+    suspend fun countPages(): Int
+
     @Query(
         "SELECT COUNT(*) FROM article_page_snapshots s INNER JOIN articles a " +
             "ON a.id = CAST(s.entryId AS TEXT) AND s.originalUrl = a.url " +

@@ -1,0 +1,48 @@
+<resources>
+    <string name="settings_storage">Speicher</string>
+    <string name="settings_group_storage_summary">Siehe, was Speicherplatz belegt, und entferne lokale Downloads</string>
+    <string name="storage_title">Speicher auf diesem Gerät</string>
+    <string name="storage_description">Prüfe lokale App-Daten und entferne Downloads, ohne dein Konto oder den Server zu ändern.</string>
+    <string name="storage_app_usage">hReader verwendet %1$s</string>
+    <string name="storage_available">Auf diesem Gerät verfügbar: %1$s</string>
+    <string name="storage_low_space">Der Speicherplatz ist knapp. Gib Speicher frei, damit Downloads und Synchronisierung zuverlässig bleiben.</string>
+    <string name="storage_free_category">Speicherplatz freigeben aus %1$s</string>
+    <string name="storage_refresh">Aktualisieren</string>
+    <string name="storage_refreshing">Wird aktualisiert…</string>
+    <string name="storage_protected">Geschützt</string>
+    <string name="storage_can_remove">Kann entfernt werden</string>
+    <string name="storage_protected_notice">Diese Aktionen löschen nie Abonnements, Lese- oder Sternstatus, Anmeldedaten oder serverseitige Daten. Artikelmetadaten und vollständige Texte bleiben geschützt.</string>
+    <string name="storage_category_article_data">Artikel, Feeds und Lesestatus</string>
+    <string name="storage_category_pages">Gespeicherte Offline-Seiten</string>
+    <string name="storage_category_images">Heruntergeladene Bilder</string>
+    <string name="storage_category_tts">Heruntergeladene Sprachmodelle</string>
+    <string name="storage_category_ai">KI-Modell auf dem Gerät</string>
+    <string name="storage_category_cache">Temporärer und WebView-Cache</string>
+    <string name="storage_category_other">Sonstiges / Overhead</string>
+    <string name="storage_article_data_details">%1$d Artikel · %2$d Feeds · %3$d gespeicherte Inhalte · %4$d Lesepositionen</string>
+    <string name="storage_remove_pages">Seiten entfernen</string>
+    <string name="storage_remove_images">Bilder entfernen</string>
+    <string name="storage_remove_tts">Sprachmodelle entfernen</string>
+    <string name="storage_remove_ai">KI-Modell entfernen</string>
+    <string name="storage_remove_cache">Cache leeren</string>
+    <string name="storage_cleanup_confirm_title">%1$s entfernen?</string>
+    <string name="storage_cleanup_confirm">Jetzt entfernen</string>
+    <string name="storage_cleanup_pages_message">Gespeicherte originale Webseiten werden von diesem Gerät entfernt. Artikelmetadaten, vollständige Artikeltexte, Lesestatus, Abonnements, Anmeldedaten und Serverdaten bleiben unverändert. Seiten können erneut gespeichert werden.</string>
+    <string name="storage_cleanup_images_message">Heruntergeladene Artikelbilder werden von diesem Gerät entfernt. Artikeltexte, Lesestatus, Abonnements, Anmeldedaten und Serverdaten bleiben unverändert. Bilder können erneut heruntergeladen werden.</string>
+    <string name="storage_cleanup_tts_message">Heruntergeladene Dateien für neuronale Stimmen werden entfernt. Systemstimme, Spracheinstellungen, Artikel, Lesestatus, Abonnements, Anmeldedaten und Serverdaten bleiben unverändert. Stimmen können erneut heruntergeladen werden.</string>
+    <string name="storage_cleanup_ai_message">Das KI-Modell auf dem Gerät und unvollständige Downloads werden entfernt. Artikeldaten, Cloud-Modelleinstellungen, Lesestatus, Abonnements, Anmeldedaten und Serverdaten bleiben unverändert. Das Modell kann erneut heruntergeladen werden.</string>
+    <string name="storage_cleanup_cache_message">Temporäre Dateien sowie der WebView- und Bildfreigabe-Cache werden entfernt. Artikel, Lesestatus, heruntergeladene Modelle, Abonnements, Anmeldedaten und Serverdaten bleiben unverändert.</string>
+    <string name="storage_cleanup_in_progress">Speicherplatz wird freigegeben…</string>
+    <string name="storage_cleanup_progress">%1$s: %2$d von %3$d</string>
+    <string name="storage_cleanup_reclaimed">%1$s freigegeben.</string>
+    <string name="storage_refresh_failed">Lokaler Speicher konnte nicht gemessen werden. Versuche es erneut.</string>
+    <string name="storage_cleanup_failed">Die Bereinigung wurde nicht vollständig abgeschlossen. Einige Dateien können verbleiben; deine Artikel, dein Lesestatus, Abonnements, Anmeldedaten und Serverdaten wurden nicht geändert.</string>
+    <plurals name="storage_items">
+        <item quantity="one">%1$d Element</item>
+        <item quantity="other">%1$d Elemente</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">%1$s freigegeben. %2$d Element konnte nicht entfernt werden; versuche es erneut.</item>
+        <item quantity="other">%1$s freigegeben. %2$d Elemente konnten nicht entfernt werden; versuche es erneut.</item>
+    </plurals>
+</resources>

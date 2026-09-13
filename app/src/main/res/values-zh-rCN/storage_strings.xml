@@ -1,0 +1,48 @@
+<resources>
+    <string name="settings_storage">存储空间</string>
+    <string name="settings_group_storage_summary">查看空间占用并移除本地下载</string>
+    <string name="storage_title">此设备上的存储空间</string>
+    <string name="storage_description">查看本地应用数据并移除下载内容，不会更改账号或服务器。</string>
+    <string name="storage_app_usage">hReader 占用 %1$s</string>
+    <string name="storage_available">此设备可用空间：%1$s</string>
+    <string name="storage_low_space">存储空间不足。请释放空间，以确保下载和同步可靠。</string>
+    <string name="storage_free_category">从 %1$s 释放空间</string>
+    <string name="storage_refresh">刷新</string>
+    <string name="storage_refreshing">正在刷新…</string>
+    <string name="storage_protected">受保护</string>
+    <string name="storage_can_remove">可移除</string>
+    <string name="storage_protected_notice">这些操作不会删除订阅、已读或星标状态、凭据或服务器端数据。文章元数据和完整正文保持受保护。</string>
+    <string name="storage_category_article_data">文章、订阅源和阅读状态</string>
+    <string name="storage_category_pages">已保存的离线页面</string>
+    <string name="storage_category_images">已下载的图片</string>
+    <string name="storage_category_tts">已下载的语音模型</string>
+    <string name="storage_category_ai">设备端 AI 模型</string>
+    <string name="storage_category_cache">临时和 WebView 缓存</string>
+    <string name="storage_category_other">其他 / 开销</string>
+    <string name="storage_article_data_details">%1$d 篇文章 · %2$d 个订阅源 · %3$d 个已保存正文 · %4$d 个阅读位置</string>
+    <string name="storage_remove_pages">移除页面</string>
+    <string name="storage_remove_images">移除图片</string>
+    <string name="storage_remove_tts">移除语音模型</string>
+    <string name="storage_remove_ai">移除 AI 模型</string>
+    <string name="storage_remove_cache">清除缓存</string>
+    <string name="storage_cleanup_confirm_title">要移除“%1$s”吗？</string>
+    <string name="storage_cleanup_confirm">立即移除</string>
+    <string name="storage_cleanup_pages_message">这会从此设备移除已保存的原始网页。文章元数据和完整正文、阅读状态、订阅、凭据及服务器数据不会改变。页面可以重新保存。</string>
+    <string name="storage_cleanup_images_message">这会从此设备移除已下载的文章图片。文章文本、阅读状态、订阅、凭据及服务器数据不会改变。图片可以重新下载。</string>
+    <string name="storage_cleanup_tts_message">这会移除已下载的神经网络语音文件。系统语音、语音设置、文章、阅读状态、订阅、凭据及服务器数据不会改变。语音可以重新下载。</string>
+    <string name="storage_cleanup_ai_message">这会移除设备端 AI 模型和未完成的下载。文章数据、云端模型设置、阅读状态、订阅、凭据及服务器数据不会改变。模型可以重新下载。</string>
+    <string name="storage_cleanup_cache_message">这会移除临时文件以及 WebView 和图片分享缓存。文章、阅读状态、已下载模型、订阅、凭据及服务器数据不会改变。</string>
+    <string name="storage_cleanup_in_progress">正在释放空间…</string>
+    <string name="storage_cleanup_progress">%1$s：%2$d/%3$d</string>
+    <string name="storage_cleanup_reclaimed">已释放 %1$s。</string>
+    <string name="storage_refresh_failed">无法测量本地存储空间。请重试。</string>
+    <string name="storage_cleanup_failed">清理未完成。部分文件可能仍然存在；您的文章、阅读状态、订阅、凭据和服务器数据未发生变化。</string>
+    <plurals name="storage_items">
+        <item quantity="one">%1$d 个项目</item>
+        <item quantity="other">%1$d 个项目</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">已释放 %1$s。无法移除 %2$d 个项目，请重试。</item>
+        <item quantity="other">已释放 %1$s。无法移除 %2$d 个项目，请重试。</item>
+    </plurals>
+</resources>

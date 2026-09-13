@@ -1,0 +1,48 @@
+<resources>
+    <string name="settings_storage">ストレージ</string>
+    <string name="settings_group_storage_summary">容量の使用状況を確認してローカルのダウンロードを削除</string>
+    <string name="storage_title">この端末のストレージ</string>
+    <string name="storage_description">アカウントやサーバーを変更せずに、アプリのローカルデータを確認してダウンロードを削除します。</string>
+    <string name="storage_app_usage">hReader の使用量: %1$s</string>
+    <string name="storage_available">この端末の空き容量: %1$s</string>
+    <string name="storage_low_space">空き容量が少なくなっています。ダウンロードと同期を安定させるため、空き容量を増やしてください。</string>
+    <string name="storage_free_category">%1$s から空き容量を確保</string>
+    <string name="storage_refresh">更新</string>
+    <string name="storage_refreshing">更新中…</string>
+    <string name="storage_protected">保護済み</string>
+    <string name="storage_can_remove">削除可能</string>
+    <string name="storage_protected_notice">これらの操作で、購読、既読またはスターの状態、認証情報、サーバー側のデータが削除されることはありません。記事のメタデータと全文は保護されます。</string>
+    <string name="storage_category_article_data">記事、フィード、読書状態</string>
+    <string name="storage_category_pages">保存したオフラインページ</string>
+    <string name="storage_category_images">ダウンロードした画像</string>
+    <string name="storage_category_tts">ダウンロードした音声モデル</string>
+    <string name="storage_category_ai">端末上のAIモデル</string>
+    <string name="storage_category_cache">一時キャッシュとWebView</string>
+    <string name="storage_category_other">その他 / オーバーヘッド</string>
+    <string name="storage_article_data_details">%1$d 件の記事 · %2$d 件のフィード · %3$d 件の保存本文 · %4$d 件の読書位置</string>
+    <string name="storage_remove_pages">ページを削除</string>
+    <string name="storage_remove_images">画像を削除</string>
+    <string name="storage_remove_tts">音声モデルを削除</string>
+    <string name="storage_remove_ai">AIモデルを削除</string>
+    <string name="storage_remove_cache">キャッシュを消去</string>
+    <string name="storage_cleanup_confirm_title">%1$sを削除しますか？</string>
+    <string name="storage_cleanup_confirm">今すぐ削除</string>
+    <string name="storage_cleanup_pages_message">保存した元のWebページをこの端末から削除します。記事のメタデータと全文、読書状態、購読、認証情報、サーバーのデータは変更されません。ページは再度保存できます。</string>
+    <string name="storage_cleanup_images_message">ダウンロードした記事画像をこの端末から削除します。記事本文、読書状態、購読、認証情報、サーバーのデータは変更されません。画像は再度ダウンロードできます。</string>
+    <string name="storage_cleanup_tts_message">ダウンロードしたニューラル音声ファイルを削除します。システム音声、音声設定、記事、読書状態、購読、認証情報、サーバーのデータは変更されません。音声は再度ダウンロードできます。</string>
+    <string name="storage_cleanup_ai_message">端末上のAIモデルと未完了のダウンロードを削除します。記事データ、クラウドモデルの設定、読書状態、購読、認証情報、サーバーのデータは変更されません。モデルは再度ダウンロードできます。</string>
+    <string name="storage_cleanup_cache_message">一時ファイルとWebViewおよび画像共有のキャッシュを削除します。記事、読書状態、ダウンロードしたモデル、購読、認証情報、サーバーのデータは変更されません。</string>
+    <string name="storage_cleanup_in_progress">空き容量を確保中…</string>
+    <string name="storage_cleanup_progress">%1$s: %2$d / %3$d</string>
+    <string name="storage_cleanup_reclaimed">%1$sを解放しました。</string>
+    <string name="storage_refresh_failed">ローカルストレージを測定できませんでした。もう一度お試しください。</string>
+    <string name="storage_cleanup_failed">クリーンアップを完了できませんでした。一部のファイルが残っている可能性があります。記事、読書状態、購読、認証情報、サーバーのデータは変更されていません。</string>
+    <plurals name="storage_items">
+        <item quantity="one">%1$d 件</item>
+        <item quantity="other">%1$d 件</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">%1$sを解放しました。%2$d 件を削除できませんでした。もう一度お試しください。</item>
+        <item quantity="other">%1$sを解放しました。%2$d 件を削除できませんでした。もう一度お試しください。</item>
+    </plurals>
+</resources>

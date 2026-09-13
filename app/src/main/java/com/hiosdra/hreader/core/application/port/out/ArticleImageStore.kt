@@ -11,6 +11,7 @@ interface ArticleImageStore {
     suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String)
     suspend fun setExpectedImages(entryId: Long, imageUrls: List<String>)
     suspend fun invalidateArticleImages(entryId: Long)
+    suspend fun clearAll()
     suspend fun cleanupOrphanedImages()
     suspend fun enforceCacheBudget()
 }

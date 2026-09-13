@@ -1,0 +1,48 @@
+<resources>
+    <string name="settings_storage">저장공간</string>
+    <string name="settings_group_storage_summary">공간 사용량을 확인하고 로컬 다운로드 삭제</string>
+    <string name="storage_title">이 기기의 저장공간</string>
+    <string name="storage_description">계정이나 서버를 변경하지 않고 앱의 로컬 데이터를 확인하고 다운로드를 삭제합니다.</string>
+    <string name="storage_app_usage">hReader 사용량 %1$s</string>
+    <string name="storage_available">이 기기에서 사용 가능: %1$s</string>
+    <string name="storage_low_space">저장공간이 부족합니다. 다운로드와 동기화가 안정적으로 작동하도록 공간을 확보하세요.</string>
+    <string name="storage_free_category">%1$s에서 공간 확보</string>
+    <string name="storage_refresh">새로고침</string>
+    <string name="storage_refreshing">새로고침 중…</string>
+    <string name="storage_protected">보호됨</string>
+    <string name="storage_can_remove">삭제 가능</string>
+    <string name="storage_protected_notice">이 작업은 구독, 읽음 또는 별표 상태, 사용자 인증 정보, 서버 데이터를 삭제하지 않습니다. 기사 메타데이터와 전체 본문은 보호됩니다.</string>
+    <string name="storage_category_article_data">기사, 피드와 읽기 상태</string>
+    <string name="storage_category_pages">저장된 오프라인 페이지</string>
+    <string name="storage_category_images">다운로드한 이미지</string>
+    <string name="storage_category_tts">다운로드한 음성 모델</string>
+    <string name="storage_category_ai">기기 내 AI 모델</string>
+    <string name="storage_category_cache">임시 및 WebView 캐시</string>
+    <string name="storage_category_other">기타 / 오버헤드</string>
+    <string name="storage_article_data_details">기사 %1$d개 · 피드 %2$d개 · 저장된 본문 %3$d개 · 읽기 위치 %4$d개</string>
+    <string name="storage_remove_pages">페이지 삭제</string>
+    <string name="storage_remove_images">이미지 삭제</string>
+    <string name="storage_remove_tts">음성 모델 삭제</string>
+    <string name="storage_remove_ai">AI 모델 삭제</string>
+    <string name="storage_remove_cache">캐시 지우기</string>
+    <string name="storage_cleanup_confirm_title">%1$s을(를) 삭제할까요?</string>
+    <string name="storage_cleanup_confirm">지금 삭제</string>
+    <string name="storage_cleanup_pages_message">저장된 원본 웹 페이지를 이 기기에서 삭제합니다. 기사 메타데이터와 전체 본문, 읽기 상태, 구독, 사용자 인증 정보, 서버 데이터는 변경되지 않습니다. 페이지는 다시 저장할 수 있습니다.</string>
+    <string name="storage_cleanup_images_message">다운로드한 기사 이미지를 이 기기에서 삭제합니다. 기사 본문, 읽기 상태, 구독, 사용자 인증 정보, 서버 데이터는 변경되지 않습니다. 이미지는 다시 다운로드할 수 있습니다.</string>
+    <string name="storage_cleanup_tts_message">다운로드한 신경망 음성 파일을 삭제합니다. 시스템 음성, 음성 설정, 기사, 읽기 상태, 구독, 사용자 인증 정보, 서버 데이터는 변경되지 않습니다. 음성은 다시 다운로드할 수 있습니다.</string>
+    <string name="storage_cleanup_ai_message">기기 내 AI 모델과 진행 중이던 다운로드를 삭제합니다. 기사 데이터, 클라우드 모델 설정, 읽기 상태, 구독, 사용자 인증 정보, 서버 데이터는 변경되지 않습니다. 모델은 다시 다운로드할 수 있습니다.</string>
+    <string name="storage_cleanup_cache_message">임시 파일과 WebView 및 이미지 공유 캐시를 삭제합니다. 기사, 읽기 상태, 다운로드한 모델, 구독, 사용자 인증 정보, 서버 데이터는 변경되지 않습니다.</string>
+    <string name="storage_cleanup_in_progress">공간 확보 중…</string>
+    <string name="storage_cleanup_progress">%1$s: %2$d/%3$d</string>
+    <string name="storage_cleanup_reclaimed">%1$s 확보됨.</string>
+    <string name="storage_refresh_failed">로컬 저장공간을 측정할 수 없습니다. 다시 시도하세요.</string>
+    <string name="storage_cleanup_failed">정리가 완료되지 않았습니다. 일부 파일이 남아 있을 수 있습니다. 기사, 읽기 상태, 구독, 사용자 인증 정보, 서버 데이터는 변경되지 않았습니다.</string>
+    <plurals name="storage_items">
+        <item quantity="one">항목 %1$d개</item>
+        <item quantity="other">항목 %1$d개</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">%1$s 확보됨. 항목 %2$d개를 삭제할 수 없습니다. 다시 시도하세요.</item>
+        <item quantity="other">%1$s 확보됨. 항목 %2$d개를 삭제할 수 없습니다. 다시 시도하세요.</item>
+    </plurals>
+</resources>

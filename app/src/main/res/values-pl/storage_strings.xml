@@ -1,0 +1,52 @@
+<resources>
+    <string name="settings_storage">Pamięć</string>
+    <string name="settings_group_storage_summary">Sprawdź zajęte miejsce i usuń lokalne pobrania</string>
+    <string name="storage_title">Pamięć na tym urządzeniu</string>
+    <string name="storage_description">Sprawdź lokalne dane aplikacji i usuń pobrania bez zmiany konta ani serwera.</string>
+    <string name="storage_app_usage">hReader zajmuje %1$s</string>
+    <string name="storage_available">Dostępne miejsce na urządzeniu: %1$s</string>
+    <string name="storage_low_space">Zostało mało miejsca. Zwolnij miejsce, aby pobieranie i synchronizacja działały niezawodnie.</string>
+    <string name="storage_free_category">Zwolnij miejsce zajmowane przez: %1$s</string>
+    <string name="storage_refresh">Odśwież</string>
+    <string name="storage_refreshing">Odświeżanie…</string>
+    <string name="storage_protected">Chronione</string>
+    <string name="storage_can_remove">Można usunąć</string>
+    <string name="storage_protected_notice">Te działania nigdy nie usuwają subskrypcji, stanu przeczytania ani gwiazdek, danych logowania ani danych z serwera. Metadane i pełna treść artykułów pozostają chronione.</string>
+    <string name="storage_category_article_data">Artykuły, kanały i stan czytania</string>
+    <string name="storage_category_pages">Zapisane strony offline</string>
+    <string name="storage_category_images">Pobrane obrazy</string>
+    <string name="storage_category_tts">Pobrane modele głosów</string>
+    <string name="storage_category_ai">Model AI na urządzeniu</string>
+    <string name="storage_category_cache">Cache tymczasowy i WebView</string>
+    <string name="storage_category_other">Inne / narzut</string>
+    <string name="storage_article_data_details">%1$d artykułów · %2$d kanałów · %3$d zapisanych treści · %4$d pozycji czytania</string>
+    <string name="storage_remove_pages">Usuń strony</string>
+    <string name="storage_remove_images">Usuń obrazy</string>
+    <string name="storage_remove_tts">Usuń modele głosowe</string>
+    <string name="storage_remove_ai">Usuń model AI</string>
+    <string name="storage_remove_cache">Wyczyść pamięć podręczną</string>
+    <string name="storage_cleanup_confirm_title">Usunąć: %1$s?</string>
+    <string name="storage_cleanup_confirm">Usuń teraz</string>
+    <string name="storage_cleanup_pages_message">Usunie to z urządzenia zapisane oryginalne strony WWW. Metadane i treść artykułów, stan czytania, subskrypcje, dane logowania oraz dane z serwera pozostaną bez zmian. Strony można pobrać ponownie.</string>
+    <string name="storage_cleanup_images_message">Usunie to z urządzenia pobrane obrazy artykułów. Tekst artykułów, stan czytania, subskrypcje, dane logowania oraz dane z serwera pozostaną bez zmian. Obrazy można pobrać ponownie.</string>
+    <string name="storage_cleanup_tts_message">Usunie to pobrane pliki neuronowych głosów. Głos systemowy, ustawienia głosu, artykuły, stan czytania, subskrypcje, dane logowania oraz dane z serwera pozostaną bez zmian. Głosy można pobrać ponownie.</string>
+    <string name="storage_cleanup_ai_message">Usunie to model AI na urządzeniu i niedokończone pobranie. Dane artykułów, ustawienia modeli chmurowych, stan czytania, subskrypcje, dane logowania oraz dane z serwera pozostaną bez zmian. Model można pobrać ponownie.</string>
+    <string name="storage_cleanup_cache_message">Usunie to pliki tymczasowe oraz cache WebView i udostępniania obrazów. Artykuły, stan czytania, pobrane modele, subskrypcje, dane logowania oraz dane z serwera pozostaną bez zmian.</string>
+    <string name="storage_cleanup_in_progress">Zwalnianie miejsca…</string>
+    <string name="storage_cleanup_progress">%1$s: %2$d z %3$d</string>
+    <string name="storage_cleanup_reclaimed">Zwolniono %1$s.</string>
+    <string name="storage_refresh_failed">Nie można zmierzyć lokalnego użycia pamięci. Spróbuj ponownie.</string>
+    <string name="storage_cleanup_failed">Nie udało się zakończyć czyszczenia. Część plików może pozostać; artykuły, stan czytania, subskrypcje, dane logowania i dane z serwera nie zostały zmienione.</string>
+    <plurals name="storage_items">
+        <item quantity="one">%1$d element</item>
+        <item quantity="few">%1$d elementy</item>
+        <item quantity="many">%1$d elementów</item>
+        <item quantity="other">%1$d elementu</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">Zwolniono %1$s. Nie można usunąć %2$d elementu; spróbuj ponownie.</item>
+        <item quantity="few">Zwolniono %1$s. Nie można usunąć %2$d elementów; spróbuj ponownie.</item>
+        <item quantity="many">Zwolniono %1$s. Nie można usunąć %2$d elementów; spróbuj ponownie.</item>
+        <item quantity="other">Zwolniono %1$s. Nie można usunąć %2$d elementu; spróbuj ponownie.</item>
+    </plurals>
+</resources>

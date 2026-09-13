@@ -1,0 +1,48 @@
+<resources>
+    <string name="settings_storage">Armazenamento</string>
+    <string name="settings_group_storage_summary">Veja o que ocupa espaço e remova downloads locais</string>
+    <string name="storage_title">Armazenamento neste dispositivo</string>
+    <string name="storage_description">Revise os dados locais do app e remova downloads sem alterar sua conta ou o servidor.</string>
+    <string name="storage_app_usage">O hReader usa %1$s</string>
+    <string name="storage_available">Disponível neste dispositivo: %1$s</string>
+    <string name="storage_low_space">O armazenamento está quase cheio. Libere espaço para manter downloads e sincronização confiáveis.</string>
+    <string name="storage_free_category">Liberar espaço de %1$s</string>
+    <string name="storage_refresh">Atualizar</string>
+    <string name="storage_refreshing">Atualizando…</string>
+    <string name="storage_protected">Protegido</string>
+    <string name="storage_can_remove">Pode ser removido</string>
+    <string name="storage_protected_notice">Estas ações nunca excluem assinaturas, estado de leitura ou favoritos, credenciais nem dados do servidor. Os metadados e o texto completo dos artigos permanecem protegidos.</string>
+    <string name="storage_category_article_data">Artigos, feeds e estado de leitura</string>
+    <string name="storage_category_pages">Páginas offline salvas</string>
+    <string name="storage_category_images">Imagens baixadas</string>
+    <string name="storage_category_tts">Modelos de voz baixados</string>
+    <string name="storage_category_ai">Modelo de IA no dispositivo</string>
+    <string name="storage_category_cache">Cache temporário e do WebView</string>
+    <string name="storage_category_other">Outros / sobrecarga</string>
+    <string name="storage_article_data_details">%1$d artigos · %2$d feeds · %3$d conteúdos armazenados · %4$d posições de leitura</string>
+    <string name="storage_remove_pages">Remover páginas</string>
+    <string name="storage_remove_images">Remover imagens</string>
+    <string name="storage_remove_tts">Remover modelos de voz</string>
+    <string name="storage_remove_ai">Remover modelo de IA</string>
+    <string name="storage_remove_cache">Limpar cache</string>
+    <string name="storage_cleanup_confirm_title">Remover %1$s?</string>
+    <string name="storage_cleanup_confirm">Remover agora</string>
+    <string name="storage_cleanup_pages_message">Isso remove deste dispositivo as páginas da Web originais salvas. Os metadados e o conteúdo completo dos artigos, o estado de leitura, as assinaturas, as credenciais e os dados do servidor permanecem inalterados. As páginas podem ser salvas novamente.</string>
+    <string name="storage_cleanup_images_message">Isso remove deste dispositivo as imagens de artigos baixadas. O texto dos artigos, o estado de leitura, as assinaturas, as credenciais e os dados do servidor permanecem inalterados. As imagens podem ser baixadas novamente.</string>
+    <string name="storage_cleanup_tts_message">Isso remove os arquivos de voz neural baixados. A voz do sistema, as configurações de voz, os artigos, o estado de leitura, as assinaturas, as credenciais e os dados do servidor permanecem inalterados. As vozes podem ser baixadas novamente.</string>
+    <string name="storage_cleanup_ai_message">Isso remove o modelo de IA no dispositivo e qualquer download parcial. Os dados dos artigos, as configurações de modelos na nuvem, o estado de leitura, as assinaturas, as credenciais e os dados do servidor permanecem inalterados. O modelo pode ser baixado novamente.</string>
+    <string name="storage_cleanup_cache_message">Isso remove arquivos temporários e o cache do WebView e de compartilhamento de imagens. Os artigos, o estado de leitura, os modelos baixados, as assinaturas, as credenciais e os dados do servidor permanecem inalterados.</string>
+    <string name="storage_cleanup_in_progress">Liberando espaço…</string>
+    <string name="storage_cleanup_progress">%1$s: %2$d de %3$d</string>
+    <string name="storage_cleanup_reclaimed">%1$s liberados.</string>
+    <string name="storage_refresh_failed">Não foi possível medir o armazenamento local. Tente novamente.</string>
+    <string name="storage_cleanup_failed">A limpeza não terminou. Alguns arquivos podem permanecer; seus artigos, o estado de leitura, as assinaturas, as credenciais e os dados do servidor não foram alterados.</string>
+    <plurals name="storage_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d itens</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">%1$s liberados. Não foi possível remover %2$d item; tente novamente.</item>
+        <item quantity="other">%1$s liberados. Não foi possível remover %2$d itens; tente novamente.</item>
+    </plurals>
+</resources>

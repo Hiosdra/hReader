@@ -223,8 +223,8 @@ class ArticlePageRepository(
     }
 
     override suspend fun clearAll() = withContext(Dispatchers.IO) {
-        pagesDirectory.listFiles()?.forEach(File::deleteRecursively)
         snapshotDao.clearAll()
+        pagesDirectory.listFiles()?.forEach(File::deleteRecursively)
         Unit
     }
 

@@ -16,7 +16,12 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import com.hiosdra.hreader.core.application.sync.SyncMode
+import com.hiosdra.hreader.core.application.storage.StorageCleanupAction
+import com.hiosdra.hreader.core.application.storage.StorageCleanupProgress
+import com.hiosdra.hreader.core.application.storage.StorageCleanupResult
+import com.hiosdra.hreader.core.application.storage.StorageSnapshot
 import com.hiosdra.hreader.presentation.text.UiText
+import com.hiosdra.hreader.core.application.usecase.settings.StorageUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -92,8 +97,18 @@ data class SyncUiState(
     val showResyncStatus: Boolean = false
 )
 
+data class StorageUiState(
+    val snapshot: StorageSnapshot? = null,
+    val isLoading: Boolean = false,
+    val cleanupAction: StorageCleanupAction? = null,
+    val cleanupProgress: StorageCleanupProgress? = null,
+    val cleanupResult: StorageCleanupResult? = null,
+    val error: UiText? = null
+)
+
 class SettingsViewModel(
-    private val settings: SettingsUseCase
+    private val settings: SettingsUseCase,
+    private val storageUseCase: StorageUseCase
 ) : ViewModel() {
     private var serverDraft = settings.getBackendConfiguration()
     private val _uiState = MutableStateFlow(currentSettings(serverDraft))
@@ -115,8 +130,12 @@ class SettingsViewModel(
     private var resyncAwaitingWork = false
     private var resyncWorkId: SyncOperationId? = null
 
+    private val _storage = MutableStateFlow(StorageUiState())
+    val storage: StateFlow<StorageUiState> = _storage.asStateFlow()
+
     init {
         loadAiModels()
+        refreshStorage()
         viewModelScope.launch {
             settings.observeOfflineReadiness().collect { readiness ->
                 _offline.value = _offline.value.copy(readiness = readiness)
@@ -366,6 +385,57 @@ class SettingsViewModel(
     fun onImageCacheBudgetChange(megabytes: Int) {
         settings.setImageCacheBudgetMegabytes(megabytes)
         _offline.value = _offline.value.copy(imageCacheBudgetMegabytes = megabytes)
+    }
+
+    fun refreshStorage() {
+        if (_storage.value.cleanupAction != null || _storage.value.isLoading) return
+        viewModelScope.launch {
+            _storage.value = _storage.value.copy(isLoading = true, error = null)
+            val result = runCatchingCancellable { storageUseCase.inspect() }
+            _storage.value = result.fold(
+                onSuccess = { snapshot ->
+                    StorageUiState(snapshot = snapshot)
+                },
+                onFailure = {
+                    _storage.value.copy(
+                        isLoading = false,
+                        error = UiText.Resource(R.string.storage_refresh_failed)
+                    )
+                }
+            )
+        }
+    }
+
+    fun cleanupStorage(action: StorageCleanupAction) {
+        if (_storage.value.cleanupAction != null || _storage.value.isLoading) return
+        viewModelScope.launch {
+            _storage.value = _storage.value.copy(
+                cleanupAction = action,
+                cleanupProgress = null,
+                cleanupResult = null,
+                error = null
+            )
+            val result = runCatchingCancellable {
+                storageUseCase.cleanup(action) { progress ->
+                    _storage.value = _storage.value.copy(cleanupProgress = progress)
+                }
+            }
+            val refreshedStorage = runCatchingCancellable { storageUseCase.inspect() }
+            _storage.value = _storage.value.copy(
+                snapshot = refreshedStorage.getOrNull(),
+                isLoading = false,
+                cleanupAction = null,
+                cleanupProgress = null,
+                cleanupResult = result.getOrNull(),
+                error = if (result.isFailure) {
+                    UiText.Resource(R.string.storage_cleanup_failed)
+                } else if (refreshedStorage.isFailure) {
+                    UiText.Resource(R.string.storage_refresh_failed)
+                } else {
+                    null
+                }
+            )
+        }
     }
 
     private fun currentOfflineSettings() = OfflineUiState(
