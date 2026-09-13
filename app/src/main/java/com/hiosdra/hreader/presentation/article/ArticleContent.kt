@@ -62,6 +62,8 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
+import com.hiosdra.hreader.core.domain.model.ArticleContentKind
+import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
@@ -91,10 +93,14 @@ internal fun ArticleContent(
     articleContent: String,
     contentLoaded: Boolean,
     contentState: ArticleContentLoadState = ArticleContentLoadState.FULL,
+    contentProvenance: ArticleContentProvenance = ArticleContentProvenance(
+        kind = ArticleContentKind.UNKNOWN
+    ),
     readingPositionLoaded: Boolean,
     savedReadingProgress: Float?,
     onReadingProgressChanged: (Long, Float) -> Unit,
     onReadingCompleted: (Long) -> Unit,
+    onRetryContent: () -> Unit = {},
     articleImageLoader: ArticleImageLoader,
     coilImageLoader: CoilImageLoader,
     remoteResourcePolicy: RemoteResourcePolicy,
@@ -402,6 +408,14 @@ internal fun ArticleContent(
                     onBypassPaywall = { method -> onBypassPaywall(entry.url, method) }
                 )
             }
+            ArticleContentProvenanceStatus(
+                provenance = contentProvenance,
+                contentState = contentState,
+                onRetry = onRetryContent,
+                onOpenOriginal = entry.url.takeIf { isOnline && it.isNotBlank() }?.let {
+                    { onOpenInChrome(it) }
+                }
+            )
             Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider()
 

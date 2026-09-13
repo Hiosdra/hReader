@@ -16,18 +16,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
+import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
+import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
+import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
+import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
+import com.hiosdra.hreader.core.domain.model.ArticleContentKind
+import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import com.hiosdra.hreader.core.application.ai.AiProvider
-import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
-import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
-import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
-import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
-import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
-import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import coil3.ImageLoader as CoilImageLoader
 
 @Composable
@@ -41,6 +44,7 @@ internal fun ArticlePager(
     bottomContentPadding: Dp = 0.dp,
     getContentForEntry: (Long) -> String?,
     getContentStateForEntry: (Long) -> ArticleContentLoadState,
+    getContentProvenanceForEntry: (Long) -> ArticleContentProvenance,
     getLeadImageForEntry: (Long) -> String?,
     getOfflinePageForEntry: (Long) -> OfflinePage?,
     loadedContentIds: Set<Long>,
@@ -48,6 +52,7 @@ internal fun ArticlePager(
     readingProgressForEntry: (Long) -> Float?,
     onReadingProgressChanged: (Long, Float) -> Unit,
     onReadingCompleted: (Long) -> Unit,
+    onRetryContent: (Long) -> Unit,
     readerPreferences: ReaderPreferences,
     articleImageLoader: ArticleImageLoader,
     coilImageLoader: CoilImageLoader,
@@ -91,6 +96,22 @@ internal fun ArticlePager(
             val entry = entries.getOrNull(page) ?: return@HorizontalPager
             key(entry.id) {
                 val offlinePage = getOfflinePageForEntry(entry.id)
+                val contentState = getContentStateForEntry(entry.id)
+                val contentProvenance = when {
+                    isWebViewMode && isOnline -> ArticleContentProvenance(
+                        kind = ArticleContentKind.EXTERNAL_WEB_PAGE,
+                        sourceUrl = entry.url,
+                        delivery = ArticleContentDelivery.NETWORK
+                    )
+                    isWebViewMode && offlinePage != null -> ArticleContentProvenance(
+                        kind = ArticleContentKind.SAVED_WEB_PAGE,
+                        sourceUrl = offlinePage.finalUrl.ifBlank { offlinePage.originalUrl },
+                        fetchedAt = offlinePage.fetchedAt,
+                        delivery = ArticleContentDelivery.LOCAL_STORAGE,
+                        isComplete = offlinePage.isComplete
+                    )
+                    else -> getContentProvenanceForEntry(entry.id)
+                }
                 if (isWebViewMode && (isOnline || offlinePage != null)) {
                     val webViewModifier = Modifier
                         .fillMaxSize()
@@ -131,12 +152,15 @@ internal fun ArticlePager(
                             .padding(paddingValues)
                             .padding(bottom = bottomContentPadding),
                         articleContent = getContentForEntry(entry.id) ?: stringResource(R.string.article_no_content),
-                        contentLoaded = entry.id in loadedContentIds,
-                        contentState = getContentStateForEntry(entry.id),
+                        contentLoaded = entry.id in loadedContentIds ||
+                            contentState == ArticleContentLoadState.FALLBACK,
+                        contentState = contentState,
+                        contentProvenance = contentProvenance,
                         readingPositionLoaded = entry.id in loadedReadingPositionIds,
                         savedReadingProgress = readingProgressForEntry(entry.id),
                         onReadingProgressChanged = onReadingProgressChanged,
                         onReadingCompleted = onReadingCompleted,
+                        onRetryContent = { onRetryContent(entry.id) },
                         readerPreferences = readerPreferences,
                         articleImageLoader = articleImageLoader,
                         coilImageLoader = coilImageLoader,

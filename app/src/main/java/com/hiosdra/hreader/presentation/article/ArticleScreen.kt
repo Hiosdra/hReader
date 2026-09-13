@@ -3,6 +3,7 @@ package com.hiosdra.hreader.presentation.article
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -53,6 +54,9 @@ import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
+import com.hiosdra.hreader.core.domain.model.ArticleContentKind
+import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.core.domain.service.cleanUrl
@@ -175,6 +179,26 @@ fun ArticleScreen(
     }
 
     val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
+    val currentOfflinePage = currentEntry?.let { uiState.offlinePages[it.id] }
+    val currentWebViewAvailable = uiState.isOnline || currentOfflinePage != null
+    val currentWebViewActive = isWebViewMode && currentWebViewAvailable
+    val currentDisplayedProvenance = currentEntry?.let { entry ->
+        when {
+            currentWebViewActive && uiState.isOnline -> ArticleContentProvenance(
+                kind = ArticleContentKind.EXTERNAL_WEB_PAGE,
+                sourceUrl = entry.url,
+                delivery = ArticleContentDelivery.NETWORK
+            )
+            currentWebViewActive && currentOfflinePage != null -> ArticleContentProvenance(
+                kind = ArticleContentKind.SAVED_WEB_PAGE,
+                sourceUrl = currentOfflinePage.finalUrl.ifBlank { currentOfflinePage.originalUrl },
+                fetchedAt = currentOfflinePage.fetchedAt,
+                delivery = ArticleContentDelivery.LOCAL_STORAGE,
+                isComplete = currentOfflinePage.isComplete
+            )
+            else -> viewModel.getContentProvenanceForEntry(entry.id)
+        }
+    }
     val ttsContent = currentEntry?.let { viewModel.getContentForEntry(it.id) }
     val contentLoadFinished = currentEntry?.let { entry ->
         viewModel.getContentStateForEntry(entry.id) != ArticleContentLoadState.LOADING
@@ -264,68 +288,82 @@ fun ArticleScreen(
             )
         },
         topBar = {
-            ArticleTopBar(
-                entryUrl = currentEntry?.url,
-                feedTitle = currentEntry?.feed?.title,
-                listPosition = uiState.currentListPosition,
-                listSize = uiState.listSize,
-                isWebViewMode = isWebViewMode,
-                canUseWebView = uiState.isOnline ||
-                    (currentEntry?.id?.let { uiState.offlinePages.containsKey(it) } == true),
-                isRead = currentEntry?.isRead == true,
-                textScale = textScale,
-                onDecreaseTextScale = {
-                    textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
-                        .coerceAtLeast(MIN_ARTICLE_TEXT_SCALE)
-                },
-                onResetTextScale = { textScale = 1f },
-                onIncreaseTextScale = {
-                    textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
-                        .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
-                },
-                onToggleRead = {
-                    currentEntry?.let { entry ->
-                        viewModel.updateReadStatus(
-                            index = uiState.currentIndex,
-                            isRead = !entry.isRead
+            Column {
+                ArticleTopBar(
+                    entryUrl = currentEntry?.url,
+                    feedTitle = currentEntry?.feed?.title,
+                    listPosition = uiState.currentListPosition,
+                    listSize = uiState.listSize,
+                    isWebViewMode = currentWebViewActive,
+                    canUseWebView = currentWebViewAvailable,
+                    isRead = currentEntry?.isRead == true,
+                    textScale = textScale,
+                    onDecreaseTextScale = {
+                        textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
+                            .coerceAtLeast(MIN_ARTICLE_TEXT_SCALE)
+                    },
+                    onResetTextScale = { textScale = 1f },
+                    onIncreaseTextScale = {
+                        textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
+                            .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
+                    },
+                    onToggleRead = {
+                        currentEntry?.let { entry ->
+                            viewModel.updateReadStatus(
+                                index = uiState.currentIndex,
+                                isRead = !entry.isRead
+                            )
+                        }
+                    },
+                    onBack = { navController.popBackStack() },
+                    onToggleWebView = { isWebViewMode = !isWebViewMode },
+                    onShare = {
+                        currentEntry?.let { entry ->
+                            val ctx = navController.context
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, entry.title)
+                                putExtra(Intent.EXTRA_TEXT, "${entry.title}\n${cleanUrl(entry.url)}")
+                            }
+                            ctx.startActivity(Intent.createChooser(sendIntent, null))
+                        }
+                    },
+                    ttsContentState = ttsContentState,
+                    isTtsActive = ttsState.articleId != null,
+                    onInvokeTts = {
+                        if (ttsState.articleId != null) {
+                            ttsPlayerSheetVisible = true
+                        } else {
+                            currentEntry?.takeIf {
+                                ttsContentState == ArticleTtsContentState.AVAILABLE
+                            }?.let { playArticleTts(it) }
+                        }
+                    },
+                    isOnline = uiState.isOnline,
+                    defaultPaywallBypassMethod = configuredPaywallBypassMethod,
+                    canUsePaywallBypass = canUsePaywallBypass,
+                    onOpenInChrome = {
+                        currentEntry?.url?.let(openArticleInChrome)
+                    },
+                    onBypassPaywall = { method ->
+                        currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
+                    },
+                    onOpenPaywallMethodPicker = { paywallMethodPickerVisible = true }
+                )
+                if (currentWebViewActive && currentDisplayedProvenance != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ArticleContentProvenanceStatus(
+                            provenance = currentDisplayedProvenance,
+                            onSwitchToFeed = { isWebViewMode = false }
                         )
                     }
-                },
-                onBack = { navController.popBackStack() },
-                onToggleWebView = { isWebViewMode = !isWebViewMode },
-                onShare = {
-                    currentEntry?.let { entry ->
-                        val ctx = navController.context
-                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, entry.title)
-                            putExtra(Intent.EXTRA_TEXT, "${entry.title}\n${cleanUrl(entry.url)}")
-                        }
-                        ctx.startActivity(Intent.createChooser(sendIntent, null))
-                    }
-                },
-                ttsContentState = ttsContentState,
-                isTtsActive = ttsState.articleId != null,
-                onInvokeTts = {
-                    if (ttsState.articleId != null) {
-                        ttsPlayerSheetVisible = true
-                    } else {
-                        currentEntry?.takeIf {
-                            ttsContentState == ArticleTtsContentState.AVAILABLE
-                        }?.let { playArticleTts(it) }
-                    }
-                },
-                isOnline = uiState.isOnline,
-                defaultPaywallBypassMethod = configuredPaywallBypassMethod,
-                canUsePaywallBypass = canUsePaywallBypass,
-                onOpenInChrome = {
-                    currentEntry?.url?.let(openArticleInChrome)
-                },
-                onBypassPaywall = { method ->
-                    currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
-                },
-                onOpenPaywallMethodPicker = { paywallMethodPickerVisible = true }
-            )
+                }
+            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -362,12 +400,15 @@ fun ArticleScreen(
                     ArticlePager(
                         entries = uiState.entries,
                         pagerState = pagerState,
-                        isWebViewMode = isWebViewMode,
+                        isWebViewMode = currentWebViewActive,
                         textScale = textScale,
                         paddingValues = paddingValues,
                         bottomContentPadding = articleBottomContentPadding,
                         getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
                         getContentStateForEntry = { entryId -> viewModel.getContentStateForEntry(entryId) },
+                        getContentProvenanceForEntry = { entryId ->
+                            viewModel.getContentProvenanceForEntry(entryId)
+                        },
                         getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                         getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
                         loadedContentIds = uiState.content.keys,
@@ -375,6 +416,7 @@ fun ArticleScreen(
                         readingProgressForEntry = { entryId -> viewModel.getReadingProgressForEntry(entryId) },
                         onReadingProgressChanged = viewModel::saveReadingProgress,
                         onReadingCompleted = viewModel::clearReadingProgress,
+                        onRetryContent = viewModel::retryContent,
                         readerPreferences = readerPreferences,
                         articleImageLoader = articleImageLoader,
                         coilImageLoader = coilImageLoader,

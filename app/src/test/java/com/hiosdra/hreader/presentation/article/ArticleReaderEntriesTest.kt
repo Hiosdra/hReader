@@ -3,6 +3,8 @@ package com.hiosdra.hreader.presentation.article
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.core.domain.model.OfflinePage
+import com.hiosdra.hreader.core.domain.model.ArticleContentKind
+import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -48,6 +50,9 @@ class ArticleReaderEntriesTest {
             currentIndex = 2,
             content = entries.associate { it.id to "<p>${it.id}</p>" },
             contentLoadStates = entries.associate { it.id to ArticleContentLoadState.FULL },
+            contentProvenance = entries.associate { item ->
+                item.id to ArticleContentProvenance(ArticleContentKind.FULL_ARTICLE)
+            },
             leadImages = entries.associate { it.id to "https://example.com/${it.id}.jpg" },
             localImagePaths = entries.associate { it.id to mapOf("image" to "/tmp/${it.id}.jpg") },
             offlinePages = entries.associate { item ->
@@ -66,6 +71,7 @@ class ArticleReaderEntriesTest {
 
         assertEquals(setOf(2L, 3L, 4L), trimmed.content.keys)
         assertEquals(setOf(2L, 3L, 4L), trimmed.contentLoadStates.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.contentProvenance.keys)
         assertEquals(setOf(2L, 3L, 4L), trimmed.leadImages.keys)
         assertEquals(setOf(2L, 3L, 4L), trimmed.localImagePaths.keys)
         assertEquals(setOf(2L, 3L, 4L), trimmed.offlinePages.keys)

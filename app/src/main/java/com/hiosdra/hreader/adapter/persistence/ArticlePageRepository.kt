@@ -106,7 +106,9 @@ class ArticlePageRepository(
                 baseUrl = baseUrl(entryId),
                 html = html,
                 resourceDirectory = directory.absolutePath,
-                isComplete = snapshot.isComplete
+                isComplete = snapshot.isComplete,
+                finalUrl = snapshot.finalUrl,
+                fetchedAt = snapshot.fetchedAt
             )
         }
 

@@ -15,13 +15,18 @@ import com.hiosdra.hreader.core.application.content.articlePreviewHtml
 import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
-import com.hiosdra.hreader.core.domain.model.ArticleListQuery
+import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
+import com.hiosdra.hreader.core.domain.model.ArticleContentKind
+import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
+import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
+import com.hiosdra.hreader.core.domain.model.ArticleText
+import com.hiosdra.hreader.core.domain.model.toProvenance
 import com.hiosdra.hreader.presentation.text.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -38,6 +43,7 @@ import java.net.UnknownHostException
 import java.time.Instant
 
 private val MISSING_CONTENT_MESSAGE = UiText.Resource(R.string.article_missing_content)
+private val CONTENT_UNAVAILABLE_MESSAGE = UiText.Resource(R.string.article_content_unavailable)
 
 /**
  * How many articles either side of the opened one the reader can swipe through.
@@ -76,7 +82,8 @@ private fun Entry.toCredibilitySource(content: String): CredibilitySource = Cred
 enum class ArticleContentLoadState {
     LOADING,
     FULL,
-    FALLBACK
+    FALLBACK,
+    UNAVAILABLE
 }
 
 data class ArticleUiState(
@@ -90,6 +97,7 @@ data class ArticleUiState(
     /** Each article's text as it is read, with every image address already resolved. */
     val content: Map<Long, String> = emptyMap(),
     val contentLoadStates: Map<Long, ArticleContentLoadState> = emptyMap(),
+    val contentProvenance: Map<Long, ArticleContentProvenance> = emptyMap(),
     /**
      * The picture to show above each article. Absent until that article's text has arrived, and
      * null for a body that already carries the picture itself, which read the same way to the
@@ -130,6 +138,7 @@ internal fun ArticleUiState.trimReaderState(index: Int = currentIndex): ArticleU
     return copy(
         content = content.filterKeys { it in retainedIds },
         contentLoadStates = contentLoadStates.filterKeys { it in retainedIds },
+        contentProvenance = contentProvenance.filterKeys { it in retainedIds },
         leadImages = leadImages.filterKeys { it in retainedIds },
         localImagePaths = localImagePaths.filterKeys { it in retainedIds },
         readingPositions = readingPositions.filterKeys { it in retainedIds },
@@ -217,7 +226,10 @@ class ArticleViewModel(
 
     private fun retryPartialContent() {
         val state = _uiState.value
-        state.partialContentIds.forEach { entryId ->
+        val unavailableIds = state.contentLoadStates
+            .filterValues { it == ArticleContentLoadState.UNAVAILABLE }
+            .keys
+        (state.partialContentIds + unavailableIds).forEach { entryId ->
             retryContent(entryId)
         }
     }
@@ -233,10 +245,12 @@ class ArticleViewModel(
             state.copy(
                 currentIndex = index,
                 currentListPosition = listPosition,
-                contentError = if (arrivedAt in state.partialContentIds) {
-                    PARTIAL_CONTENT_MESSAGE
-                } else {
-                    null
+                contentError = when {
+                    arrivedAt in state.partialContentIds -> PARTIAL_CONTENT_MESSAGE
+                    state.contentLoadStates[arrivedAt] == ArticleContentLoadState.UNAVAILABLE -> {
+                        CONTENT_UNAVAILABLE_MESSAGE
+                    }
+                    else -> null
                 }
             ).trimReaderState(index)
         }
@@ -366,18 +380,109 @@ class ArticleViewModel(
         viewModelScope.launch {
             try {
                 val text = reader.getArticleContent(entryId, url, _uiState.value.isOnline)
-                store(entryId, text.html, text.leadImageUrl, text.source == ArticleContentSource.FULL)
+                store(entryId, text)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
-                markPartial(entryId)
+                val state = _uiState.value
+                val entry = state.entries.find { it.id == entryId }
+                when {
+                    hasReadableArticleText(state.content[entryId]) -> restoreStoredContent(entryId)
+                    entry != null && readerFallbackContent(entry) != null -> markPartial(entryId)
+                    else -> markUnavailable(entryId)
+                }
+            }
+        }
+    }
+
+    private fun restoreStoredContent(entryId: Long) {
+        _uiState.update { state ->
+            if (entryId !in state.readerWindowIds()) {
+                state
+            } else {
+                val previousProvenance = state.contentProvenance[entryId]
+                val isFallback = previousProvenance?.kind == ArticleContentKind.FEED_FALLBACK
+                val restoredState = if (isFallback) {
+                    ArticleContentLoadState.FALLBACK
+                } else {
+                    ArticleContentLoadState.FULL
+                }
+                state.copy(
+                    contentLoadStates = state.contentLoadStates + (entryId to restoredState),
+                    contentProvenance = if (previousProvenance == null) {
+                        state.contentProvenance + (
+                            entryId to ArticleContentProvenance(
+                                kind = if (isFallback) {
+                                    ArticleContentKind.FEED_FALLBACK
+                                } else {
+                                    ArticleContentKind.FULL_ARTICLE
+                                },
+                                sourceUrl = state.entries.firstOrNull { it.id == entryId }?.url,
+                                delivery = ArticleContentDelivery.LOCAL_STORAGE,
+                                isComplete = !isFallback
+                            )
+                        )
+                    } else {
+                        state.contentProvenance
+                    },
+                    partialContentIds = if (isFallback) {
+                        state.partialContentIds + entryId
+                    } else {
+                        state.partialContentIds - entryId
+                    },
+                    contentError = if (state.entries.getOrNull(state.currentIndex)?.id == entryId) {
+                        if (isFallback) PARTIAL_CONTENT_MESSAGE else null
+                    } else {
+                        state.contentError
+                    }
+                )
             }
         }
     }
 
     private fun markPartial(entryId: Long) {
         _uiState.update { state ->
-            if (entryId !in state.readerWindowIds()) state else state.withPartialContent(entryId)
+            if (entryId !in state.readerWindowIds()) {
+                state
+            } else {
+                state.withPartialContent(entryId).copy(
+                    contentProvenance = state.contentProvenance + (
+                        entryId to ArticleContentProvenance(
+                            kind = ArticleContentKind.FEED_FALLBACK,
+                            sourceUrl = state.entries.firstOrNull { it.id == entryId }?.url,
+                            delivery = ArticleContentDelivery.LOCAL_STORAGE,
+                            isComplete = false
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    private fun markUnavailable(entryId: Long) {
+        _uiState.update { state ->
+            if (entryId !in state.readerWindowIds()) {
+                state
+            } else {
+                state.copy(
+                    contentLoadStates = state.contentLoadStates + (
+                        entryId to ArticleContentLoadState.UNAVAILABLE
+                    ),
+                    partialContentIds = state.partialContentIds - entryId,
+                    contentProvenance = state.contentProvenance + (
+                        entryId to ArticleContentProvenance(
+                            kind = ArticleContentKind.UNAVAILABLE,
+                            sourceUrl = state.entries.firstOrNull { it.id == entryId }?.url,
+                            isComplete = false
+                        )
+                    ),
+                    contentError = if (state.entries.getOrNull(state.currentIndex)?.id == entryId) {
+                        CONTENT_UNAVAILABLE_MESSAGE
+                    } else {
+                        state.contentError
+                    }
+                )
+            }
         }
     }
 
@@ -396,37 +501,42 @@ class ArticleViewModel(
         }
     )
 
-    private suspend fun store(entryId: Long, html: String, leadImage: String?, isFullText: Boolean) {
+    private suspend fun store(entryId: Long, text: ArticleText) {
         val modelId = activeAiModelId
         val generation = aiModelGeneration
+        val provenance = text.toProvenance()
         val localPaths = reader.getLocalImagePaths(entryId)
         _uiState.update {
             val stored = it.trimReaderState()
             if (entryId !in stored.readerWindowIds()) return@update stored
             val withContent = stored.copy(
-                content = stored.content + (entryId to html),
+                content = stored.content + (entryId to text.html),
                 contentLoadStates = stored.contentLoadStates + (
-                    entryId to if (isFullText) {
+                    entryId to if (text.source == ArticleContentSource.FULL) {
                         ArticleContentLoadState.FULL
                     } else {
                         ArticleContentLoadState.FALLBACK
                     }
                 ),
-                leadImages = stored.leadImages + (entryId to leadImage),
+                contentProvenance = stored.contentProvenance + (entryId to provenance),
+                leadImages = stored.leadImages + (entryId to text.leadImageUrl),
                 localImagePaths = stored.localImagePaths + (entryId to localPaths)
             )
-            if (isFullText) {
+            if (text.source == ArticleContentSource.FULL) {
                 withContent.copy(
                     partialContentIds = withContent.partialContentIds - entryId,
                     contentError = if (withContent.entries.getOrNull(withContent.currentIndex)?.id == entryId &&
-                        withContent.contentError == PARTIAL_CONTENT_MESSAGE
+                        withContent.contentError in setOf(
+                            PARTIAL_CONTENT_MESSAGE,
+                            CONTENT_UNAVAILABLE_MESSAGE
+                        )
                     ) null else stored.contentError
                 )
             } else {
                 withContent.withPartialContent(entryId)
             }
         }
-        val cachedOverview = reader.getCachedOverview(entryId, html, modelId)
+        val cachedOverview = reader.getCachedOverview(entryId, text.html, modelId)
         if (cachedOverview != null) {
             _uiState.update { state ->
                 if (generation != aiModelGeneration || entryId !in state.readerWindowIds()) {
@@ -525,6 +635,41 @@ class ArticleViewModel(
     fun getContentStateForEntry(entryId: Long): ArticleContentLoadState =
         _uiState.value.contentLoadState(entryId)
 
+    fun getContentProvenanceForEntry(entryId: Long): ArticleContentProvenance {
+        val state = _uiState.value
+        state.contentProvenance[entryId]?.let { return it }
+        val entry = state.entries.firstOrNull { it.id == entryId }
+        return when (state.contentLoadState(entryId)) {
+            ArticleContentLoadState.FALLBACK -> ArticleContentProvenance(
+                kind = ArticleContentKind.FEED_FALLBACK,
+                sourceUrl = entry?.url,
+                delivery = ArticleContentDelivery.LOCAL_STORAGE,
+                isComplete = false
+            )
+            ArticleContentLoadState.UNAVAILABLE -> ArticleContentProvenance(
+                kind = ArticleContentKind.UNAVAILABLE,
+                sourceUrl = entry?.url,
+                isComplete = false
+            )
+            ArticleContentLoadState.FULL -> ArticleContentProvenance(
+                kind = ArticleContentKind.FULL_ARTICLE,
+                sourceUrl = entry?.url,
+                isComplete = true
+            )
+            ArticleContentLoadState.LOADING -> if (entry?.let(::readerFallbackContent) != null) {
+                ArticleContentProvenance(
+                    kind = ArticleContentKind.FEED_FALLBACK,
+                    sourceUrl = entry.url
+                )
+            } else {
+                ArticleContentProvenance(
+                    kind = ArticleContentKind.UNKNOWN,
+                    sourceUrl = entry?.url
+                )
+            }
+        }
+    }
+
     fun getLeadImageForEntry(entryId: Long): String? = _uiState.value.leadImages[entryId]
 
     fun getReadingProgressForEntry(entryId: Long): Float? =
@@ -579,6 +724,11 @@ class ArticleViewModel(
                 },
                 contentLoadStates = state.contentLoadStates +
                     (entryId to ArticleContentLoadState.LOADING),
+                contentProvenance = if (hasUsableStoredContent) {
+                    state.contentProvenance
+                } else {
+                    state.contentProvenance - entryId
+                },
                 partialContentIds = state.partialContentIds - entryId,
                 contentError = if (currentEntryId == entryId) null else state.contentError
             )
