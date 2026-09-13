@@ -10,7 +10,6 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.FullSyncSeenDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
 import com.hiosdra.hreader.adapter.persistence.room.entity.FeedEntity
 import com.hiosdra.hreader.adapter.persistence.room.entity.FullSyncSeenEntity
-import com.hiosdra.hreader.core.application.exception.IncompleteSyncException
 import com.hiosdra.hreader.core.application.exception.StaleSyncSessionException
 import com.hiosdra.hreader.core.application.observability.ArticleSyncStats
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
@@ -23,8 +22,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.sync.ArticleSyncResult
-import com.hiosdra.hreader.core.application.sync.SyncCheckpoint
-import com.hiosdra.hreader.core.application.sync.SyncCheckpointMode
+import com.hiosdra.hreader.core.application.sync.ArticleSyncCoordinator
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Entry
 import kotlinx.coroutines.CancellationException
@@ -32,12 +30,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 import java.time.Instant
-import java.util.UUID
 
 private const val TAG = "ArticleSyncEngine"
 private const val STATUS_UPDATE_CHUNK = 200
 private const val DELETE_CHUNK = 500
-private const val MAX_SYNC_PAGES = 200
 private const val MAX_BACKLOG_PAGES = 25
 private val INCREMENTAL_SYNC_WINDOW: Duration = Duration.ofHours(24)
 private val FULL_SYNC_INTERVAL: Duration = Duration.ofDays(7)
@@ -58,6 +54,11 @@ internal class ArticleSyncEngine(
     private val backendIdentity: BackendIdentity
 ) : ArticleSyncStore {
     private val syncMutex = Mutex()
+    private val syncCoordinator = ArticleSyncCoordinator(
+        api = api,
+        preferences = preferences,
+        onNewFullSync = { fullSyncSeenDao.deleteAll() }
+    )
 
     override suspend fun refreshArticles(forceFullSync: Boolean): ArticleSyncResult = syncMutex.withLock {
         refreshArticlesInternal(forceFullSync)
@@ -68,63 +69,12 @@ internal class ArticleSyncEngine(
         checkSession(currentOwner)
         pushPendingStatuses(currentOwner)
 
-        val run = selectRun(forceFullSync, currentOwner, System.currentTimeMillis())
-        val useIncremental = run.checkpoint.mode == SyncCheckpointMode.INCREMENTAL
-        performance.logSyncMode(useIncremental, preferences.getLastSyncTimestamp().takeIf { it > 0 })
-
-        var fetchedCount = 0
-        var syncStats = ArticleSyncStats()
-        val fetchedFeedIds = mutableSetOf<Long>()
-        val latestPublishedAtByFeed = mutableMapOf<Long, Long>()
-        var cursor = run.checkpoint.cursor
-        val seenCursors = mutableSetOf<String>().apply { cursor?.let(::add) }
-        var walkedToTheEnd = false
-        var repeatedCursor = false
-
-        performance.measureSyncTime(SyncPerformanceOperation.ARTICLE_PAGES) {
-            var pages = 0
-            while (true) {
-                checkSession(currentOwner)
-                val page = fetchArticleBatch(run, ENTRIES_PAGE_LIMIT, cursor)
-                checkSession(currentOwner)
-                if (page.entries.isNotEmpty()) {
-                    syncStats += persistPage(page.entries, run.checkpoint.fullSyncRunId)
-                    fetchedCount += page.entries.size
-                    fetchedFeedIds += page.entries.map { it.feed.id }
-                    page.entries.groupBy { it.feed.id }.forEach { (feedId, entries) ->
-                        latestPublishedAtByFeed[feedId] = entries.maxOf { it.publishedAt.toEpochMilli() }
-                    }
-                }
-
-                pages++
-                val nextCursor = page.cursor
-                if (nextCursor == null || page.entries.isEmpty()) {
-                    walkedToTheEnd = true
-                    preferences.clearSyncCheckpoint()
-                    break
-                }
-                if (!seenCursors.add(nextCursor)) {
-                    repeatedCursor = true
-                    preferences.clearSyncCheckpoint()
-                    break
-                }
-
-                val nextCheckpoint = run.checkpoint.copy(cursor = nextCursor)
-                preferences.setSyncCheckpoint(nextCheckpoint)
-                cursor = nextCursor
-                if (pages >= MAX_SYNC_PAGES) {
-                    Log.w(TAG, "Stopped paging after $pages pages; checkpoint saved for the next run")
-                    break
-                }
+        val run = performance.measureSyncTime(SyncPerformanceOperation.ARTICLE_PAGES) {
+            syncCoordinator.run(forceFullSync, currentOwner) { entries, fullSyncRunId ->
+                persistPage(entries, fullSyncRunId)
             }
         }
-
-        if (!walkedToTheEnd) {
-            if (repeatedCursor) {
-                Log.w(TAG, "Backend returned a repeated cursor; the next run will restart")
-            }
-            throw IncompleteSyncException("Article sync did not reach the end of the backend result")
-        }
+        val useIncremental = run.isIncremental
 
         checkSession(currentOwner)
         val activeFeedIds = reconcileFeeds(currentOwner)
@@ -137,71 +87,19 @@ internal class ArticleSyncEngine(
         pruneExpiredReadArticles()
         topUpOfflineBacklog(currentOwner)
 
-        performance.logBatchInfo(ENTRIES_PAGE_LIMIT, fetchedCount)
-        performance.logArticleSyncStats(syncStats)
+        performance.logBatchInfo(ENTRIES_PAGE_LIMIT, run.stats.fetched)
+        performance.logArticleSyncStats(run.stats)
         preferences.setLastSyncTimestamp(run.checkpoint.startedAt)
-        val updatedFeedIds = fetchedFeedIds.intersect(activeFeedIds)
+        val updatedFeedIds = run.fetchedFeedIds.intersect(activeFeedIds)
         val successfulFeedIds = if (useIncremental) updatedFeedIds else activeFeedIds
         return ArticleSyncResult(
             activeFeedIds = activeFeedIds,
             successfulFeedIds = successfulFeedIds,
             updatedFeedIds = updatedFeedIds,
             skippedFeedIds = activeFeedIds - updatedFeedIds,
-            newArticles = syncStats.inserted,
-            latestPublishedAtByFeed = latestPublishedAtByFeed
+            newArticles = run.stats.inserted,
+            latestPublishedAtByFeed = run.latestPublishedAtByFeed
         )
-    }
-
-    private suspend fun selectRun(forceFullSync: Boolean, ownerKey: String, now: Long): SyncRun {
-        if (!forceFullSync) {
-            preferences.getSyncCheckpoint()?.takeIf { it.ownerKey == ownerKey }?.let { checkpoint ->
-                if (checkpoint.mode != SyncCheckpointMode.FULL || checkpoint.fullSyncRunId != null) {
-                    return SyncRun(checkpoint)
-                }
-            }
-        }
-
-        val incremental = !forceFullSync &&
-            preferences.getSyncCheckpoint()?.mode != SyncCheckpointMode.FULL &&
-            shouldUseIncrementalSync(now)
-        val checkpoint = SyncCheckpoint(
-            ownerKey = ownerKey,
-            mode = if (incremental) SyncCheckpointMode.INCREMENTAL else SyncCheckpointMode.FULL,
-            startedAt = now,
-            changedAfter = if (incremental) {
-                Instant.ofEpochMilli(preferences.getLastSyncTimestamp())
-                    .minus(INCREMENTAL_SYNC_OVERLAP)
-                    .toEpochMilli()
-            } else {
-                null
-            },
-            cursor = null,
-            fullSyncRunId = if (incremental) null else UUID.randomUUID().toString()
-        )
-        if (!incremental) fullSyncSeenDao.deleteAll()
-        preferences.setSyncCheckpoint(checkpoint)
-        return SyncRun(checkpoint)
-    }
-
-    private fun shouldUseIncrementalSync(syncStartTime: Long): Boolean {
-        val lastSync = preferences.getLastSyncTimestamp()
-        if (lastSync <= 0) return false
-        val lastFull = preferences.getLastFullSyncTimestamp()
-        if (lastFull <= 0 || syncStartTime - lastFull >= FULL_SYNC_INTERVAL.toMillis()) return false
-        return syncStartTime - lastSync < INCREMENTAL_SYNC_WINDOW.toMillis()
-    }
-
-    private suspend fun fetchArticleBatch(
-        run: SyncRun,
-        limit: Int,
-        cursor: String?
-    ) = if (run.checkpoint.mode == SyncCheckpointMode.INCREMENTAL) {
-        val changedAfter = Instant.ofEpochMilli(requireNotNull(run.checkpoint.changedAfter))
-        Log.d(TAG, "Using incremental sync since: $changedAfter")
-        api.getEntriesChangedAfter(changedAfter, limit = limit, cursor = cursor)
-    } else {
-        Log.d(TAG, "Using full sync")
-        api.getUnreadEntries(limit = limit, cursor = cursor)
     }
 
     private suspend fun topUpOfflineBacklog(ownerKey: String) {
@@ -384,8 +282,6 @@ internal class ArticleSyncEngine(
             throw StaleSyncSessionException()
         }
     }
-
-    private data class SyncRun(val checkpoint: SyncCheckpoint)
 
     private data class PagePersistenceResult(
         val stats: ArticleSyncStats,
