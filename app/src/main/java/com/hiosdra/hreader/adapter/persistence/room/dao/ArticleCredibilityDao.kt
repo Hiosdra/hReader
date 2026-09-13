@@ -11,8 +11,15 @@ interface ArticleCredibilityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(credibility: ArticleCredibility)
 
-    @Query("SELECT * FROM article_credibility WHERE entryId = :entryId AND modelId = :modelId")
-    suspend fun getForEntry(entryId: Long, modelId: String): ArticleCredibility?
+    @Query(
+        "SELECT * FROM article_credibility " +
+            "WHERE entryId = :entryId AND modelId = :modelId AND contentFingerprint = :contentFingerprint"
+    )
+    suspend fun getForEntry(
+        entryId: Long,
+        modelId: String,
+        contentFingerprint: String
+    ): ArticleCredibility?
 
     @Query("SELECT * FROM article_credibility WHERE entryId IN (:entryIds) AND modelId = :modelId")
     suspend fun getForEntries(entryIds: List<Long>, modelId: String): List<ArticleCredibility>

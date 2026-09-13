@@ -17,5 +17,6 @@ data class ArticleCredibility(
     val factors: String,
     val modelId: String,
     val analyzedAt: Instant,
-    val contentTruncated: Boolean
+    val contentTruncated: Boolean,
+    val contentFingerprint: String
 )

@@ -94,9 +94,9 @@ class ArticleReaderUseCase(
     )
 
     suspend fun getCachedCredibility(
-        ids: List<Long>,
+        sources: Map<Long, CredibilitySource>,
         modelId: String = getAiModelId()
-    ): Map<Long, CredibilityReport> = credibility.getCached(ids, modelId)
+    ): Map<Long, CredibilityReport> = credibility.getCached(sources, modelId)
 
     suspend fun updateReadStatus(entryId: Long, status: ArticleStatus) {
         articleMutations.updateReadStatus(entryId.toString(), status)

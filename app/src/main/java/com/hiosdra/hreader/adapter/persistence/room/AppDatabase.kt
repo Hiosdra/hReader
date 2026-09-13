@@ -38,7 +38,7 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.FullSyncSeenEntity
         ArticleReadingPosition::class,
         FullSyncSeenEntity::class
     ],
-    version = 22
+    version = 23
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
