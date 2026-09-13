@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.backend.common
 
 import com.hiosdra.hreader.core.application.exception.BackendNotConfiguredException
+import com.hiosdra.hreader.core.application.exception.CursorExpiredException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
@@ -92,6 +93,17 @@ class RetriesTest {
         }
 
         assertEquals("Retrying cannot configure the backend", 1, attempts)
+    }
+
+    @Test
+    fun `a client error for a continuation cursor is marked as expired`() = runBlocking {
+        val result = runCatching {
+            withCursorRetries("cursor") {
+                throw httpException(410)
+            }
+        }
+
+        assertTrue(result.exceptionOrNull() is CursorExpiredException)
     }
 
     @Test

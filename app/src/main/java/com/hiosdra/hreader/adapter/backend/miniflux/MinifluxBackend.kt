@@ -17,6 +17,7 @@ import com.hiosdra.hreader.adapter.backend.miniflux.dto.MinifluxFeed
 import com.hiosdra.hreader.adapter.backend.miniflux.dto.UpdateEntriesStatusRequest
 import com.hiosdra.hreader.adapter.backend.miniflux.dto.UpdateFeedRequest
 import com.hiosdra.hreader.adapter.backend.common.withRetries
+import com.hiosdra.hreader.adapter.backend.common.withCursorRetries
 import com.hiosdra.hreader.adapter.backend.common.withFeedFailureMapping
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -47,7 +48,7 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
      * id already seen. Ordering by id rather than date keeps the keyset stable even when a feed
      * backdates what it publishes.
      */
-    override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage = withRetries {
+    override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage = withCursorRetries(cursor) {
         apiService.getEntries(
             statuses = READ_AND_UNREAD,
             order = ORDER_ID,
@@ -101,7 +102,7 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
         changedAfter: Long?,
         limit: Int,
         cursor: String?
-    ): EntriesPage = withRetries {
+    ): EntriesPage = withCursorRetries(cursor) {
         apiService.getEntries(
             statuses = statuses,
             order = ORDER_ID,

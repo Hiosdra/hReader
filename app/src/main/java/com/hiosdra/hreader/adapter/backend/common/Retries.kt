@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.backend.common
 
 import com.hiosdra.hreader.core.application.exception.BackendNotConfiguredException
+import com.hiosdra.hreader.core.application.exception.CursorExpiredException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import retrofit2.HttpException
@@ -39,6 +40,16 @@ internal suspend fun <T> withRetries(
         }
     }
 }
+
+internal suspend fun <T> withCursorRetries(cursor: String?, block: suspend () -> T): T =
+    try {
+        withRetries(block = block)
+    } catch (e: HttpException) {
+        if (cursor != null && e.code() in setOf(400, 404, 410, 422)) {
+            throw CursorExpiredException(e)
+        }
+        throw e
+    }
 
 internal fun Throwable.isRetryable(): Boolean = when (this) {
     is CancellationException -> false

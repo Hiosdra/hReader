@@ -16,6 +16,7 @@ import com.hiosdra.hreader.adapter.backend.freshrss.dto.StreamItem
 import com.hiosdra.hreader.adapter.backend.freshrss.dto.StreamOrigin
 import com.hiosdra.hreader.adapter.backend.freshrss.dto.Subscription
 import com.hiosdra.hreader.adapter.backend.common.withRetries
+import com.hiosdra.hreader.adapter.backend.common.withCursorRetries
 import com.hiosdra.hreader.adapter.backend.common.withFeedFailureMapping
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -43,7 +44,7 @@ class FreshRssBackend(
 ) : FeedBackend {
 
     override suspend fun getUnreadEntries(limit: Int, cursor: String?): EntriesPage =
-        withRetries { streamContents(limit, cursor, startTimeSeconds = null) }
+        withCursorRetries(cursor) { streamContents(limit, cursor, startTimeSeconds = null) }
 
     /**
      * Unlike Miniflux this cannot surface entries read on another client, so it keeps excluding
@@ -56,13 +57,13 @@ class FreshRssBackend(
         changedAfter: Instant,
         limit: Int,
         cursor: String?
-    ): EntriesPage = withRetries { streamContents(limit, cursor, changedAfter.epochSecond) }
+    ): EntriesPage = withCursorRetries(cursor) { streamContents(limit, cursor, changedAfter.epochSecond) }
 
     /**
      * The reading-list stream without the read-state exclusion, newest first, so the backlog fills
      * with what was published most recently rather than with whatever is still unread.
      */
-    override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage = withRetries {
+    override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage = withCursorRetries(cursor) {
         apiService.getStreamContents(
             output = JSON_OUTPUT,
             count = limit.coerceAtMost(ENTRIES_PAGE_LIMIT),
