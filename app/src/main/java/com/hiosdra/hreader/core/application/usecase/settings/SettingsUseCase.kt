@@ -10,6 +10,7 @@ import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.sync.SyncIntent
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.application.settings.BackendConfiguration
 import com.hiosdra.hreader.core.domain.model.BackendType
 
@@ -38,6 +39,8 @@ class SettingsUseCase(
     fun getLastSyncTimestamp() = syncPreferences.getLastSyncTimestamp()
     fun getSyncIntervalMinutes() = syncPreferences.getSyncIntervalMinutes()
     fun setSyncIntervalMinutes(minutes: Int) = syncPreferences.setSyncIntervalMinutes(minutes)
+    fun getSyncMode() = syncPreferences.getSyncMode()
+    fun setSyncMode(mode: SyncMode) = syncPreferences.setSyncMode(mode)
     fun getSyncOnUnmeteredOnly() = syncPreferences.getSyncOnUnmeteredOnly()
     fun setSyncOnUnmeteredOnly(enabled: Boolean) = syncPreferences.setSyncOnUnmeteredOnly(enabled)
     fun getSyncWhileRoaming() = syncPreferences.getSyncWhileRoaming()

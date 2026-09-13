@@ -359,6 +359,11 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
 
     <string name="sync_automatic">Synchronizacja automatyczna</string>
     <string name="sync_frequency_description">Jak często artykuły są pobierane w tle</string>
+    <string name="sync_mode">Tryb synchronizacji</string>
+    <string name="sync_mode_safe">Bezpieczny (8 naraz)</string>
+    <string name="sync_mode_safe_description">Pobiera jednocześnie maksymalnie 8 artykułów. Zalecane dla połączeń komórkowych i słabszych serwerów.</string>
+    <string name="sync_mode_fast">Szybki (100 naraz)</string>
+    <string name="sync_mode_fast_description">Pobiera jednocześnie maksymalnie 100 artykułów. Dla szybkich łączy i wydajnych serwerów.</string>
     <string name="sync_wifi_only">Tylko Wi-Fi</string>
     <string name="sync_wifi_description">Treść artykułów i obrazy zużywają większość danych podczas synchronizacji. Wi-Fi pomaga oszczędzać pakiet komórkowy.</string>
     <string name="sync_roaming">Synchronizuj w roamingu</string>
@@ -602,4 +607,5 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="offline_original_pages_download_failed">Nie udało się pobrać oryginalnych stron.</string>
     <string name="sync_content_failed">Synchronizacja artykułów nie powiodła się.</string>
     <string name="sync_article_content_failed">Nie udało się pobrać treści artykułów.</string>
+    <string name="settings_network_metrics">Sieć: %1$d żądań, %2$d błędów, przesłano %3$d B, %4$d B/s, średnio %5$d ms, maks. %6$d równolegle.</string>
 </resources>

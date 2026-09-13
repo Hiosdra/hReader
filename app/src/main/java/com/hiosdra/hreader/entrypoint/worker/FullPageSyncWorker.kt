@@ -70,6 +70,7 @@ class FullPageSyncWorker(
 
         return try {
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
+            val syncMode = preferencesManager.getSyncMode()
             articlePageRepository.cleanupOrphanedPages()
             val totalTargets = articlePageRepository.countMissingPageTargets()
             val batch = articlePageRepository.getMissingPageTargets(MAX_PAGES_PER_RUN)
@@ -90,6 +91,7 @@ class FullPageSyncWorker(
                         articlePageRepository.prefetchPages(
                             entries = batch,
                             limit = null,
+                            syncMode = syncMode,
                             onProgress = { completed, _ -> done.set(completed) }
                         )
                     }

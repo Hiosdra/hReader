@@ -2,6 +2,8 @@ package com.hiosdra.hreader.adapter.backend.freshrss
 
 import com.hiosdra.hreader.core.domain.model.BackendType
 import com.hiosdra.hreader.adapter.backend.common.ServerConfig
+import com.hiosdra.hreader.adapter.network.HttpStatusException
+import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -53,7 +55,7 @@ class GoogleReaderAuthenticator(
         clientProvider().newCall(request).execute().use { response ->
             val body = response.body.string()
             if (!response.isSuccessful) {
-                throw IOException("FreshRSS login failed with HTTP ${response.code}")
+                throw HttpStatusException(response.code, response.header(RETRY_AFTER_HEADER))
             }
             return body.lineSequence()
                 .firstOrNull { it.startsWith(AUTH_LINE_PREFIX) }

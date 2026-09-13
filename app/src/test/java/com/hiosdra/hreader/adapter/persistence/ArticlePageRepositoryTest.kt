@@ -11,9 +11,12 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
 import com.sun.net.httpserver.HttpServer
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -23,6 +26,10 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 class ArticlePageRepositoryTest {
     @Test
@@ -63,6 +70,76 @@ class ArticlePageRepositoryTest {
             assertTrue(File(stored.directoryPath, "assets").listFiles()!!.size >= 4)
         } finally {
             server.stop(0)
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `fast page prefetch allows four resources per page`() = runBlocking {
+        val root = Files.createTempDirectory("hreader-pages").toFile()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val executor = Executors.newFixedThreadPool(8)
+        val active = AtomicInteger()
+        val maximum = AtomicInteger()
+        val resourcesStarted = CountDownLatch(SyncMode.FAST.maxConcurrentPageResources)
+        val releaseResources = CountDownLatch(1)
+        val articleHtml = (1..5).joinToString(
+            prefix = "<html><body>",
+            postfix = "</body></html>"
+        ) { image -> "<img src=\"/images/$image.png\">" }
+        server.createContext("/articles/story") { exchange ->
+            val bytes = articleHtml.toByteArray(UTF_8)
+            exchange.responseHeaders.add("Content-Type", "text/html")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        (1..5).forEach { image ->
+            server.createContext("/images/$image.png") { exchange ->
+                val current = active.incrementAndGet()
+                maximum.getAndUpdate { previous -> maxOf(previous, current) }
+                resourcesStarted.countDown()
+                try {
+                    releaseResources.await(10, TimeUnit.SECONDS)
+                    val bytes = "image-$image".toByteArray(UTF_8)
+                    exchange.responseHeaders.add("Content-Type", "image/png")
+                    exchange.sendResponseHeaders(200, bytes.size.toLong())
+                    exchange.responseBody.use { it.write(bytes) }
+                } finally {
+                    active.decrementAndGet()
+                }
+            }
+        }
+        server.executor = executor
+        server.start()
+        try {
+            val context = mockk<Context>()
+            every { context.filesDir } returns root
+            val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
+            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val repository = ArticlePageRepository(
+                context,
+                snapshotDao,
+                articleDao,
+                httpClient(),
+                policy("127.0.0.1", InetAddress.getByName("127.0.0.1"))
+            )
+            val articleUrl = "http://127.0.0.1:${server.address.port}/articles/story"
+            val prefetch = async(Dispatchers.IO) {
+                repository.prefetchPages(
+                    entries = listOf(42L to articleUrl),
+                    syncMode = SyncMode.FAST
+                )
+            }
+
+            assertTrue(resourcesStarted.await(10, TimeUnit.SECONDS))
+            releaseResources.countDown()
+            prefetch.await()
+
+            assertEquals(SyncMode.FAST.maxConcurrentPageResources, maximum.get())
+        } finally {
+            releaseResources.countDown()
+            server.stop(0)
+            executor.shutdownNow()
             root.deleteRecursively()
         }
     }

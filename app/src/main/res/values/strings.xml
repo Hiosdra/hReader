@@ -368,6 +368,11 @@
 
     <string name="sync_automatic">Automatic sync</string>
     <string name="sync_frequency_description">How often articles are fetched in the background</string>
+    <string name="sync_mode">Sync mode</string>
+    <string name="sync_mode_safe">Safe (8 at a time)</string>
+    <string name="sync_mode_safe_description">Downloads up to 8 articles at once. Recommended for mobile connections or less powerful servers.</string>
+    <string name="sync_mode_fast">Fast (100 at a time)</string>
+    <string name="sync_mode_fast_description">Downloads up to 100 articles at once. For fast connections and well-provisioned servers.</string>
     <string name="sync_wifi_only">Wi-Fi only</string>
     <string name="sync_wifi_description">Article bodies and images use most of the data in a sync. Waiting for Wi-Fi helps avoid using mobile data.</string>
     <string name="sync_roaming">Sync while roaming</string>
@@ -638,4 +643,5 @@
     <string name="offline_original_pages_download_failed">Downloading original pages failed.</string>
     <string name="sync_content_failed">Article synchronization failed.</string>
     <string name="sync_article_content_failed">Article content download failed.</string>
+    <string name="settings_network_metrics">Network: %1$d requests, %2$d errors, %3$d B transferred, %4$d B/s, average %5$d ms, max %6$d concurrent.</string>
 </resources>

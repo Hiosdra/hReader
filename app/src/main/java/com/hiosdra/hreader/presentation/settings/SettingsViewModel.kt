@@ -15,6 +15,7 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationError
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationId
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.presentation.text.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,6 +81,7 @@ data class OfflineUiState(
 
 data class SyncUiState(
     val intervalMinutes: Int = SyncDefaults.INTERVAL_MINUTES,
+    val syncMode: SyncMode = SyncMode.SAFE,
     val unmeteredOnly: Boolean = false,
     val syncWhileRoaming: Boolean = true,
     val quietHoursEnabled: Boolean = false,
@@ -237,6 +239,11 @@ class SettingsViewModel(
         rescheduleSync()
     }
 
+    fun onSyncModeChange(mode: SyncMode) {
+        settings.setSyncMode(mode)
+        _sync.value = _sync.value.copy(syncMode = settings.getSyncMode())
+    }
+
     fun onUnmeteredOnlyChange(enabled: Boolean) {
         settings.setSyncOnUnmeteredOnly(enabled)
         _sync.value = _sync.value.copy(unmeteredOnly = enabled)
@@ -269,6 +276,7 @@ class SettingsViewModel(
 
     private fun currentSyncSettings() = SyncUiState(
         intervalMinutes = settings.getSyncIntervalMinutes(),
+        syncMode = settings.getSyncMode(),
         unmeteredOnly = settings.getSyncOnUnmeteredOnly(),
         syncWhileRoaming = settings.getSyncWhileRoaming(),
         quietHoursEnabled = settings.getQuietHoursEnabled(),

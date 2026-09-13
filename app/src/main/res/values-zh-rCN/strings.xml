@@ -287,6 +287,11 @@
     <string name="backend_switch_message">hReader 一次只与一台服务器同步。切换会让你退出 %1$s，并删除从该服务器下载的所有文章、订阅源和图片。你的 %2$s 凭据会保留，之后会开始新的同步。</string>
     <string name="sync_automatic">自动同步</string>
     <string name="sync_frequency_description">后台获取文章的频率</string>
+    <string name="sync_mode">同步模式</string>
+    <string name="sync_mode_safe">安全（同时 8 篇）</string>
+    <string name="sync_mode_safe_description">同时下载最多 8 篇文章。适合移动网络或性能较弱的服务器。</string>
+    <string name="sync_mode_fast">快速（同时 100 篇）</string>
+    <string name="sync_mode_fast_description">同时下载最多 100 篇文章。适合高速网络和性能充足的服务器。</string>
     <string name="sync_wifi_only">仅 Wi-Fi</string>
     <string name="sync_wifi_description">同步时，文章正文和图片会使用大部分流量。等待 Wi-Fi 可以减少移动数据的使用。</string>
     <string name="sync_roaming">漫游时同步</string>
@@ -525,4 +530,5 @@
     <string name="settings_group_expanded">已展开</string>
     <string name="settings_group_collapsed">已收起</string>
     <string name="settings_operation_article_reconciliation">文章协调</string>
+    <string name="settings_network_metrics">网络：%1$d 个请求，%2$d 个错误，传输 %3$d B，%4$d B/s，平均 %5$d ms，最大并发 %6$d。</string>
 </resources>

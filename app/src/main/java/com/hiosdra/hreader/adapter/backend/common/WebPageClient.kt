@@ -1,5 +1,8 @@
 package com.hiosdra.hreader.adapter.backend.common
 
+import com.hiosdra.hreader.adapter.network.HttpStatusException
+import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
+import com.hiosdra.hreader.adapter.network.withNetworkRetries
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.Buffer
@@ -17,15 +20,19 @@ internal const val MAX_REMOTE_BODY_BYTES = 100L * 1024L * 1024L
 internal suspend fun OkHttpClient.fetchHtml(
     url: String,
     maxBytes: Long = MAX_REMOTE_BODY_BYTES
-): String = withContext(Dispatchers.IO) {
-    val request = Request.Builder()
-        .url(url)
-        .header("User-Agent", WEB_USER_AGENT)
-        .build()
-    newCall(request).execute().use { response ->
-        if (!response.isSuccessful) throw IOException("Web request failed with HTTP " + response.code)
-        val body = response.body
-        readBoundedBody(body, maxBytes)
+): String = withNetworkRetries {
+    withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", WEB_USER_AGENT)
+            .build()
+        newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw HttpStatusException(response.code, response.header(RETRY_AFTER_HEADER))
+            }
+            val body = response.body
+            readBoundedBody(body, maxBytes)
+        }
     }
 }
 

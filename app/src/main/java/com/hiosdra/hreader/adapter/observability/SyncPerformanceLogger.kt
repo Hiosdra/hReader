@@ -1,25 +1,53 @@
 package com.hiosdra.hreader.adapter.observability
 
 import android.util.Log
+import com.hiosdra.hreader.core.application.observability.NetworkMetricsCollector
+import com.hiosdra.hreader.core.application.observability.NetworkMetricsSnapshot
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.core.application.observability.ArticleSyncStats
 import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
+import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 
-class SyncPerformanceLogger(private val preferencesManager: PerformancePreferences) : SyncPerformanceTracker {
+class SyncPerformanceLogger(
+    private val preferencesManager: PerformancePreferences,
+    private val syncPreferences: SyncPreferences,
+    private val networkMetrics: NetworkMetricsCollector
+) : SyncPerformanceTracker {
     companion object {
         private const val TAG = "SyncPerformance"
     }
     
     override suspend fun <T> measureSyncTime(operation: SyncPerformanceOperation, block: suspend () -> T): T {
         val startTime = System.nanoTime()
-        val result = block()
-        val duration = (System.nanoTime() - startTime) / 1_000_000L
-        
-        addRecord(operationName = operation.key, durationMs = duration)
-        Log.i(TAG, "${operation.key} completed in ${duration}ms")
-        return result
+        val metricsWindow = networkMetrics.startWindow()
+        return try {
+            block()
+        } finally {
+            val duration = (System.nanoTime() - startTime) / 1_000_000L
+            val metrics = networkMetrics.finishWindow(metricsWindow)
+            val syncMode = syncPreferences.getSyncMode()
+            val networkRecord = metrics.takeIf { it.requestCount > 0 }
+
+            addRecord(
+                operationName = operation.key,
+                durationMs = duration,
+                syncMode = syncMode.name,
+                networkMetrics = networkRecord
+            )
+            Log.i(TAG, "${operation.key} mode=${syncMode.name} completed in ${duration}ms")
+            if (networkRecord != null) {
+                Log.i(
+                    TAG,
+                    "${operation.key} network requests=${networkRecord.requestCount}, " +
+                        "errors=${networkRecord.errorCount}, bytes=${networkRecord.totalBytes}, " +
+                        "throughputBytesPerSecond=${networkRecord.throughputBytesPerSecond}, " +
+                        "averageResponseMs=${networkRecord.averageResponseMs}, " +
+                        "maxConcurrentRequests=${networkRecord.maxConcurrentRequests}"
+                )
+            }
+        }
     }
     
     override fun logBatchInfo(batchSize: Int, totalArticles: Int) {
@@ -82,7 +110,9 @@ class SyncPerformanceLogger(private val preferencesManager: PerformancePreferenc
         insertedArticles: Int? = null,
         updatedArticles: Int? = null,
         isIncremental: Boolean? = null,
-        lastSyncHoursAgo: Long? = null
+        lastSyncHoursAgo: Long? = null,
+        syncMode: String? = null,
+        networkMetrics: NetworkMetricsSnapshot? = null
     ) {
         val record = SyncPerformanceRecord(
             timestamp = System.currentTimeMillis(),
@@ -94,7 +124,14 @@ class SyncPerformanceLogger(private val preferencesManager: PerformancePreferenc
             insertedArticles = insertedArticles,
             updatedArticles = updatedArticles,
             isIncremental = isIncremental,
-            lastSyncHoursAgo = lastSyncHoursAgo
+            lastSyncHoursAgo = lastSyncHoursAgo,
+            syncMode = syncMode,
+            requestCount = networkMetrics?.requestCount,
+            errorCount = networkMetrics?.errorCount,
+            totalBytes = networkMetrics?.totalBytes,
+            throughputBytesPerSecond = networkMetrics?.throughputBytesPerSecond,
+            averageResponseMs = networkMetrics?.averageResponseMs,
+            maxConcurrentRequests = networkMetrics?.maxConcurrentRequests
         )
         preferencesManager.addSyncPerformanceRecord(record)
     }

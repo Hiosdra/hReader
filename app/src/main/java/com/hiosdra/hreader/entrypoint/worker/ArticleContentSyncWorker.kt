@@ -16,6 +16,7 @@ import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.application.sync.SyncFailureStage
 import com.hiosdra.hreader.core.application.sync.toSyncFailure
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
@@ -46,9 +47,6 @@ private const val MAX_ARTICLES_PER_RUN = 500
 
 /** How long the image stage may run before it hands the rest of the window to article bodies. */
 private val IMAGE_STAGE_BUDGET_NANOS = TimeUnit.MINUTES.toNanos(3)
-
-/** How often the image stage looks at the clock. Per article it would be a syscall per skip. */
-private const val IMAGE_CHUNK = 50
 
 class ArticleContentSyncWorker(
     appContext: Context,
@@ -94,6 +92,7 @@ class ArticleContentSyncWorker(
         return try {
             if (inputData.getBoolean(KEY_USER_VISIBLE, false)) updateForeground()
             val downloadAllImages = inputData.getBoolean(KEY_DOWNLOAD_ALL_IMAGES, false)
+            val syncMode = preferencesManager.getSyncMode()
             val contentTargets = articleRepository.getPrefetchTargets(
                 limit = MAX_ARTICLES_PER_RUN,
                 downloadAllImages = downloadAllImages
@@ -115,9 +114,10 @@ class ArticleContentSyncWorker(
             // behind an unbounded article-text stage they never ran at all.
             downloadEnclosureImages(
                 targets = targets,
-                downloadAllImages = downloadAllImages
+                downloadAllImages = downloadAllImages,
+                syncMode = syncMode
             )
-            val remaining = prefetchArticleContent(targets)
+            val remaining = prefetchArticleContent(targets, syncMode)
 
             // Only when the reader asked for the whole cache. A background run leaves the rest to
             // the next sync rather than spending backoff and radio time chasing a backlog nobody
@@ -175,7 +175,10 @@ class ArticleContentSyncWorker(
      *
      * Returns how many articles are still without stored text once this run's slice is done.
      */
-    private suspend fun prefetchArticleContent(targets: List<PrefetchTarget>): Int = coroutineScope {
+    private suspend fun prefetchArticleContent(
+        targets: List<PrefetchTarget>,
+        syncMode: SyncMode
+    ): Int = coroutineScope {
         val downloadAllImages = inputData.getBoolean(KEY_DOWNLOAD_ALL_IMAGES, false)
         val targetEntries = targets.map { it.id to it.url }
         val outstanding = if (downloadAllImages) {
@@ -202,6 +205,7 @@ class ArticleContentSyncWorker(
                     entries = batch,
                     limit = null,
                     downloadAllImages = downloadAllImages,
+                    syncMode = syncMode,
                     onProgress = { completed, _ -> done.set(completed) }
                 )
             }
@@ -240,7 +244,8 @@ class ArticleContentSyncWorker(
      */
     private suspend fun downloadEnclosureImages(
         targets: List<PrefetchTarget>,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        syncMode: SyncMode
     ) {
         val enclosureImageEntries = targets.mapNotNull { target ->
             target.imageEnclosureUrls(downloadAllImages).takeIf { it.isNotEmpty() }?.let { urls ->
@@ -252,12 +257,12 @@ class ArticleContentSyncWorker(
         val deadline = System.nanoTime() + IMAGE_STAGE_BUDGET_NANOS
         var handled = 0
         syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ENCLOSURE_IMAGES_DOWNLOAD) {
-            for (chunk in enclosureImageEntries.chunked(IMAGE_CHUNK)) {
+            for (chunk in enclosureImageEntries.chunked(syncMode.maxConcurrentArticleImages)) {
                 if (System.nanoTime() > deadline) {
                     Log.i(TAG, "Image budget spent after $handled articles; the rest waits for the next run")
                     break
                 }
-                articleContentRepository.downloadEnclosureImages(chunk)
+                articleContentRepository.downloadEnclosureImages(chunk, syncMode)
                 handled += chunk.size
             }
         }

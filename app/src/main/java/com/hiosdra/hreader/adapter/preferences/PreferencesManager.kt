@@ -25,6 +25,7 @@ import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.SyncDefaults
 import com.hiosdra.hreader.core.application.sync.SyncCheckpoint
 import com.hiosdra.hreader.core.application.sync.SyncCheckpointMode
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.application.sync.ArticleSyncResult
 import com.hiosdra.hreader.core.application.sync.SyncFailure
 import com.hiosdra.hreader.core.application.sync.SyncHealthSnapshot
@@ -480,6 +481,15 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         }
         .distinctUntilChanged()
 
+    override fun getSyncMode(): SyncMode = preferenceState.get().syncMode
+
+    override fun setSyncMode(mode: SyncMode) {
+        updatePreferences(
+            transform = { it.copy(syncMode = mode) },
+            write = { this[syncModeKey] = mode.name }
+        )
+    }
+
     override fun getSyncOnUnmeteredOnly(): Boolean = preferenceState.get().syncOnUnmeteredOnly
 
     override fun setSyncOnUnmeteredOnly(enabled: Boolean) {
@@ -851,6 +861,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         lastChainedSyncTimestamp = this[lastChainedSyncTimestampKey] ?: 0L,
         syncIntervalMinutes = (this[syncIntervalMinutesKey] ?: SyncDefaults.INTERVAL_MINUTES)
             .coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES),
+        syncMode = SyncMode.fromName(this[syncModeKey]),
         syncOnUnmeteredOnly = this[syncOnUnmeteredOnlyKey] ?: false,
         syncWhileRoaming = this[syncWhileRoamingKey] ?: true,
         quietHoursEnabled = this[quietHoursEnabledKey] ?: false,
@@ -1031,6 +1042,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         val imageCacheBudgetMegabytes: Int = DEFAULT_IMAGE_CACHE_BUDGET_MB,
         val lastChainedSyncTimestamp: Long = 0L,
         val syncIntervalMinutes: Int = SyncDefaults.INTERVAL_MINUTES,
+        val syncMode: SyncMode = SyncMode.SAFE,
         val syncOnUnmeteredOnly: Boolean = false,
         val syncWhileRoaming: Boolean = true,
         val quietHoursEnabled: Boolean = false,
@@ -1096,6 +1108,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private const val KEY_IMAGE_CACHE_BUDGET_MB = "image_cache_budget_mb"
         private const val KEY_LAST_CHAINED_SYNC_TIMESTAMP = "last_chained_sync_timestamp"
         private const val KEY_SYNC_INTERVAL_MINUTES = "sync_interval_minutes"
+        private const val KEY_SYNC_MODE = "sync_mode"
         private const val KEY_SYNC_UNMETERED_ONLY = "sync_unmetered_only"
         private const val KEY_SYNC_WHILE_ROAMING = "sync_while_roaming"
         private const val KEY_QUIET_HOURS_ENABLED = "quiet_hours_enabled"
@@ -1147,6 +1160,7 @@ class PreferencesManager(context: Context) : AppPreferences, PreferenceWriteBarr
         private val imageCacheBudgetMegabytesKey = intPreferencesKey(KEY_IMAGE_CACHE_BUDGET_MB)
         private val lastChainedSyncTimestampKey = longPreferencesKey(KEY_LAST_CHAINED_SYNC_TIMESTAMP)
         private val syncIntervalMinutesKey = intPreferencesKey(KEY_SYNC_INTERVAL_MINUTES)
+        private val syncModeKey = stringPreferencesKey(KEY_SYNC_MODE)
         private val syncOnUnmeteredOnlyKey = booleanPreferencesKey(KEY_SYNC_UNMETERED_ONLY)
         private val syncWhileRoamingKey = booleanPreferencesKey(KEY_SYNC_WHILE_ROAMING)
         private val quietHoursEnabledKey = booleanPreferencesKey(KEY_QUIET_HOURS_ENABLED)

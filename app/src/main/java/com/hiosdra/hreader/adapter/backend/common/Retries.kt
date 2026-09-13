@@ -1,19 +1,9 @@
 package com.hiosdra.hreader.adapter.backend.common
 
-import com.hiosdra.hreader.core.application.exception.BackendNotConfiguredException
+import com.hiosdra.hreader.adapter.network.isNetworkRetryable
+import com.hiosdra.hreader.adapter.network.withNetworkRetries
 import com.hiosdra.hreader.core.application.exception.CursorExpiredException
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import retrofit2.HttpException
-import java.io.IOException
-import kotlin.random.Random
-
-private const val TOO_MANY_REQUESTS = 429
-private const val FIRST_SERVER_ERROR = 500
-private const val JITTER_MILLIS = 250L
-
-/** Keeps the doubling from overflowing if a caller ever asks for a long retry chain. */
-private const val MAX_BACKOFF_DOUBLINGS = 6
 
 /**
  * Retries [block] on failures the backend can plausibly recover from: transport errors and
@@ -26,19 +16,11 @@ internal suspend fun <T> withRetries(
     initialDelayMillis: Long = 500,
     block: suspend () -> T
 ): T {
-    require(maxAttempts >= 1)
-    var attempts = 0
-    while (true) {
-        try {
-            return block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            attempts++
-            if (attempts >= maxAttempts || !e.isRetryable()) throw e
-            delay(backoffMillis(initialDelayMillis, attempts))
-        }
-    }
+    return withNetworkRetries(
+        maxAttempts = maxAttempts,
+        initialDelayMillis = initialDelayMillis,
+        block = block
+    )
 }
 
 internal suspend fun <T> withCursorRetries(cursor: String?, block: suspend () -> T): T =
@@ -51,14 +33,4 @@ internal suspend fun <T> withCursorRetries(cursor: String?, block: suspend () ->
         throw e
     }
 
-internal fun Throwable.isRetryable(): Boolean = when (this) {
-    is CancellationException -> false
-    is BackendNotConfiguredException -> false
-    is HttpException -> code() >= FIRST_SERVER_ERROR || code() == TOO_MANY_REQUESTS
-    is IOException -> true
-    else -> false
-}
-
-private fun backoffMillis(initialDelayMillis: Long, attempt: Int): Long =
-    initialDelayMillis * (1L shl (attempt - 1).coerceAtMost(MAX_BACKOFF_DOUBLINGS)) +
-        Random.nextLong(JITTER_MILLIS)
+internal fun Throwable.isRetryable(): Boolean = isNetworkRetryable()

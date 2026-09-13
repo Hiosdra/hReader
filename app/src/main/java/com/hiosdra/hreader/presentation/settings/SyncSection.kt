@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -44,6 +45,7 @@ private val SYNC_INTERVAL_CHOICES = listOf(15, 30, 60, 180, 360, 720, 1440)
 fun SyncSection(
     state: SyncUiState,
     onIntervalChange: (Int) -> Unit,
+    onSyncModeChange: (SyncMode) -> Unit = {},
     onUnmeteredOnlyChange: (Boolean) -> Unit,
     onSyncWhileRoamingChange: (Boolean) -> Unit,
     onQuietHoursEnabledChange: (Boolean) -> Unit,
@@ -52,6 +54,7 @@ fun SyncSection(
     onOpenFreshness: () -> Unit = {}
 ) {
     var showIntervalDialog by remember { mutableStateOf(false) }
+    var showSyncModeDialog by remember { mutableStateOf(false) }
     var showQuietHoursDialog by remember { mutableStateOf(false) }
 
     Column(modifier = modifier) {
@@ -60,6 +63,13 @@ fun SyncSection(
             value = formatInterval(state.intervalMinutes),
             supportingText = stringResource(R.string.sync_frequency_description),
             onClick = { showIntervalDialog = true }
+        )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        SettingRow(
+            title = stringResource(R.string.sync_mode),
+            value = stringResource(syncModeLabel(state.syncMode)),
+            supportingText = stringResource(syncModeDescription(state.syncMode)),
+            onClick = { showSyncModeDialog = true }
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         ToggleSettingRow(
@@ -121,6 +131,20 @@ fun SyncSection(
         )
     }
 
+    if (showSyncModeDialog) {
+        ChoiceDialog(
+            title = stringResource(R.string.sync_mode),
+            options = SyncMode.entries.toList(),
+            selected = state.syncMode,
+            label = { stringResource(syncModeLabel(it)) },
+            onSelect = {
+                onSyncModeChange(it)
+                showSyncModeDialog = false
+            },
+            onDismiss = { showSyncModeDialog = false }
+        )
+    }
+
     if (showQuietHoursDialog) {
         QuietHoursDialog(
             startHour = state.quietHoursStart,
@@ -172,6 +196,16 @@ private fun <T> ChoiceDialog(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } }
     )
+}
+
+private fun syncModeLabel(mode: SyncMode): Int = when (mode) {
+    SyncMode.SAFE -> R.string.sync_mode_safe
+    SyncMode.FAST -> R.string.sync_mode_fast
+}
+
+private fun syncModeDescription(mode: SyncMode): Int = when (mode) {
+    SyncMode.SAFE -> R.string.sync_mode_safe_description
+    SyncMode.FAST -> R.string.sync_mode_fast_description
 }
 
 @Composable

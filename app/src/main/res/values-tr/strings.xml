@@ -287,6 +287,11 @@
     <string name="backend_switch_message">hReader aynı anda tek bir sunucuyla senkronize olur. Geçiş, %1$s oturumunuzu kapatır ve oradan indirilen tüm makaleleri, akışları ve görselleri siler. %2$s kimlik bilgileriniz korunur ve ardından yeni bir senkronizasyon başlar.</string>
     <string name="sync_automatic">Otomatik senkronizasyon</string>
     <string name="sync_frequency_description">Makalelerin arka planda ne sıklıkla getirileceği</string>
+    <string name="sync_mode">Senkronizasyon modu</string>
+    <string name="sync_mode_safe">Güvenli (aynı anda 8)</string>
+    <string name="sync_mode_safe_description">Aynı anda en fazla 8 makale indirir. Mobil bağlantılar veya daha düşük güçlü sunucular için önerilir.</string>
+    <string name="sync_mode_fast">Hızlı (aynı anda 100)</string>
+    <string name="sync_mode_fast_description">Aynı anda en fazla 100 makale indirir. Hızlı bağlantılar ve güçlü sunucular için uygundur.</string>
     <string name="sync_wifi_only">Yalnızca Wi-Fi</string>
     <string name="sync_wifi_description">Bir senkronizasyonda verilerin çoğunu makale gövdeleri ve görseller kullanır. Wi-Fi’yi beklemek mobil veri kullanımını önlemeye yardımcı olur.</string>
     <string name="sync_roaming">Dolaşımdayken senkronize et</string>
@@ -529,4 +534,5 @@
     <string name="settings_group_expanded">Genişletildi</string>
     <string name="settings_group_collapsed">Daraltıldı</string>
     <string name="settings_operation_article_reconciliation">Makale uzlaştırma</string>
+    <string name="settings_network_metrics">Ağ: %1$d istek, %2$d hata, %3$d B aktarıldı, %4$d B/sn, ortalama %5$d ms, en fazla %6$d eşzamanlı.</string>
 </resources>
