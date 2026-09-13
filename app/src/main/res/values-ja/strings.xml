@@ -287,6 +287,11 @@
     <string name="backend_switch_message">hReaderは一度に1台のサーバーと同期します。切り替えると %1$s からログアウトし、そこからダウンロードした記事・フィード・画像をすべて削除します。%2$s の認証情報は保持され、その後に新しい同期を開始します。</string>
     <string name="sync_automatic">自動同期</string>
     <string name="sync_frequency_description">バックグラウンドで記事を取得する頻度</string>
+    <string name="sync_mode">同期モード</string>
+    <string name="sync_mode_safe">安全（8件ずつ）</string>
+    <string name="sync_mode_safe_description">最大8件の記事を同時にダウンロードします。モバイル接続や低性能のサーバーにおすすめです。</string>
+    <string name="sync_mode_fast">高速（100件ずつ）</string>
+    <string name="sync_mode_fast_description">最大100件の記事を同時にダウンロードします。高速な接続と十分な性能のサーバー向けです。</string>
     <string name="sync_wifi_only">Wi-Fiのみ</string>
     <string name="sync_wifi_description">同期では記事本文と画像がデータ通信の大部分を使用します。Wi-Fiを待つことでモバイルデータの使用を抑えられます。</string>
     <string name="sync_roaming">ローミング中も同期</string>
@@ -525,4 +530,5 @@
     <string name="settings_group_expanded">展開済み</string>
     <string name="settings_group_collapsed">折りたたみ済み</string>
     <string name="settings_operation_article_reconciliation">記事の照合</string>
+    <string name="settings_network_metrics">ネットワーク: %1$d件のリクエスト、%2$d件のエラー、%3$d B転送、%4$d B/s、平均%5$d ms、最大同時実行数%6$d。</string>
 </resources>

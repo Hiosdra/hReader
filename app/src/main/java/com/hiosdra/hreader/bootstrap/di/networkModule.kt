@@ -25,7 +25,10 @@ import com.hiosdra.hreader.adapter.backend.freshrss.GoogleReaderAuthenticator
 import com.hiosdra.hreader.adapter.backend.miniflux.MinifluxApiService
 import com.hiosdra.hreader.adapter.backend.miniflux.MinifluxAuthInterceptor
 import com.hiosdra.hreader.adapter.backend.miniflux.MinifluxBackend
+import com.hiosdra.hreader.adapter.network.NetworkMetricsEventListener
+import com.hiosdra.hreader.adapter.network.NonRetryableNetworkException
 import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
+import com.hiosdra.hreader.core.application.observability.NetworkMetricsCollector
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
@@ -34,8 +37,10 @@ import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.BackendSessionStore
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.core.qualifier.named
@@ -53,9 +58,11 @@ private const val OPENROUTER_RETROFIT = "openrouter"
 private const val CONNECT_TIMEOUT_SECONDS = 15L
 private const val READ_TIMEOUT_SECONDS = 60L
 private const val WRITE_TIMEOUT_SECONDS = 30L
+private val MAX_NETWORK_REQUESTS = SyncMode.FAST.maxConcurrentNetworkRequests
 
 val networkModule = module {
     single { ServerConfig(get()) }
+    single { NetworkMetricsCollector() }
     single<BackendIdentity> { get<ServerConfig>() }
     single<BackendSessionStore> { get<ServerConfig>() }
     // The login call carries credentials in its form body and gets the auth token back in the
@@ -79,6 +86,13 @@ val networkModule = module {
     single<OkHttpClient> {
         val resourcePolicy = get<RemoteResourcePolicyAdapter>()
         OkHttpClient.Builder()
+            .dispatcher(
+                Dispatcher().apply {
+                    maxRequests = MAX_NETWORK_REQUESTS
+                    maxRequestsPerHost = MAX_NETWORK_REQUESTS
+                }
+            )
+            .eventListenerFactory(NetworkMetricsEventListener.Factory(get()))
             // OkHttp defaults to a 10s read timeout, which a self-hosted backend serving a page of
             // 200 entries with full content routinely exceeds. No callTimeout on purpose: it also
             // counts time spent queued in the dispatcher, and content prefetching submits every
@@ -93,7 +107,7 @@ val networkModule = module {
             .addNetworkInterceptor { chain ->
                 val request = chain.request()
                 if (!resourcePolicy.allows(request.url.toString())) {
-                    throw java.io.IOException("Blocked remote resource URL")
+                    throw NonRetryableNetworkException("Blocked remote resource URL")
                 }
                 chain.proceed(request)
             }

@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.core.application.port.out
 
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 
 interface ArticlePageStore {
@@ -10,6 +11,7 @@ interface ArticlePageStore {
     suspend fun prefetchPages(
         entries: List<Pair<Long, String>>,
         limit: Int? = null,
+        syncMode: SyncMode = SyncMode.SAFE,
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
     )
     suspend fun cleanupOrphanedPages()

@@ -12,12 +12,16 @@ import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.domain.model.Enclosure
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -26,6 +30,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(JUnit4::class)
 class ArticleContentRepositoryTest {
@@ -337,5 +342,92 @@ class ArticleContentRepositoryTest {
             listOf(secondEntryId to "https://example.com/posts/two"),
             missing
         )
+    }
+
+    @Test
+    fun `safe prefetch keeps at most eight article downloads in flight`() = runBlocking {
+        assertEquals(
+            SyncMode.SAFE.maxConcurrentArticleContent,
+            maxPrefetchConcurrency(SyncMode.SAFE, SyncMode.SAFE.maxConcurrentArticleContent + 1)
+        )
+    }
+
+    @Test
+    fun `fast prefetch allows one hundred article downloads in flight`() = runBlocking {
+        assertEquals(
+            SyncMode.FAST.maxConcurrentArticleContent,
+            maxPrefetchConcurrency(SyncMode.FAST, SyncMode.FAST.maxConcurrentArticleContent + 1)
+        )
+    }
+
+    @Test
+    fun `fast enclosure image prefetch keeps its separate limit`() = runBlocking {
+        val active = AtomicInteger()
+        val maximum = AtomicInteger()
+        val started = AtomicInteger()
+        val release = CompletableDeferred<Unit>()
+        val expectedStarted = SyncMode.FAST.maxConcurrentArticleImages
+        val expectedBatchStarted = CompletableDeferred<Unit>()
+
+        coEvery { articleImageStore.downloadAndStoreImage(any(), any()) } coAnswers {
+            val current = active.incrementAndGet()
+            maximum.getAndUpdate { previous -> maxOf(previous, current) }
+            if (started.incrementAndGet() == expectedStarted) expectedBatchStarted.complete(Unit)
+            try {
+                release.await()
+            } finally {
+                active.decrementAndGet()
+            }
+        }
+
+        val entries = (1..expectedStarted + 1).map { id ->
+            id.toLong() to listOf("https://example.com/images/$id.jpg")
+        }
+        val download = async {
+            repository.downloadEnclosureImages(entries, SyncMode.FAST)
+        }
+        withTimeout(10_000) { expectedBatchStarted.await() }
+        release.complete(Unit)
+        download.await()
+
+        assertEquals(expectedStarted, maximum.get())
+    }
+
+    private suspend fun maxPrefetchConcurrency(mode: SyncMode, entryCount: Int): Int = coroutineScope {
+        val active = AtomicInteger()
+        val maximum = AtomicInteger()
+        val started = AtomicInteger()
+        val release = CompletableDeferred<Unit>()
+        val expectedStarted = mode.maxConcurrentArticleContent.coerceAtMost(entryCount)
+        val expectedBatchStarted = CompletableDeferred<Unit>()
+
+        coEvery { articleContentDao.getArticleContent(any()) } returns null
+        coEvery { articleDao.getArticlesImmediate(any()) } returns emptyList()
+        coEvery { backend.fetchFullContent(any(), any()) } coAnswers {
+            val current = active.incrementAndGet()
+            maximum.getAndUpdate { previous -> maxOf(previous, current) }
+            if (started.incrementAndGet() == expectedStarted) expectedBatchStarted.complete(Unit)
+            try {
+                release.await()
+                "<p>Text</p>"
+            } finally {
+                active.decrementAndGet()
+            }
+        }
+
+        val entries = (1..entryCount).map { id ->
+            id.toLong() to "https://example.com/posts/$id"
+        }
+        val prefetch = async {
+            repository.prefetchArticleContent(
+                entries = entries,
+                limit = null,
+                syncMode = mode
+            )
+        }
+        withTimeout(10_000) { expectedBatchStarted.await() }
+        release.complete(Unit)
+        prefetch.await()
+        maximum.get()
     }
 }

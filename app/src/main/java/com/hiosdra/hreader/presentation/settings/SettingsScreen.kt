@@ -177,6 +177,7 @@ fun SettingsScreen(
                     SyncSection(
                         state = sync,
                         onIntervalChange = settingsViewModel::onSyncIntervalChange,
+                        onSyncModeChange = settingsViewModel::onSyncModeChange,
                         onUnmeteredOnlyChange = settingsViewModel::onUnmeteredOnlyChange,
                         onSyncWhileRoamingChange = settingsViewModel::onSyncWhileRoamingChange,
                         onQuietHoursEnabledChange = settingsViewModel::onQuietHoursEnabledChange,
@@ -445,6 +446,21 @@ private fun PerformanceRecordItem(record: SyncPerformanceRecord) {
             )
             Text(
                 text = syncInfo,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        record.requestCount?.let { requestCount ->
+            Text(
+                text = stringResource(
+                    R.string.settings_network_metrics,
+                    requestCount,
+                    record.errorCount ?: 0,
+                    record.totalBytes ?: 0L,
+                    record.throughputBytesPerSecond ?: 0L,
+                    record.averageResponseMs ?: 0L,
+                    record.maxConcurrentRequests ?: 0
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

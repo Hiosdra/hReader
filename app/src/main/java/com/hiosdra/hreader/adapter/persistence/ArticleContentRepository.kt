@@ -15,6 +15,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import com.hiosdra.hreader.core.domain.model.ArticleText
 import kotlinx.coroutines.Dispatchers
@@ -49,21 +50,12 @@ class ArticleContentRepository(
     companion object {
         private const val TAG = "ArticleContentRepo"
 
-        /**
-         * Background prefetch used to submit every unread article at once, and each of those also
-         * downloads the images it references. On a large backlog that put thousands of requests in
-         * flight at the same time.
-         */
-        private const val MAX_CONCURRENT_PREFETCH = 8
-        private const val PREFETCH_BATCH_SIZE = 32
-
         /** Below SQLite's 999 bound-variable ceiling on Android. */
         private const val DELETE_CHUNK = 500
         private const val IMAGE_URL_SEPARATOR = "\u001e"
         private const val EMPTY_IMAGE_MANIFEST = "\u0000"
     }
 
-    private val prefetchLimiter = Semaphore(MAX_CONCURRENT_PREFETCH)
     private val imageJobsMutex = Mutex()
     private val imageJobs = mutableMapOf<Long, Job>()
     override suspend fun getArticleContent(
@@ -74,19 +66,21 @@ class ArticleContentRepository(
         entryId = entryId,
         url = url,
         allowNetwork = allowNetwork,
-        downloadAllImages = true
+        downloadAllImages = true,
+        imageLimiter = null
     )
 
     private suspend fun getArticleContent(
         entryId: Long,
         url: String,
         allowNetwork: Boolean,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        imageLimiter: Semaphore?
     ): ArticleText {
         val localContent = articleContentDao.getArticleContent(entryId)
         if (localContent != null && localContent.url == url && localContent.content.isNotBlank()) {
             if (localContent.source == ArticleContentSource.FULL) {
-                return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages)
+                return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages, imageLimiter)
             }
 
             if (allowNetwork) {
@@ -98,7 +92,8 @@ class ArticleContentRepository(
                         fullContent,
                         ArticleContentSource.FULL,
                         true,
-                        downloadAllImages
+                        downloadAllImages,
+                        imageLimiter
                     )
                 }
             }
@@ -111,10 +106,11 @@ class ArticleContentRepository(
                     cachedContent.content,
                     cachedContent.source,
                     allowNetwork,
-                    downloadAllImages
+                    downloadAllImages,
+                    imageLimiter
                 )
             }
-            return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages)
+            return prepareStoredContent(entryId, localContent, allowNetwork, downloadAllImages, imageLimiter)
         }
 
         if (allowNetwork) {
@@ -126,7 +122,8 @@ class ArticleContentRepository(
                     fullContent,
                     ArticleContentSource.FULL,
                     true,
-                    downloadAllImages
+                    downloadAllImages,
+                    imageLimiter
                 )
             }
         }
@@ -139,7 +136,8 @@ class ArticleContentRepository(
             cachedContent.content,
             cachedContent.source,
             allowNetwork,
-            downloadAllImages
+            downloadAllImages,
+            imageLimiter
         )
     }
 
@@ -158,7 +156,8 @@ class ArticleContentRepository(
         entryId: Long,
         stored: ArticleContent,
         allowNetwork: Boolean,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        imageLimiter: Semaphore?
     ): ArticleText {
         val storedImageUrls = stored.imageUrls.toImageUrls()
         val hasImageManifest = stored.imageUrls.isNotEmpty()
@@ -181,7 +180,13 @@ class ArticleContentRepository(
         }
         articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
         if (allowNetwork) {
-            scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl, downloadAllImages)
+            scheduleImageDownloads(
+                entryId,
+                prepared.imageUrls,
+                prepared.leadImageUrl,
+                downloadAllImages,
+                imageLimiter
+            )
         }
         val updated = stored.copy(
             content = prepared.html,
@@ -199,13 +204,20 @@ class ArticleContentRepository(
         sourceContent: String,
         source: ArticleContentSource,
         allowNetwork: Boolean,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        imageLimiter: Semaphore?
     ): ArticleText {
         credibilityStore.invalidateForEntries(listOf(entryId))
         val prepared = prepare(entryId, sourceContent, url)
         articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
         if (allowNetwork) {
-            scheduleImageDownloads(entryId, prepared.imageUrls, prepared.leadImageUrl, downloadAllImages)
+            scheduleImageDownloads(
+                entryId,
+                prepared.imageUrls,
+                prepared.leadImageUrl,
+                downloadAllImages,
+                imageLimiter
+            )
         }
         articleContentDao.insertArticleContent(
             ArticleContent(
@@ -305,12 +317,15 @@ class ArticleContentRepository(
         entries: List<Pair<Long, String>>,
         limit: Int?,
         downloadAllImages: Boolean,
+        syncMode: SyncMode,
         onProgress: (done: Int, total: Int) -> Unit
     ) = coroutineScope {
         val limitedEntries = if (limit != null) entries.take(limit) else entries
         val total = limitedEntries.size
         val done = AtomicInteger()
-        for (batch in limitedEntries.chunked(PREFETCH_BATCH_SIZE)) {
+        val prefetchLimiter = Semaphore(syncMode.maxConcurrentArticleContent)
+        val imageLimiter = Semaphore(syncMode.maxConcurrentArticleImages)
+        for (batch in limitedEntries.chunked(syncMode.maxConcurrentArticleContent)) {
             val deferredResults = batch.map { (entryId, url) ->
                 async(Dispatchers.IO) {
                     prefetchLimiter.withPermit {
@@ -321,7 +336,8 @@ class ArticleContentRepository(
                                     entryId = entryId,
                                     url = url,
                                     allowNetwork = true,
-                                    downloadAllImages = downloadAllImages
+                                    downloadAllImages = downloadAllImages,
+                                    imageLimiter = imageLimiter
                                 )
                                 awaitImageDownloads(entryId)
                                 if (downloadAllImages) markAllImagesPreparedIfComplete(entryId)
@@ -340,15 +356,19 @@ class ArticleContentRepository(
         Unit
     }
 
-    override suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>) = coroutineScope {
-        val deferredResults = entries.map { (entryId, imageUrls) ->
-            async(Dispatchers.IO) {
-                prefetchLimiter.withPermit {
-                    downloadImagesForEntry(entryId, imageUrls)
+    override suspend fun downloadEnclosureImages(
+        entries: List<Pair<Long, List<String>>>,
+        syncMode: SyncMode
+    ) = coroutineScope {
+        val imageLimiter = Semaphore(syncMode.maxConcurrentArticleImages)
+        for (batch in entries.chunked(syncMode.maxConcurrentArticleImages)) {
+            val deferredResults = batch.map { (entryId, imageUrls) ->
+                async(Dispatchers.IO) {
+                    downloadImagesForEntry(entryId, imageUrls, imageLimiter)
                 }
             }
+            deferredResults.awaitAll()
         }
-        deferredResults.awaitAll()
         Unit
     }
 
@@ -381,12 +401,27 @@ class ArticleContentRepository(
         getArticleContent(entryId, url, allowNetwork = true)
 
     suspend fun prefetchArticleContent(entries: List<Pair<Long, String>>): Unit =
-        prefetchArticleContent(entries, limit = 50, onProgress = { _, _ -> })
+        prefetchArticleContent(
+            entries = entries,
+            limit = 50,
+            syncMode = SyncMode.SAFE,
+            onProgress = { _, _ -> }
+        )
 
-    private suspend fun downloadImagesForEntry(entryId: Long, imageUrls: List<String>) {
+    private suspend fun downloadImagesForEntry(
+        entryId: Long,
+        imageUrls: List<String>,
+        imageLimiter: Semaphore? = null
+    ) {
         imageUrls.forEach { imageUrl ->
             try {
-                articleImageStore.downloadAndStoreImage(entryId, imageUrl)
+                if (imageLimiter == null) {
+                    articleImageStore.downloadAndStoreImage(entryId, imageUrl)
+                } else {
+                    imageLimiter.withPermit {
+                        articleImageStore.downloadAndStoreImage(entryId, imageUrl)
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -401,7 +436,8 @@ class ArticleContentRepository(
         entryId: Long,
         imageUrls: List<String>,
         leadImageUrl: String?,
-        downloadAllImages: Boolean
+        downloadAllImages: Boolean,
+        imageLimiter: Semaphore?
     ) {
         val urls = if (downloadAllImages) {
             (listOfNotNull(leadImageUrl) + imageUrls).distinct()
@@ -412,7 +448,7 @@ class ArticleContentRepository(
         imageJobsMutex.withLock {
             if (imageJobs[entryId]?.isActive == true) return@withLock
             val job = imageScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                downloadImagesForEntry(entryId, urls)
+                downloadImagesForEntry(entryId, urls, imageLimiter)
             }
             imageJobs[entryId] = job
             job.invokeOnCompletion {

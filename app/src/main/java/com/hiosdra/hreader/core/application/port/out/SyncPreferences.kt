@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.core.application.port.out
 
 import com.hiosdra.hreader.core.application.sync.SyncCheckpoint
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import kotlinx.coroutines.flow.Flow
 
 interface SyncPreferences {
@@ -25,6 +26,8 @@ interface SyncPreferences {
     fun getSyncIntervalMinutes(): Int
     fun setSyncIntervalMinutes(minutes: Int)
     fun observeSyncIntervalMinutes(): Flow<Int>
+    fun getSyncMode(): SyncMode
+    fun setSyncMode(mode: SyncMode)
     fun getSyncOnUnmeteredOnly(): Boolean
     fun setSyncOnUnmeteredOnly(enabled: Boolean)
     fun getSyncWhileRoaming(): Boolean

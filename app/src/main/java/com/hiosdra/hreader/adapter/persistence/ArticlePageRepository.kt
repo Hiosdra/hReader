@@ -2,17 +2,25 @@ package com.hiosdra.hreader.adapter.persistence
 
 import android.content.Context
 import android.util.Log
+import com.hiosdra.hreader.adapter.network.HttpStatusException
+import com.hiosdra.hreader.adapter.network.NonRetryableNetworkException
+import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
+import com.hiosdra.hreader.adapter.network.withNetworkRetries
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticlePageSnapshot
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -22,7 +30,6 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
 import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
@@ -59,12 +66,11 @@ class ArticlePageRepository(
     }
 
     private val pagesDirectory = File(context.filesDir, "article_pages").apply { mkdirs() }
-    private val pageLimiter = Semaphore(4)
     private val safeHttpClient = httpClient.newBuilder()
         .apply { interceptors().clear() }
         .addNetworkInterceptor { chain ->
             if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
-                throw IOException("Blocked remote resource URL")
+                throw NonRetryableNetworkException("Blocked remote resource URL")
             }
             chain.proceed(chain.request())
         }
@@ -128,25 +134,29 @@ class ArticlePageRepository(
     override suspend fun prefetchPages(
         entries: List<Pair<Long, String>>,
         limit: Int?,
+        syncMode: SyncMode,
         onProgress: (done: Int, total: Int) -> Unit
     ) = coroutineScope {
         val selected = if (limit == null) entries else entries.take(limit)
         val total = selected.size
         val done = AtomicInteger()
-        selected.map { (entryId, url) ->
-            async(Dispatchers.IO) {
-                pageLimiter.withPermit {
-                    try {
-                        downloadPage(entryId, url)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to archive page for entry $entryId", e)
+        val pageLimiter = Semaphore(syncMode.maxConcurrentFullPages)
+        for (batch in selected.chunked(syncMode.maxConcurrentFullPages)) {
+            batch.map { (entryId, url) ->
+                async(Dispatchers.IO) {
+                    pageLimiter.withPermit {
+                        try {
+                            downloadPage(entryId, url, syncMode.maxConcurrentPageResources)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to archive page for entry $entryId", e)
+                        }
                     }
+                    onProgress(done.incrementAndGet(), total)
                 }
-                onProgress(done.incrementAndGet(), total)
-            }
-        }.awaitAll()
+            }.awaitAll()
+        }
         Unit
     }
 
@@ -221,7 +231,11 @@ class ArticlePageRepository(
     suspend fun prefetchPages(entries: List<Pair<Long, String>>): Unit =
         prefetchPages(entries, limit = null, onProgress = { _, _ -> })
 
-    private suspend fun downloadPage(entryId: Long, originalUrl: String): ArticlePageSnapshot? =
+    private suspend fun downloadPage(
+        entryId: Long,
+        originalUrl: String,
+        maxConcurrentResources: Int
+    ): ArticlePageSnapshot? =
         withContext(Dispatchers.IO) {
             if (!isHttpUrl(originalUrl)) return@withContext null
 
@@ -235,7 +249,12 @@ class ArticlePageRepository(
                 if (!isHtmlContentType(main.contentType)) return@withContext null
                 val document = Jsoup.parse(main.bytes.toString(UTF_8), main.finalUrl)
                 sanitize(document)
-                val store = ResourceStore(entryId, assetsDirectory, main.bytes.size.toLong())
+                val store = ResourceStore(
+                    entryId = entryId,
+                    assetsDirectory = assetsDirectory,
+                    initialBytes = main.bytes.size.toLong(),
+                    maxConcurrentResources = maxConcurrentResources
+                )
                 rewriteDocument(document, main.finalUrl, store)
 
                 val html = document.outerHtml()
@@ -265,49 +284,79 @@ class ArticlePageRepository(
             }
         }
 
-    private suspend fun rewriteDocument(document: Document, baseUrl: String, store: ResourceStore) {
-        document.select("link[href]").toList().forEach { element ->
-            val rel = element.attr("rel").split(Regex("\\s+"))
-            if (rel.any { it.equals("stylesheet", ignoreCase = true) }) {
-                val localUrl = store.cache(resolveUrl(baseUrl, element.attr("href")), cssHint = true)
+    private suspend fun rewriteDocument(document: Document, baseUrl: String, store: ResourceStore) =
+        coroutineScope {
+            val stylesheetElements = document.select("link[href]").toList()
+            val stylesheetTasks = stylesheetElements.mapNotNull { element ->
+                val rel = element.attr("rel").split(Regex("\\s+"))
+                if (rel.any { it.equals("stylesheet", ignoreCase = true) }) {
+                    element to async {
+                        store.cache(resolveUrl(baseUrl, element.attr("href")), cssHint = true)
+                    }
+                } else {
+                    element.remove()
+                    null
+                }
+            }
+            stylesheetTasks.forEach { (element, task) ->
+                val localUrl = task.await()
                 if (localUrl == null) element.remove() else element.attr("href", localUrl)
-            } else {
-                element.remove()
+            }
+
+            val imageElements = document.select("img[src], source[src]").toList()
+            val imageUrls = imageElements.map { element ->
+                async {
+                    val source = element.attr("src")
+                    if (isEmbeddedReference(source)) {
+                        source.trim()
+                    } else {
+                        store.cache(resolveUrl(baseUrl, source))
+                    }
+                }
+            }.awaitAll()
+            imageElements.zip(imageUrls).forEach { (element, localUrl) ->
+                if (localUrl == null) element.removeAttr("src") else element.attr("src", localUrl)
+            }
+
+            val srcSetElements = document.select("img[srcset], source[srcset]").toList()
+            val srcSets = srcSetElements.map { element ->
+                async { rewriteSrcSet(element.attr("srcset"), baseUrl, store) }
+            }.awaitAll()
+            srcSetElements.zip(srcSets).forEach { (element, rewritten) ->
+                if (rewritten.isBlank()) element.removeAttr("srcset") else element.attr("srcset", rewritten)
+            }
+
+            val styledElements = document.select("[style]").toList()
+            val inlineStyles = styledElements.map { element ->
+                async { store.rewriteCss(element.attr("style"), baseUrl, 0) }
+            }.awaitAll()
+            styledElements.zip(inlineStyles).forEach { (element, style) -> element.attr("style", style) }
+
+            val styleElements = document.select("style").toList()
+            val styleContents = styleElements.map { element ->
+                async { store.rewriteCss(element.html(), baseUrl, 0) }
+            }.awaitAll()
+            styleElements.zip(styleContents).forEach { (element, style) -> element.html(style) }
+
+            document.select("a[href]").toList().forEach { element ->
+                resolveUrl(baseUrl, element.attr("href"))?.let { element.attr("href", it) }
             }
         }
-
-        document.select("img[src], source[src]").toList().forEach { element ->
-            val source = element.attr("src")
-            val localUrl = if (isEmbeddedReference(source)) {
-                source.trim()
-            } else {
-                store.cache(resolveUrl(baseUrl, source))
-            }
-            if (localUrl == null) element.removeAttr("src") else element.attr("src", localUrl)
-        }
-
-        document.select("img[srcset], source[srcset]").toList().forEach { element ->
-            val rewritten = rewriteSrcSet(element.attr("srcset"), baseUrl, store)
-            if (rewritten.isBlank()) element.removeAttr("srcset") else element.attr("srcset", rewritten)
-        }
-
-        document.select("[style]").toList().forEach { element ->
-            element.attr("style", store.rewriteCss(element.attr("style"), baseUrl, 0))
-        }
-        document.select("style").toList().forEach { element ->
-            element.html(store.rewriteCss(element.html(), baseUrl, 0))
-        }
-        document.select("a[href]").toList().forEach { element ->
-            resolveUrl(baseUrl, element.attr("href"))?.let { element.attr("href", it) }
-        }
-    }
 
     private suspend fun rewriteSrcSet(value: String, baseUrl: String, store: ResourceStore): String =
-        value.split(',').mapNotNull { candidate ->
-            val parts = candidate.trim().split(Regex("\\s+"), limit = 2)
-            val localUrl = store.cache(resolveUrl(baseUrl, parts.firstOrNull().orEmpty())) ?: return@mapNotNull null
-            if (parts.size == 1) localUrl else "$localUrl ${parts[1]}"
-        }.joinToString(", ")
+        coroutineScope {
+            value.split(',')
+                .map { candidate -> candidate.trim().split(Regex("\\s+"), limit = 2) }
+                .map { parts ->
+                    async {
+                        val localUrl = store.cache(resolveUrl(baseUrl, parts.firstOrNull().orEmpty()))
+                        localUrl?.let { if (parts.size == 1) it else "$it ${parts[1]}" }
+                    }
+                }
+                .awaitAll()
+                .filterNotNull()
+                .joinToString(", ")
+        }
 
     private fun sanitize(document: Document) {
         document.select("base, script, noscript, iframe, frame, object, embed, video, audio, form").remove()
@@ -321,60 +370,87 @@ class ArticlePageRepository(
         }
     }
 
+    private data class CachedResource(
+        val offlineUrl: String,
+        val file: File
+    )
+
+    private sealed class ResourceClaim {
+        data class Cached(val resource: CachedResource) : ResourceClaim()
+        data class Pending(val result: CompletableDeferred<CachedResource?>) : ResourceClaim()
+        data class Owner(val result: CompletableDeferred<CachedResource?>) : ResourceClaim()
+        data object Rejected : ResourceClaim()
+    }
+
     private inner class ResourceStore(
         private val entryId: Long,
         private val assetsDirectory: File,
-        initialBytes: Long
+        initialBytes: Long,
+        maxConcurrentResources: Int
     ) {
         private val resources = mutableMapOf<String, CachedResource>()
-        var storedBytes: Long = initialBytes
+        private val inFlight = mutableMapOf<String, CompletableDeferred<CachedResource?>>()
+        private val stateMutex = Mutex()
+        private val resourceLimiter = Semaphore(maxConcurrentResources)
+        var storedBytes = initialBytes
             private set
         var isComplete: Boolean = true
             private set
 
-        suspend fun cache(url: String?, cssHint: Boolean = false, depth: Int = 0): String? {
+        suspend fun cache(
+            url: String?,
+            cssHint: Boolean = false,
+            depth: Int = 0,
+            ancestors: Set<String> = emptySet()
+        ): String? {
             val normalized = url?.trim()?.takeIf(::isHttpUrl) ?: return null
-            resources[normalized]?.let { return it.offlineUrl }
-            if (depth > MAX_CSS_DEPTH || resources.size >= MAX_RESOURCES) {
-                isComplete = false
-                return null
+            val claim = stateMutex.withLock {
+                resources[normalized]?.let { return@withLock ResourceClaim.Cached(it) }
+                if (normalized in ancestors) return@withLock ResourceClaim.Rejected
+                inFlight[normalized]?.let { return@withLock ResourceClaim.Pending(it) }
+                if (depth > MAX_CSS_DEPTH || resources.size + inFlight.size >= MAX_RESOURCES) {
+                    isComplete = false
+                    return@withLock ResourceClaim.Rejected
+                }
+                CompletableDeferred<CachedResource?>().also { inFlight[normalized] = it }
+                    .let(ResourceClaim::Owner)
             }
 
-            val response = fetch(normalized, MAX_RESOURCE_BYTES) ?: run {
-                isComplete = false
-                return null
+            when (claim) {
+                is ResourceClaim.Cached -> return claim.resource.offlineUrl
+                is ResourceClaim.Pending -> return claim.result.await()?.offlineUrl
+                ResourceClaim.Rejected -> return null
+                is ResourceClaim.Owner -> Unit
             }
-            val isCss = cssHint || response.contentType?.startsWith("text/css", ignoreCase = true) == true ||
-                response.finalUrl.substringBefore('?').endsWith(".css", ignoreCase = true)
-            if (!isSupportedResourceType(response.contentType, response.finalUrl, isCss)) {
-                isComplete = false
-                return null
-            }
-            val fileName = resourceFileName(normalized, response.contentType, isCss)
-            val resource = CachedResource(
-                offlineUrl = baseUrl(entryId) + ASSETS_DIRECTORY + "/" + fileName,
-                file = File(assetsDirectory, fileName)
-            )
-            resources[normalized] = resource
+            val owner = claim
 
-            val bytes = if (isCss) {
-                rewriteCss(response.bytes.toString(UTF_8), response.finalUrl, depth + 1).toByteArray(UTF_8)
-            } else {
-                response.bytes
+            var result: CachedResource? = null
+            try {
+                result = cacheResource(
+                    normalized = normalized,
+                    cssHint = cssHint,
+                    depth = depth,
+                    ancestors = ancestors
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                markIncomplete()
+            } finally {
+                stateMutex.withLock { inFlight.remove(normalized) }
+                owner.result.complete(result)
             }
-            if (storedBytes + bytes.size > MAX_PAGE_BYTES) {
-                resources.remove(normalized)
-                isComplete = false
-                return null
-            }
-            resource.file.writeBytes(bytes)
-            storedBytes += bytes.size
-            return resource.offlineUrl
+            return result?.offlineUrl
         }
 
-        suspend fun rewriteCss(value: String, baseUrl: String, depth: Int): String {
-            var result = rewriteMatches(value, CSS_URL, baseUrl, depth)
-            result = rewriteMatches(result, CSS_IMPORT, baseUrl, depth, importRule = true)
+        suspend fun rewriteCss(
+            value: String,
+            baseUrl: String,
+            depth: Int,
+            ancestors: Set<String> = emptySet()
+        ): String {
+            var result = rewriteMatches(value, CSS_URL, baseUrl, depth, ancestors = ancestors)
+            result = rewriteMatches(result, CSS_IMPORT, baseUrl, depth, importRule = true, ancestors = ancestors)
             return result
         }
 
@@ -383,21 +459,35 @@ class ArticlePageRepository(
             pattern: Regex,
             baseUrl: String,
             depth: Int,
-            importRule: Boolean = false
-        ): String {
+            importRule: Boolean = false,
+            ancestors: Set<String>
+        ): String = coroutineScope {
             val matches = pattern.findAll(value).toList()
-            if (matches.isEmpty()) return value
+            if (matches.isEmpty()) return@coroutineScope value
+
+            val replacements = matches.map { match ->
+                async {
+                    val original = match.groupValues[1]
+                    val localUrl = if (isEmbeddedReference(original)) {
+                        original.trim()
+                    } else {
+                        cache(
+                            resolveUrl(baseUrl, original),
+                            cssHint = importRule,
+                            depth = depth,
+                            ancestors = ancestors
+                        )
+                    }
+                    if (localUrl == null) markIncomplete()
+                    localUrl
+                }
+            }.awaitAll()
+
             val builder = StringBuilder(value.length)
             var cursor = 0
-            matches.forEach { match ->
+            matches.forEachIndexed { index, match ->
                 builder.append(value, cursor, match.range.first)
-                val original = match.groupValues[1]
-                val localUrl = if (isEmbeddedReference(original)) {
-                    original.trim()
-                } else {
-                    cache(resolveUrl(baseUrl, original), cssHint = importRule, depth = depth)
-                }
-                if (localUrl == null) isComplete = false
+                val localUrl = replacements[index]
                 if (importRule) {
                     builder.append("@import \"").append(localUrl ?: "about:blank").append("\"")
                 } else {
@@ -406,14 +496,60 @@ class ArticlePageRepository(
                 cursor = match.range.last + 1
             }
             builder.append(value, cursor, value.length)
-            return builder.toString()
+            return@coroutineScope builder.toString()
         }
-    }
 
-    private data class CachedResource(
-        val offlineUrl: String,
-        val file: File
-    )
+        private suspend fun cacheResource(
+            normalized: String,
+            cssHint: Boolean,
+            depth: Int,
+            ancestors: Set<String>
+        ): CachedResource? {
+            val response = resourceLimiter.withPermit { fetch(normalized, MAX_RESOURCE_BYTES) }
+                ?: return markIncompleteAndReturnNull()
+            val isCss = cssHint || response.contentType?.startsWith("text/css", ignoreCase = true) == true ||
+                response.finalUrl.substringBefore('?').endsWith(".css", ignoreCase = true)
+            if (!isSupportedResourceType(response.contentType, response.finalUrl, isCss)) {
+                return markIncompleteAndReturnNull()
+            }
+            val fileName = resourceFileName(normalized, response.contentType, isCss)
+            val resource = CachedResource(
+                offlineUrl = baseUrl(entryId) + ASSETS_DIRECTORY + "/" + fileName,
+                file = File(assetsDirectory, fileName)
+            )
+            val bytes = if (isCss) {
+                rewriteCss(
+                    value = response.bytes.toString(UTF_8),
+                    baseUrl = response.finalUrl,
+                    depth = depth + 1,
+                    ancestors = ancestors + normalized
+                ).toByteArray(UTF_8)
+            } else {
+                response.bytes
+            }
+            return stateMutex.withLock {
+                if (storedBytes + bytes.size > MAX_PAGE_BYTES) {
+                    isComplete = false
+                    null
+                } else {
+                    resource.file.writeBytes(bytes)
+                    storedBytes += bytes.size
+                    resources[normalized] = resource
+                    resource
+                }
+            }
+        }
+
+        private suspend fun markIncompleteAndReturnNull(): CachedResource? {
+            markIncomplete()
+            return null
+        }
+
+        private suspend fun markIncomplete() {
+            stateMutex.withLock { isComplete = false }
+        }
+
+    }
 
     private data class FetchedResource(
         val bytes: ByteArray,
@@ -421,34 +557,39 @@ class ArticlePageRepository(
         val contentType: String?
     )
 
-    private suspend fun fetch(url: String, maximumBytes: Long): FetchedResource? =
-        withContext(Dispatchers.IO) {
-            if (!remoteResourcePolicy.allows(url)) return@withContext null
-            try {
-                val request = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", USER_AGENT)
-                    .build()
-                safeHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@withContext null
-                    if (!remoteResourcePolicy.allows(response.request.url.toString())) {
-                        return@withContext null
+    private suspend fun fetch(url: String, maximumBytes: Long): FetchedResource? {
+        if (!remoteResourcePolicy.allows(url)) return null
+        return try {
+            withNetworkRetries {
+                withContext(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("User-Agent", USER_AGENT)
+                        .build()
+                    safeHttpClient.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            throw HttpStatusException(response.code, response.header(RETRY_AFTER_HEADER))
+                        }
+                        if (!remoteResourcePolicy.allows(response.request.url.toString())) {
+                            return@use null
+                        }
+                        val body = response.body
+                        if (body.contentLength() > maximumBytes) return@use null
+                        val bytes = readAtMost(body.byteStream(), maximumBytes) ?: return@use null
+                        FetchedResource(
+                            bytes = bytes,
+                            finalUrl = response.request.url.toString(),
+                            contentType = body.contentType()?.toString()
+                        )
                     }
-                    val body = response.body
-                    if (body.contentLength() > maximumBytes) return@withContext null
-                    val bytes = readAtMost(body.byteStream(), maximumBytes) ?: return@withContext null
-                    FetchedResource(
-                        bytes = bytes,
-                        finalUrl = response.request.url.toString(),
-                        contentType = body.contentType()?.toString()
-                    )
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
         }
+    }
 
     private fun replaceDirectory(entryId: Long, stagingDirectory: File, finalDirectory: File) {
         val backupDirectory = File(pagesDirectory, ".backup-$entryId-${UUID.randomUUID()}")

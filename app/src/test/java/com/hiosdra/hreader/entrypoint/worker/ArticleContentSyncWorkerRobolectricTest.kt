@@ -20,6 +20,7 @@ import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.domain.model.Enclosure
 import io.mockk.every
 import io.mockk.mockk
@@ -77,6 +78,22 @@ class ArticleContentSyncWorkerRobolectricTest {
         assertEquals(1, contentStore.missingContentCalls)
         assertEquals(0, contentStore.missingFullPreparationCalls)
         assertEquals(false, contentStore.lastDownloadAllImages)
+    }
+
+    @Test
+    fun `fast mode is forwarded to content prefetch`() = runBlocking {
+        val contentStore = ArticleContentStoreFake(missingContent = pairs(1))
+        val repository = ArticleContentMaintenanceStore(targets(1))
+        val preferences = syncPreferences(SyncMode.FAST)
+
+        val result = createWorker(
+            repository = repository,
+            contentStore = contentStore,
+            preferences = preferences
+        ).doWork()
+
+        assertTrue(result is Success)
+        assertEquals(SyncMode.FAST, contentStore.lastSyncMode)
     }
 
     @Test
@@ -238,7 +255,7 @@ class ArticleContentSyncWorkerRobolectricTest {
     private fun createWorker(
         repository: ArticleContentMaintenanceStore,
         contentStore: ArticleContentStoreFake,
-        preferences: SyncPreferences = mockk(relaxed = true),
+        preferences: SyncPreferences = syncPreferences(SyncMode.SAFE),
         errorReporter: ErrorReporter = mockk(relaxed = true),
         syncHealth: SyncHealthStore = mockk(relaxed = true),
         inputData: Data = Data.Builder().build(),
@@ -273,6 +290,10 @@ class ArticleContentSyncWorkerRobolectricTest {
             .setInputData(inputData)
             .setRunAttemptCount(runAttemptCount)
             .build()
+    }
+
+    private fun syncPreferences(mode: SyncMode): SyncPreferences = mockk<SyncPreferences>(relaxed = true).also {
+        every { it.getSyncMode() } returns mode
     }
 
     private fun target(
@@ -323,6 +344,7 @@ private class ArticleContentStoreFake(
     var prefetchCalls = 0
     var imageDownloadCalls = 0
     var lastDownloadAllImages: Boolean? = null
+    var lastSyncMode: SyncMode? = null
     var prefetchedEntries: List<Pair<Long, String>> = emptyList()
     val imageBatches = mutableListOf<List<Pair<Long, List<String>>>>()
 
@@ -345,16 +367,21 @@ private class ArticleContentStoreFake(
         entries: List<Pair<Long, String>>,
         limit: Int?,
         downloadAllImages: Boolean,
+        syncMode: SyncMode,
         onProgress: (done: Int, total: Int) -> Unit
     ) {
         prefetchCalls += 1
         prefetchedEntries = entries
         lastDownloadAllImages = downloadAllImages
+        lastSyncMode = syncMode
         prefetchFailure?.let { throw it }
         onProgress(entries.size, entries.size)
     }
 
-    override suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>) {
+    override suspend fun downloadEnclosureImages(
+        entries: List<Pair<Long, List<String>>>,
+        syncMode: SyncMode
+    ) {
         imageDownloadCalls += 1
         imageBatches += entries
     }

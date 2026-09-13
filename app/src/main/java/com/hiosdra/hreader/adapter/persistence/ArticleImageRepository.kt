@@ -3,6 +3,10 @@ package com.hiosdra.hreader.adapter.persistence
 import android.content.Context
 import android.util.Log
 import com.hiosdra.hreader.BuildConfig
+import com.hiosdra.hreader.adapter.network.HttpStatusException
+import com.hiosdra.hreader.adapter.network.NonRetryableNetworkException
+import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
+import com.hiosdra.hreader.adapter.network.withNetworkRetries
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
@@ -20,7 +24,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 import java.io.InputStream
 import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
@@ -84,7 +87,7 @@ class ArticleImageRepository(
         .apply { interceptors().clear() }
         .addNetworkInterceptor { chain ->
             if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
-                throw IOException("Blocked remote resource URL")
+                throw NonRetryableNetworkException("Blocked remote resource URL")
             }
             chain.proceed(chain.request())
         }
@@ -106,58 +109,62 @@ class ArticleImageRepository(
 
                 // Download image
                 val request = Request.Builder().url(imageUrl).build()
-                safeHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@withContext
-                    if (!remoteResourcePolicy.allows(response.request.url.toString())) return@withContext
-
-                    val body = response.body
-                    val contentType = body.contentType()?.toString()
-                    if (contentType?.startsWith("image/", ignoreCase = true) != true) return@withContext
-
-                    // A declared length settles it without spending any bandwidth at all. Most
-                    // CDNs send the image chunked and declare nothing, which is what the streaming
-                    // cap below is for.
-                    val declaredLength = body.contentLength()
-                    if (declaredLength > MAX_IMAGE_BYTES) {
-                        if (BuildConfig.DEBUG) {
-                            Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
+                withNetworkRetries {
+                    safeHttpClient.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            throw HttpStatusException(response.code, response.header(RETRY_AFTER_HEADER))
                         }
-                        return@withContext
-                    }
+                        if (!remoteResourcePolicy.allows(response.request.url.toString())) return@use
 
-                    val imageId = generateImageId(entryId, imageUrl)
-                    val extension = getFileExtension(contentType, imageUrl)
-                    val target = File(imagesDir, "$imageId$extension")
-                    val staging = File(imagesDir, ".$imageId-${UUID.randomUUID()}.tmp")
-                    localFile = staging
+                        val body = response.body
+                        val contentType = body.contentType()?.toString()
+                        if (contentType?.startsWith("image/", ignoreCase = true) != true) return@use
 
-                    // Streamed with the cap applied as it goes. A response without a declared
-                    // length — anything chunked, which is most CDNs — used to sail past the check
-                    // above and be downloaded in full before its size could be objected to.
-                    val fileSize = copyAtMost(body.byteStream(), staging, MAX_IMAGE_BYTES)
-                    if (fileSize == null) {
-                        if (BuildConfig.DEBUG) {
-                            Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
+                        // A declared length settles it without spending any bandwidth at all. Most
+                        // CDNs send the image chunked and declare nothing, which is what the streaming
+                        // cap below is for.
+                        val declaredLength = body.contentLength()
+                        if (declaredLength > MAX_IMAGE_BYTES) {
+                            if (BuildConfig.DEBUG) {
+                                Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
+                            }
+                            return@use
                         }
-                        return@withContext
+
+                        val imageId = generateImageId(entryId, imageUrl)
+                        val extension = getFileExtension(contentType, imageUrl)
+                        val target = File(imagesDir, "$imageId$extension")
+                        val staging = File(imagesDir, ".$imageId-${UUID.randomUUID()}.tmp")
+                        localFile = staging
+
+                        // Streamed with the cap applied as it goes. A response without a declared
+                        // length — anything chunked, which is most CDNs — used to sail past the check
+                        // above and be downloaded in full before its size could be objected to.
+                        val fileSize = copyAtMost(body.byteStream(), staging, MAX_IMAGE_BYTES)
+                        if (fileSize == null) {
+                            if (BuildConfig.DEBUG) {
+                                Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
+                            }
+                            return@use
+                        }
+
+                        moveIntoCache(staging, target)
+                        localFile = target
+
+                        val articleImage = ArticleImage(
+                            id = imageId,
+                            entryId = entryId,
+                            originalUrl = imageUrl,
+                            localFilePath = target.absolutePath,
+                            mimeType = contentType,
+                            downloadedAt = Instant.now(),
+                            fileSize = fileSize
+                        )
+
+                        articleImageDao.insertArticleImage(articleImage)
+                        stored = true
+                        enforceCacheBudget()
                     }
-
-                    moveIntoCache(staging, target)
-                    localFile = target
-
-                    val articleImage = ArticleImage(
-                        id = imageId,
-                        entryId = entryId,
-                        originalUrl = imageUrl,
-                        localFilePath = target.absolutePath,
-                        mimeType = contentType,
-                        downloadedAt = Instant.now(),
-                        fileSize = fileSize
-                    )
-
-                    articleImageDao.insertArticleImage(articleImage)
-                    stored = true
-                    enforceCacheBudget()
                 }
             } catch (e: CancellationException) {
                 throw e

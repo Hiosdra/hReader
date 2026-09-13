@@ -24,7 +24,14 @@ data class SyncPerformanceRecord(
     val insertedArticles: Int? = null,
     val updatedArticles: Int? = null,
     val isIncremental: Boolean? = null,
-    val lastSyncHoursAgo: Long? = null
+    val lastSyncHoursAgo: Long? = null,
+    val syncMode: String? = null,
+    val requestCount: Int? = null,
+    val errorCount: Int? = null,
+    val totalBytes: Long? = null,
+    val throughputBytesPerSecond: Long? = null,
+    val averageResponseMs: Long? = null,
+    val maxConcurrentRequests: Int? = null
 )
 
 data class ArticleSyncStats(

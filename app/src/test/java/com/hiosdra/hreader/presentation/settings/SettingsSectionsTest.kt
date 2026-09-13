@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.Modifier
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.AiModel
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.domain.model.OfflineReadiness
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
 import java.util.concurrent.atomic.AtomicInteger
@@ -41,20 +42,24 @@ class SettingsSectionsTest {
     fun `sync section forwards interval and toggle changes`() {
         val context = RuntimeEnvironment.getApplication()
         val selectedInterval = AtomicInteger()
+        val selectedMode = AtomicReference<SyncMode>()
         val unmeteredOnly = AtomicReference<Boolean>()
         val freshnessCalls = AtomicInteger()
 
         composeTestRule.setContent {
             HReaderTheme {
-                SyncSection(
-                    state = SyncUiState(intervalMinutes = 15),
-                    onIntervalChange = selectedInterval::set,
-                    onUnmeteredOnlyChange = unmeteredOnly::set,
-                    onSyncWhileRoamingChange = {},
-                    onQuietHoursEnabledChange = {},
-                    onQuietHoursChange = { _, _ -> },
-                    onOpenFreshness = { freshnessCalls.incrementAndGet() }
-                )
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    SyncSection(
+                        state = SyncUiState(intervalMinutes = 15),
+                        onIntervalChange = selectedInterval::set,
+                        onSyncModeChange = selectedMode::set,
+                        onUnmeteredOnlyChange = unmeteredOnly::set,
+                        onSyncWhileRoamingChange = {},
+                        onQuietHoursEnabledChange = {},
+                        onQuietHoursChange = { _, _ -> },
+                        onOpenFreshness = { freshnessCalls.incrementAndGet() }
+                    )
+                }
             }
         }
 
@@ -62,10 +67,15 @@ class SettingsSectionsTest {
         composeTestRule.onNodeWithText(
             context.resources.getQuantityString(R.plurals.sync_hours, 1, 1)
         ).performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.sync_mode)).performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.sync_mode_fast)).performClick()
         composeTestRule.onNodeWithText(context.getString(R.string.sync_wifi_only)).performClick()
-        composeTestRule.onNodeWithText(context.getString(R.string.sync_health)).performClick()
+        composeTestRule.onNode(
+            hasText(context.getString(R.string.sync_health)) and hasClickAction()
+        ).performScrollTo().performClick()
 
         assertEquals(60, selectedInterval.get())
+        assertEquals(SyncMode.FAST, selectedMode.get())
         assertEquals(true, unmeteredOnly.get())
         assertEquals(1, freshnessCalls.get())
     }

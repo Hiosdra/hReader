@@ -290,6 +290,11 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="backend_switch_message">hReader se sincroniza con un solo servidor. Cambiar cerrará tu sesión de %1$s y eliminará todos los artículos, fuentes e imágenes descargados. Tus credenciales de %2$s se conservarán y después comenzará una sincronización nueva.</string>
     <string name="sync_automatic">Sincronización automática</string>
     <string name="sync_frequency_description">Con qué frecuencia se obtienen artículos en segundo plano</string>
+    <string name="sync_mode">Modo de sincronización</string>
+    <string name="sync_mode_safe">Seguro (8 a la vez)</string>
+    <string name="sync_mode_safe_description">Descarga hasta 8 artículos simultáneamente. Recomendado para conexiones móviles o servidores menos potentes.</string>
+    <string name="sync_mode_fast">Rápido (100 a la vez)</string>
+    <string name="sync_mode_fast_description">Descarga hasta 100 artículos simultáneamente. Para conexiones rápidas y servidores bien dimensionados.</string>
     <string name="sync_wifi_only">Solo Wi‑Fi</string>
     <string name="sync_wifi_description">Los textos y las imágenes consumen la mayor parte de los datos. Esperar al Wi‑Fi ayuda a evitar los datos móviles.</string>
     <string name="sync_roaming">Sincronizar en itinerancia</string>
@@ -536,4 +541,5 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="settings_group_expanded">Expandida</string>
     <string name="settings_group_collapsed">Contraída</string>
     <string name="settings_operation_article_reconciliation">Conciliación de artículos</string>
+    <string name="settings_network_metrics">Red: %1$d solicitudes, %2$d errores, %3$d B transferidos, %4$d B/s, media %5$d ms, máximo %6$d simultáneas.</string>
 </resources>

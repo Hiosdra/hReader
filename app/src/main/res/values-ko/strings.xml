@@ -287,6 +287,11 @@
     <string name="backend_switch_message">hReader는 한 번에 하나의 서버와 동기화합니다. 전환하면 %1$s에서 로그아웃되고 해당 서버에서 다운로드한 모든 기사, 피드 및 이미지가 삭제됩니다. %2$s 자격 증명은 유지되며 이후 새 동기화가 시작됩니다.</string>
     <string name="sync_automatic">자동 동기화</string>
     <string name="sync_frequency_description">백그라운드에서 기사를 가져오는 빈도</string>
+    <string name="sync_mode">동기화 모드</string>
+    <string name="sync_mode_safe">안전(한 번에 8개)</string>
+    <string name="sync_mode_safe_description">최대 8개의 기사를 동시에 다운로드합니다. 모바일 연결이나 성능이 낮은 서버에 권장됩니다.</string>
+    <string name="sync_mode_fast">빠름(한 번에 100개)</string>
+    <string name="sync_mode_fast_description">최대 100개의 기사를 동시에 다운로드합니다. 빠른 연결과 성능이 충분한 서버에 적합합니다.</string>
     <string name="sync_wifi_only">Wi-Fi만</string>
     <string name="sync_wifi_description">동기화할 때 기사 본문과 이미지가 대부분의 데이터를 사용합니다. Wi-Fi를 기다리면 모바일 데이터 사용을 줄일 수 있습니다.</string>
     <string name="sync_roaming">로밍 중 동기화</string>
@@ -525,4 +530,5 @@
     <string name="settings_group_expanded">펼침</string>
     <string name="settings_group_collapsed">접힘</string>
     <string name="settings_operation_article_reconciliation">기사 조정</string>
+    <string name="settings_network_metrics">네트워크: 요청 %1$d개, 오류 %2$d개, 전송 %3$dB, %4$dB/s, 평균 %5$dms, 최대 동시 실행 %6$d개.</string>
 </resources>

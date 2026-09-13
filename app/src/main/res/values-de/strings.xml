@@ -299,6 +299,11 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="backend_switch_message">hReader synchronisiert immer nur mit einem Server. Der Wechsel meldet dich von %1$s ab und löscht alle davon heruntergeladenen Artikel, Feeds und Bilder. Deine %2$s-Zugangsdaten bleiben erhalten; danach beginnt eine neue Synchronisierung.</string>
     <string name="sync_automatic">Automatische Synchronisierung</string>
     <string name="sync_frequency_description">Wie oft Artikel im Hintergrund abgerufen werden</string>
+    <string name="sync_mode">Synchronisationsmodus</string>
+    <string name="sync_mode_safe">Sicher (8 gleichzeitig)</string>
+    <string name="sync_mode_safe_description">Lädt bis zu 8 Artikel gleichzeitig herunter. Empfohlen für mobile Verbindungen oder weniger leistungsfähige Server.</string>
+    <string name="sync_mode_fast">Schnell (100 gleichzeitig)</string>
+    <string name="sync_mode_fast_description">Lädt bis zu 100 Artikel gleichzeitig herunter. Für schnelle Verbindungen und leistungsfähige Server.</string>
     <string name="sync_wifi_only">Nur WLAN</string>
     <string name="sync_wifi_description">Artikeltexte und Bilder verbrauchen die meisten Daten. WLAN hilft, mobile Daten zu sparen.</string>
     <string name="sync_roaming">Im Roaming synchronisieren</string>
@@ -541,4 +546,5 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="settings_group_expanded">Erweitert</string>
     <string name="settings_group_collapsed">Eingeklappt</string>
     <string name="settings_operation_article_reconciliation">Artikelabgleich</string>
+    <string name="settings_network_metrics">Netzwerk: %1$d Anfragen, %2$d Fehler, %3$d B übertragen, %4$d B/s, durchschnittlich %5$d ms, max. %6$d gleichzeitig.</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.core.application.port.out
 
 import com.hiosdra.hreader.core.domain.model.ArticleText
+import com.hiosdra.hreader.core.application.sync.SyncMode
 
 interface ArticleContentStore {
     suspend fun getArticleContent(entryId: Long, url: String, allowNetwork: Boolean = true): ArticleText
@@ -10,8 +11,12 @@ interface ArticleContentStore {
         entries: List<Pair<Long, String>>,
         limit: Int? = 50,
         downloadAllImages: Boolean = false,
+        syncMode: SyncMode = SyncMode.SAFE,
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
     )
-    suspend fun downloadEnclosureImages(entries: List<Pair<Long, List<String>>>)
+    suspend fun downloadEnclosureImages(
+        entries: List<Pair<Long, List<String>>>,
+        syncMode: SyncMode = SyncMode.SAFE
+    )
     suspend fun cleanupOrphanedContent()
 }

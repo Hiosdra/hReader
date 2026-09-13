@@ -19,6 +19,7 @@ import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -60,6 +61,19 @@ class FullPageSyncWorkerRobolectricTest {
         assertEquals(1, pageStore.prefetchCalls)
         assertEquals(100, pageStore.prefetchedEntries.size)
         assertEquals(outstanding.take(100), pageStore.prefetchedEntries)
+    }
+
+    @Test
+    fun `page prefetch receives the selected sync mode`() = runBlocking {
+        val pageStore = FullPagePageStore(mutableListOf(pairs(1), emptyList()))
+
+        val result = createWorker(
+            pageStore = pageStore,
+            preferences = syncPreferences(SyncMode.FAST)
+        ).doWork()
+
+        assertTrue(result is Success)
+        assertEquals(SyncMode.FAST, pageStore.lastSyncMode)
     }
 
     @Test
@@ -137,7 +151,7 @@ class FullPageSyncWorkerRobolectricTest {
 
     private fun createWorker(
         pageStore: FullPagePageStore,
-        preferences: SyncPreferences = mockk(relaxed = true),
+        preferences: SyncPreferences = syncPreferences(),
         errorReporter: ErrorReporter = mockk(relaxed = true),
         syncHealth: SyncHealthStore = mockk(relaxed = true),
         inputData: Data = Data.Builder().build(),
@@ -173,6 +187,11 @@ class FullPageSyncWorkerRobolectricTest {
             .build()
     }
 
+    private fun syncPreferences(mode: SyncMode = SyncMode.SAFE): SyncPreferences =
+        mockk<SyncPreferences>(relaxed = true).also {
+            every { it.getSyncMode() } returns mode
+        }
+
     private fun targets(count: Int): List<PrefetchTarget> = (1..count).map { id ->
         PrefetchTarget(
             id = id.toLong(),
@@ -198,6 +217,7 @@ private class FullPagePageStore(
     var missingPageCalls = 0
     var prefetchCalls = 0
     var prefetchedEntries: List<Pair<Long, String>> = emptyList()
+    var lastSyncMode: SyncMode? = null
 
     override suspend fun entriesMissingPages(entries: List<Pair<Long, String>>): List<Pair<Long, String>> {
         missingPageCalls += 1
@@ -213,10 +233,12 @@ private class FullPagePageStore(
     override suspend fun prefetchPages(
         entries: List<Pair<Long, String>>,
         limit: Int?,
+        syncMode: SyncMode,
         onProgress: (done: Int, total: Int) -> Unit
     ) {
         prefetchCalls += 1
         prefetchedEntries = entries
+        lastSyncMode = syncMode
         prefetchFailure?.let { throw it }
         onProgress(entries.size, entries.size)
     }

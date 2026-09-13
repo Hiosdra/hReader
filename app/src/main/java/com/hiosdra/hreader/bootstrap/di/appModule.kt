@@ -240,7 +240,7 @@ val appModule = module {
     single<NeuralTtsEngine> { NeuralTtsEngineRegistry(listOf(get<SherpaTtsEngine>())) }
     single { ArticleTtsController(androidApplication(), get(), get(), get(), get()) }
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }
-    single { SyncPerformanceLogger(get()) }
+    single { SyncPerformanceLogger(get(), get(), get()) }
     single<SyncPerformanceTracker> { get<SyncPerformanceLogger>() }
     single { ImageLoader(get<ArticleImageStore>(), get()) }
     single<ArticleImageLoader> { get<ImageLoader>() }
