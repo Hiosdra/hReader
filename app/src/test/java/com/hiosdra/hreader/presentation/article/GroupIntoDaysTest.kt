@@ -1,7 +1,6 @@
 package com.hiosdra.hreader.presentation.article
 
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
-import com.hiosdra.hreader.core.domain.model.Feed
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -60,7 +59,7 @@ class GroupIntoDaysTest {
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
 
-        assertEquals(expected, entry.let { listOf(it) }.groupIntoDays().single().date)
+        assertEquals(expected.toEpochDay(), entry.let { listOf(it) }.groupIntoDays().single().dateEpochDay)
     }
 
     @Test
@@ -68,16 +67,15 @@ class GroupIntoDaysTest {
         val days = listOf(at("2026-07-27T12:00:00Z"), at("2026-07-28T12:00:00Z")).groupIntoDays()
 
         assertEquals(2, days.size)
-        assertTrue(days[0].date.isBefore(days[1].date))
+        assertTrue(days[0].dateEpochDay < days[1].dateEpochDay)
     }
 
     private fun at(timestamp: String) = ArticleListEntry(
         id = timestamp.hashCode().toLong(),
         title = timestamp,
         preview = null,
-        author = null,
-        publishedAt = Instant.parse(timestamp),
-        feed = Feed(id = 1L, title = "Feed", siteUrl = null, feedUrl = "https://example.com/feed"),
+        publishedAtMillis = Instant.parse(timestamp).toEpochMilli(),
+        feedTitle = "Feed",
         imageUrl = null
     )
 }

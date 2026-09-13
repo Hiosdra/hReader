@@ -35,6 +35,7 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.isRead
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -53,7 +54,6 @@ internal fun ArticleListGrouped(
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
     imageDependencies: ArticleImageDependencies,
-    readStateAnimationEnabled: Boolean,
     isOnline: Boolean = true,
 ) {
     val snapshot = items.itemSnapshotList.items
@@ -119,7 +119,6 @@ internal fun ArticleListGrouped(
                     onOpen = onOpen,
                     onCheckedChange = onCheckedChange,
                     imageDependencies = imageDependencies,
-                    readStateAnimationEnabled = readStateAnimationEnabled,
                     timeFormatter = timeFormatter,
                     unknownFeedTitle = unknownFeedTitle,
                     isOnline = isOnline,
@@ -127,10 +126,10 @@ internal fun ArticleListGrouped(
                 )
                 val separator = snapshot[separatorIndex] as ArticleListItem.DayHeader
                 stickyHeader(
-                    key = "day-${separator.date}",
+                    key = "day-${separator.dateEpochDay}",
                     contentType = DAY_CONTENT_TYPE
                 ) {
-                    DayHeader(separator.date)
+                    DayHeader(separator.dateEpochDay)
                 }
                 rangeStart = separatorIndex + 1
             }
@@ -142,7 +141,6 @@ internal fun ArticleListGrouped(
                 onOpen = onOpen,
                 onCheckedChange = onCheckedChange,
                 imageDependencies = imageDependencies,
-                readStateAnimationEnabled = readStateAnimationEnabled,
                 timeFormatter = timeFormatter,
                 unknownFeedTitle = unknownFeedTitle,
                 isOnline = isOnline,
@@ -197,7 +195,6 @@ private fun LazyListScope.articleRange(
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
     imageDependencies: ArticleImageDependencies,
-    readStateAnimationEnabled: Boolean,
     timeFormatter: DateTimeFormatter,
     unknownFeedTitle: String,
     isOnline: Boolean,
@@ -216,12 +213,11 @@ private fun LazyListScope.articleRange(
                 onOpen = onOpen,
                 onCheckedChange = onCheckedChange,
                 imageDependencies = imageDependencies,
-                readStateAnimationEnabled = readStateAnimationEnabled,
                 isOnline = isOnline,
                 localImagePath = item.entry.imageUrl?.let { localImagePaths[item.entry.id]?.get(it) }
             )
 
-            is ArticleListItem.DayHeader -> DayHeader(item.date)
+            is ArticleListItem.DayHeader -> DayHeader(item.dateEpochDay)
             null -> Unit
         }
     }
@@ -234,15 +230,15 @@ private fun ArticleListEntry.toArticleRowModel(
     id = id,
     title = title,
     preview = preview,
-    feedTitle = feed.title.ifBlank { unknownFeedTitle },
-    publishedTime = timeFormatter.format(publishedAt),
+    feedTitle = feedTitle.ifBlank { unknownFeedTitle },
+    publishedTime = timeFormatter.format(Instant.ofEpochMilli(publishedAtMillis)),
     imageUrl = imageUrl,
     isRead = isRead
 )
 
 private fun itemKey(item: ArticleListItem): String = when (item) {
     is ArticleListItem.Article -> "article-${item.entry.id}"
-    is ArticleListItem.DayHeader -> "day-${item.date}"
+    is ArticleListItem.DayHeader -> "day-${item.dateEpochDay}"
 }
 
 private fun itemContentType(item: ArticleListItem): String = when (item) {
@@ -251,8 +247,9 @@ private fun itemContentType(item: ArticleListItem): String = when (item) {
 }
 
 @Composable
-private fun DayHeader(date: LocalDate) {
+private fun DayHeader(dateEpochDay: Long) {
     val locale = LocalLocale.current.platformLocale
+    val date = LocalDate.ofEpochDay(dateEpochDay)
     Surface(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp,
@@ -281,7 +278,7 @@ private fun DayHeader(date: LocalDate) {
 }
 
 internal data class ArticleDay(
-    val date: LocalDate,
+    val dateEpochDay: Long,
     val startIndex: Int,
     val size: Int
 )
@@ -291,16 +288,22 @@ internal fun List<ArticleListEntry>.groupIntoDays(): List<ArticleDay> {
     val zone = ZoneId.systemDefault()
     val days = mutableListOf<ArticleDay>()
     var runStart = 0
-    var runDate = this[0].publishedAt.atZone(zone).toLocalDate()
+    var runDateEpochDay = Instant.ofEpochMilli(this[0].publishedAtMillis)
+        .atZone(zone)
+        .toLocalDate()
+        .toEpochDay()
 
     forEachIndexed { index, entry ->
-        val date = entry.publishedAt.atZone(zone).toLocalDate()
-        if (date != runDate) {
-            days += ArticleDay(runDate, runStart, index - runStart)
+        val dateEpochDay = Instant.ofEpochMilli(entry.publishedAtMillis)
+            .atZone(zone)
+            .toLocalDate()
+            .toEpochDay()
+        if (dateEpochDay != runDateEpochDay) {
+            days += ArticleDay(runDateEpochDay, runStart, index - runStart)
             runStart = index
-            runDate = date
+            runDateEpochDay = dateEpochDay
         }
     }
-    days += ArticleDay(runDate, runStart, size - runStart)
+    days += ArticleDay(runDateEpochDay, runStart, size - runStart)
     return days
 }

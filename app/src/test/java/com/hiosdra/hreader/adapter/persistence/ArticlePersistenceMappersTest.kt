@@ -17,7 +17,7 @@ import org.junit.Test
 class ArticlePersistenceMappersTest {
 
     @Test
-    fun articleListProjectionMapsFeedAndFirstImage() {
+    fun articleListProjectionMapsListFieldsAndFirstImage() {
         val entry = ArticleListItem(
             id = "42",
             title = "Title",
@@ -37,12 +37,9 @@ class ArticlePersistenceMappersTest {
 
         assertEquals(42L, entry.id)
         assertEquals(ArticleStatus.UNREAD, entry.status)
+        assertEquals(Instant.EPOCH.toEpochMilli(), entry.publishedAtMillis)
         assertEquals("https://example.com/image", entry.imageUrl)
-        assertEquals(7L, entry.feed.id)
-        assertEquals("", entry.feed.title)
-        assertEquals("", entry.feed.feedUrl)
-        assertEquals("https://example.com", entry.feed.siteUrl)
-        assertTrue(entry.isBacklog)
+        assertEquals("", entry.feedTitle)
     }
 
     @Test

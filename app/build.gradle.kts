@@ -156,6 +156,7 @@ android {
 composeCompiler {
     reportsDestination = layout.buildDirectory.dir("compose_compiler")
     metricsDestination = layout.buildDirectory.dir("compose_metrics")
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose-stability.conf"))
 }
 
 // Configure KSP to export Room schemas

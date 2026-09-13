@@ -547,8 +547,6 @@ internal fun MainScreen(
                     },
                     onCheckedChange = viewModel::updateEntryReadStatus,
                     imageDependencies = imageDependencies,
-                    readStateAnimationEnabled = !uiState.isBulkReadStateUpdating &&
-                        uiState.syncState != com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING,
                     isOnline = uiState.isOnline
                 )
             }

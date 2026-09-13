@@ -1,8 +1,9 @@
 package com.hiosdra.hreader.presentation.article
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,11 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -46,11 +52,17 @@ internal fun ArticleRow(
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
     imageDependencies: ArticleImageDependencies,
-    readStateAnimationEnabled: Boolean,
     isOnline: Boolean = true,
     localImagePath: String? = null
 ) {
     val checked = entry.isRead
+    var requestedReadState by remember(entry.id) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(entry.id, checked) {
+        if (requestedReadState != null && requestedReadState != checked) {
+            requestedReadState = null
+        }
+    }
+    val animateReadState = shouldAnimateArticleReadState(requestedReadState, checked)
     val readStateDescription = stringResource(
         if (checked) R.string.article_read else R.string.article_unread
     )
@@ -59,15 +71,15 @@ internal fun ArticleRow(
     // Read rows are dimmed, not hidden. Below this the summary drops under the 4.5:1 needed to
     // stay readable, and a read article still has to be re-findable by eye.
     val targetAlpha = if (checked) 0.70f else 1f
-    val contentAlpha = if (readStateAnimationEnabled) {
-        animateFloatAsState(
-            targetValue = targetAlpha,
-            animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK)),
-            label = "alpha"
-        ).value
-    } else {
-        targetAlpha
-    }
+    val contentAlpha = animateFloatAsState(
+        targetValue = targetAlpha,
+        animationSpec = if (animateReadState) {
+            tween(MotionDuration.scaled(MotionDuration.QUICK))
+        } else {
+            snap()
+        },
+        label = "alpha"
+    ).value
     val titleWeight = if (checked) FontWeight.Normal else FontWeight.SemiBold
     val targetIndicatorColor = if (checked) {
         // Solid, because the row already dims it. Fading it as well left it invisible, and
@@ -76,15 +88,15 @@ internal fun ArticleRow(
     } else {
         MaterialTheme.colorScheme.primary
     }
-    val indicatorColor = if (readStateAnimationEnabled) {
-        animateColorAsState(
-            targetValue = targetIndicatorColor,
-            animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK)),
-            label = "indicator"
-        ).value
-    } else {
-        targetIndicatorColor
-    }
+    val indicatorColor = animateColorAsState(
+        targetValue = targetIndicatorColor,
+        animationSpec = if (animateReadState) {
+            tween(MotionDuration.scaled(MotionDuration.QUICK))
+        } else {
+            snap()
+        },
+        label = "indicator"
+    ).value
 
     Card(
         onClick = { onOpen(entry.id) },
@@ -212,7 +224,10 @@ internal fun ArticleRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 Checkbox(
                     checked = checked,
-                    onCheckedChange = { onCheckedChange(entry.id, it) },
+                    onCheckedChange = {
+                        requestedReadState = it
+                        onCheckedChange(entry.id, it)
+                    },
                     modifier = Modifier.semantics {
                         contentDescription = readStatusActionDescription
                     }

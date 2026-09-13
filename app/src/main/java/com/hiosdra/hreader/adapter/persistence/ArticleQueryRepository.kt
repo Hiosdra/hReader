@@ -17,6 +17,7 @@ import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.Feed
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 import java.time.ZoneId
 
 private val PAGING_CONFIG = PagingConfig(
@@ -56,16 +57,16 @@ internal class ArticleQueryRepository(
                         is ArticleListItem.Article -> after.entry
                         else -> return@insertSeparators null
                     }
-                    val beforeDate = when (before) {
-                        is ArticleListItem.Article -> before.entry.publishedAt
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate()
+                    val beforeDateEpochDay = when (before) {
+                        is ArticleListItem.Article -> before.entry.publishedAtMillis.toLocalDateEpochDay()
                         else -> null
                     }
-                    val afterDate = afterArticle.publishedAt
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
-                    if (beforeDate != afterDate) ArticleListItem.DayHeader(afterDate) else null
+                    val afterDateEpochDay = afterArticle.publishedAtMillis.toLocalDateEpochDay()
+                    if (beforeDateEpochDay != afterDateEpochDay) {
+                        ArticleListItem.DayHeader(afterDateEpochDay)
+                    } else {
+                        null
+                    }
                 }
             }
     }
@@ -156,3 +157,8 @@ internal class ArticleQueryRepository(
 
     override suspend fun getFeed(feedId: Long): Feed? = feedDao.getFeedById(feedId)?.toArticleFeed()
 }
+
+private fun Long.toLocalDateEpochDay(): Long = Instant.ofEpochMilli(this)
+    .atZone(ZoneId.systemDefault())
+    .toLocalDate()
+    .toEpochDay()

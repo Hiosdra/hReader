@@ -37,17 +37,10 @@ internal fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
     id = id.toLong(),
     title = title,
     preview = preview,
-    author = author,
-    publishedAt = publishedAt,
-    feed = Feed(
-        id = feedId,
-        title = feedTitle.orEmpty(),
-        siteUrl = feedSiteUrl,
-        feedUrl = feedUrl.orEmpty()
-    ),
+    publishedAtMillis = publishedAt.toEpochMilli(),
+    feedTitle = feedTitle.orEmpty(),
     imageUrl = leadImageUrl,
-    status = status ?: ArticleStatus.UNREAD,
-    isBacklog = backlogFetchedAt != null
+    status = status ?: ArticleStatus.UNREAD
 )
 
 internal fun ArticleReaderItem.toEntry(): Entry = Entry(

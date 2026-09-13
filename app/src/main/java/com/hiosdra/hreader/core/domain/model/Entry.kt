@@ -30,10 +30,8 @@ data class ArticleListEntry(
     val id: Long,
     val title: String,
     val preview: String?,
-    val author: String?,
-    val publishedAt: Instant,
-    val feed: Feed,
+    val publishedAtMillis: Long,
+    val feedTitle: String,
     val imageUrl: String?,
-    val status: ArticleStatus = ArticleStatus.UNREAD,
-    val isBacklog: Boolean = false
+    val status: ArticleStatus = ArticleStatus.UNREAD
 )
