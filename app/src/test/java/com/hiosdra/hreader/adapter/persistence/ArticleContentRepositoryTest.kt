@@ -10,6 +10,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.domain.model.Enclosure
+import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.sync.SyncMode
@@ -109,6 +110,9 @@ class ArticleContentRepositoryTest {
         assertTrue(stored.captured.content.contains("https://example.com/media/photo.jpg"))
         assertEquals(stored.captured.content, text.html)
         assertEquals(ArticleContentSource.FULL, text.source)
+        assertEquals(articleUrl, text.sourceUrl)
+        assertEquals(stored.captured.fetchedAt, text.fetchedAt)
+        assertEquals(ArticleContentDelivery.NETWORK, text.delivery)
     }
 
     @Test
@@ -165,6 +169,9 @@ class ArticleContentRepositoryTest {
 
         assertEquals("<p>Prepared</p>", text.html)
         assertEquals("https://example.com/photo.jpg", text.leadImageUrl)
+        assertEquals(Instant.EPOCH, text.fetchedAt)
+        assertEquals(articleUrl, text.sourceUrl)
+        assertEquals(ArticleContentDelivery.LOCAL_STORAGE, text.delivery)
         coVerify(exactly = 0) { articleContentDao.insertArticleContent(any()) }
         coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
     }
@@ -240,6 +247,7 @@ class ArticleContentRepositoryTest {
 
         assertTrue(text.html.contains("Summary"))
         assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
+        assertEquals(ArticleContentDelivery.LOCAL_STORAGE, text.delivery)
     }
 
     @Test
@@ -304,6 +312,7 @@ class ArticleContentRepositoryTest {
         val text = repository.getArticleContent(entryId, articleUrl, allowNetwork = false)
 
         assertEquals(ArticleContentSource.FEED_FALLBACK, text.source)
+        assertEquals(ArticleContentDelivery.LOCAL_STORAGE, text.delivery)
         coVerify(exactly = 0) { backend.fetchFullContent(any(), any()) }
     }
 

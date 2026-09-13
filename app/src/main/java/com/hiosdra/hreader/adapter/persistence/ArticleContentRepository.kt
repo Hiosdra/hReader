@@ -16,6 +16,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.sync.SyncMode
+import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import com.hiosdra.hreader.core.domain.model.ArticleText
 import kotlinx.coroutines.Dispatchers
@@ -91,6 +92,7 @@ class ArticleContentRepository(
                         url,
                         fullContent,
                         ArticleContentSource.FULL,
+                        ArticleContentDelivery.NETWORK,
                         true,
                         downloadAllImages,
                         imageLimiter
@@ -105,6 +107,7 @@ class ArticleContentRepository(
                     url,
                     cachedContent.content,
                     cachedContent.source,
+                    ArticleContentDelivery.LOCAL_STORAGE,
                     allowNetwork,
                     downloadAllImages,
                     imageLimiter
@@ -121,6 +124,7 @@ class ArticleContentRepository(
                     url,
                     fullContent,
                     ArticleContentSource.FULL,
+                    ArticleContentDelivery.NETWORK,
                     true,
                     downloadAllImages,
                     imageLimiter
@@ -135,6 +139,7 @@ class ArticleContentRepository(
             url,
             cachedContent.content,
             cachedContent.source,
+            ArticleContentDelivery.LOCAL_STORAGE,
             allowNetwork,
             downloadAllImages,
             imageLimiter
@@ -195,7 +200,14 @@ class ArticleContentRepository(
             imageUrls = prepared.imageUrls.toImageManifest()
         )
         if (updated != stored) articleContentDao.insertArticleContent(updated)
-        return ArticleText(prepared.html, prepared.leadImageUrl, stored.source)
+        return ArticleText(
+            html = prepared.html,
+            leadImageUrl = prepared.leadImageUrl,
+            source = stored.source,
+            fetchedAt = stored.fetchedAt,
+            sourceUrl = stored.url,
+            delivery = ArticleContentDelivery.LOCAL_STORAGE
+        )
     }
 
     private suspend fun storeContent(
@@ -203,12 +215,14 @@ class ArticleContentRepository(
         url: String,
         sourceContent: String,
         source: ArticleContentSource,
+        delivery: ArticleContentDelivery,
         allowNetwork: Boolean,
         downloadAllImages: Boolean,
         imageLimiter: Semaphore?
     ): ArticleText {
         credibilityStore.invalidateForEntries(listOf(entryId))
         val prepared = prepare(entryId, sourceContent, url)
+        val fetchedAt = Instant.now()
         articleImageStore.setExpectedImages(entryId, prepared.expectedImageUrls(downloadAllImages))
         if (allowNetwork) {
             scheduleImageDownloads(
@@ -223,7 +237,7 @@ class ArticleContentRepository(
             ArticleContent(
                 entryId = entryId,
                 content = prepared.html,
-                fetchedAt = Instant.now(),
+                fetchedAt = fetchedAt,
                 url = url,
                 source = source,
                 isPrepared = true,
@@ -232,7 +246,14 @@ class ArticleContentRepository(
             )
         )
         if (source == ArticleContentSource.FULL) articleDao.setFullContent(entryId.toString(), sourceContent)
-        return ArticleText(prepared.html, prepared.leadImageUrl, source)
+        return ArticleText(
+            html = prepared.html,
+            leadImageUrl = prepared.leadImageUrl,
+            source = source,
+            fetchedAt = fetchedAt,
+            sourceUrl = url,
+            delivery = delivery
+        )
     }
 
     /**

@@ -26,12 +26,43 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
+import java.time.Instant
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class ArticlePageRepositoryTest {
+    @Test
+    fun `offline page keeps its final address and saved time`() = runBlocking {
+        val root = Files.createTempDirectory("hreader-pages").toFile()
+        try {
+            val pageDirectory = File(root, "article_pages/42").apply { mkdirs() }
+            File(pageDirectory, "index.html").writeText("<p>Saved</p>")
+            val context = mockk<Context>()
+            every { context.filesDir } returns root
+            val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
+            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val fetchedAt = Instant.parse("2026-09-01T12:34:56Z")
+            coEvery { snapshotDao.get(42L) } returns ArticlePageSnapshot(
+                entryId = 42L,
+                originalUrl = ARTICLE_URL,
+                finalUrl = "https://example.com/story?redirected=1",
+                directoryPath = pageDirectory.absolutePath,
+                fetchedAt = fetchedAt,
+                byteSize = 12,
+                isComplete = true
+            )
+            val page = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
+                .getOfflinePage(42L, ARTICLE_URL)
+
+            assertEquals("https://example.com/story?redirected=1", page?.finalUrl)
+            assertEquals(fetchedAt, page?.fetchedAt)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test
     fun `archives the document stylesheet and referenced resources`() = runBlocking {
         val root = Files.createTempDirectory("hreader-pages").toFile()
