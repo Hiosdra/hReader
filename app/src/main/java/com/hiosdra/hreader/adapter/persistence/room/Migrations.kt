@@ -273,6 +273,15 @@ val MIGRATION_21_22 = object : Migration(21, 22) {
     }
 }
 
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE `article_credibility` " +
+                "ADD COLUMN `contentFingerprint` TEXT NOT NULL DEFAULT ''"
+        )
+    }
+}
+
 val APP_MIGRATIONS = arrayOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
@@ -280,7 +289,8 @@ val APP_MIGRATIONS = arrayOf(
     MIGRATION_18_19,
     MIGRATION_19_20,
     MIGRATION_20_21,
-    MIGRATION_21_22
+    MIGRATION_21_22,
+    MIGRATION_22_23
 )
 
 private const val ENCLOSURE_RECORD_SEPARATOR = "\u001e"
