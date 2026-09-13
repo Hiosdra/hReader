@@ -1,0 +1,48 @@
+<resources>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_group_storage_summary">See what uses space and remove local downloads</string>
+    <string name="storage_title">Storage on this device</string>
+    <string name="storage_description">Review local app data and remove downloads without changing your account or server.</string>
+    <string name="storage_app_usage">hReader uses %1$s</string>
+    <string name="storage_available">Available on this device: %1$s</string>
+    <string name="storage_low_space">Storage is low. Free space to keep downloads and syncing reliable.</string>
+    <string name="storage_free_category">Free space from %1$s</string>
+    <string name="storage_refresh">Refresh</string>
+    <string name="storage_refreshing">Refreshing…</string>
+    <string name="storage_protected">Protected</string>
+    <string name="storage_can_remove">Can be removed</string>
+    <string name="storage_protected_notice">These actions never delete subscriptions, read or starred state, credentials, or server-side data. Article metadata and full text remain protected.</string>
+    <string name="storage_category_article_data">Articles, feeds and reading state</string>
+    <string name="storage_category_pages">Saved offline pages</string>
+    <string name="storage_category_images">Downloaded images</string>
+    <string name="storage_category_tts">Downloaded voice models</string>
+    <string name="storage_category_ai">On-device AI model</string>
+    <string name="storage_category_cache">Temporary and WebView cache</string>
+    <string name="storage_category_other">Other / overhead</string>
+    <string name="storage_article_data_details">%1$d articles · %2$d feeds · %3$d stored bodies · %4$d reading positions</string>
+    <string name="storage_remove_pages">Remove pages</string>
+    <string name="storage_remove_images">Remove images</string>
+    <string name="storage_remove_tts">Remove voice models</string>
+    <string name="storage_remove_ai">Remove AI model</string>
+    <string name="storage_remove_cache">Clear cache</string>
+    <string name="storage_cleanup_confirm_title">Remove %1$s?</string>
+    <string name="storage_cleanup_confirm">Remove now</string>
+    <string name="storage_cleanup_pages_message">This removes saved original web pages from this device. Article metadata, full article content, reading state, subscriptions, credentials, and server data stay unchanged. Pages can be saved again.</string>
+    <string name="storage_cleanup_images_message">This removes downloaded article images from this device. Article text, reading state, subscriptions, credentials, and server data stay unchanged. Images can be downloaded again.</string>
+    <string name="storage_cleanup_tts_message">This removes downloaded neural voice files. The system voice, voice settings, articles, reading state, subscriptions, credentials, and server data stay unchanged. Voices can be downloaded again.</string>
+    <string name="storage_cleanup_ai_message">This removes the on-device AI model and any partial download. Article data, cloud model settings, reading state, subscriptions, credentials, and server data stay unchanged. The model can be downloaded again.</string>
+    <string name="storage_cleanup_cache_message">This removes temporary files and the WebView/image-sharing cache. Articles, reading state, downloaded models, subscriptions, credentials, and server data stay unchanged.</string>
+    <string name="storage_cleanup_in_progress">Freeing space…</string>
+    <string name="storage_cleanup_progress">%1$s: %2$d of %3$d</string>
+    <string name="storage_cleanup_reclaimed">Freed %1$s.</string>
+    <string name="storage_refresh_failed">Could not measure local storage. Try again.</string>
+    <string name="storage_cleanup_failed">Cleanup did not finish. Some files may remain; your articles, reading state, subscriptions, credentials, and server data were not changed.</string>
+    <plurals name="storage_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">Freed %1$s. %2$d item could not be removed; try again.</item>
+        <item quantity="other">Freed %1$s. %2$d items could not be removed; try again.</item>
+    </plurals>
+</resources>

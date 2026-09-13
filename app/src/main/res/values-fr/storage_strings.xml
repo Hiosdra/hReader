@@ -1,0 +1,48 @@
+<resources>
+    <string name="settings_storage">Stockage</string>
+    <string name="settings_group_storage_summary">Voir ce qui occupe l’espace et supprimer les téléchargements locaux</string>
+    <string name="storage_title">Stockage sur cet appareil</string>
+    <string name="storage_description">Examinez les données locales de l’application et supprimez les téléchargements sans modifier votre compte ni le serveur.</string>
+    <string name="storage_app_usage">hReader utilise %1$s</string>
+    <string name="storage_available">Disponible sur cet appareil : %1$s</string>
+    <string name="storage_low_space">L’espace de stockage est faible. Libérez de l’espace pour que les téléchargements et la synchronisation restent fiables.</string>
+    <string name="storage_free_category">Libérer de l’espace de %1$s</string>
+    <string name="storage_refresh">Actualiser</string>
+    <string name="storage_refreshing">Actualisation…</string>
+    <string name="storage_protected">Protégé</string>
+    <string name="storage_can_remove">Peut être supprimé</string>
+    <string name="storage_protected_notice">Ces actions ne suppriment jamais les abonnements, l’état de lecture ou les favoris, les identifiants ni les données côté serveur. Les métadonnées et le texte intégral des articles restent protégés.</string>
+    <string name="storage_category_article_data">Articles, flux et état de lecture</string>
+    <string name="storage_category_pages">Pages hors connexion enregistrées</string>
+    <string name="storage_category_images">Images téléchargées</string>
+    <string name="storage_category_tts">Modèles vocaux téléchargés</string>
+    <string name="storage_category_ai">Modèle d’IA sur l’appareil</string>
+    <string name="storage_category_cache">Cache temporaire et WebView</string>
+    <string name="storage_category_other">Autre / surcharge</string>
+    <string name="storage_article_data_details">%1$d articles · %2$d flux · %3$d contenus enregistrés · %4$d positions de lecture</string>
+    <string name="storage_remove_pages">Supprimer les pages</string>
+    <string name="storage_remove_images">Supprimer les images</string>
+    <string name="storage_remove_tts">Supprimer les modèles vocaux</string>
+    <string name="storage_remove_ai">Supprimer le modèle d’IA</string>
+    <string name="storage_remove_cache">Effacer le cache</string>
+    <string name="storage_cleanup_confirm_title">Supprimer %1$s ?</string>
+    <string name="storage_cleanup_confirm">Supprimer maintenant</string>
+    <string name="storage_cleanup_pages_message">Les pages Web originales enregistrées seront supprimées de cet appareil. Les métadonnées et le contenu intégral des articles, l’état de lecture, les abonnements, les identifiants et les données du serveur restent inchangés. Les pages peuvent être enregistrées à nouveau.</string>
+    <string name="storage_cleanup_images_message">Les images d’articles téléchargées seront supprimées de cet appareil. Le texte des articles, l’état de lecture, les abonnements, les identifiants et les données du serveur restent inchangés. Les images peuvent être téléchargées à nouveau.</string>
+    <string name="storage_cleanup_tts_message">Les fichiers de voix neuronale téléchargés seront supprimés. La voix du système, les réglages vocaux, les articles, l’état de lecture, les abonnements, les identifiants et les données du serveur restent inchangés. Les voix peuvent être téléchargées à nouveau.</string>
+    <string name="storage_cleanup_ai_message">Le modèle d’IA sur l’appareil et tout téléchargement partiel seront supprimés. Les données des articles, les réglages des modèles cloud, l’état de lecture, les abonnements, les identifiants et les données du serveur restent inchangés. Le modèle peut être téléchargé à nouveau.</string>
+    <string name="storage_cleanup_cache_message">Les fichiers temporaires ainsi que le cache WebView et de partage d’images seront supprimés. Les articles, l’état de lecture, les modèles téléchargés, les abonnements, les identifiants et les données du serveur restent inchangés.</string>
+    <string name="storage_cleanup_in_progress">Libération d’espace…</string>
+    <string name="storage_cleanup_progress">%1$s : %2$d sur %3$d</string>
+    <string name="storage_cleanup_reclaimed">%1$s libérés.</string>
+    <string name="storage_refresh_failed">Impossible de mesurer le stockage local. Réessayez.</string>
+    <string name="storage_cleanup_failed">Le nettoyage n’est pas terminé. Certains fichiers peuvent rester ; vos articles, l’état de lecture, les abonnements, les identifiants et les données du serveur n’ont pas été modifiés.</string>
+    <plurals name="storage_items">
+        <item quantity="one">%1$d élément</item>
+        <item quantity="other">%1$d éléments</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">%1$s libérés. %2$d élément n’a pas pu être supprimé ; réessayez.</item>
+        <item quantity="other">%1$s libérés. %2$d éléments n’ont pas pu être supprimés ; réessayez.</item>
+    </plurals>
+</resources>

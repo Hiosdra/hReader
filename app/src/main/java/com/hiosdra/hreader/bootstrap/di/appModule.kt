@@ -21,6 +21,7 @@ import com.hiosdra.hreader.adapter.image.ArticleImageShareService
 import com.hiosdra.hreader.adapter.image.ArticleImageDownloadService
 import com.hiosdra.hreader.adapter.persistence.FeedRepository
 import com.hiosdra.hreader.adapter.persistence.CacheOwnershipCoordinator
+import com.hiosdra.hreader.adapter.storage.StorageRepository
 import com.hiosdra.hreader.adapter.tts.ArticleTtsController
 import com.hiosdra.hreader.adapter.tts.NeuralTtsEngine
 import com.hiosdra.hreader.adapter.tts.NeuralTtsEngineRegistry
@@ -81,10 +82,12 @@ import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
+import com.hiosdra.hreader.core.application.port.out.StorageStore
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.feeds.FeedUseCase
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
+import com.hiosdra.hreader.core.application.usecase.settings.StorageUseCase
 import com.hiosdra.hreader.core.application.usecase.sync.SyncHealthUseCase
 import com.hiosdra.hreader.entrypoint.worker.ArticleContentSyncWorker
 import com.hiosdra.hreader.entrypoint.worker.ArticleAiOverviewPreloadWorker
@@ -240,6 +243,21 @@ val appModule = module {
     single<NeuralTtsEngine> { NeuralTtsEngineRegistry(listOf(get<SherpaTtsEngine>())) }
     single { ArticleTtsController(androidApplication(), get(), get(), get(), get()) }
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }
+    single {
+        StorageRepository(
+            context = androidApplication(),
+            database = get(),
+            images = get(),
+            pages = get(),
+            ttsModels = get(),
+            ttsDownloads = get(),
+            gemmaModel = get(),
+            gemmaDownloads = get(),
+            gemmaLifecycle = get(),
+            ttsPlayer = get()
+        )
+    }
+    single<StorageStore> { get<StorageRepository>() }
     single { SyncPerformanceLogger(get(), get(), get()) }
     single<SyncPerformanceTracker> { get<SyncPerformanceLogger>() }
     single { ImageLoader(get<ArticleImageStore>(), get()) }
@@ -302,6 +320,7 @@ val appModule = module {
             preferenceWrites = get()
         )
     }
+    single { StorageUseCase(get<StorageStore>(), get<SyncRequester>()) }
     worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
@@ -313,7 +332,7 @@ val appModule = module {
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get()) }
     viewModel { AddFeedViewModel(get()) }
-    viewModel { SettingsViewModel(get()) }
+    viewModel { SettingsViewModel(get(), get()) }
     single { SyncHealthUseCase(get(), get(), get(), get(), get()) }
     viewModel { SyncHealthViewModel(get(), get()) }
 }

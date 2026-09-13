@@ -19,6 +19,10 @@ import androidx.compose.ui.Modifier
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.sync.SyncMode
+import com.hiosdra.hreader.core.application.storage.StorageCategory
+import com.hiosdra.hreader.core.application.storage.StorageCategoryUsage
+import com.hiosdra.hreader.core.application.storage.StorageCleanupAction
+import com.hiosdra.hreader.core.application.storage.StorageSnapshot
 import com.hiosdra.hreader.core.domain.model.OfflineReadiness
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
 import java.util.concurrent.atomic.AtomicInteger
@@ -168,6 +172,46 @@ class SettingsSectionsTest {
         composeTestRule.onNodeWithText(context.getString(R.string.sync_clear_data)).performClick()
 
         assertEquals(1, resyncCalls.get())
+    }
+
+    @Test
+    fun `storage section confirms removable content and preserves protected data`() {
+        val cleanupAction = AtomicReference<StorageCleanupAction>()
+
+        composeTestRule.setContent {
+            HReaderTheme {
+                StorageSettingsSection(
+                    state = StorageUiState(
+                        snapshot = StorageSnapshot(
+                            appBytes = 2_000L,
+                            availableDeviceBytes = 2_000_000_000L,
+                            categories = listOf(
+                                StorageCategoryUsage(StorageCategory.ARTICLE_DATA, 1_000L, 2),
+                                StorageCategoryUsage(StorageCategory.DOWNLOADED_IMAGES, 1_000L, 1)
+                            ),
+                            articleCount = 1,
+                            feedCount = 1,
+                            storedContentCount = 1,
+                            readingPositionCount = 0
+                        )
+                    ),
+                    onRefresh = {},
+                    onCleanup = cleanupAction::set
+                )
+            }
+        }
+
+        val context = RuntimeEnvironment.getApplication()
+        composeTestRule.onNodeWithText(context.getString(R.string.storage_remove_images)).performClick()
+        composeTestRule.onNodeWithText(
+            context.getString(
+                R.string.storage_cleanup_confirm_title,
+                context.getString(R.string.storage_category_images)
+            )
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.storage_cleanup_confirm)).performClick()
+
+        assertEquals(StorageCleanupAction.DOWNLOADED_IMAGES, cleanupAction.get())
     }
 }
 

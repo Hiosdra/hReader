@@ -19,4 +19,7 @@ interface ArticleReadingPositionDao {
 
     @Query("DELETE FROM article_reading_positions")
     suspend fun clearAll()
+
+    @Query("SELECT COUNT(*) FROM article_reading_positions")
+    suspend fun countPositions(): Int
 }

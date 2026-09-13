@@ -74,6 +74,7 @@ fun SettingsScreen(
     val aiModels by settingsViewModel.aiModels.collectAsStateWithLifecycle()
     val offline by settingsViewModel.offline.collectAsStateWithLifecycle()
     val sync by settingsViewModel.sync.collectAsStateWithLifecycle()
+    val storage by settingsViewModel.storage.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
     var selectedBypassMethod by remember { mutableStateOf(readerPreferences.getPaywallBypassMethod()) }
     var bionicReadingEnabled by remember { mutableStateOf(readerPreferences.getBionicReadingEnabled()) }
@@ -212,6 +213,20 @@ fun SettingsScreen(
                         onImageDownloadEnabledChange = settingsViewModel::onImageDownloadEnabledChange,
                         onImageCacheBudgetChange = settingsViewModel::onImageCacheBudgetChange,
                         modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            item {
+                SettingsGroup(
+                    title = stringResource(R.string.settings_storage),
+                    summary = stringResource(R.string.settings_group_storage_summary),
+                    initiallyExpanded = true
+                ) {
+                    StorageSettingsSection(
+                        state = storage,
+                        onRefresh = settingsViewModel::refreshStorage,
+                        onCleanup = settingsViewModel::cleanupStorage
                     )
                 }
             }

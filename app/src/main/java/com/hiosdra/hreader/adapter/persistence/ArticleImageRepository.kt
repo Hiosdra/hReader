@@ -234,6 +234,14 @@ class ArticleImageRepository(
         articleImageDao.deleteExpectedImagesForArticles(entryIds)
     }
 
+    override suspend fun clearAll(): Unit = cacheBudgetMutex.withLock {
+        withContext(Dispatchers.IO) {
+            articleImageDao.clearAll()
+            articleImageDao.clearExpectedImages()
+            imagesDir.listFiles()?.forEach(File::deleteRecursively)
+        }
+    }
+
     /**
      * Copies [input] into [target], stopping and reporting null once it goes past [limit]. Returns
      * how many bytes were written.

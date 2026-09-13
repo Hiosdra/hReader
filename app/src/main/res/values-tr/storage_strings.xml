@@ -1,0 +1,48 @@
+<resources>
+    <string name="settings_storage">Depolama</string>
+    <string name="settings_group_storage_summary">Alanı neyin kullandığını görün ve yerel indirmeleri kaldırın</string>
+    <string name="storage_title">Bu cihazdaki depolama</string>
+    <string name="storage_description">Hesabınızı veya sunucuyu değiştirmeden yerel uygulama verilerini inceleyin ve indirmeleri kaldırın.</string>
+    <string name="storage_app_usage">hReader %1$s kullanıyor</string>
+    <string name="storage_available">Bu cihazda kullanılabilir: %1$s</string>
+    <string name="storage_low_space">Depolama alanı az. İndirmelerin ve senkronizasyonun güvenilir kalması için alan açın.</string>
+    <string name="storage_free_category">%1$s alanından yer aç</string>
+    <string name="storage_refresh">Yenile</string>
+    <string name="storage_refreshing">Yenileniyor…</string>
+    <string name="storage_protected">Korumalı</string>
+    <string name="storage_can_remove">Kaldırılabilir</string>
+    <string name="storage_protected_notice">Bu işlemler abonelikleri, okuma veya yıldız durumunu, kimlik bilgilerini ya da sunucu verilerini hiçbir zaman silmez. Makale meta verileri ve tam metin korunur.</string>
+    <string name="storage_category_article_data">Makaleler, akışlar ve okuma durumu</string>
+    <string name="storage_category_pages">Kaydedilen çevrimdışı sayfalar</string>
+    <string name="storage_category_images">İndirilen görseller</string>
+    <string name="storage_category_tts">İndirilen ses modelleri</string>
+    <string name="storage_category_ai">Cihazdaki yapay zeka modeli</string>
+    <string name="storage_category_cache">Geçici ve WebView önbelleği</string>
+    <string name="storage_category_other">Diğer / ek yük</string>
+    <string name="storage_article_data_details">%1$d makale · %2$d akış · %3$d kayıtlı içerik · %4$d okuma konumu</string>
+    <string name="storage_remove_pages">Sayfaları kaldır</string>
+    <string name="storage_remove_images">Görselleri kaldır</string>
+    <string name="storage_remove_tts">Ses modellerini kaldır</string>
+    <string name="storage_remove_ai">Yapay zeka modelini kaldır</string>
+    <string name="storage_remove_cache">Önbelleği temizle</string>
+    <string name="storage_cleanup_confirm_title">%1$s kaldırılsın mı?</string>
+    <string name="storage_cleanup_confirm">Şimdi kaldır</string>
+    <string name="storage_cleanup_pages_message">Kaydedilen özgün web sayfaları bu cihazdan kaldırılır. Makale meta verileri ve tam makale içeriği, okuma durumu, abonelikler, kimlik bilgileri ve sunucu verileri değişmeden kalır. Sayfalar yeniden kaydedilebilir.</string>
+    <string name="storage_cleanup_images_message">İndirilen makale görselleri bu cihazdan kaldırılır. Makale metni, okuma durumu, abonelikler, kimlik bilgileri ve sunucu verileri değişmeden kalır. Görseller yeniden indirilebilir.</string>
+    <string name="storage_cleanup_tts_message">İndirilen sinirsel ses dosyaları kaldırılır. Sistem sesi, ses ayarları, makaleler, okuma durumu, abonelikler, kimlik bilgileri ve sunucu verileri değişmeden kalır. Sesler yeniden indirilebilir.</string>
+    <string name="storage_cleanup_ai_message">Cihazdaki yapay zeka modeli ve tamamlanmamış indirmeler kaldırılır. Makale verileri, bulut model ayarları, okuma durumu, abonelikler, kimlik bilgileri ve sunucu verileri değişmeden kalır. Model yeniden indirilebilir.</string>
+    <string name="storage_cleanup_cache_message">Geçici dosyalar ile WebView ve görsel paylaşım önbelleği kaldırılır. Makaleler, okuma durumu, indirilen modeller, abonelikler, kimlik bilgileri ve sunucu verileri değişmeden kalır.</string>
+    <string name="storage_cleanup_in_progress">Alan açılıyor…</string>
+    <string name="storage_cleanup_progress">%1$s: %2$d / %3$d</string>
+    <string name="storage_cleanup_reclaimed">%1$s boşaltıldı.</string>
+    <string name="storage_refresh_failed">Yerel depolama ölçülemedi. Tekrar deneyin.</string>
+    <string name="storage_cleanup_failed">Temizleme tamamlanmadı. Bazı dosyalar kalabilir; makaleleriniz, okuma durumunuz, abonelikleriniz, kimlik bilgileriniz ve sunucu verileriniz değiştirilmedi.</string>
+    <plurals name="storage_items">
+        <item quantity="one">%1$d öğe</item>
+        <item quantity="other">%1$d öğe</item>
+    </plurals>
+    <plurals name="storage_cleanup_partial">
+        <item quantity="one">%1$s boşaltıldı. %2$d öğe kaldırılamadı; tekrar deneyin.</item>
+        <item quantity="other">%1$s boşaltıldı. %2$d öğe kaldırılamadı; tekrar deneyin.</item>
+    </plurals>
+</resources>

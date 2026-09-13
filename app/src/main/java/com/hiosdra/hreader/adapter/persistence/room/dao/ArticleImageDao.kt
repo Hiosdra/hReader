@@ -103,6 +103,9 @@ interface ArticleImageDao {
     @Query("SELECT COUNT(*) FROM article_images")
     fun observeImageCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM article_images")
+    suspend fun countImages(): Int
+
     @Query("SELECT COALESCE(SUM(fileSize), 0) FROM article_images")
     fun observeImageBytes(): Flow<Long>
 

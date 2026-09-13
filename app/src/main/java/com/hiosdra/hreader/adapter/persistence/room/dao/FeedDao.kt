@@ -24,6 +24,9 @@ interface FeedDao {
     @Query("SELECT id FROM feeds")
     suspend fun getAllIds(): List<Long>
 
+    @Query("SELECT COUNT(*) FROM feeds")
+    suspend fun countFeeds(): Int
+
     @Query("UPDATE feeds SET title = :title WHERE id = :feedId")
     suspend fun updateTitle(feedId: Long, title: String)
 

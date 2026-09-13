@@ -64,6 +64,9 @@ interface ArticleContentDao {
     @Query("SELECT COUNT(*) FROM article_contents")
     fun observeContentCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM article_contents")
+    suspend fun countContent(): Int
+
     @Query("SELECT COUNT(*) FROM article_contents WHERE source = :source")
     fun observeContentCount(source: ArticleContentSource): Flow<Int>
 
