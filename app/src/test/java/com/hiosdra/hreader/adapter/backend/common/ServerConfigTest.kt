@@ -1,7 +1,7 @@
 package com.hiosdra.hreader.adapter.backend.common
 
 import com.hiosdra.hreader.core.domain.model.BackendType
-import com.hiosdra.hreader.adapter.preferences.PreferencesManager
+import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.settings.BackendConfiguration
 import io.mockk.every
 import io.mockk.mockk
@@ -138,7 +138,7 @@ class ServerConfigTest {
             freshRssSecret = "secret"
         )
         val temporary = initial.copy(freshRssServerUrl = "staging.example.com")
-        val preferencesManager = mockk<PreferencesManager>()
+        val preferencesManager = mockk<BackendPreferences>()
         every { preferencesManager.getBackendConfiguration() } returns initial
         val config = ServerConfig(preferencesManager)
 
@@ -156,7 +156,7 @@ class ServerConfigTest {
         username: String = "reader",
         secret: String = "secret"
     ): ServerConfig {
-        val preferencesManager = mockk<PreferencesManager>()
+        val preferencesManager = mockk<BackendPreferences>()
         every { preferencesManager.getBackendType() } returns backendType
         every { preferencesManager.getServerUrl(any()) } returns serverUrl
         every { preferencesManager.getFreshRssUsername() } returns username

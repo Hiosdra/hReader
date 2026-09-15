@@ -17,7 +17,16 @@ import com.hiosdra.hreader.adapter.persistence.RoomStorageDatabaseStatsStore
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
 import com.hiosdra.hreader.adapter.persistence.OfflineReadinessRepository
 import com.hiosdra.hreader.adapter.paywall.PaywallBypassService
-import com.hiosdra.hreader.adapter.preferences.PreferencesManager
+import com.hiosdra.hreader.adapter.preferences.AiPreferencesStore
+import com.hiosdra.hreader.adapter.preferences.BackendPreferencesStore
+import com.hiosdra.hreader.adapter.preferences.PerformancePreferencesStore
+import com.hiosdra.hreader.adapter.preferences.PreferenceStorage
+import com.hiosdra.hreader.adapter.preferences.ReaderPreferencesStore
+import com.hiosdra.hreader.adapter.preferences.SentryPreferencesStore
+import com.hiosdra.hreader.adapter.preferences.SecretPreferences
+import com.hiosdra.hreader.adapter.preferences.SyncHealthPreferencesStore
+import com.hiosdra.hreader.adapter.preferences.SyncPreferencesStore
+import com.hiosdra.hreader.adapter.preferences.TtsPreferencesStore
 import com.hiosdra.hreader.adapter.image.ArticleImageShareService
 import com.hiosdra.hreader.adapter.image.ArticleImageDownloadService
 import com.hiosdra.hreader.adapter.persistence.FeedRepository
@@ -41,7 +50,6 @@ import com.hiosdra.hreader.adapter.system.NetworkMonitor
 import com.hiosdra.hreader.adapter.observability.SyncPerformanceLogger
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
-import com.hiosdra.hreader.core.application.port.out.AppPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewPrefetchStore
@@ -131,7 +139,7 @@ val appModule = module {
     single { get<AppDatabase>().articleAiOverviewDao() }
     single { get<AppDatabase>().articlePageSnapshotDao() }
     single { get<AppDatabase>().fullSyncSeenDao() }
-    single { RemoteResourcePolicyAdapter(get<AppPreferences>()) }
+    single { RemoteResourcePolicyAdapter(get<BackendPreferences>()) }
     single<RemoteResourcePolicy> { get<RemoteResourcePolicyAdapter>() }
     single { get<AppDatabase>().articleReadingPositionDao() }
     single {
@@ -214,17 +222,17 @@ val appModule = module {
     single<ArticleAiOverviewStore> { get<ArticleAiOverviewRepository>() }
     single { PaywallBypassService() }
     single<PaywallBypass> { get<PaywallBypassService>() }
-    single { PreferencesManager(androidApplication()) }
-    single<AppPreferences> { get<PreferencesManager>() }
-    single<PreferenceWriteBarrier> { get<PreferencesManager>() }
-    single<BackendPreferences> { get<PreferencesManager>() }
-    single<AiPreferences> { get<PreferencesManager>() }
-    single<ReaderPreferences> { get<PreferencesManager>() }
-    single<SentryPreferences> { get<PreferencesManager>() }
-    single<PerformancePreferences> { get<PreferencesManager>() }
-    single<SyncPreferences> { get<PreferencesManager>() }
-    single<SyncHealthStore> { get<PreferencesManager>() }
-    single<TtsPreferences> { get<PreferencesManager>() }
+    single { PreferenceStorage(androidApplication()) }
+    single { SecretPreferences(get()) }
+    single<PreferenceWriteBarrier> { get<PreferenceStorage>() }
+    single<BackendPreferences> { BackendPreferencesStore(get(), get()) }
+    single<AiPreferences> { AiPreferencesStore(get(), get()) }
+    single<ReaderPreferences> { ReaderPreferencesStore(get()) }
+    single<SentryPreferences> { SentryPreferencesStore(get()) }
+    single<PerformancePreferences> { PerformancePreferencesStore(get(), get()) }
+    single<SyncPreferences> { SyncPreferencesStore(get()) }
+    single<SyncHealthStore> { SyncHealthPreferencesStore(get(), get()) }
+    single<TtsPreferences> { TtsPreferencesStore(get()) }
     single { ErrorReportingManager(androidApplication(), get()) }
     single<ErrorReporter> { get<ErrorReportingManager>() }
     single { TtsModelManager(androidApplication(), get()) }
