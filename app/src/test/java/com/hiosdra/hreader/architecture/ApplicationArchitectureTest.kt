@@ -28,23 +28,30 @@ class ApplicationArchitectureTest {
     }
 
     @Test
-    fun applicationLayerShouldNotDependOnRoomOrWorkManager() {
+    fun applicationLayerShouldNotDependOnFrameworkAdapters() {
         noClasses()
             .that().resideInAPackage("com.hiosdra.hreader.core.application..")
             .should().dependOnClassesThat()
-            .resideInAnyPackage("androidx.room..", "androidx.work..")
+            .resideInAnyPackage(
+                "androidx.room..",
+                "androidx.work..",
+                "androidx.paging..",
+                "retrofit2..",
+                "okhttp3..",
+                "com.squareup.moshi.."
+            )
             .check(productionClasses)
     }
 
     @Test
-    fun applicationConsumersShouldUseNarrowArticlePorts() {
+    fun pagingShouldStayAtThePersistenceAndPresentationBoundary() {
         noClasses()
-            .that().resideInAnyPackage(
-                "com.hiosdra.hreader.core.application.usecase..",
-                "com.hiosdra.hreader.entrypoint.worker.."
+            .that().resideOutsideOfPackages(
+                "com.hiosdra.hreader.adapter.persistence..",
+                "com.hiosdra.hreader.presentation.."
             )
             .should().dependOnClassesThat()
-            .haveFullyQualifiedName("com.hiosdra.hreader.core.application.port.out.ArticleStore")
+            .resideInAnyPackage("androidx.paging..")
             .check(productionClasses)
     }
 

@@ -6,9 +6,3 @@ data class ArticleListWindow(
     val windowStartIndex: Int,
     val currentIndex: Int
 )
-
-interface ArticleStore :
-    ArticleQueryStore,
-    ArticleMutationStore,
-    ArticleSyncStore,
-    ArticleMaintenanceStore

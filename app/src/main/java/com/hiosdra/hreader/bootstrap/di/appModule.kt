@@ -5,13 +5,16 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
 import com.hiosdra.hreader.adapter.persistence.room.APP_MIGRATIONS
 import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewPrefetchRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleMaintenanceRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleMutationRepository
 import com.hiosdra.hreader.adapter.persistence.ArticlePageRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleQueryRepository
 import com.hiosdra.hreader.adapter.persistence.CacheDataCleaner
 import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
-import com.hiosdra.hreader.adapter.persistence.ArticleRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleSyncEngine
 import com.hiosdra.hreader.adapter.persistence.RoomStorageDatabaseStatsStore
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
@@ -41,6 +44,7 @@ import com.hiosdra.hreader.entrypoint.tts.ArticleTtsPlaybackServiceLauncher
 import com.hiosdra.hreader.presentation.article.ArticleViewModel
 import com.hiosdra.hreader.presentation.feeds.FeedsViewModel
 import com.hiosdra.hreader.presentation.feeds.add.AddFeedViewModel
+import com.hiosdra.hreader.presentation.main.ArticlePagingProvider
 import com.hiosdra.hreader.presentation.main.MainViewModel
 import com.hiosdra.hreader.presentation.settings.SettingsViewModel
 import com.hiosdra.hreader.presentation.sync.SyncHealthViewModel
@@ -60,7 +64,6 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
-import com.hiosdra.hreader.core.application.port.out.ArticleStore
 import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
 import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
@@ -157,13 +160,15 @@ val appModule = module {
             backendIdentity = get()
         )
     }
-    single { ArticleRepository(get(), get(), get<ArticleSyncEngine>()) }
-    single<ArticleStore> { get<ArticleRepository>() }
-    single<ArticleQueryStore> { get<ArticleRepository>() }
-    single<ArticleMutationStore> { get<ArticleRepository>() }
-    single<ArticleSyncStore> { get<ArticleRepository>() }
-    single<ArticleMaintenanceStore> { get<ArticleRepository>() }
-    single<ArticleAiOverviewPrefetchStore> { get<ArticleRepository>() }
+    single { ArticleQueryRepository(get(), get()) }
+    single<ArticleQueryStore> { get<ArticleQueryRepository>() }
+    single<ArticleMutationStore> { ArticleMutationRepository(get()) }
+    single<ArticleSyncStore> { get<ArticleSyncEngine>() }
+    single<ArticleMaintenanceStore> { ArticleMaintenanceRepository(get()) }
+    single<ArticleAiOverviewPrefetchStore> { ArticleAiOverviewPrefetchRepository(get()) }
+    single<ArticlePagingProvider> {
+        ArticlePagingProvider { query -> get<ArticleQueryRepository>().pageArticles(query) }
+    }
     single { ArticleImageRepository(androidApplication(), get(), get(), get(), get(), get()) }
     single<ArticleImageStore> { get<ArticleImageRepository>() }
     single<coil3.ImageLoader> {
@@ -347,7 +352,7 @@ val appModule = module {
     worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
-    viewModel { MainViewModel(get(), get()) }
+    viewModel { MainViewModel(get(), get(), get()) }
     viewModel { FeedsViewModel(get()) }
     viewModel { ArticleViewModel(get()) }
     viewModel { AddFeedViewModel(get()) }

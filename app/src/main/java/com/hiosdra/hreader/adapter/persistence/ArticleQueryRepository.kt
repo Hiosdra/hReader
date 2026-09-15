@@ -30,7 +30,7 @@ internal class ArticleQueryRepository(
     private val articleDao: ArticleDao,
     private val feedDao: FeedDao
 ) : ArticleQueryStore {
-    override fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> {
+    fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> {
         val match = buildFtsMatchQuery(query.searchQuery.trim())
         return Pager(PAGING_CONFIG) {
             if (match == null) {

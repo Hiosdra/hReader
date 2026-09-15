@@ -90,6 +90,7 @@ data class MainUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(
     private val reader: MainReaderUseCase,
+    private val articlePaging: ArticlePagingProvider,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
@@ -122,7 +123,7 @@ class MainViewModel(
      * loaded instead of starting the list again from the top.
      */
     val articles: Flow<PagingData<ArticleListItem>> = readyQuery
-        .flatMapLatest { reader.pageArticles(it) }
+        .flatMapLatest { articlePaging.pageArticles(it) }
         .cachedIn(viewModelScope)
 
     init {
@@ -270,7 +271,7 @@ class MainViewModel(
             }
             try {
                 val status = reader.observeSync().first { current ->
-                    operationId in current.workIds && current.state != SyncOperationState.IDLE &&
+                    operationId in current.operationIds && current.state != SyncOperationState.IDLE &&
                         current.state != SyncOperationState.RUNNING
                 }
                 query.update { it.withSessionRestarted(Instant.now()) }
@@ -306,7 +307,7 @@ class MainViewModel(
                     isRunning = true,
                     status = SyncOperationStatus(
                         state = SyncOperationState.RUNNING,
-                        workIds = setOf(operationId)
+                        operationIds = setOf(operationId)
                     ),
                     stage = OfflinePreparationStage.SYNCING
                 )

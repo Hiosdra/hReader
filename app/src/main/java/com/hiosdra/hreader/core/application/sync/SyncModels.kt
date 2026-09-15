@@ -1,10 +1,9 @@
 package com.hiosdra.hreader.core.application.sync
 
 import com.hiosdra.hreader.core.domain.model.Enclosure
-import java.util.UUID
 
 @JvmInline
-value class SyncOperationId(val value: UUID)
+value class SyncOperationId(val value: String)
 
 sealed interface SyncIntent {
     data object Periodic : SyncIntent
@@ -116,7 +115,7 @@ data class SyncOperationStatus(
     val state: SyncOperationState = SyncOperationState.IDLE,
     val errorMessage: String? = null,
     val error: SyncOperationError? = null,
-    val workIds: Set<SyncOperationId> = emptySet()
+    val operationIds: Set<SyncOperationId> = emptySet()
 ) {
     val isRunning: Boolean
         get() = state == SyncOperationState.RUNNING
