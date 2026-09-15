@@ -13,9 +13,17 @@ private class DoNotIncludeAndroidUnitTestClasses : ImportOption {
             !location.contains("/src/test/")
 }
 
+private class DoNotIncludeGeneratedClasses : ImportOption {
+    override fun includes(location: Location): Boolean {
+        val path = location.toString()
+        return "/generated/" !in path && "/ksp/" !in path
+    }
+}
+
 internal val productionClasses: JavaClasses by lazy {
     ClassFileImporter()
         .withImportOption(ImportOption.DoNotIncludeTests())
         .withImportOption(DoNotIncludeAndroidUnitTestClasses())
+        .withImportOption(DoNotIncludeGeneratedClasses())
         .importPackages("com.hiosdra.hreader")
 }

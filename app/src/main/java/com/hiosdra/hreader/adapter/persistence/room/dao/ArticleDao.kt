@@ -238,6 +238,9 @@ interface ArticleDao {
     @Query("DELETE FROM articles")
     suspend fun clearAll()
 
+    @Query("DELETE FROM articles_fts")
+    suspend fun clearSearchIndex()
+
     /**
      * The only way to change a status: it always queues the change for the backend. [readAt] is
      * the moment the article was read, or null when it is being marked unread again. An article

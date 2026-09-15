@@ -279,6 +279,7 @@ dependencies {
     // MockK for mocking in unit tests
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.room.testing)
     testImplementation(libs.androidx.work.testing)
 
     // Debug Tools

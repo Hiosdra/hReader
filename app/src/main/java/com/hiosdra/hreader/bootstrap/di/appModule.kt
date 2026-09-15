@@ -13,6 +13,7 @@ import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleSyncEngine
+import com.hiosdra.hreader.adapter.persistence.RoomStorageDatabaseStatsStore
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
 import com.hiosdra.hreader.adapter.persistence.OfflineReadinessRepository
 import com.hiosdra.hreader.adapter.paywall.PaywallBypassService
@@ -244,9 +245,19 @@ val appModule = module {
     single { ArticleTtsController(androidApplication(), get(), get(), get(), get()) }
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }
     single {
+        RoomStorageDatabaseStatsStore(
+            articleDao = get(),
+            feedDao = get(),
+            articleContentDao = get(),
+            articleReadingPositionDao = get(),
+            articleImageDao = get(),
+            articlePageSnapshotDao = get()
+        )
+    }
+    single {
         StorageRepository(
             context = androidApplication(),
-            database = get(),
+            databaseStats = get(),
             images = get(),
             pages = get(),
             ttsModels = get(),

@@ -138,6 +138,21 @@ class ContentSyncWorkerTest {
     }
 
     @Test
+    fun `transient failure stops after the maximum attempt`() = runBlocking {
+        val failure = IOException("connection lost")
+        val errorReporter = mockk<ErrorReporter>(relaxed = true)
+
+        val result = createWorker(
+            repository = RecordingArticleSyncStore(failure),
+            errorReporter = errorReporter,
+            runAttemptCount = 5
+        ).doWork()
+
+        assertTrue(result is Failure)
+        verify(exactly = 1) { errorReporter.captureException(failure, "content_sync") }
+    }
+
+    @Test
     fun `reported retryable failure is persisted and retried`() = runBlocking {
         val failure = SyncFailure(
             stage = SyncFailureStage.ARTICLE_SYNC,
