@@ -2,13 +2,13 @@ package com.hiosdra.hreader.adapter.storage
 
 import android.content.Context
 import android.os.StatFs
-import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
+import com.hiosdra.hreader.core.application.port.out.StorageDatabaseStatsStore
 import com.hiosdra.hreader.core.application.port.out.StorageStore
 import com.hiosdra.hreader.core.application.port.out.TtsModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
@@ -30,7 +30,7 @@ import java.io.File
 
 class StorageRepository(
     context: Context,
-    private val database: AppDatabase,
+    private val databaseStats: StorageDatabaseStatsStore,
     private val images: ArticleImageStore,
     private val pages: ArticlePageStore,
     private val ttsModels: TtsModelGateway,
@@ -154,12 +154,7 @@ class StorageRepository(
         val appBytes = sizeOf(appContext.dataDir)
         val knownBytes = databaseBytes + imagesBytes + pagesBytes + ttsBytes + aiBytes + temporaryBytes
         val otherBytes = (appBytes - knownBytes).coerceAtLeast(0L)
-        val articleCount = database.articleDao().countArticles()
-        val feedCount = database.feedDao().countFeeds()
-        val storedContentCount = database.articleContentDao().countContent()
-        val readingPositionCount = database.articleReadingPositionDao().countPositions()
-        val imageCount = database.articleImageDao().countImages()
-        val pageCount = database.articlePageSnapshotDao().countPages()
+        val databaseCounts = databaseStats.getStats()
         val ttsCount = ttsDirectory.listFiles()?.count { !it.name.startsWith(".") } ?: 0
         val aiCount = if (aiBytes > 0L) 1 else 0
         val temporaryCount = countFiles(appContext.cacheDir) + webViewCacheDirectories.sumOf(::countFiles)
@@ -172,17 +167,18 @@ class StorageRepository(
                 StorageCategoryUsage(
                     category = StorageCategory.ARTICLE_DATA,
                     bytes = databaseBytes,
-                    itemCount = articleCount + feedCount + storedContentCount + readingPositionCount
+                    itemCount = databaseCounts.articleCount + databaseCounts.feedCount +
+                        databaseCounts.storedContentCount + databaseCounts.readingPositionCount
                 ),
                 StorageCategoryUsage(
                     category = StorageCategory.OFFLINE_PAGES,
                     bytes = pagesBytes,
-                    itemCount = pageCount
+                    itemCount = databaseCounts.pageCount
                 ),
                 StorageCategoryUsage(
                     category = StorageCategory.DOWNLOADED_IMAGES,
                     bytes = imagesBytes,
-                    itemCount = imageCount
+                    itemCount = databaseCounts.imageCount
                 ),
                 StorageCategoryUsage(
                     category = StorageCategory.TTS_MODELS,
@@ -205,10 +201,10 @@ class StorageRepository(
                     itemCount = 0
                 )
             ),
-            articleCount = articleCount,
-            feedCount = feedCount,
-            storedContentCount = storedContentCount,
-            readingPositionCount = readingPositionCount
+            articleCount = databaseCounts.articleCount,
+            feedCount = databaseCounts.feedCount,
+            storedContentCount = databaseCounts.storedContentCount,
+            readingPositionCount = databaseCounts.readingPositionCount
         )
     }
 

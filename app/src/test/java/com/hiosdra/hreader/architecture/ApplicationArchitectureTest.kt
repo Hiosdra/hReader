@@ -62,4 +62,20 @@ class ApplicationArchitectureTest {
             )
             .check(productionClasses)
     }
+
+    @Test
+    fun roomDetailsShouldStayInPersistenceOrCompositionRoot() {
+        noClasses()
+            .that().resideOutsideOfPackages(
+                "com.hiosdra.hreader.adapter.persistence..",
+                "com.hiosdra.hreader.bootstrap.."
+            )
+            .should().dependOnClassesThat()
+            .resideInAnyPackage(
+                "androidx.room..",
+                "androidx.sqlite..",
+                "com.hiosdra.hreader.adapter.persistence.room.."
+            )
+            .check(productionClasses)
+    }
 }

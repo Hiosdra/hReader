@@ -9,7 +9,9 @@ import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.Feed
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -176,6 +178,92 @@ class ArticleSyncCoordinatorTest {
         assertNull(preferences.checkpoint)
     }
 
+    @Test
+    fun `a recent completed full sync uses incremental changes with overlap`() = runBlocking {
+        val lastSync = clock.millis() - 30 * 60 * 1000L
+        val lastFull = clock.millis() - 2 * 24 * 60 * 60 * 1000L
+        val preferences = FakeSyncPreferences(
+            lastSyncTimestamp = lastSync,
+            lastFullSyncTimestamp = lastFull
+        )
+        val api = mockk<FeedBackend>()
+        val changedAfter = io.mockk.slot<Instant>()
+        coEvery {
+            api.getEntriesChangedAfter(capture(changedAfter), any(), any())
+        } returns EntriesPage(listOf(entry(3L)), null)
+        val coordinator = coordinator(api, preferences)
+
+        val result = coordinator.run(forceFullSync = false, ownerKey = OWNER) { entries, _ ->
+            ArticleSyncStats(fetched = entries.size)
+        }
+
+        assertTrue(result.isIncremental)
+        assertEquals(Instant.ofEpochMilli(lastSync).minusSeconds(5 * 60), changedAfter.captured)
+        assertNull(preferences.checkpoint)
+        coVerify(exactly = 0) { api.getUnreadEntries(any(), any()) }
+    }
+
+    @Test
+    fun `empty page is a successful terminal page and does not invoke persistence`() = runBlocking {
+        val preferences = FakeSyncPreferences()
+        val api = mockk<FeedBackend>()
+        coEvery { api.getUnreadEntries(any(), any()) } returns EntriesPage(emptyList(), "ignored")
+        val coordinator = coordinator(api, preferences)
+        var persistedPages = 0
+
+        val result = coordinator.run(forceFullSync = true, ownerKey = OWNER) { _, _ ->
+            persistedPages++
+            ArticleSyncStats(fetched = 1)
+        }
+
+        assertEquals(0, result.stats.fetched)
+        assertEquals(0, persistedPages)
+        assertNull(preferences.checkpoint)
+    }
+
+    @Test
+    fun `partial pages are accumulated until the terminal cursor`() = runBlocking {
+        val preferences = FakeSyncPreferences()
+        val api = mockk<FeedBackend>()
+        coEvery { api.getUnreadEntries(any(), any()) } answers {
+            when (secondArg<String?>()) {
+                null -> EntriesPage(listOf(entry(4L)), "next")
+                else -> EntriesPage(listOf(entry(5L)), null)
+            }
+        }
+        val coordinator = coordinator(api, preferences)
+
+        val result = coordinator.run(forceFullSync = true, ownerKey = OWNER) { entries, _ ->
+            ArticleSyncStats(fetched = entries.size)
+        }
+
+        assertEquals(2, result.stats.fetched)
+        assertNull(preferences.checkpoint)
+    }
+
+    @Test
+    fun `cancellation leaves the last durable cursor for retry`() = runBlocking {
+        val preferences = FakeSyncPreferences()
+        val api = mockk<FeedBackend>()
+        coEvery { api.getUnreadEntries(any(), any()) } answers {
+            if (secondArg<String?>() == null) {
+                EntriesPage(listOf(entry(6L)), "next")
+            } else {
+                throw CancellationException("cancelled")
+            }
+        }
+        val coordinator = coordinator(api, preferences)
+
+        try {
+            coordinator.run(forceFullSync = true, ownerKey = OWNER) { entries, _ ->
+                ArticleSyncStats(fetched = entries.size)
+            }
+            error("Cancellation should be propagated")
+        } catch (_: CancellationException) {
+            assertEquals("next", preferences.checkpoint?.cursor)
+        }
+    }
+
     private fun coordinator(
         api: FeedBackend,
         preferences: FakeSyncPreferences
@@ -206,7 +294,9 @@ class ArticleSyncCoordinatorTest {
 }
 
 private class FakeSyncPreferences(
-    var checkpoint: SyncCheckpoint? = null
+    var checkpoint: SyncCheckpoint? = null,
+    private val lastSyncTimestamp: Long = 0L,
+    private val lastFullSyncTimestamp: Long = 0L
 ) : SyncPreferences by mockk<SyncPreferences>(relaxed = true) {
     override fun getCacheOwnerKey(): String = "owner"
     override fun getSyncCheckpoint(): SyncCheckpoint? = checkpoint
@@ -216,6 +306,6 @@ private class FakeSyncPreferences(
     override fun clearSyncCheckpoint() {
         checkpoint = null
     }
-    override fun getLastSyncTimestamp(): Long = 0L
-    override fun getLastFullSyncTimestamp(): Long = 0L
+    override fun getLastSyncTimestamp(): Long = lastSyncTimestamp
+    override fun getLastFullSyncTimestamp(): Long = lastFullSyncTimestamp
 }

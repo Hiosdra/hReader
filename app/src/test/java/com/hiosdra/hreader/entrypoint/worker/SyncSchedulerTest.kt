@@ -2,12 +2,16 @@ package com.hiosdra.hreader.entrypoint.worker
 
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
+import android.app.Application
 import android.content.Context
+import android.net.NetworkCapabilities
 import androidx.work.Data
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.Operation
+import androidx.work.PeriodicWorkRequest
 import androidx.work.impl.utils.futures.SettableFuture
 import androidx.work.WorkContinuation
 import androidx.work.WorkInfo
@@ -27,13 +31,15 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.util.UUID
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
-@RunWith(JUnit4::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(application = SyncSchedulerTestApplication::class, sdk = [35])
 class SyncSchedulerTest {
     private fun <T> completedFuture(value: T) = SettableFuture.create<T>().also { it.set(value) }
 
@@ -99,6 +105,16 @@ class SyncSchedulerTest {
 
     @Test
     fun cancelAllSync_cancelsTheActiveWorkOnly() = runBlocking {
+        every {
+            workManager.getWorkInfosForUniqueWorkFlow("ContentSyncWorker")
+        } returns flowOf(listOf(workInfo(WorkInfo.State.RUNNING)), emptyList())
+        every {
+            workManager.getWorkInfosForUniqueWorkFlow("SyncPipeline")
+        } returns flowOf(listOf(workInfo(WorkInfo.State.ENQUEUED)), emptyList())
+        every {
+            workManager.getWorkInfosForUniqueWorkFlow("SyncMaintenance")
+        } returns flowOf(listOf(workInfo(WorkInfo.State.BLOCKED)), emptyList())
+
         scheduler.cancelAllSync()
 
         verify { workManager.cancelUniqueWork("ContentSyncWorker") }
@@ -213,6 +229,67 @@ class SyncSchedulerTest {
     }
 
     @Test
+    fun periodicSync_usesCurrentIntervalAndNetworkConstraints() {
+        val periodicRequest = slot<PeriodicWorkRequest>()
+        every { syncPreferences.getSyncIntervalMinutes() } returns 30
+        every { syncPreferences.getSyncOnUnmeteredOnly() } returns true
+        every { syncPreferences.getSyncWhileRoaming() } returns true
+        every {
+            workManager.enqueueUniquePeriodicWork(
+                "ContentSyncWorker",
+                ExistingPeriodicWorkPolicy.UPDATE,
+                capture(periodicRequest)
+            )
+        } returns cancelOperation
+
+        scheduler.schedulePeriodicSync()
+
+        assertEquals(30 * 60 * 1_000L, periodicRequest.captured.workSpec.intervalDuration)
+        assertEquals(
+            NetworkType.UNMETERED,
+            periodicRequest.captured.workSpec.constraints.requiredNetworkType
+        )
+        assertTrue(periodicRequest.captured.workSpec.input.getBoolean(KEY_ENQUEUE_PREFETCH, false))
+    }
+
+    @Test
+    fun sync_withoutRoaming_requiresACompatibleNetworkRequest() {
+        val syncRequest = slot<OneTimeWorkRequest>()
+        every { syncPreferences.getSyncOnUnmeteredOnly() } returns true
+        every { syncPreferences.getSyncWhileRoaming() } returns false
+        every {
+            workManager.beginUniqueWork(
+                "SyncPipeline",
+                ExistingWorkPolicy.REPLACE,
+                capture(syncRequest)
+            )
+        } returns workContinuation
+
+        scheduler.syncNow()
+
+        val constraints = syncRequest.captured.workSpec.constraints
+        val networkRequest = checkNotNull(constraints.requiredNetworkRequest)
+        assertTrue(networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING))
+        assertTrue(networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED))
+    }
+
+    @Test
+    fun periodicSync_isCancelledWhenCredentialsAreMissing() {
+        every { backendPreferences.hasBackendCredentials() } returns false
+
+        scheduler.schedulePeriodicSync()
+
+        verify { workManager.cancelUniqueWork("ContentSyncWorker") }
+        verify(exactly = 0) {
+            workManager.enqueueUniquePeriodicWork(
+                any(),
+                any<ExistingPeriodicWorkPolicy>(),
+                any<PeriodicWorkRequest>()
+            )
+        }
+    }
+
+    @Test
     fun fullOfflinePreparation_addsFullPageStageToThePipeline() {
         val request = slot<OneTimeWorkRequest>()
 
@@ -300,3 +377,5 @@ class SyncSchedulerTest {
                 .build()
         }
 }
+
+private class SyncSchedulerTestApplication : Application()

@@ -35,6 +35,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Run lint and tests
         run: ./gradlew --configuration-cache lint test
@@ -64,6 +66,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       # A runner has no ~/.android, so AGP would generate a throwaway debug key on
       # every run. Android refuses to update an app whose signing certificate
@@ -189,6 +193,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Decode release keystore
         env:
