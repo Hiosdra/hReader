@@ -7,8 +7,8 @@ import com.hiosdra.hreader.adapter.ai.common.CredibilityReportFactory
 import com.hiosdra.hreader.adapter.ai.common.CredibilityResponseParser
 import com.hiosdra.hreader.core.domain.model.CredibilityConfidence
 import com.hiosdra.hreader.core.domain.model.CredibilitySource
-import com.hiosdra.hreader.adapter.preferences.PreferencesManager
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
+import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.mockk.coEvery
@@ -31,7 +31,7 @@ import java.time.Instant
 
 class ArticleAiServiceCredibilityTest {
     private val api = mockk<OpenRouterApiService>()
-    private val preferences = mockk<PreferencesManager>()
+    private val preferences = mockk<AiPreferences>()
     private val modelCatalog = mockk<AiModelCatalog>()
     private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
     private val service = ArticleAiService(

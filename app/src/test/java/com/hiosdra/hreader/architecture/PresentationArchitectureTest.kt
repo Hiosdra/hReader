@@ -71,11 +71,11 @@ class PresentationArchitectureTest {
     }
 
     @Test
-    fun presentationShouldUseCapabilityPreferencePorts() {
+    fun presentationShouldNotDependOnPreferenceAdapters() {
         noClasses()
             .that().resideInAPackage("com.hiosdra.hreader.presentation..")
             .should().dependOnClassesThat()
-            .haveFullyQualifiedName("com.hiosdra.hreader.core.application.port.out.AppPreferences")
+            .resideInAPackage("com.hiosdra.hreader.adapter.preferences..")
             .check(productionClasses)
     }
 }
