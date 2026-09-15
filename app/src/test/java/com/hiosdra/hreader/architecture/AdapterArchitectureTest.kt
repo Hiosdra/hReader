@@ -51,6 +51,32 @@ class AdapterArchitectureTest {
     }
 
     @Test
+    fun articleQueryRepositoryShouldNotDependOnSynchronizationDetails() {
+        val synchronizationDetails = listOf(
+            "com.hiosdra.hreader.adapter.persistence.ArticleSyncEngine",
+            "com.hiosdra.hreader.adapter.persistence.ArticleRetentionRepository",
+            "com.hiosdra.hreader.adapter.persistence.PendingChangeRepository",
+            "com.hiosdra.hreader.core.application.port.out.ArticleSyncStore",
+            "com.hiosdra.hreader.core.application.port.out.ArticleRetentionStore",
+            "com.hiosdra.hreader.core.application.port.out.PendingChangeStore",
+            "com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao",
+            "com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMutationDao",
+            "com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMaintenanceDao",
+            "com.hiosdra.hreader.adapter.persistence.room.dao.PendingChangeDao",
+            "com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRetentionDao"
+        )
+        synchronizationDetails.forEach { dependencyName ->
+            noClasses()
+                .that().haveFullyQualifiedName(
+                    "com.hiosdra.hreader.adapter.persistence.ArticleQueryRepository"
+                )
+                .should().dependOnClassesThat()
+                .haveFullyQualifiedName(dependencyName)
+                .check(productionClasses)
+        }
+    }
+
+    @Test
     fun adaptersShouldNotDependOnEntrypoints() {
         noClasses()
             .that().resideInAPackage("com.hiosdra.hreader.adapter..")

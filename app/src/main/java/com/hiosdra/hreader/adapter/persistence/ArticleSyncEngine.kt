@@ -4,7 +4,8 @@ import android.util.Log
 import androidx.room.withTransaction
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleStatsDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FullSyncSeenDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
@@ -14,11 +15,13 @@ import com.hiosdra.hreader.core.application.exception.StaleSyncSessionException
 import com.hiosdra.hreader.core.application.observability.ArticleSyncStats
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
+import com.hiosdra.hreader.core.application.port.out.ArticleRetentionStore
 import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.ENTRIES_PAGE_LIMIT
 import com.hiosdra.hreader.core.application.port.out.FeedBackend
 import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
+import com.hiosdra.hreader.core.application.port.out.PendingChangeStore
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.sync.ArticleSyncResult
@@ -41,7 +44,8 @@ private val INCREMENTAL_SYNC_OVERLAP: Duration = Duration.ofMinutes(5)
 private val READ_ARTICLE_RETENTION: Duration = Duration.ofDays(30)
 
 internal class ArticleSyncEngine(
-    private val articleDao: ArticleDao,
+    private val articleRecordDao: ArticleRecordDao,
+    private val articleStatsDao: ArticleStatsDao,
     private val articleContentDao: ArticleContentDao,
     private val feedDao: FeedDao,
     private val fullSyncSeenDao: FullSyncSeenDao,
@@ -51,7 +55,9 @@ internal class ArticleSyncEngine(
     private val performance: SyncPerformanceTracker,
     private val imageStore: ArticleImageStore,
     private val credibilityStore: CredibilityStore,
-    private val backendIdentity: BackendIdentity
+    private val backendIdentity: BackendIdentity,
+    private val pendingChangeStore: PendingChangeStore,
+    private val articleRetentionStore: ArticleRetentionStore
 ) : ArticleSyncStore {
     private val syncMutex = Mutex()
     private val syncCoordinator = ArticleSyncCoordinator(
@@ -106,7 +112,7 @@ internal class ArticleSyncEngine(
         val target = preferences.getOfflineBacklogTarget()
         if (target <= 0) return
 
-        var storedCount = articleDao.countArticles()
+        var storedCount = articleStatsDao.countArticles()
         if (storedCount >= target) return
 
         try {
@@ -120,7 +126,7 @@ internal class ArticleSyncEngine(
                     if (page.entries.isEmpty()) break
 
                     val pageIds = page.entries.map { it.id.toString() }
-                    val existingIds = articleDao.getExistingIds(pageIds).toHashSet()
+                    val existingIds = articleRecordDao.getExistingIds(pageIds).toHashSet()
                     val missing = page.entries
                         .filterNot { it.id.toString() in existingIds }
                         .take(target - storedCount)
@@ -152,7 +158,7 @@ internal class ArticleSyncEngine(
         }
         db.withTransaction {
             feedDao.insertFeeds(feeds.preservingAiOverviewPreloading())
-            articleDao.insertArticles(articles)
+            articleRecordDao.insertArticles(articles)
         }
     }
 
@@ -199,7 +205,7 @@ internal class ArticleSyncEngine(
             val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
             if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
             staleIds.chunked(DELETE_CHUNK).forEach { feedIds ->
-                articleDao.deleteByFeedIds(feedIds)
+                articleRecordDao.deleteByFeedIds(feedIds)
                 feedDao.deleteByIds(feedIds)
             }
         }
@@ -214,7 +220,9 @@ internal class ArticleSyncEngine(
     private suspend fun insertArticlesPreservingPendingStatus(
         fetchedArticles: List<ArticleEntity>
     ): PagePersistenceResult {
-        val existingArticles = articleDao.getArticlesImmediate(fetchedArticles.map { it.id }).associateBy { it.id }
+        val existingArticles = articleRecordDao
+            .getArticlesImmediate(fetchedArticles.map { it.id })
+            .associateBy { it.id }
         val now = Instant.now()
         val reconciled = fetchedArticles.map { fetched ->
             fetched to fetched.reconciledWith(existingArticles[fetched.id], now)
@@ -232,7 +240,7 @@ internal class ArticleSyncEngine(
                     local.publishedAt != fetched.publishedAt
             }
         }
-        if (changed.isNotEmpty()) articleDao.insertArticles(changed.map { it.second })
+        if (changed.isNotEmpty()) articleRecordDao.insertArticles(changed.map { it.second })
         val inserted = changed.count { (fetched, _) -> existingArticles[fetched.id] == null }
         return PagePersistenceResult(
             stats = ArticleSyncStats(
@@ -249,16 +257,18 @@ internal class ArticleSyncEngine(
         val stale = fullSyncSeenDao.getSyncedUnreadIdsMissingFrom(fullSyncRunId)
         if (stale.isEmpty()) return
         Log.d(TAG, "Dropping ${stale.size} locally unread articles the backend no longer returns")
-        stale.chunked(DELETE_CHUNK).forEach { articleDao.deleteByIds(it) }
+        stale.chunked(DELETE_CHUNK).forEach { articleRecordDao.deleteByIds(it) }
     }
 
     private suspend fun pruneExpiredReadArticles() {
-        val removed = articleDao.deleteArticlesReadBefore(Instant.now().minus(READ_ARTICLE_RETENTION))
+        val removed = articleRetentionStore.deleteReadArticlesBefore(
+            Instant.now().minus(READ_ARTICLE_RETENTION)
+        )
         if (removed > 0) Log.d(TAG, "Pruned $removed read articles past the retention window")
     }
 
     private suspend fun pushPendingStatuses(ownerKey: String) {
-        val pending = articleDao.getPendingStatuses()
+        val pending = pendingChangeStore.getPendingStatuses()
         if (pending.isEmpty()) return
         Log.i(TAG, "Pushing ${pending.size} queued status changes")
         pending.groupBy { it.status ?: ArticleStatus.UNREAD }.forEach { (status, queued) ->
@@ -267,7 +277,7 @@ internal class ArticleSyncEngine(
                 queued.map { it.id }.chunked(STATUS_UPDATE_CHUNK).forEach { chunk ->
                     api.updateEntriesStatus(chunk.map { it.toLong() }, status)
                     checkSession(ownerKey)
-                    articleDao.clearPendingSync(chunk, status)
+                    pendingChangeStore.clearPendingStatuses(chunk, status)
                 }
             } catch (e: CancellationException) {
                 throw e

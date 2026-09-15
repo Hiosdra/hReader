@@ -57,7 +57,7 @@ class CacheDataCleanerIntegrationTest {
 
         cleaner.clearAll()
 
-        assertEquals(0, database.articleDao().countArticles())
+        assertEquals(0, database.articleStatsDao().countArticles())
         assertEquals(0, database.feedDao().countFeeds())
         assertEquals(0, database.articleContentDao().countContent())
         assertEquals(0, database.articleImageDao().countImages())
@@ -117,7 +117,7 @@ class CacheDataCleanerIntegrationTest {
             database.feedDao().insertFeeds(
                 listOf(FeedEntity(1L, "Feed", "https://example.com", "https://example.com/feed.xml"))
             )
-            database.articleDao().insertArticles(listOf(article))
+            database.articleRecordDao().insertArticles(listOf(article))
             database.articleContentDao().insertArticleContent(
                 ArticleContent(
                     entryId = 1L,

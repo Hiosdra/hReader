@@ -1,7 +1,7 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
 import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
@@ -41,7 +41,7 @@ class ArticleContentRepositoryTest {
 
     private val backend = mockk<FeedBackend>()
     private val articleContentDao = mockk<ArticleContentDao>(relaxed = true)
-    private val articleDao = mockk<ArticleDao>(relaxed = true)
+    private val articleDao = mockk<ArticleRecordDao>(relaxed = true)
     private val articleImageStore = mockk<ArticleImageStore>(relaxed = true)
     private val credibilityStore = mockk<CredibilityStore>(relaxed = true)
     private val articleAiOverviewStore = mockk<ArticleAiOverviewStore>(relaxed = true)

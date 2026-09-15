@@ -12,10 +12,12 @@ import com.hiosdra.hreader.adapter.persistence.ArticleMaintenanceRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleMutationRepository
 import com.hiosdra.hreader.adapter.persistence.ArticlePageRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleQueryRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleRetentionRepository
 import com.hiosdra.hreader.adapter.persistence.CacheDataCleaner
 import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleSyncEngine
+import com.hiosdra.hreader.adapter.persistence.PendingChangeRepository
 import com.hiosdra.hreader.adapter.persistence.RoomStorageDatabaseStatsStore
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
 import com.hiosdra.hreader.adapter.persistence.OfflineReadinessRepository
@@ -67,6 +69,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleReadingPositionStore
 import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
 import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
+import com.hiosdra.hreader.core.application.port.out.ArticleRetentionStore
 import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlaybackServiceControl
@@ -83,6 +86,7 @@ import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
 import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
+import com.hiosdra.hreader.core.application.port.out.PendingChangeStore
 import com.hiosdra.hreader.core.application.port.out.PreferenceWriteBarrier
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
@@ -134,7 +138,13 @@ val appModule = module {
             .fallbackToDestructiveMigration(false)
             .build()
     }
-    single { get<AppDatabase>().articleDao() }
+    single { get<AppDatabase>().articleQueryDao() }
+    single { get<AppDatabase>().articleRecordDao() }
+    single { get<AppDatabase>().articleStatsDao() }
+    single { get<AppDatabase>().articleMutationDao() }
+    single { get<AppDatabase>().pendingChangeDao() }
+    single { get<AppDatabase>().articleMaintenanceDao() }
+    single { get<AppDatabase>().articleRetentionDao() }
     single { get<AppDatabase>().feedDao() }
     single { get<AppDatabase>().articleContentDao() }
     single { get<AppDatabase>().articleImageDao() }
@@ -147,7 +157,8 @@ val appModule = module {
     single { get<AppDatabase>().articleReadingPositionDao() }
     single {
         ArticleSyncEngine(
-            articleDao = get(),
+            articleRecordDao = get(),
+            articleStatsDao = get(),
             articleContentDao = get(),
             feedDao = get(),
             fullSyncSeenDao = get(),
@@ -157,19 +168,25 @@ val appModule = module {
             performance = get(),
             imageStore = get(),
             credibilityStore = get(),
-            backendIdentity = get()
+            backendIdentity = get(),
+            pendingChangeStore = get(),
+            articleRetentionStore = get()
         )
     }
     single { ArticleQueryRepository(get(), get()) }
     single<ArticleQueryStore> { get<ArticleQueryRepository>() }
     single<ArticleMutationStore> { ArticleMutationRepository(get()) }
     single<ArticleSyncStore> { get<ArticleSyncEngine>() }
-    single<ArticleMaintenanceStore> { ArticleMaintenanceRepository(get()) }
+    single { ArticleMaintenanceRepository(get()) }
+    single<ArticleMaintenanceStore> { get<ArticleMaintenanceRepository>() }
+    single { ArticleRetentionRepository(get()) }
+    single<ArticleRetentionStore> { get<ArticleRetentionRepository>() }
+    single<PendingChangeStore> { PendingChangeRepository(get()) }
     single<ArticleAiOverviewPrefetchStore> { ArticleAiOverviewPrefetchRepository(get()) }
     single<ArticlePagingProvider> {
         ArticlePagingProvider { query -> get<ArticleQueryRepository>().pageArticles(query) }
     }
-    single { ArticleImageRepository(androidApplication(), get(), get(), get(), get(), get()) }
+    single { ArticleImageRepository(androidApplication(), get(), get(), get(), get()) }
     single<ArticleImageStore> { get<ArticleImageRepository>() }
     single<coil3.ImageLoader> {
         val okHttpClient = get<okhttp3.OkHttpClient>().newBuilder()
@@ -197,13 +214,13 @@ val appModule = module {
         )
     }
     single<ArticleContentStore> { get<ArticleContentRepository>() }
-    single { ArticlePageRepository(androidApplication(), get(), get(), get(), get()) }
+    single { ArticlePageRepository(androidApplication(), get(), get(), get(), get(), get()) }
     single<ArticlePageStore> { get<ArticlePageRepository>() }
     single { ArticleReadingPositionRepository(get()) }
     single<ArticleReadingPositionStore> { get<ArticleReadingPositionRepository>() }
     single { OfflineReadinessRepository(get(), get(), get(), get(), get()) }
     single<OfflineReadinessStore> { get<OfflineReadinessRepository>() }
-    single<FeedRepository> { FeedRepository(get(), get(), get(), get()) }
+    single<FeedRepository> { FeedRepository(get(), get(), get(), get(), get()) }
     single<FeedStore> { get<FeedRepository>() }
     single {
         CacheDataCleaner(
@@ -259,7 +276,7 @@ val appModule = module {
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }
     single {
         RoomStorageDatabaseStatsStore(
-            articleDao = get(),
+            articleStatsDao = get(),
             feedDao = get(),
             articleContentDao = get(),
             articleReadingPositionDao = get(),

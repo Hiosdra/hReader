@@ -21,7 +21,7 @@ internal class CacheDataCleaner(
         }
         db.withTransaction {
             val articleImageDao = db.articleImageDao()
-            val articleDao = db.articleDao()
+            val articleRecordDao = db.articleRecordDao()
             db.articleCredibilityDao().clearAll()
             db.articleAiOverviewDao().clearAll()
             db.articleContentDao().clearAll()
@@ -29,8 +29,8 @@ internal class CacheDataCleaner(
             articleImageDao.clearExpectedImages()
             db.articlePageSnapshotDao().clearAll()
             db.articleReadingPositionDao().clearAll()
-            articleDao.clearAll()
-            articleDao.clearSearchIndex()
+            articleRecordDao.clearAll()
+            articleRecordDao.clearSearchIndex()
             db.feedDao().clearAll()
             db.fullSyncSeenDao().deleteAll()
         }

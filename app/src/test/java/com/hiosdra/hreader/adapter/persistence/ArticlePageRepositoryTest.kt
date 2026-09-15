@@ -2,8 +2,9 @@ package com.hiosdra.hreader.adapter.persistence
 
 import android.content.Context
 import com.hiosdra.hreader.adapter.persistence.ArticlePageRepository
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMaintenanceDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticlePageSnapshot
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -42,7 +43,8 @@ class ArticlePageRepositoryTest {
             val context = mockk<Context>()
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
-            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val articleMaintenanceDao = mockk<ArticleMaintenanceDao>(relaxed = true)
+            val articleRecordDao = mockk<ArticleRecordDao>(relaxed = true)
             val fetchedAt = Instant.parse("2026-09-01T12:34:56Z")
             coEvery { snapshotDao.get(42L) } returns ArticlePageSnapshot(
                 entryId = 42L,
@@ -53,7 +55,14 @@ class ArticlePageRepositoryTest {
                 byteSize = 12,
                 isComplete = true
             )
-            val page = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
+            val page = ArticlePageRepository(
+                context,
+                snapshotDao,
+                articleMaintenanceDao,
+                articleRecordDao,
+                httpClient(),
+                policy()
+            )
                 .getOfflinePage(42L, ARTICLE_URL)
 
             assertEquals("https://example.com/story?redirected=1", page?.finalUrl)
@@ -71,13 +80,15 @@ class ArticlePageRepositoryTest {
             val context = mockk<Context>()
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
-            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val articleMaintenanceDao = mockk<ArticleMaintenanceDao>(relaxed = true)
+            val articleRecordDao = mockk<ArticleRecordDao>(relaxed = true)
             val snapshot = slot<ArticlePageSnapshot>()
             val articleUrl = "http://127.0.0.1:${server.address.port}/articles/story"
             val repository = ArticlePageRepository(
                 context,
                 snapshotDao,
-                articleDao,
+                articleMaintenanceDao,
+                articleRecordDao,
                 httpClient(),
                 policy("127.0.0.1", InetAddress.getByName("127.0.0.1"))
             )
@@ -146,11 +157,13 @@ class ArticlePageRepositoryTest {
             val context = mockk<Context>()
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
-            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val articleMaintenanceDao = mockk<ArticleMaintenanceDao>(relaxed = true)
+            val articleRecordDao = mockk<ArticleRecordDao>(relaxed = true)
             val repository = ArticlePageRepository(
                 context,
                 snapshotDao,
-                articleDao,
+                articleMaintenanceDao,
+                articleRecordDao,
                 httpClient(),
                 policy("127.0.0.1", InetAddress.getByName("127.0.0.1"))
             )
@@ -183,7 +196,8 @@ class ArticlePageRepositoryTest {
             val context = mockk<Context>()
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
-            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val articleMaintenanceDao = mockk<ArticleMaintenanceDao>(relaxed = true)
+            val articleRecordDao = mockk<ArticleRecordDao>(relaxed = true)
             coEvery { snapshotDao.get(42L) } returns ArticlePageSnapshot(
                 entryId = 42L,
                 originalUrl = ARTICLE_URL,
@@ -193,7 +207,14 @@ class ArticlePageRepositoryTest {
                 byteSize = 0,
                 isComplete = true
             )
-            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
+            val repository = ArticlePageRepository(
+                context,
+                snapshotDao,
+                articleMaintenanceDao,
+                articleRecordDao,
+                httpClient(),
+                policy()
+            )
 
             assertTrue(repository.getOfflinePage(42L, ARTICLE_URL) == null)
             coVerify { snapshotDao.deleteForEntries(listOf(42L)) }
@@ -211,7 +232,8 @@ class ArticlePageRepositoryTest {
             val context = mockk<Context>()
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
-            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val articleMaintenanceDao = mockk<ArticleMaintenanceDao>(relaxed = true)
+            val articleRecordDao = mockk<ArticleRecordDao>(relaxed = true)
             coEvery { snapshotDao.getAll() } returns listOf(
                 ArticlePageSnapshot(
                     entryId = 42L,
@@ -223,7 +245,14 @@ class ArticlePageRepositoryTest {
                     isComplete = true
                 )
             )
-            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
+            val repository = ArticlePageRepository(
+                context,
+                snapshotDao,
+                articleMaintenanceDao,
+                articleRecordDao,
+                httpClient(),
+                policy()
+            )
 
             assertEquals(
                 listOf(42L to ARTICLE_URL),
@@ -243,7 +272,8 @@ class ArticlePageRepositoryTest {
             val context = mockk<Context>()
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
-            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val articleMaintenanceDao = mockk<ArticleMaintenanceDao>(relaxed = true)
+            val articleRecordDao = mockk<ArticleRecordDao>(relaxed = true)
             coEvery { snapshotDao.get(42L) } returns ArticlePageSnapshot(
                 entryId = 42L,
                 originalUrl = ARTICLE_URL,
@@ -253,7 +283,14 @@ class ArticlePageRepositoryTest {
                 byteSize = 5L * 1024 * 1024 + 1,
                 isComplete = true
             )
-            val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
+            val repository = ArticlePageRepository(
+                context,
+                snapshotDao,
+                articleMaintenanceDao,
+                articleRecordDao,
+                httpClient(),
+                policy()
+            )
 
             assertTrue(repository.getOfflinePage(42L, ARTICLE_URL) == null)
             coVerify { snapshotDao.deleteForEntries(listOf(42L)) }
@@ -274,8 +311,9 @@ class ArticlePageRepositoryTest {
                 val context = mockk<Context>()
                 every { context.filesDir } returns root
                 val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
-                val articleDao = mockk<ArticleDao>(relaxed = true)
-                coEvery { articleDao.getExistingIds(listOf("42")) } returns listOf("42")
+                val articleMaintenanceDao = mockk<ArticleMaintenanceDao>(relaxed = true)
+                val articleRecordDao = mockk<ArticleRecordDao>(relaxed = true)
+                coEvery { articleRecordDao.getExistingIds(listOf("42")) } returns listOf("42")
                 coEvery { snapshotDao.getBatch(Long.MIN_VALUE, 500) } returns listOf(
                     ArticlePageSnapshot(
                         entryId = 42L,
@@ -287,7 +325,14 @@ class ArticlePageRepositoryTest {
                         isComplete = true
                     )
                 )
-                val repository = ArticlePageRepository(context, snapshotDao, articleDao, httpClient(), policy())
+                val repository = ArticlePageRepository(
+                    context,
+                    snapshotDao,
+                    articleMaintenanceDao,
+                    articleRecordDao,
+                    httpClient(),
+                    policy()
+                )
 
                 repository.cleanupOrphanedPages()
 
@@ -315,11 +360,13 @@ class ArticlePageRepositoryTest {
             val context = mockk<Context>()
             every { context.filesDir } returns root
             val snapshotDao = mockk<ArticlePageSnapshotDao>(relaxed = true)
-            val articleDao = mockk<ArticleDao>(relaxed = true)
+            val articleMaintenanceDao = mockk<ArticleMaintenanceDao>(relaxed = true)
+            val articleRecordDao = mockk<ArticleRecordDao>(relaxed = true)
             val repository = ArticlePageRepository(
                 context,
                 snapshotDao,
-                articleDao,
+                articleMaintenanceDao,
+                articleRecordDao,
                 httpClient(),
                 RemoteResourcePolicyAdapter(
                     allowedHosts = { setOf("127.0.0.1") },

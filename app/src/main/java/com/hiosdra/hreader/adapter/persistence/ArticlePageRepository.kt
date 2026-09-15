@@ -6,8 +6,9 @@ import com.hiosdra.hreader.adapter.network.HttpStatusException
 import com.hiosdra.hreader.adapter.network.NonRetryableNetworkException
 import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
 import com.hiosdra.hreader.adapter.network.withNetworkRetries
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMaintenanceDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticlePageSnapshot
 import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.sync.SyncMode
@@ -40,7 +41,8 @@ import java.util.concurrent.atomic.AtomicInteger
 class ArticlePageRepository(
     context: Context,
     private val snapshotDao: ArticlePageSnapshotDao,
-    private val articleDao: ArticleDao,
+    private val articleMaintenanceDao: ArticleMaintenanceDao,
+    private val articleRecordDao: ArticleRecordDao,
     httpClient: OkHttpClient,
     private val remoteResourcePolicy: RemoteResourcePolicyAdapter
 ) : ArticlePageStore {
@@ -126,12 +128,12 @@ class ArticlePageRepository(
         }
 
     override suspend fun getMissingPageTargets(limit: Int): List<Pair<Long, String>> =
-        articleDao.getPrefetchTargetsMissingPages(limit).mapNotNull { target ->
+        articleMaintenanceDao.getPrefetchTargetsMissingPages(limit).mapNotNull { target ->
             target.id.toLongOrNull()?.let { it to target.url }
         }
 
     override suspend fun countMissingPageTargets(): Int =
-        articleDao.countPrefetchTargetsMissingPages()
+        articleMaintenanceDao.countPrefetchTargetsMissingPages()
 
     override suspend fun prefetchPages(
         entries: List<Pair<Long, String>>,
@@ -168,7 +170,7 @@ class ArticlePageRepository(
         while (true) {
             val snapshots = snapshotDao.getBatch(afterEntryId, DELETE_CHUNK)
             if (snapshots.isEmpty()) break
-            val currentEntryIds = articleDao.getExistingIds(snapshots.map { it.entryId.toString() })
+            val currentEntryIds = articleRecordDao.getExistingIds(snapshots.map { it.entryId.toString() })
                 .mapNotNull(String::toLongOrNull)
                 .toHashSet()
             val entriesToDelete = mutableListOf<Long>()
