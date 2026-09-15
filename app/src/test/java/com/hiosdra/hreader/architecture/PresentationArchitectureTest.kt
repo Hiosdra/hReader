@@ -5,16 +5,10 @@ import org.junit.Test
 
 class PresentationArchitectureTest {
     @Test
-    fun featurePresentationShouldNotResolveDependenciesFromKoin() {
+    fun presentationLeavesShouldNotResolveDependenciesFromKoin() {
         noClasses()
-            .that().resideInAnyPackage(
-                "com.hiosdra.hreader.presentation.article..",
-                "com.hiosdra.hreader.presentation.components..",
-                "com.hiosdra.hreader.presentation.feeds..",
-                "com.hiosdra.hreader.presentation.main..",
-                "com.hiosdra.hreader.presentation.onboarding..",
-                "com.hiosdra.hreader.presentation.settings.."
-            )
+            .that().resideInAPackage("com.hiosdra.hreader.presentation..")
+            .and().resideOutsideOfPackages("com.hiosdra.hreader.presentation.navigation..")
             .should().dependOnClassesThat()
             .resideInAnyPackage("org.koin..")
             .check(productionClasses)
