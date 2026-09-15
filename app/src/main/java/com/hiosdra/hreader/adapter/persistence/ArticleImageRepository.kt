@@ -7,7 +7,6 @@ import com.hiosdra.hreader.adapter.network.HttpStatusException
 import com.hiosdra.hreader.adapter.network.NonRetryableNetworkException
 import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
 import com.hiosdra.hreader.adapter.network.withNetworkRetries
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageManifest
@@ -37,7 +36,6 @@ import java.util.UUID
 class ArticleImageRepository(
     context: Context,
     private val articleImageDao: ArticleImageDao,
-    private val articleDao: ArticleDao,
     private val okHttpClient: OkHttpClient,
     private val preferencesManager: SyncPreferences,
     private val remoteResourcePolicy: RemoteResourcePolicyAdapter,

@@ -3,7 +3,7 @@ package com.hiosdra.hreader.adapter.persistence
 import android.util.Log
 import com.hiosdra.hreader.BuildConfig
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
 import com.hiosdra.hreader.core.application.content.articlePreviewHtml
 import com.hiosdra.hreader.core.application.content.ArticleHtmlTransformer
@@ -41,7 +41,7 @@ class ArticleContentRepository(
     private val embeddedMediaLabel: () -> String,
     private val backend: FeedBackend,
     private val articleContentDao: ArticleContentDao,
-    private val articleDao: ArticleDao,
+    private val articleRecordDao: ArticleRecordDao,
     private val articleImageStore: ArticleImageStore,
     private val credibilityStore: CredibilityStore,
     private val articleAiOverviewStore: ArticleAiOverviewStore,
@@ -167,7 +167,7 @@ class ArticleContentRepository(
         val storedImageUrls = stored.imageUrls.toImageUrls()
         val hasImageManifest = stored.imageUrls.isNotEmpty()
         val prepared = if (stored.isPrepared && hasImageManifest) {
-            val articleTitle = articleDao.getArticlesImmediate(listOf(entryId.toString()))
+            val articleTitle = articleRecordDao.getArticlesImmediate(listOf(entryId.toString()))
                 .firstOrNull()
                 ?.title
                 .orEmpty()
@@ -245,7 +245,9 @@ class ArticleContentRepository(
                 imageUrls = prepared.imageUrls.toImageManifest()
             )
         )
-        if (source == ArticleContentSource.FULL) articleDao.setFullContent(entryId.toString(), sourceContent)
+        if (source == ArticleContentSource.FULL) {
+            articleRecordDao.setFullContent(entryId.toString(), sourceContent)
+        }
         return ArticleText(
             html = prepared.html,
             leadImageUrl = prepared.leadImageUrl,
@@ -262,7 +264,7 @@ class ArticleContentRepository(
      * the article. One reading of the document answers all three.
      */
     private suspend fun prepare(entryId: Long, content: String, baseUri: String): PreparedArticle {
-        val article = articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull()
+        val article = articleRecordDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull()
         return withContext(Dispatchers.Default) {
             val images = prepareArticleImages(
                 content,
@@ -295,7 +297,7 @@ class ArticleContentRepository(
     )
 
     private suspend fun getCachedArticleContent(entryId: Long): CachedArticleContent? {
-        val article = articleDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull() ?: return null
+        val article = articleRecordDao.getArticlesImmediate(listOf(entryId.toString())).firstOrNull() ?: return null
         article.fullContent?.takeIf { it.isNotBlank() }?.let {
             return CachedArticleContent(it, ArticleContentSource.FULL)
         }
@@ -397,7 +399,7 @@ class ArticleContentRepository(
         // No early return on an empty article set: retention and full-sync reconciliation both
         // delete articles now, so "no articles left" is precisely when everything stored here has
         // become an orphan.
-        val currentEntryIds = articleDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
+        val currentEntryIds = articleRecordDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
         credibilityStore.cleanupOrphanedReports(currentEntryIds)
         articleAiOverviewStore.cleanupOrphaned(currentEntryIds)
 

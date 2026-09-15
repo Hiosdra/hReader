@@ -1,6 +1,6 @@
 package com.hiosdra.hreader.adapter.persistence
 
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleQueryDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import io.mockk.coEvery
@@ -13,9 +13,9 @@ import org.junit.Test
 import java.time.Instant
 
 class ArticleQueryRepositoryWindowTest {
-    private val articleDao = mockk<ArticleDao>(relaxed = true)
+    private val articleDao = mockk<ArticleQueryDao>(relaxed = true)
     private val repository = ArticleQueryRepository(
-        articleDao = articleDao,
+        articleQueryDao = articleDao,
         feedDao = mockk<FeedDao>(relaxed = true)
     )
     private val selectedAt = Instant.parse("2026-08-22T12:00:00Z")

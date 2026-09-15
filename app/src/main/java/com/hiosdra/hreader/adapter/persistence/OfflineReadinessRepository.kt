@@ -1,9 +1,9 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleStatsDao
 import com.hiosdra.hreader.core.domain.model.ArticleContentSource
 import com.hiosdra.hreader.core.domain.model.OfflineReadiness
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
@@ -14,17 +14,17 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.Instant
 
 class OfflineReadinessRepository(
-    private val articleDao: ArticleDao,
+    private val articleStatsDao: ArticleStatsDao,
     private val articleContentDao: ArticleContentDao,
     private val articleImageDao: ArticleImageDao,
     private val articlePageSnapshotDao: ArticlePageSnapshotDao,
     private val preferencesManager: SyncPreferences
 ) : OfflineReadinessStore {
     private val articleReadiness = combine(
-        articleDao.observeArticleCount(),
-        articleDao.observeUnreadCount(),
-        articleDao.observeBacklogCount(),
-        articleDao.observeOfflineTargetCount()
+        articleStatsDao.observeArticleCount(),
+        articleStatsDao.observeUnreadCount(),
+        articleStatsDao.observeBacklogCount(),
+        articleStatsDao.observeOfflineTargetCount()
     ) { articleCount, unreadCount, backlogCount, offlineTargetCount ->
         ArticleReadiness(articleCount, unreadCount, backlogCount, offlineTargetCount)
     }
