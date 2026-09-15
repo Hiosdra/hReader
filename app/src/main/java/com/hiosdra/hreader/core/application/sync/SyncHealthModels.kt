@@ -1,7 +1,5 @@
 package com.hiosdra.hreader.core.application.sync
 
-import com.squareup.moshi.JsonClass
-
 enum class SyncFreshnessState {
     NEVER_SYNCED,
     SYNCING,
@@ -35,7 +33,6 @@ enum class SyncFailureReason {
     UNKNOWN
 }
 
-@JsonClass(generateAdapter = true)
 data class SyncFailure(
     val stage: SyncFailureStage,
     val reason: SyncFailureReason,
@@ -54,7 +51,6 @@ data class ArticleSyncResult(
     val failure: SyncFailure? = null
 )
 
-@JsonClass(generateAdapter = true)
 data class SyncFeedStatus(
     val feedId: Long,
     val lastSuccessfulSyncAt: Long = 0L,
@@ -64,7 +60,6 @@ data class SyncFeedStatus(
     val latestErrorStage: SyncFailureStage? = null
 )
 
-@JsonClass(generateAdapter = true)
 data class SyncRunSummary(
     val startedAt: Long,
     val completedAt: Long? = null,
@@ -78,7 +73,6 @@ data class SyncRunSummary(
     val runId: String = ""
 )
 
-@JsonClass(generateAdapter = true)
 data class SyncHealthSnapshot(
     val lastSuccessfulSyncAt: Long = 0L,
     val lastAttemptedSyncAt: Long = 0L,

@@ -1,8 +1,11 @@
-package com.hiosdra.hreader.core.application.sync
+package com.hiosdra.hreader.entrypoint.worker
 
 import com.hiosdra.hreader.core.application.exception.BackendNotConfiguredException
 import com.hiosdra.hreader.core.application.exception.FeedOperationException
 import com.hiosdra.hreader.core.application.exception.FeedOperationFailureReason
+import com.hiosdra.hreader.core.application.sync.SyncFailure
+import com.hiosdra.hreader.core.application.sync.SyncFailureReason
+import com.hiosdra.hreader.core.application.sync.SyncFailureStage
 import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.io.IOException

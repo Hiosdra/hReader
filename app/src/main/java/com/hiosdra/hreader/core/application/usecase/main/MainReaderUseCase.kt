@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.core.application.usecase.main
 
-import androidx.paging.PagingData
 import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
 import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
@@ -12,8 +11,6 @@ import com.hiosdra.hreader.core.application.sync.SyncIntent
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.sync.SyncOperationId
-import com.hiosdra.hreader.core.domain.model.ArticleListItem
-import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Feed
 import kotlinx.coroutines.flow.Flow
@@ -29,8 +26,6 @@ class MainReaderUseCase(
     network: NetworkStatus
 ) {
     val isOnline: StateFlow<Boolean> = network.isOnline
-
-    fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> = articles.pageArticles(query)
 
     fun observeUnreadCount(feedId: Long?): Flow<Int> = articles.observeUnreadCount(feedId)
 

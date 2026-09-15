@@ -2,7 +2,6 @@ package com.hiosdra.hreader.adapter.persistence
 
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
-import com.hiosdra.hreader.core.application.port.out.ArticleSyncStore
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -13,12 +12,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 
-class ArticleRepositoryWindowTest {
+class ArticleQueryRepositoryWindowTest {
     private val articleDao = mockk<ArticleDao>(relaxed = true)
-    private val repository = ArticleRepository(
+    private val repository = ArticleQueryRepository(
         articleDao = articleDao,
-        feedDao = mockk<FeedDao>(relaxed = true),
-        syncEngine = mockk<ArticleSyncStore>(relaxed = true)
+        feedDao = mockk<FeedDao>(relaxed = true)
     )
     private val selectedAt = Instant.parse("2026-08-22T12:00:00Z")
     private val query = ArticleListQuery(sessionStart = Instant.parse("2026-08-22T00:00:00Z"))
@@ -41,14 +39,14 @@ class ArticleRepositoryWindowTest {
         assertEquals(30L, window.ids.first())
         assertEquals(50L, window.ids[window.currentIndex])
         assertEquals(30, window.windowStartIndex)
-        coVerify(exactly = 0) { articleDao.getListWindow(any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { articleDao.getListWindow(any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `missing selected article falls back to a bounded first window`() = runBlocking {
         coEvery { articleDao.countList(any(), any(), any(), any()) } returns 100_000
         coEvery { articleDao.getPublishedAt("999") } returns null
-        coEvery { articleDao.getListWindow(any(), any(), any(), any(), any(), any()) } returns
+        coEvery { articleDao.getListWindow(any(), any(), any(), any(), any()) } returns
             (1L..41L).map { it.toString() }
 
         val window = repository.listWindow(query, articleId = 999L, radius = 20)

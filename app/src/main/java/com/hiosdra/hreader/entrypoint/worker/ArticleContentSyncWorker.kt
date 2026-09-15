@@ -18,7 +18,6 @@ import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.PrefetchTarget
 import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.application.sync.SyncFailureStage
-import com.hiosdra.hreader.core.application.sync.toSyncFailure
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope

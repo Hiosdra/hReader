@@ -237,7 +237,7 @@ class SyncScheduler(
             continuation = continuation.then(fullPageRequest(plan, operationTitle, syncRunId))
         }
         continuation.then(maintenanceRequest()).enqueue()
-        return SyncOperationId(syncWork.id)
+        return SyncOperationId(syncWork.id.toString())
     }
 
     override fun observeRequestedSync(): Flow<SyncOperationStatus> =
@@ -449,21 +449,21 @@ class SyncScheduler(
 }
 
 internal fun operationStatus(infos: List<WorkInfo>): SyncOperationStatus {
-    val workIds = infos.map { SyncOperationId(it.id) }.toSet()
-    if (infos.isEmpty()) return SyncOperationStatus(workIds = workIds)
+    val operationIds = infos.map { SyncOperationId(it.id.toString()) }.toSet()
+    if (infos.isEmpty()) return SyncOperationStatus(operationIds = operationIds)
     val failed = infos.firstOrNull { it.state == WorkInfo.State.FAILED }
     if (failed != null) {
         return SyncOperationStatus(
             state = SyncOperationState.FAILED,
             errorMessage = failed.outputData.getString(KEY_ERROR_MESSAGE),
-            workIds = workIds
+            operationIds = operationIds
         )
     }
     if (infos.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }) {
-        return SyncOperationStatus(state = SyncOperationState.RUNNING, workIds = workIds)
+        return SyncOperationStatus(state = SyncOperationState.RUNNING, operationIds = operationIds)
     }
     if (infos.any { it.state == WorkInfo.State.CANCELLED }) {
-        return SyncOperationStatus(state = SyncOperationState.CANCELLED, workIds = workIds)
+        return SyncOperationStatus(state = SyncOperationState.CANCELLED, operationIds = operationIds)
     }
-    return SyncOperationStatus(state = SyncOperationState.SUCCEEDED, workIds = workIds)
+    return SyncOperationStatus(state = SyncOperationState.SUCCEEDED, operationIds = operationIds)
 }

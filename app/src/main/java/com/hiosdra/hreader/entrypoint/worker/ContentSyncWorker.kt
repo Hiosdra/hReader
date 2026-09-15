@@ -17,7 +17,6 @@ import com.hiosdra.hreader.core.application.port.out.SyncPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.sync.ArticleSyncResult
 import com.hiosdra.hreader.core.application.sync.SyncFailureStage
-import com.hiosdra.hreader.core.application.sync.toSyncFailure
 import com.hiosdra.hreader.core.domain.service.isWithinQuietHours
 import kotlinx.coroutines.CancellationException
 import java.time.Clock

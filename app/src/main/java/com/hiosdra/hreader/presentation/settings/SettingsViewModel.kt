@@ -122,13 +122,13 @@ class SettingsViewModel(
 
     private val _offline = MutableStateFlow(currentOfflineSettings())
     val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
-    private var offlineAwaitingWork = false
-    private var offlineWorkId: SyncOperationId? = null
+    private var offlineAwaitingOperation = false
+    private var offlineOperationId: SyncOperationId? = null
 
     private val _sync = MutableStateFlow(currentSyncSettings())
     val sync: StateFlow<SyncUiState> = _sync.asStateFlow()
-    private var resyncAwaitingWork = false
-    private var resyncWorkId: SyncOperationId? = null
+    private var resyncAwaitingOperation = false
+    private var resyncOperationId: SyncOperationId? = null
 
     private val _storage = MutableStateFlow(StorageUiState())
     val storage: StateFlow<StorageUiState> = _storage.asStateFlow()
@@ -143,9 +143,9 @@ class SettingsViewModel(
         }
         viewModelScope.launch {
             settings.observeOfflinePreparation().collect { progress ->
-                if (offlineAwaitingWork) {
-                    val expectedWorkId = offlineWorkId ?: return@collect
-                    if (expectedWorkId !in progress.status.workIds) return@collect
+                if (offlineAwaitingOperation) {
+                    val expectedOperationId = offlineOperationId ?: return@collect
+                    if (expectedOperationId !in progress.status.operationIds) return@collect
                 }
                 _offline.value = _offline.value.copy(
                     isPreparing = progress.isRunning,
@@ -156,21 +156,21 @@ class SettingsViewModel(
                     preparationStatus = progress.status
                 )
                 if (
-                    offlineAwaitingWork &&
+                    offlineAwaitingOperation &&
                     progress.status.state != SyncOperationState.RUNNING &&
                     progress.status.state != SyncOperationState.IDLE
                 ) {
-                    offlineAwaitingWork = false
-                    offlineWorkId = null
+                    offlineAwaitingOperation = false
+                    offlineOperationId = null
                 }
             }
         }
         viewModelScope.launch {
             settings.observeRequestedSync().collect { status ->
-                val expectedWorkId = resyncWorkId ?: return@collect
-                if (expectedWorkId !in status.workIds) return@collect
+                val expectedOperationId = resyncOperationId ?: return@collect
+                if (expectedOperationId !in status.operationIds) return@collect
                 _sync.value = _sync.value.copy(resyncStatus = status)
-                if (!resyncAwaitingWork) return@collect
+                if (!resyncAwaitingOperation) return@collect
                 when (status.state) {
                     SyncOperationState.RUNNING -> {
                         _sync.value = _sync.value.copy(isResyncing = true)
@@ -178,8 +178,8 @@ class SettingsViewModel(
                     SyncOperationState.SUCCEEDED,
                     SyncOperationState.FAILED,
                     SyncOperationState.CANCELLED -> {
-                        resyncAwaitingWork = false
-                        resyncWorkId = null
+                        resyncAwaitingOperation = false
+                        resyncOperationId = null
                         _sync.value = _sync.value.copy(isResyncing = false)
                     }
                     SyncOperationState.IDLE -> Unit
@@ -197,8 +197,8 @@ class SettingsViewModel(
     }
 
     private fun startOfflinePreparation(fullOffline: Boolean) {
-        offlineAwaitingWork = true
-        offlineWorkId = null
+        offlineAwaitingOperation = true
+        offlineOperationId = null
         _offline.value = _offline.value.copy(
             isPreparing = true,
             preparationDone = 0,
@@ -207,14 +207,14 @@ class SettingsViewModel(
             preparationStage = OfflinePreparationStage.SYNCING,
             preparationStatus = SyncOperationStatus(SyncOperationState.RUNNING)
         )
-        val workId = if (fullOffline) {
+        val operationId = if (fullOffline) {
             settings.prepareFullOffline()
         } else {
             settings.prepareForOffline()
         }
-        if (workId == null) {
-            offlineAwaitingWork = false
-            offlineWorkId = null
+        if (operationId == null) {
+            offlineAwaitingOperation = false
+            offlineOperationId = null
             _offline.value = _offline.value.copy(
                 isPreparing = false,
                 isFullOfflinePreparation = false,
@@ -225,22 +225,22 @@ class SettingsViewModel(
                 )
             )
         } else {
-            offlineAwaitingWork = true
-            offlineWorkId = workId
-            watchOfflinePreparation(workId)
+            offlineAwaitingOperation = true
+            offlineOperationId = operationId
+            watchOfflinePreparation(operationId)
         }
     }
 
-    private fun watchOfflinePreparation(workId: SyncOperationId) {
+    private fun watchOfflinePreparation(operationId: SyncOperationId) {
         viewModelScope.launch {
             val terminalProgress = settings.observeOfflinePreparation().first { progress ->
-                workId in progress.status.workIds &&
+                operationId in progress.status.operationIds &&
                     progress.status.state != SyncOperationState.RUNNING &&
                     progress.status.state != SyncOperationState.IDLE
             }
-            if (offlineWorkId != workId) return@launch
-            offlineAwaitingWork = false
-            offlineWorkId = null
+            if (offlineOperationId != operationId) return@launch
+            offlineAwaitingOperation = false
+            offlineOperationId = null
             _offline.value = _offline.value.copy(
                 isPreparing = terminalProgress.isRunning,
                 preparationDone = terminalProgress.done,
@@ -313,8 +313,8 @@ class SettingsViewModel(
      */
     fun resyncFromScratch() {
         viewModelScope.launch {
-            resyncAwaitingWork = false
-            resyncWorkId = null
+            resyncAwaitingOperation = false
+            resyncOperationId = null
             _sync.value = _sync.value.copy(
                 isResyncing = true,
                 resyncStatus = SyncOperationStatus(SyncOperationState.RUNNING),
@@ -325,13 +325,13 @@ class SettingsViewModel(
             // would turn a failed wipe into an app that never syncs again.
             settings.schedulePeriodicSync()
             if (cleared.isSuccess) {
-                val workId = settings.resyncNow()
-                if (workId != null) {
-                    resyncWorkId = workId
-                    resyncAwaitingWork = true
-                    watchResync(workId)
+                val operationId = settings.resyncNow()
+                if (operationId != null) {
+                    resyncOperationId = operationId
+                    resyncAwaitingOperation = true
+                    watchResync(operationId)
                 } else {
-                    resyncAwaitingWork = false
+                    resyncAwaitingOperation = false
                     _sync.value = _sync.value.copy(
                         isResyncing = false,
                         resyncStatus = SyncOperationStatus(
@@ -353,18 +353,18 @@ class SettingsViewModel(
         }
     }
 
-    private fun watchResync(workId: SyncOperationId) {
+    private fun watchResync(operationId: SyncOperationId) {
         viewModelScope.launch {
             val terminalStatus = settings.observeRequestedSync().first { status ->
-                workId in status.workIds && (
+                operationId in status.operationIds && (
                     status.state == SyncOperationState.SUCCEEDED ||
                         status.state == SyncOperationState.FAILED ||
                         status.state == SyncOperationState.CANCELLED
                     )
             }
-            if (resyncWorkId != workId) return@launch
-            resyncAwaitingWork = false
-            resyncWorkId = null
+            if (resyncOperationId != operationId) return@launch
+            resyncAwaitingOperation = false
+            resyncOperationId = null
             _sync.value = _sync.value.copy(
                 isResyncing = false,
                 resyncStatus = terminalStatus
