@@ -98,6 +98,7 @@ import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
+import com.hiosdra.hreader.core.application.port.out.StorageDatabaseStatsStore
 import com.hiosdra.hreader.core.application.port.out.StorageStore
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.feeds.FeedUseCase
@@ -274,7 +275,7 @@ val appModule = module {
     single<NeuralTtsEngine> { NeuralTtsEngineRegistry(listOf(get<SherpaTtsEngine>())) }
     single { ArticleTtsController(androidApplication(), get(), get(), get(), get()) }
     single<ArticleTtsPlayer> { get<ArticleTtsController>() }
-    single {
+    single<StorageDatabaseStatsStore> {
         RoomStorageDatabaseStatsStore(
             articleStatsDao = get(),
             feedDao = get(),
