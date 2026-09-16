@@ -210,7 +210,13 @@ private fun LazyListScope.articleRange(
         contentType = { offset -> itemContentType(snapshot[start + offset]) }
     ) { offset ->
         val index = start + offset
-        when (val item = pagingItems[index]) {
+        val item = snapshot.getIfInBounds(index, pagingItems.itemCount) ?: return@items
+        try {
+            pagingItems[index] ?: return@items
+        } catch (_: IndexOutOfBoundsException) {
+            return@items
+        }
+        when (item) {
             is ArticleListItem.Article -> ArticleRow(
                 entry = item.entry.toArticleRowModel(timeFormatter, unknownFeedTitle),
                 onOpen = onOpen,
@@ -226,6 +232,9 @@ private fun LazyListScope.articleRange(
         }
     }
 }
+
+internal fun <T> List<T>.getIfInBounds(index: Int, upperBound: Int): T? =
+    if (index in 0 until upperBound) getOrNull(index) else null
 
 private fun ArticleListEntry.toArticleRowModel(
     timeFormatter: DateTimeFormatter,
