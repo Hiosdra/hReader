@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.hasClickAction
@@ -41,6 +42,27 @@ class SettingsSectionsTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    @Test
+    fun `settings group is collapsed by default and expands on click`() {
+        val title = "Storage"
+        val content = "Storage details"
+
+        composeTestRule.setContent {
+            HReaderTheme {
+                SettingsGroup(
+                    title = title,
+                    summary = "Manage local storage"
+                ) {
+                    Text(content)
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText(content).assertDoesNotExist()
+        composeTestRule.onNode(hasText(title) and hasClickAction()).performClick()
+        composeTestRule.onNodeWithText(content).assertIsDisplayed()
+    }
 
     @Test
     fun `sync section forwards interval and toggle changes`() {

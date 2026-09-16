@@ -220,8 +220,7 @@ fun SettingsScreen(
             item {
                 SettingsGroup(
                     title = stringResource(R.string.settings_storage),
-                    summary = stringResource(R.string.settings_group_storage_summary),
-                    initiallyExpanded = true
+                    summary = stringResource(R.string.settings_group_storage_summary)
                 ) {
                     StorageSettingsSection(
                         state = storage,
