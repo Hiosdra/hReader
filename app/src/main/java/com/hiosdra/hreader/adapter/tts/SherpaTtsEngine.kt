@@ -4,6 +4,7 @@ import com.k2fsa.sherpa.onnx.GenerationConfig
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
+import com.hiosdra.hreader.core.application.tts.TtsEngineFamily
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 
@@ -41,7 +42,16 @@ internal class SherpaTtsEngine(
         val config = GenerationConfig().apply {
             this.speed = speed
             silenceScale = settings.silenceScale
-            adapter.configureGeneration(this, settings, language)
+            val generationSettings = if (model.family == TtsEngineFamily.KOKORO) {
+                settings.copy(
+                    kokoroSpeaker = settings.kokoroSpeaker.coerceIn(
+                        TtsModelCatalog.voiceIdRange(model)
+                    )
+                )
+            } else {
+                settings
+            }
+            adapter.configureGeneration(this, generationSettings, language)
         }
         val audio = engine.generateWithConfig(text, config)
         return TtsAudio(samples = audio.samples, sampleRate = audio.sampleRate)

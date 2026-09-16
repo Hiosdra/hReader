@@ -16,6 +16,7 @@ class TtsModelCatalogTest {
         assertEquals(TtsEngineFamily.VITS, TtsModelCatalog.definition(TtsModel.PIPER_LESSAC_HIGH).model.family)
         assertEquals(TtsEngineFamily.KITTEN, TtsModelCatalog.definition(TtsModel.KITTEN_MINI).model.family)
         assertEquals(TtsEngineFamily.MATCHA, TtsModelCatalog.definition(TtsModel.MATCHA_LJSPEECH).model.family)
+        assertEquals(TtsEngineFamily.KOKORO, TtsModelCatalog.definition(TtsModel.KOKORO_V1_0).model.family)
     }
 
     @Test
@@ -29,13 +30,14 @@ class TtsModelCatalogTest {
             TtsModelCatalog.compatibleModels("PL")
         )
         assertEquals(
-            listOf(TtsModel.KOKORO, TtsModel.ANDROID),
+            listOf(TtsModel.KOKORO, TtsModel.KOKORO_V1_0, TtsModel.ANDROID),
             TtsModelCatalog.compatibleModels("zh")
         )
         assertEquals(
             listOf(
                 TtsModel.SUPERTONIC,
                 TtsModel.KOKORO,
+                TtsModel.KOKORO_V1_0,
                 TtsModel.PIPER_LESSAC_HIGH,
                 TtsModel.KITTEN_MINI,
                 TtsModel.MATCHA_LJSPEECH,
@@ -49,5 +51,11 @@ class TtsModelCatalogTest {
     fun `exposes union of neural model languages`() {
         assertTrue("pl" in TtsModelCatalog.supportedLanguages)
         assertTrue("zh" in TtsModelCatalog.supportedLanguages)
+    }
+
+    @Test
+    fun `exposes model-specific Kokoro voice ranges`() {
+        assertEquals(0..102, TtsModelCatalog.voiceIdRange(TtsModel.KOKORO))
+        assertEquals(0..53, TtsModelCatalog.voiceIdRange(TtsModel.KOKORO_V1_0))
     }
 }

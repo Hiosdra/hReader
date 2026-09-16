@@ -23,6 +23,7 @@ class TtsModelPackageCatalogTest {
     fun `registers one package for every neural model`() {
         assertEquals("supertonic", TtsModelPackageCatalog.directoryName(TtsModel.SUPERTONIC))
         assertEquals("kokoro", TtsModelPackageCatalog.directoryName(TtsModel.KOKORO))
+        assertEquals("kokoro-v1_0", TtsModelPackageCatalog.directoryName(TtsModel.KOKORO_V1_0))
         assertEquals(
             "vits-coqui-pl-mai_female",
             TtsModelPackageCatalog.directoryName(TtsModel.COQUI_PL_MAI_FEMALE)
@@ -37,6 +38,14 @@ class TtsModelPackageCatalogTest {
     fun `keeps package engine family data typed`() {
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.SUPERTONIC)?.engineFiles is SherpaModelFiles.Supertonic)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO)?.engineFiles is SherpaModelFiles.Kokoro)
+        val kokoroV1 = checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO_V1_0))
+        assertTrue(kokoroV1.engineFiles is SherpaModelFiles.Kokoro)
+        assertEquals("kokoro-multi-lang-v1_0.tar.bz2", kokoroV1.archive?.name)
+        assertEquals(349_906_910L, kokoroV1.archive?.size)
+        assertEquals(
+            "c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298",
+            kokoroV1.archive?.sha256
+        )
         val coqui = TtsModelPackageCatalog.packageFor(TtsModel.COQUI_PL_MAI_FEMALE)
         assertTrue(coqui?.engineFiles is SherpaModelFiles.Vits)
         assertEquals(listOf("model.onnx", "tokens.txt"), coqui?.files?.map(RemoteFile::name))

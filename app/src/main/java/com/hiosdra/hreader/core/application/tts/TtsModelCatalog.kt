@@ -4,7 +4,8 @@ import java.util.Locale
 
 data class TtsModelDefinition(
     val model: TtsModel,
-    val supportedLanguages: Set<String>
+    val supportedLanguages: Set<String>,
+    val voiceIdRange: IntRange? = null
 )
 
 object TtsModelCatalog {
@@ -19,7 +20,13 @@ object TtsModelCatalog {
         ),
         TtsModelDefinition(
             model = TtsModel.KOKORO,
-            supportedLanguages = setOf("en", "zh")
+            supportedLanguages = setOf("en", "zh"),
+            voiceIdRange = 0..102
+        ),
+        TtsModelDefinition(
+            model = TtsModel.KOKORO_V1_0,
+            supportedLanguages = setOf("en", "zh"),
+            voiceIdRange = 0..53
         ),
         TtsModelDefinition(
             model = TtsModel.COQUI_PL_MAI_FEMALE,
@@ -51,6 +58,8 @@ object TtsModelCatalog {
         .sorted()
 
     fun definition(model: TtsModel): TtsModelDefinition = definitionsByModel.getValue(model)
+
+    fun voiceIdRange(model: TtsModel): IntRange = definition(model).voiceIdRange ?: 0..0
 
     fun compatibleModels(language: String): List<TtsModel> {
         val normalized = normalizeLanguage(language)
