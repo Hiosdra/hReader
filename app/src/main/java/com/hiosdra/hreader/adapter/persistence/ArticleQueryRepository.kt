@@ -7,7 +7,7 @@ import androidx.paging.insertSeparators
 import androidx.paging.map
 import com.hiosdra.hreader.adapter.persistence.room.buildFtsMatchQuery
 import com.hiosdra.hreader.adapter.persistence.room.buildLikePattern
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleQueryDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.core.application.port.out.ArticleListWindow
 import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
@@ -27,20 +27,20 @@ private val PAGING_CONFIG = PagingConfig(
 )
 
 internal class ArticleQueryRepository(
-    private val articleDao: ArticleDao,
+    private val articleQueryDao: ArticleQueryDao,
     private val feedDao: FeedDao
 ) : ArticleQueryStore {
     fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> {
         val match = buildFtsMatchQuery(query.searchQuery.trim())
         return Pager(PAGING_CONFIG) {
             if (match == null) {
-                articleDao.pageArticles(
+                articleQueryDao.pageArticles(
                     feedId = query.feedId,
                     includeRead = query.includeRead,
                     sessionStart = query.sessionStart
                 )
             } else {
-                articleDao.pageSearchResults(
+                articleQueryDao.pageSearchResults(
                     feedId = query.feedId,
                     includeRead = query.includeRead,
                     sessionStart = query.sessionStart,
@@ -75,7 +75,7 @@ internal class ArticleQueryRepository(
         articleId: Long,
         radius: Int
     ): ArticleListWindow {
-        val totalCount = articleDao.countList(
+        val totalCount = articleQueryDao.countList(
             feedId = query.feedId,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
@@ -84,15 +84,15 @@ internal class ArticleQueryRepository(
             return ArticleListWindow(emptyList(), 0, 0, 0)
         }
 
-        val publishedAt = articleDao.getPublishedAt(articleId.toString())
-        val selectedArticleIsVisible = publishedAt != null && articleDao.countVisibleArticle(
+        val publishedAt = articleQueryDao.getPublishedAt(articleId.toString())
+        val selectedArticleIsVisible = publishedAt != null && articleQueryDao.countVisibleArticle(
             articleId = articleId.toString(),
             feedId = query.feedId,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
         ) > 0
         if (!selectedArticleIsVisible) {
-            val ids = articleDao.getListWindow(
+            val ids = articleQueryDao.getListWindow(
                 feedId = query.feedId,
                 includeRead = query.includeRead,
                 sessionStart = query.sessionStart,
@@ -107,14 +107,14 @@ internal class ArticleQueryRepository(
             )
         }
 
-        val currentPosition = articleDao.countArticlesBefore(
+        val currentPosition = articleQueryDao.countArticlesBefore(
             articleId = articleId.toString(),
             publishedAt = publishedAt,
             feedId = query.feedId,
             includeRead = query.includeRead,
             sessionStart = query.sessionStart
         ).coerceIn(0, (totalCount - 1).coerceAtLeast(0))
-        val before = articleDao.getListWindowBefore(
+        val before = articleQueryDao.getListWindowBefore(
             articleId = articleId.toString(),
             publishedAt = publishedAt,
             feedId = query.feedId,
@@ -122,7 +122,7 @@ internal class ArticleQueryRepository(
             sessionStart = query.sessionStart,
             limit = radius.coerceAtLeast(0)
         ).asReversed()
-        val after = articleDao.getListWindowAfter(
+        val after = articleQueryDao.getListWindowAfter(
             articleId = articleId.toString(),
             publishedAt = publishedAt,
             feedId = query.feedId,
@@ -141,16 +141,16 @@ internal class ArticleQueryRepository(
     }
 
     override suspend fun unreadIds(feedId: Long?): List<Long> =
-        articleDao.getUnreadIds(feedId).toArticleIds("the unread set")
+        articleQueryDao.getUnreadIds(feedId).toArticleIds("the unread set")
 
     override fun observeUnreadCount(feedId: Long?): Flow<Int> =
-        articleDao.observeUnreadCountFor(feedId)
+        articleQueryDao.observeUnreadCountFor(feedId)
 
     override fun observeReadCount(feedId: Long?): Flow<Int> =
-        articleDao.observeReadCountFor(feedId)
+        articleQueryDao.observeReadCountFor(feedId)
 
     override fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
-        articleDao.getArticlesWithFeedByIds(ids.map { it.toString() }).map { rows ->
+        articleQueryDao.getArticlesWithFeedByIds(ids.map { it.toString() }).map { rows ->
             rows.map { it.toEntry() }
         }
 

@@ -54,7 +54,7 @@ class ArticleSyncEngineIntegrationTest {
     fun `full sync persists partial pages and removes only missing synced unread articles`() = runBlocking {
         val feed = Feed(1L, "Feed", "https://example.com", "https://example.com/feed.xml")
         fixture.database.feedDao().insertFeeds(listOf(feed.toArticleFeedEntity()))
-        fixture.database.articleDao().insertArticles(
+        fixture.database.articleRecordDao().insertArticles(
             listOf(
                 article("1", ArticleStatus.UNREAD),
                 article("2", ArticleStatus.READ, readAt = Instant.now())
@@ -71,7 +71,7 @@ class ArticleSyncEngineIntegrationTest {
 
         val result = fixture.engine.refreshArticles(forceFullSync = true)
 
-        assertEquals(listOf("2", "3", "4"), fixture.database.articleDao().getAllIds().sorted())
+        assertEquals(listOf("2", "3", "4"), fixture.database.articleRecordDao().getAllIds().sorted())
         assertEquals(2, result.newArticles)
         assertEquals(setOf(1L), result.activeFeedIds)
         assertEquals(0, fullSyncSeenCount())
@@ -86,7 +86,7 @@ class ArticleSyncEngineIntegrationTest {
         fixture.preferences.storedLastFullSyncTimestamp = now - 2 * 24 * 60 * 60 * 1000L
         val feed = Feed(1L, "Feed", "https://example.com", "https://example.com/feed.xml")
         fixture.database.feedDao().insertFeeds(listOf(feed.toArticleFeedEntity()))
-        fixture.database.articleDao().insertArticles(
+        fixture.database.articleRecordDao().insertArticles(
             listOf(article("1", ArticleStatus.UNREAD), article("2", ArticleStatus.UNREAD))
         )
         fixture.backend.feeds = listOf(feed)
@@ -96,7 +96,7 @@ class ArticleSyncEngineIntegrationTest {
         val result = fixture.engine.refreshArticles(forceFullSync = false)
 
         assertTrue(result.successfulFeedIds.contains(1L))
-        assertEquals(listOf("1", "2", "3"), fixture.database.articleDao().getAllIds().sorted())
+        assertEquals(listOf("1", "2", "3"), fixture.database.articleRecordDao().getAllIds().sorted())
         assertEquals(1, fixture.backend.incrementalCalls.size)
         assertTrue(
             fixture.backend.incrementalCalls.single() <
@@ -120,7 +120,7 @@ class ArticleSyncEngineIntegrationTest {
         }.exceptionOrNull()
 
         assertTrue(failure is CancellationException)
-        assertEquals(listOf("7"), fixture.database.articleDao().getAllIds())
+        assertEquals(listOf("7"), fixture.database.articleRecordDao().getAllIds())
         assertEquals("page-2", fixture.preferences.getSyncCheckpoint()?.cursor)
         assertEquals(1, fullSyncSeenCount())
         assertEquals(0L, fixture.preferences.getLastSyncTimestamp())
@@ -130,8 +130,8 @@ class ArticleSyncEngineIntegrationTest {
     fun `a local status change during push remains queued`() = runBlocking {
         val feed = Feed(1L, "Feed", "https://example.com", "https://example.com/feed.xml")
         fixture.database.feedDao().insertFeeds(listOf(feed.toArticleFeedEntity()))
-        fixture.database.articleDao().insertArticles(listOf(article("10", ArticleStatus.READ)))
-        fixture.database.articleDao().updateStatusForIds(listOf("10"), ArticleStatus.UNREAD, null)
+        fixture.database.articleRecordDao().insertArticles(listOf(article("10", ArticleStatus.READ)))
+        fixture.database.articleMutationDao().updateStatusForIds(listOf("10"), ArticleStatus.UNREAD, null)
         fixture.backend.feeds = listOf(feed)
         fixture.backend.unreadPage = { EntriesPage(emptyList(), null) }
         val pushed = CompletableDeferred<Unit>()
@@ -143,7 +143,7 @@ class ArticleSyncEngineIntegrationTest {
 
         val sync = launch { fixture.engine.refreshArticles(forceFullSync = false) }
         pushed.await()
-        fixture.database.articleDao().updateStatusForIds(
+        fixture.database.articleMutationDao().updateStatusForIds(
             listOf("10"),
             ArticleStatus.READ,
             Instant.now()
@@ -151,7 +151,7 @@ class ArticleSyncEngineIntegrationTest {
         releasePush.complete(Unit)
         sync.join()
 
-        val pending = fixture.database.articleDao().getPendingStatuses()
+        val pending = fixture.database.pendingChangeDao().getPendingStatuses()
         assertEquals(1, pending.size)
         assertEquals(ArticleStatus.READ, pending.single().status)
     }
@@ -210,7 +210,8 @@ private class EngineFixture(context: Context) {
     private val images = mockk<ArticleImageStore>(relaxed = true)
     private val credibility = mockk<CredibilityStore>(relaxed = true)
     val engine = ArticleSyncEngine(
-        articleDao = database.articleDao(),
+        articleRecordDao = database.articleRecordDao(),
+        articleStatsDao = database.articleStatsDao(),
         articleContentDao = database.articleContentDao(),
         feedDao = database.feedDao(),
         fullSyncSeenDao = database.fullSyncSeenDao(),
@@ -220,7 +221,9 @@ private class EngineFixture(context: Context) {
         performance = NoOpSyncPerformance,
         imageStore = images,
         credibilityStore = credibility,
-        backendIdentity = identity
+        backendIdentity = identity,
+        pendingChangeStore = PendingChangeRepository(database.pendingChangeDao()),
+        articleRetentionStore = ArticleRetentionRepository(database.articleRetentionDao())
     )
 }
 

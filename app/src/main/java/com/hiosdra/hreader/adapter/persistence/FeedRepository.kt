@@ -2,7 +2,8 @@ package com.hiosdra.hreader.adapter.persistence
 
 import androidx.room.withTransaction
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleStatsDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.FeedEntity
 import com.hiosdra.hreader.core.domain.model.DiscoveredFeed
@@ -22,7 +23,8 @@ private const val DELETE_FEED_CHUNK = 500
 class FeedRepository(
     private val backend: FeedBackend,
     private val feedDao: FeedDao,
-    private val articleDao: ArticleDao,
+    private val articleStatsDao: ArticleStatsDao,
+    private val articleRecordDao: ArticleRecordDao,
     private val db: AppDatabase
 ) : FeedStore {
     /**
@@ -36,7 +38,7 @@ class FeedRepository(
         observeUnreadCounts().first()
 
     override fun observeUnreadCounts(): Flow<Map<Long, Int>> =
-        articleDao.observeUnreadCountsPerFeed().map { counts ->
+        articleStatsDao.observeUnreadCountsPerFeed().map { counts ->
             counts.associate { it.feedId to it.unreadCount }
         }
 
@@ -54,7 +56,7 @@ class FeedRepository(
             val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
             if (persistedFeeds.isNotEmpty()) feedDao.insertFeeds(persistedFeeds)
             staleIds.chunked(DELETE_FEED_CHUNK).forEach { feedIds ->
-                articleDao.deleteByFeedIds(feedIds)
+                articleRecordDao.deleteByFeedIds(feedIds)
                 feedDao.deleteByIds(feedIds)
             }
             persistedFeeds
@@ -74,7 +76,7 @@ class FeedRepository(
     override suspend fun deleteFeed(feedId: Long) {
         backend.deleteFeed(feedId)
         db.withTransaction {
-            articleDao.deleteByFeedId(feedId)
+            articleRecordDao.deleteByFeedId(feedId)
             feedDao.deleteById(feedId)
         }
     }

@@ -1,7 +1,6 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import android.content.Context
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
@@ -26,13 +25,11 @@ class ArticleImageRepositoryTest {
         every { filesDir } returns File("/tmp/androidstudio")
     }
     private val articleImageDao = mockk<ArticleImageDao>(relaxed = true)
-    private val articleDao = mockk<ArticleDao>()
     private val okHttpClient = OkHttpClient()
     private val preferencesManager = mockk<SyncPreferences>(relaxed = true)
     private val repo: ArticleImageRepository = ArticleImageRepository(
         context,
         articleImageDao,
-        articleDao,
         okHttpClient,
         preferencesManager,
         RemoteResourcePolicyAdapter(allowedHosts = { setOf("example.com") })

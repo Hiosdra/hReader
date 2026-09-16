@@ -5,13 +5,19 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleCredibilityDao
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiOverviewDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMaintenanceDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMutationDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleQueryDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleReadingPositionDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRetentionDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleStatsDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FullSyncSeenDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.PendingChangeDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleCredibility
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
@@ -42,7 +48,13 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.FullSyncSeenEntity
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun articleDao(): ArticleDao
+    abstract fun articleQueryDao(): ArticleQueryDao
+    abstract fun articleRecordDao(): ArticleRecordDao
+    abstract fun articleStatsDao(): ArticleStatsDao
+    abstract fun articleMutationDao(): ArticleMutationDao
+    abstract fun pendingChangeDao(): PendingChangeDao
+    abstract fun articleMaintenanceDao(): ArticleMaintenanceDao
+    abstract fun articleRetentionDao(): ArticleRetentionDao
     abstract fun feedDao(): FeedDao
     abstract fun articleContentDao(): ArticleContentDao
     abstract fun articleImageDao(): ArticleImageDao
