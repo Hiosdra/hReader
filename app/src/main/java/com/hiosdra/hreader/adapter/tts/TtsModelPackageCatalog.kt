@@ -101,6 +101,30 @@ internal object TtsModelPackageCatalog {
                 size = 147_031_220
             )
         ),
+        TtsModel.KOKORO_V1_0 to TtsModelPackage(
+            directoryName = "kokoro-v1_0",
+            engineFiles = SherpaModelFiles.Kokoro(
+                model = "model.onnx",
+                voices = "voices.bin",
+                tokens = "tokens.txt",
+                dataDir = "espeak-ng-data",
+                lexicon = "lexicon-us-en.txt,lexicon-zh.txt"
+            ),
+            requiredFiles = listOf(
+                "model.onnx",
+                "voices.bin",
+                "tokens.txt",
+                "lexicon-us-en.txt",
+                "lexicon-zh.txt"
+            ),
+            requiredDirectories = listOf("espeak-ng-data"),
+            archive = RemoteFile(
+                name = "kokoro-multi-lang-v1_0.tar.bz2",
+                url = "$TTS_RELEASE_ROOT/kokoro-multi-lang-v1_0.tar.bz2",
+                sha256 = "c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298",
+                size = 349_906_910
+            )
+        ),
         TtsModel.COQUI_PL_MAI_FEMALE to TtsModelPackage(
             directoryName = "vits-coqui-pl-mai_female",
             engineFiles = SherpaModelFiles.Vits(

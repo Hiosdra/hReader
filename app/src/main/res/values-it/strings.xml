@@ -498,6 +498,8 @@
     <string name="tts_model_supertonic_description">Voce neurale multilingue · download da 129 MB</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
     <string name="tts_model_kokoro_description">Voci neurali per inglese e cinese · download da 140 MB</string>
+    <string name="tts_model_kokoro_v1_0_name">Kokoro 82M v1.0</string>
+    <string name="tts_model_kokoro_v1_0_description">Voci neurali inglesi e cinesi · 54 voci · download da 350 MB</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (femminile)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Voce neurale polacca Coqui · download da 71 MB</string>
     <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
