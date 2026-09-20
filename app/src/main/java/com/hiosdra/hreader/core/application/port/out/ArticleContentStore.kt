@@ -18,5 +18,4 @@ interface ArticleContentStore {
         entries: List<Pair<Long, List<String>>>,
         syncMode: SyncMode = SyncMode.SAFE
     )
-    suspend fun cleanupOrphanedContent()
 }

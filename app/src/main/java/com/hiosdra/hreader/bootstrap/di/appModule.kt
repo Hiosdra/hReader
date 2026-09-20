@@ -5,15 +5,28 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.adapter.persistence.room.AppDatabase
 import com.hiosdra.hreader.adapter.persistence.room.APP_MIGRATIONS
 import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleContentPrefetchService
+import com.hiosdra.hreader.adapter.persistence.ArticleContentPreparationService
+import com.hiosdra.hreader.adapter.persistence.ArticleContentReader
+import com.hiosdra.hreader.adapter.persistence.ArticleContentService
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewPrefetchRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleImageDownloadCoordinator
+import com.hiosdra.hreader.adapter.persistence.ArticleImageFileStore
+import com.hiosdra.hreader.adapter.persistence.ArticleImageIndex
+import com.hiosdra.hreader.adapter.persistence.ArticleImageMaintenance
+import com.hiosdra.hreader.adapter.persistence.ArticleImageRemoteDownloader
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleMaintenanceRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleMutationRepository
 import com.hiosdra.hreader.adapter.persistence.ArticlePageRepository
+import com.hiosdra.hreader.adapter.persistence.ArticlePageArchiver
+import com.hiosdra.hreader.adapter.persistence.ArticlePageCacheMaintenance
+import com.hiosdra.hreader.adapter.persistence.ArticlePageFileStore
 import com.hiosdra.hreader.adapter.persistence.ArticleQueryRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleRetentionRepository
 import com.hiosdra.hreader.adapter.persistence.CacheDataCleaner
+import com.hiosdra.hreader.adapter.persistence.CacheMaintenanceRepository
 import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleSyncEngine
@@ -77,6 +90,7 @@ import com.hiosdra.hreader.core.application.port.out.BackendIdentity
 import com.hiosdra.hreader.core.application.port.out.BackendPreferences
 import com.hiosdra.hreader.core.application.port.out.BackendSessionStore
 import com.hiosdra.hreader.core.application.port.out.CacheStore
+import com.hiosdra.hreader.core.application.port.out.CacheMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.FeedStore
@@ -187,8 +201,12 @@ val appModule = module {
     single<ArticlePagingProvider> {
         ArticlePagingProvider { query -> get<ArticleQueryRepository>().pageArticles(query) }
     }
-    single { ArticleImageRepository(androidApplication(), get(), get(), get(), get()) }
+    single { ArticleImageFileStore(androidApplication()) }
+    single { ArticleImageIndex(get()) }
+    single { ArticleImageRemoteDownloader(get(), get()) }
+    single { ArticleImageRepository(get(), get(), get(), get()) }
     single<ArticleImageStore> { get<ArticleImageRepository>() }
+    single { ArticleImageMaintenance(get(), get(), get()) }
     single<coil3.ImageLoader> {
         val okHttpClient = get<okhttp3.OkHttpClient>().newBuilder()
             .apply { interceptors().clear() }
@@ -202,21 +220,38 @@ val appModule = module {
     single { CredibilityRepository(get(), get()) }
     single<CredibilityStore> { get<CredibilityRepository>() }
     single {
-        ArticleContentRepository(
-            { androidApplication().getString(R.string.article_open_embedded_media) },
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(named("applicationScope"))
+        ArticleContentReader(
+            backend = get(),
+            articleContentDao = get(),
+            articleRecordDao = get()
         )
     }
+    single {
+        ArticleContentPreparationService(
+            embeddedMediaLabel = { androidApplication().getString(R.string.article_open_embedded_media) },
+            articleRecordDao = get()
+        )
+    }
+    single { ArticleImageDownloadCoordinator(get(), get(named("applicationScope"))) }
+    single {
+        ArticleContentService(
+            reader = get(),
+            preparation = get(),
+            articleContentDao = get(),
+            articleRecordDao = get(),
+            articleImageStore = get(),
+            credibilityStore = get(),
+            imageDownloads = get()
+        )
+    }
+    single { ArticleContentPrefetchService(get(), get(), get()) }
+    single { ArticleContentRepository(get(), get(), get()) }
     single<ArticleContentStore> { get<ArticleContentRepository>() }
-    single { ArticlePageRepository(androidApplication(), get(), get(), get(), get(), get()) }
+    single { ArticlePageFileStore(androidApplication()) }
+    single { ArticlePageArchiver(get(), get(), get()) }
+    single { ArticlePageRepository(get(), get(), get(), get()) }
     single<ArticlePageStore> { get<ArticlePageRepository>() }
+    single { ArticlePageCacheMaintenance(get(), get(), get()) }
     single { ArticleReadingPositionRepository(get()) }
     single<ArticleReadingPositionStore> { get<ArticleReadingPositionRepository>() }
     single { OfflineReadinessRepository(get(), get(), get(), get(), get()) }
@@ -228,9 +263,11 @@ val appModule = module {
             db = get(),
             imagesDir = File(androidApplication().filesDir, "article_images"),
             pagesDir = File(androidApplication().filesDir, "article_pages"),
-            contentStore = get()
+            maintenance = get()
         )
     }
+    single { CacheMaintenanceRepository(get(), get(), get(), get(), get(), get()) }
+    single<CacheMaintenanceStore> { get<CacheMaintenanceRepository>() }
     single {
         CacheOwnershipCoordinator(
             dataCleaner = get(),

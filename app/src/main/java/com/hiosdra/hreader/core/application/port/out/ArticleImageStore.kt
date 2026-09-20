@@ -12,6 +12,4 @@ interface ArticleImageStore {
     suspend fun setExpectedImages(entryId: Long, imageUrls: List<String>)
     suspend fun invalidateArticleImages(entryId: Long)
     suspend fun clearAll()
-    suspend fun cleanupOrphanedImages()
-    suspend fun enforceCacheBudget()
 }

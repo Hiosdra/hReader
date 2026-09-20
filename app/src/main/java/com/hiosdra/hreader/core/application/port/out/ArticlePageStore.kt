@@ -14,6 +14,5 @@ interface ArticlePageStore {
         syncMode: SyncMode = SyncMode.SAFE,
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
     )
-    suspend fun cleanupOrphanedPages()
     suspend fun clearAll()
 }

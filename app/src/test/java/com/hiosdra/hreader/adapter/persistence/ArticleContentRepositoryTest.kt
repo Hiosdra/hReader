@@ -5,9 +5,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleContent
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleEntity
 import com.hiosdra.hreader.adapter.persistence.ArticleContentRepository
-import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
-import com.hiosdra.hreader.core.application.port.out.ArticlePageStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 import com.hiosdra.hreader.core.domain.model.Enclosure
 import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
@@ -18,11 +16,14 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -44,18 +45,31 @@ class ArticleContentRepositoryTest {
     private val articleDao = mockk<ArticleRecordDao>(relaxed = true)
     private val articleImageStore = mockk<ArticleImageStore>(relaxed = true)
     private val credibilityStore = mockk<CredibilityStore>(relaxed = true)
-    private val articleAiOverviewStore = mockk<ArticleAiOverviewStore>(relaxed = true)
-    private val articlePageStore = mockk<ArticlePageStore>(relaxed = true)
+    private val contentReader = ArticleContentReader(backend, articleContentDao, articleDao)
+    private val contentPreparation = ArticleContentPreparationService({ "Open embedded media" }, articleDao)
+    private val imageDownloads = ArticleImageDownloadCoordinator(
+        articleImageStore,
+        CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+    )
+    private val contentService = ArticleContentService(
+        reader = contentReader,
+        preparation = contentPreparation,
+        articleContentDao = articleContentDao,
+        articleRecordDao = articleDao,
+        articleImageStore = articleImageStore,
+        credibilityStore = credibilityStore,
+        imageDownloads = imageDownloads
+    )
+    private val prefetchService = ArticleContentPrefetchService(
+        contentService = contentService,
+        articleContentDao = articleContentDao,
+        imageDownloads = imageDownloads
+    )
 
     private val repository = ArticleContentRepository(
-        { "Open embedded media" },
-        backend,
-        articleContentDao,
-        articleDao,
-        articleImageStore,
-        credibilityStore,
-        articleAiOverviewStore,
-        articlePageStore
+        contentService = contentService,
+        prefetchService = prefetchService,
+        articleContentDao = articleContentDao
     )
 
     private fun article(
