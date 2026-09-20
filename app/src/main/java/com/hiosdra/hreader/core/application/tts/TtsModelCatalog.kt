@@ -9,6 +9,10 @@ data class TtsModelDefinition(
 )
 
 object TtsModelCatalog {
+    private val supertonicVoiceNames = listOf(
+        "M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"
+    )
+
     private val definitions = listOf(
         TtsModelDefinition(
             model = TtsModel.SUPERTONIC,
@@ -16,7 +20,8 @@ object TtsModelCatalog {
                 "ar", "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el",
                 "hi", "hu", "id", "it", "ja", "ko", "lv", "lt", "pl", "pt", "ro", "ru",
                 "sk", "sl", "es", "sv", "tr", "uk", "vi"
-            )
+            ),
+            voiceIdRange = supertonicVoiceNames.indices
         ),
         TtsModelDefinition(
             model = TtsModel.KOKORO,
@@ -60,6 +65,9 @@ object TtsModelCatalog {
     fun definition(model: TtsModel): TtsModelDefinition = definitionsByModel.getValue(model)
 
     fun voiceIdRange(model: TtsModel): IntRange = definition(model).voiceIdRange ?: 0..0
+
+    fun supertonicVoiceName(voiceId: Int): String =
+        supertonicVoiceNames[voiceId.coerceIn(supertonicVoiceNames.indices)]
 
     fun compatibleModels(language: String): List<TtsModel> {
         val normalized = normalizeLanguage(language)

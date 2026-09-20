@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.preferences
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
 import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import com.hiosdra.hreader.core.application.tts.parseTtsLanguageOverrides
 
 internal class TtsPreferencesStore(
@@ -40,7 +41,8 @@ internal class TtsPreferencesStore(
     override fun getTtsAdvancedSettings(): TtsAdvancedSettings = TtsAdvancedSettings(
         numThreads = (storage.get(TtsPreferenceKeys.ttsThreads) ?: 4).coerceIn(1, 4),
         silenceScale = (storage.get(TtsPreferenceKeys.ttsSilenceScale) ?: 0.2f).coerceIn(0f, 1f),
-        supertonicSpeaker = (storage.get(TtsPreferenceKeys.ttsSupertonicSpeaker) ?: 0).coerceIn(0, 9),
+        supertonicSpeaker = (storage.get(TtsPreferenceKeys.ttsSupertonicSpeaker) ?: 0)
+            .coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.SUPERTONIC)),
         supertonicSteps = (storage.get(TtsPreferenceKeys.ttsSupertonicSteps) ?: 8).coerceIn(4, 12),
         kokoroSpeaker = (storage.get(TtsPreferenceKeys.ttsKokoroSpeaker) ?: 0).coerceIn(0, 102),
         kittenSpeaker = (storage.get(TtsPreferenceKeys.ttsKittenSpeaker) ?: 0).coerceIn(0, 7),

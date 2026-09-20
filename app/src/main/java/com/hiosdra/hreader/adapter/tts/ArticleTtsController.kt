@@ -129,11 +129,11 @@ class ArticleTtsController internal constructor(
                     isPreparing = true,
                     error = null
                 )
-                val synthesisChunks = TtsTextProcessor.forModel(model, chunks)
+                val synthesisChunks = TtsTextProcessor.forModel(model, chunks, language)
                 _state.value = _state.value.copy(totalChunks = synthesisChunks.size)
                 runCatchingCancellable {
                     if (model == TtsModel.ANDROID) {
-                        speakWithAndroid(chunks, language)
+                        speakWithAndroid(chunks.map(TtsChunk::text), language)
                     } else {
                         speakWithNeuralTts(model, synthesisChunks, language)
                     }
@@ -146,7 +146,9 @@ class ArticleTtsController internal constructor(
                             isPreparing = true,
                             error = neuralFallbackMessage(model, it)
                         )
-                        runCatchingCancellable { speakWithAndroid(chunks, language) }
+                        runCatchingCancellable {
+                            speakWithAndroid(chunks.map(TtsChunk::text), language)
+                        }
                             .onFailure { androidFailure ->
                                 if (version == playbackVersion && androidFailure !is CancellationException) {
                                     finishPlaybackWithError(
@@ -253,7 +255,11 @@ class ArticleTtsController internal constructor(
         }
     }
 
-    private suspend fun speakWithNeuralTts(model: TtsModel, chunks: List<String>, language: String) {
+    private suspend fun speakWithNeuralTts(
+        model: TtsModel,
+        chunks: List<TtsChunk>,
+        language: String
+    ) {
         coroutineScope {
             val settings = preferences.getTtsAdvancedSettings()
             val modelPreparation = async(Dispatchers.Default) {
@@ -262,12 +268,12 @@ class ArticleTtsController internal constructor(
             modelPreparation.await()
             val speed = preferences.getTtsSpeed()
             var audio = withContext(Dispatchers.Default) {
-                neuralTts.generate(model, chunks.first(), speed, language, settings)
+                neuralTts.generate(model, chunks.first().text, speed, language, settings)
             }
             chunks.forEachIndexed { index, _ ->
                 val nextAudio = chunks.getOrNull(index + 1)?.let { nextChunk ->
                     async(Dispatchers.Default) {
-                        neuralTts.generate(model, nextChunk, speed, language, settings)
+                        neuralTts.generate(model, nextChunk.text, speed, language, settings)
                     }
                 }
                 resumeSignal.await()
@@ -276,9 +282,12 @@ class ArticleTtsController internal constructor(
                     isPlaying = !_state.value.isPaused,
                     currentChunk = index
                 )
-                val playbackAudio = audio.withTrailingSilence(
-                    if (index < chunks.lastIndex) INTER_CHUNK_PAUSE_MILLIS else 0
-                )
+                val pauseMillis = chunks
+                    .getOrNull(index + 1)
+                    ?.boundaryBefore
+                    ?.pauseBeforeMillis
+                    ?: 0
+                val playbackAudio = audio.withTrailingSilence(pauseMillis)
                 playSamples(playbackAudio.samples, playbackAudio.sampleRate)
                 audio = nextAudio?.await() ?: return@coroutineScope
             }
@@ -442,7 +451,6 @@ class ArticleTtsController internal constructor(
     private companion object {
         const val TAG = "ArticleTtsController"
         const val MODEL_WARM_TIMEOUT_MS = 5 * 60 * 1_000L
-        const val INTER_CHUNK_PAUSE_MILLIS = 300
     }
 }
 

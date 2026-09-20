@@ -55,7 +55,16 @@ class TtsModelCatalogTest {
 
     @Test
     fun `exposes model-specific Kokoro voice ranges`() {
+        assertEquals(0..9, TtsModelCatalog.voiceIdRange(TtsModel.SUPERTONIC))
         assertEquals(0..102, TtsModelCatalog.voiceIdRange(TtsModel.KOKORO))
         assertEquals(0..53, TtsModelCatalog.voiceIdRange(TtsModel.KOKORO_V1_0))
+    }
+
+    @Test
+    fun `names all Supertonic voice presets`() {
+        assertEquals("M1", TtsModelCatalog.supertonicVoiceName(0))
+        assertEquals("F5", TtsModelCatalog.supertonicVoiceName(9))
+        assertEquals("M1", TtsModelCatalog.supertonicVoiceName(-1))
+        assertEquals("F5", TtsModelCatalog.supertonicVoiceName(10))
     }
 }
