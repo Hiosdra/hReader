@@ -41,7 +41,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
@@ -55,9 +54,7 @@ import androidx.compose.ui.window.Dialog
 import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.AiProvider
-import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
-import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
@@ -66,9 +63,6 @@ import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
-import com.hiosdra.hreader.presentation.feedback.FeedbackKind
-import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
-import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
 import com.hiosdra.hreader.R
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -102,11 +96,10 @@ internal fun ArticleContent(
     onReadingProgressChanged: (Long, Float) -> Unit,
     onReadingCompleted: (Long) -> Unit,
     onRetryContent: () -> Unit = {},
+    onEffect: (ArticleRouteEffect) -> Unit = {},
     articleImageLoader: ArticleImageLoader,
     coilImageLoader: CoilImageLoader,
     remoteResourcePolicy: RemoteResourcePolicy,
-    imageSharer: ArticleImageSharer,
-    imageDownloader: ArticleImageDownloader,
     readerPreferences: ReaderPreferences,
     localImagePaths: Map<String, String> = emptyMap(),
     isOnline: Boolean = true,
@@ -122,8 +115,7 @@ internal fun ArticleContent(
     defaultPaywallBypassMethod: PaywallBypassMethod = PaywallBypassMethod.SMRY_AI,
     canUsePaywallBypass: (String) -> Boolean = { false },
     onOpenInChrome: (String) -> Unit = {},
-    onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> },
-    onFeedback: (FeedbackRequest) -> Unit = {}
+    onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> }
 ) {
     val locale = LocalLocale.current.platformLocale
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
@@ -159,9 +151,6 @@ internal fun ArticleContent(
     }
     var zoomImageUrl by remember { mutableStateOf<String?>(null) }
     var imageActionsUrl by remember { mutableStateOf<String?>(null) }
-    var imageShareUrl by remember { mutableStateOf<String?>(null) }
-    var imageDownloadUrl by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
     val articleLinkLabel = stringResource(R.string.article_link)
     val offlineLinkCopiedMessage = stringResource(R.string.article_offline_link_copied)
     val imageUrlLabel = stringResource(R.string.article_image_url)
@@ -174,6 +163,32 @@ internal fun ArticleContent(
     val imageDownloadFailedMessage = stringResource(R.string.article_download_failed)
     val retryActionLabel = stringResource(R.string.action_retry)
     val loadingArticlesDescription = stringResource(R.string.loading_articles)
+
+    fun dispatchImageDownload(url: String) {
+        onEffect(
+            ArticleRouteEffect.DownloadImage(
+                url = url,
+                resultMessage = imageDownloadedMessage,
+                failureMessage = imageDownloadFailedMessage,
+                retryActionLabel = retryActionLabel,
+                onRetry = { dispatchImageDownload(url) }
+            )
+        )
+    }
+
+    fun dispatchImageShare(url: String) {
+        onEffect(
+            ArticleRouteEffect.ShareImage(
+                title = entry.title,
+                url = url,
+                preparingMessage = preparingImageMessage,
+                failureMessage = imageSharingFailedMessage,
+                retryActionLabel = retryActionLabel,
+                onRetry = { dispatchImageShare(url) }
+            )
+        )
+    }
+
     val density = LocalDensity.current
     val minimumWebViewHeightPx = with(density) { 240.dp.roundToPx() }
     val articleBodyHeightPx = (webContentHeightPx - measuredWebContentTopInsetPx).coerceAtLeast(0)
@@ -446,10 +461,15 @@ internal fun ArticleContent(
     }
     val onArticleLinkClick: (String) -> Unit = { url ->
         if (isOnline) {
-            openChromeCustomTab(context, url)
+            onEffect(ArticleRouteEffect.OpenBrowser(url))
         } else {
-            copyTextToClipboard(context, articleLinkLabel, url)
-            onFeedback(FeedbackRequest(message = offlineLinkCopiedMessage))
+            onEffect(
+                ArticleRouteEffect.CopyText(
+                    label = articleLinkLabel,
+                    text = url,
+                    followUpMessage = offlineLinkCopiedMessage
+                )
+            )
         }
     }
     Surface(
@@ -573,64 +593,26 @@ internal fun ArticleContent(
                 imageActionsUrl = null
             },
             onCopy = {
-                copyTextToClipboard(context, imageUrlLabel, actionsUrl)
-                onFeedback(FeedbackRequest(message = copiedMessage))
+                onEffect(ArticleRouteEffect.CopyText(imageUrlLabel, actionsUrl, copiedMessage))
                 imageActionsUrl = null
             },
             onDownload = {
                 if (isOnline) {
-                    imageDownloadUrl = actionsUrl
+                    dispatchImageDownload(actionsUrl)
                 } else {
-                    onFeedback(FeedbackRequest(message = downloadingRequiresConnectionMessage))
+                    onEffect(ArticleRouteEffect.ShowToast(downloadingRequiresConnectionMessage))
                 }
                 imageActionsUrl = null
             },
             onShare = {
                 if (isOnline) {
-                    imageShareUrl = actionsUrl
+                    dispatchImageShare(actionsUrl)
                 } else {
-                    onFeedback(FeedbackRequest(message = sharingRequiresConnectionMessage))
+                    onEffect(ArticleRouteEffect.ShowToast(sharingRequiresConnectionMessage))
                 }
                 imageActionsUrl = null
             }
         )
-    }
-    val downloadTarget = imageDownloadUrl
-    if (downloadTarget != null) {
-        LaunchedEffect(downloadTarget) {
-            val downloaded = imageDownloader.download(downloadTarget)
-            imageDownloadUrl = null
-            onFeedback(
-                if (downloaded) {
-                    FeedbackRequest(message = imageDownloadedMessage)
-                } else {
-                    FeedbackRequest(
-                        message = imageDownloadFailedMessage,
-                        kind = FeedbackKind.RECOVERABLE_ERROR,
-                        actionLabel = retryActionLabel,
-                        onAction = { imageDownloadUrl = downloadTarget }
-                    )
-                }
-            )
-        }
-    }
-    val shareTarget = imageShareUrl
-    if (shareTarget != null) {
-        LaunchedEffect(shareTarget) {
-            onFeedback(FeedbackRequest(message = preparingImageMessage))
-            val shared = imageSharer.share(entry.title, shareTarget)
-            imageShareUrl = null
-            if (!shared) {
-                onFeedback(
-                    FeedbackRequest(
-                        message = imageSharingFailedMessage,
-                        kind = FeedbackKind.RECOVERABLE_ERROR,
-                        actionLabel = retryActionLabel,
-                        onAction = { imageShareUrl = shareTarget }
-                    )
-                )
-            }
-        }
     }
     val zoomUrl = zoomImageUrl
     if (zoomUrl != null) {

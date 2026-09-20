@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.presentation.article
 
-import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,15 +60,16 @@ import com.hiosdra.hreader.core.domain.model.ArticleContentKind
 import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.isRead
-import com.hiosdra.hreader.core.domain.service.cleanUrl
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.presentation.feedback.FeedbackKind
 import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
 import com.hiosdra.hreader.presentation.feedback.showFeedback
-import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
+import com.hiosdra.hreader.presentation.navigation.ArticleRouteArguments
 import com.hiosdra.hreader.presentation.text.resolve
 import com.hiosdra.hreader.R
 import kotlin.math.roundToInt
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 internal const val MIN_ARTICLE_TEXT_SCALE = 0.85f
@@ -102,10 +102,7 @@ internal fun articleWebViewRestoreScrollY(
 @Composable
 fun ArticleScreen(
     navController: NavHostController,
-    feedId: Long?,
-    startArticleId: Long,
-    includeRead: Boolean = false,
-    sessionStartMillis: Long = 0L,
+    routeArguments: ArticleRouteArguments,
     readerPreferences: ReaderPreferences,
     ttsPreferences: TtsPreferences,
     paywallBypassService: PaywallBypass,
@@ -119,7 +116,15 @@ fun ArticleScreen(
     viewModel: ArticleViewModel
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val pagerState = rememberPagerState(initialPage = 0) { uiState.entries.size }
+    val navigation = uiState.navigation
+    val content = uiState.content
+    val ai = uiState.ai
+    val pagerState = rememberPagerState(initialPage = 0) { navigation.entries.size }
+    val effectChannel = remember { Channel<ArticleRouteEffect>(Channel.BUFFERED) }
+    val effects = remember(effectChannel) { effectChannel.receiveAsFlow() }
+    val dispatchEffect: (ArticleRouteEffect) -> Unit = remember(effectChannel) {
+        { effect -> effectChannel.trySend(effect) }
+    }
     var isWebViewMode by remember { mutableStateOf(false) }
     var textScale by rememberSaveable { mutableFloatStateOf(1f) }
     // The pager opens on page 0 and only then jumps to the article being read, so
@@ -130,6 +135,14 @@ fun ArticleScreen(
     val onFeedback: (FeedbackRequest) -> Unit = { request ->
         feedbackScope.launch { snackbarHostState.showFeedback(request) }
     }
+    ArticleRouteEffectHost(
+        effects = effects,
+        context = navController.context,
+        paywallBypassService = paywallBypassService,
+        articleImageSharer = articleImageSharer,
+        articleImageDownloader = articleImageDownloader,
+        onFeedback = onFeedback
+    )
 
     val ttsState by ttsController.state.collectAsStateWithLifecycle()
     val ttsModelStatuses by ttsModelManager.statuses.collectAsStateWithLifecycle()
@@ -141,25 +154,30 @@ fun ArticleScreen(
     var ttsMiniPlayerHeightPx by remember { mutableIntStateOf(0) }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
-    LaunchedEffect(feedId, startArticleId, includeRead, sessionStartMillis) {
-        viewModel.openList(feedId, startArticleId, includeRead, sessionStartMillis)
+    LaunchedEffect(routeArguments) {
+        viewModel.openList(
+            feedId = routeArguments.feedId,
+            startArticleId = routeArguments.startArticleId,
+            includeRead = routeArguments.includeRead,
+            sessionStartMillis = routeArguments.sessionStartMillis
+        )
     }
 
-    val currentOfflinePageAvailable = uiState.entries
-        .getOrNull(uiState.currentIndex)
+    val currentOfflinePageAvailable = navigation.entries
+        .getOrNull(navigation.currentIndex)
         ?.id
-        ?.let(uiState.offlinePages::containsKey) == true
-    LaunchedEffect(uiState.isOnline, uiState.currentIndex, currentOfflinePageAvailable) {
-        if (!uiState.isOnline && !currentOfflinePageAvailable) {
+        ?.let(content.offlinePages::containsKey) == true
+    LaunchedEffect(content.isOnline, navigation.currentIndex, currentOfflinePageAvailable) {
+        if (!content.isOnline && !currentOfflinePageAvailable) {
             isWebViewMode = false
         }
     }
 
     // The view model owns where the reader is, so it also survives a configuration
     // change; the pager is placed from it once and reports back from then on.
-    LaunchedEffect(uiState.entries.size) {
-        if (pagerPositioned || uiState.entries.isEmpty()) return@LaunchedEffect
-        pagerState.scrollToPage(uiState.currentIndex.coerceIn(uiState.entries.indices))
+    LaunchedEffect(navigation.entries.size) {
+        if (pagerPositioned || navigation.entries.isEmpty()) return@LaunchedEffect
+        pagerState.scrollToPage(navigation.currentIndex.coerceIn(navigation.entries.indices))
         pagerPositioned = true
     }
 
@@ -169,7 +187,7 @@ fun ArticleScreen(
     LaunchedEffect(pagerPositioned) {
         if (!pagerPositioned) return@LaunchedEffect
         snapshotFlow { pagerState.settledPage }.collect { page ->
-            val entry = viewModel.uiState.value.entries.getOrNull(page) ?: return@collect
+            val entry = viewModel.uiState.value.navigation.entries.getOrNull(page) ?: return@collect
             if (ttsController.state.value.articleId?.let { it != entry.id } == true) {
                 ttsController.pause()
             }
@@ -183,18 +201,18 @@ fun ArticleScreen(
     // still sits on the first frame - from overwriting the position it was sent to.
     LaunchedEffect(pagerState.settledPage, pagerPositioned) {
         if (!pagerPositioned) return@LaunchedEffect
-        if (pagerState.settledPage != uiState.currentIndex && pagerState.settledPage in uiState.entries.indices) {
+        if (pagerState.settledPage != navigation.currentIndex && pagerState.settledPage in navigation.entries.indices) {
             viewModel.setCurrentIndex(pagerState.settledPage)
         }
     }
 
-    val currentEntry = uiState.entries.getOrNull(uiState.currentIndex)
-    val currentOfflinePage = currentEntry?.let { uiState.offlinePages[it.id] }
-    val currentWebViewAvailable = uiState.isOnline || currentOfflinePage != null
+    val currentEntry = navigation.entries.getOrNull(navigation.currentIndex)
+    val currentOfflinePage = currentEntry?.let { content.offlinePages[it.id] }
+    val currentWebViewAvailable = content.isOnline || currentOfflinePage != null
     val currentWebViewActive = isWebViewMode && currentWebViewAvailable
     val currentDisplayedProvenance = currentEntry?.let { entry ->
         when {
-            currentWebViewActive && uiState.isOnline -> ArticleContentProvenance(
+            currentWebViewActive && content.isOnline -> ArticleContentProvenance(
                 kind = ArticleContentKind.EXTERNAL_WEB_PAGE,
                 sourceUrl = entry.url,
                 delivery = ArticleContentDelivery.NETWORK
@@ -265,7 +283,7 @@ fun ArticleScreen(
     }
     val retryTts = {
         ttsState.articleId
-            ?.let { articleId -> uiState.entries.firstOrNull { it.id == articleId } }
+            ?.let { articleId -> navigation.entries.firstOrNull { it.id == articleId } }
             ?.let { entry ->
                 if (ttsPlayerContent?.let(::hasReadableArticleText) == true) {
                     playArticleTts(entry)
@@ -276,14 +294,13 @@ fun ArticleScreen(
         Unit
     }
     val openArticleInChrome: (String) -> Unit = { url ->
-        if (uiState.isOnline && url.isNotBlank()) {
-            openChromeCustomTab(navController.context, cleanUrl(url))
+        if (content.isOnline && url.isNotBlank()) {
+            dispatchEffect(ArticleRouteEffect.OpenBrowser(url))
         }
     }
     val openArticleThroughPaywall: (String, PaywallBypassMethod) -> Unit = { url, method ->
-        if (uiState.isOnline && url.isNotBlank()) {
-            val bypassUrl = paywallBypassService.getBypassUrl(url, method)
-            openChromeCustomTab(navController.context, bypassUrl)
+        if (content.isOnline && url.isNotBlank()) {
+            dispatchEffect(ArticleRouteEffect.OpenPaywall(url, method))
         }
     }
     val canUsePaywallBypass = currentEntry?.url?.let { url ->
@@ -302,8 +319,8 @@ fun ArticleScreen(
                 ArticleTopBar(
                     entryUrl = currentEntry?.url,
                     feedTitle = currentEntry?.feed?.title,
-                    listPosition = uiState.currentListPosition,
-                    listSize = uiState.listSize,
+                    listPosition = navigation.currentListPosition,
+                    listSize = navigation.listSize,
                     isWebViewMode = currentWebViewActive,
                     canUseWebView = currentWebViewAvailable,
                     isRead = currentEntry?.isRead == true,
@@ -320,7 +337,7 @@ fun ArticleScreen(
                     onToggleRead = {
                         currentEntry?.let { entry ->
                             viewModel.updateReadStatus(
-                                index = uiState.currentIndex,
+                                index = navigation.currentIndex,
                                 isRead = !entry.isRead
                             )
                         }
@@ -329,13 +346,7 @@ fun ArticleScreen(
                     onToggleWebView = { isWebViewMode = !isWebViewMode },
                     onShare = {
                         currentEntry?.let { entry ->
-                            val ctx = navController.context
-                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, entry.title)
-                                putExtra(Intent.EXTRA_TEXT, "${entry.title}\n${cleanUrl(entry.url)}")
-                            }
-                            ctx.startActivity(Intent.createChooser(sendIntent, null))
+                            dispatchEffect(ArticleRouteEffect.ShareArticle(entry.title, entry.url))
                         }
                     },
                     ttsContentState = ttsContentState,
@@ -349,7 +360,7 @@ fun ArticleScreen(
                             }?.let { playArticleTts(it) }
                         }
                     },
-                    isOnline = uiState.isOnline,
+                    isOnline = content.isOnline,
                     defaultPaywallBypassMethod = configuredPaywallBypassMethod,
                     canUsePaywallBypass = canUsePaywallBypass,
                     onOpenInChrome = {
@@ -378,7 +389,7 @@ fun ArticleScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             when {
-                uiState.isLoading -> {
+                navigation.isLoading -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -389,7 +400,7 @@ fun ArticleScreen(
                         CircularProgressIndicator()
                     }
                 }
-                uiState.error != null -> {
+                navigation.error != null -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -400,7 +411,7 @@ fun ArticleScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = uiState.error?.resolve().orEmpty(),
+                                text = navigation.error?.resolve().orEmpty(),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center
@@ -408,10 +419,10 @@ fun ArticleScreen(
                             TextButton(
                                 onClick = {
                                     viewModel.openList(
-                                        feedId = feedId,
-                                        startArticleId = startArticleId,
-                                        includeRead = includeRead,
-                                        sessionStartMillis = sessionStartMillis
+                                        feedId = routeArguments.feedId,
+                                        startArticleId = routeArguments.startArticleId,
+                                        includeRead = routeArguments.includeRead,
+                                        sessionStartMillis = routeArguments.sessionStartMillis
                                     )
                                 },
                                 modifier = Modifier.padding(top = 8.dp)
@@ -421,9 +432,9 @@ fun ArticleScreen(
                         }
                     }
                 }
-                uiState.entries.isNotEmpty() -> {
+                navigation.entries.isNotEmpty() -> {
                     ArticlePager(
-                        entries = uiState.entries,
+                        entries = navigation.entries,
                         pagerState = pagerState,
                         isWebViewMode = currentWebViewActive,
                         textScale = textScale,
@@ -436,8 +447,8 @@ fun ArticleScreen(
                         },
                         getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
                         getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
-                        loadedContentIds = uiState.content.keys,
-                        loadedReadingPositionIds = uiState.readingPositionLoadedIds,
+                        loadedContentIds = content.content.keys,
+                        loadedReadingPositionIds = content.readingProgress.loadedIds,
                         readingProgressForEntry = { entryId -> viewModel.getReadingProgressForEntry(entryId) },
                         onReadingProgressChanged = viewModel::saveReadingProgress,
                         onReadingCompleted = viewModel::clearReadingProgress,
@@ -446,33 +457,31 @@ fun ArticleScreen(
                         articleImageLoader = articleImageLoader,
                         coilImageLoader = coilImageLoader,
                         remoteResourcePolicy = remoteResourcePolicy,
-                        articleImageSharer = articleImageSharer,
-                        articleImageDownloader = articleImageDownloader,
-                        localImagePaths = uiState.localImagePaths,
-                        isOnline = uiState.isOnline,
-                        aiOverviews = uiState.aiOverviews,
-                        aiProvider = uiState.aiProvider,
-                        generatingOverviewIds = uiState.generatingOverviewIds,
-                        aiOverviewProgress = uiState.aiOverviewProgress,
+                        onEffect = dispatchEffect,
+                        localImagePaths = content.localImagePaths,
+                        isOnline = content.isOnline,
+                        aiOverviews = ai.aiOverviews,
+                        aiProvider = ai.aiProvider,
+                        generatingOverviewIds = ai.generatingOverviewIds,
+                        aiOverviewProgress = ai.aiOverviewProgress,
                         onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
-                        credibilityEnabled = uiState.credibilityEnabled,
-                        credibilityReports = uiState.credibilityReports,
-                        analyzingCredibilityIds = uiState.analyzingCredibilityIds,
+                        credibilityEnabled = ai.credibilityEnabled,
+                        credibilityReports = ai.credibilityReports,
+                        analyzingCredibilityIds = ai.analyzingCredibilityIds,
                         onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) },
                         defaultPaywallBypassMethod = configuredPaywallBypassMethod,
                         canUsePaywallBypass = { url ->
                             url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
                         },
                         onOpenInChrome = openArticleInChrome,
-                        onBypassPaywall = openArticleThroughPaywall,
-                        onFeedback = onFeedback
+                        onBypassPaywall = openArticleThroughPaywall
                     )
                 }
             }
 
-            val currentEntryId = uiState.entries.getOrNull(uiState.currentIndex)?.id
+            val currentEntryId = navigation.entries.getOrNull(navigation.currentIndex)?.id
 
-            uiState.overviewError?.let { error ->
+            ai.overviewError?.let { error ->
                 RetryableSnackbar(
                     hostState = snackbarHostState,
                     message = error.resolve(),
@@ -484,7 +493,7 @@ fun ArticleScreen(
                 )
             }
 
-            uiState.contentError?.let { message ->
+            content.contentError?.let { message ->
                 if (currentEntryId != null) {
                     ArticleContentErrorBanner(
                         message = message.resolve(),
@@ -498,7 +507,7 @@ fun ArticleScreen(
                 }
             }
 
-            uiState.scoreError?.let { error ->
+            ai.scoreError?.let { error ->
                 RetryableSnackbar(
                     hostState = snackbarHostState,
                     message = error.resolve(),
