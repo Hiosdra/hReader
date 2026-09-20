@@ -386,7 +386,6 @@ private class ArticleContentStoreFake(
         imageBatches += entries
     }
 
-    override suspend fun cleanupOrphanedContent() = Unit
 }
 
 private class ArticleContentPerformanceTracker : SyncPerformanceTracker {

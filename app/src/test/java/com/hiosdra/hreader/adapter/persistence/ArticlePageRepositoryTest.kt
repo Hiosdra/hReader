@@ -334,7 +334,11 @@ class ArticlePageRepositoryTest {
                     policy()
                 )
 
-                repository.cleanupOrphanedPages()
+                ArticlePageCacheMaintenance(
+                    snapshotDao = snapshotDao,
+                    articleRecordDao = articleRecordDao,
+                    files = ArticlePageFileStore(context)
+                ).cleanupOrphaned()
 
                 assertTrue(stagingDirectory.exists())
                 coVerify(exactly = 0) { snapshotDao.deleteForEntries(any()) }

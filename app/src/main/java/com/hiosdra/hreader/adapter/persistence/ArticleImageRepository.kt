@@ -3,335 +3,147 @@ package com.hiosdra.hreader.adapter.persistence
 import android.content.Context
 import android.util.Log
 import com.hiosdra.hreader.BuildConfig
-import com.hiosdra.hreader.adapter.network.HttpStatusException
-import com.hiosdra.hreader.adapter.network.NonRetryableNetworkException
-import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
-import com.hiosdra.hreader.adapter.network.withNetworkRetries
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
-import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageManifest
 import com.hiosdra.hreader.core.application.port.out.ArticleImageStore
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
 import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
-import java.security.MessageDigest
 import java.time.Instant
-import java.util.UUID
 
-class ArticleImageRepository(
-    context: Context,
-    private val articleImageDao: ArticleImageDao,
-    private val okHttpClient: OkHttpClient,
-    private val preferencesManager: SyncPreferences,
-    private val remoteResourcePolicy: RemoteResourcePolicyAdapter,
-    private val fileExists: (String) -> Boolean = { path -> File(path).exists() }
+internal class ArticleImageRepository(
+    private val index: ArticleImageIndex,
+    private val downloader: ArticleImageRemoteDownloader,
+    private val files: ArticleImageFileStore,
+    private val preferences: SyncPreferences
 ) : ArticleImageStore {
-    companion object {
-        private const val TAG = "ArticleImageRepo"
+    constructor(
+        context: Context,
+        articleImageDao: ArticleImageDao,
+        okHttpClient: OkHttpClient,
+        preferencesManager: SyncPreferences,
+        remoteResourcePolicy: RemoteResourcePolicyAdapter,
+        fileExists: (String) -> Boolean = { path -> File(path).exists() }
+    ) : this(
+        index = ArticleImageIndex(articleImageDao),
+        downloader = ArticleImageRemoteDownloader(okHttpClient, remoteResourcePolicy),
+        files = ArticleImageFileStore(context, fileExists),
+        preferences = preferencesManager
+    )
 
-        /**
-         * A single hero image this large is a photographer's export, not something a phone screen
-         * needs, and one of them can eat a noticeable slice of the whole cache budget.
-         */
-        private const val MAX_IMAGE_BYTES = 2L * 1024 * 1024
-
-        private const val BYTES_PER_MEGABYTE = 1024L * 1024
-
-        /** Below SQLite's 999 bound-variable ceiling on Android. */
-        private const val DELETE_CHUNK = 500
-
-        private val MIME_TYPE_EXTENSIONS = mapOf(
-            "image/gif" to ".gif",
-            "image/jpeg" to ".jpg",
-            "image/png" to ".png",
-            "image/svg+xml" to ".svg",
-            "image/webp" to ".webp"
-        )
-
-        private val URL_EXTENSIONS = mapOf(
-            "gif" to ".gif",
-            "jpeg" to ".jpg",
-            "jpg" to ".jpg",
-            "png" to ".png",
-            "svg" to ".svg",
-            "webp" to ".webp"
-        )
-    }
-
-    private val imagesDir = File(context.filesDir, "article_images").also { directory ->
-        directory.mkdirs()
-        directory.listFiles { file ->
-            file.name.startsWith(".") && file.name.endsWith(".tmp")
-        }?.forEach(File::delete)
-    }
-
-    private val cacheBudgetMutex = Mutex()
-    private val safeHttpClient = okHttpClient.newBuilder()
-        .apply { interceptors().clear() }
-        .addNetworkInterceptor { chain ->
-            if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
-                throw NonRetryableNetworkException("Blocked remote resource URL")
-            }
-            chain.proceed(chain.request())
-        }
-        .dns(remoteResourcePolicy.dns())
-        .build()
+    private val storageMutex = Mutex()
 
     override suspend fun downloadAndStoreImage(entryId: Long, imageUrl: String): Unit =
         withContext(Dispatchers.IO) {
-            var localFile: File? = null
+            if (!preferences.getImageDownloadEnabled()) return@withContext
+
+            val existingImage = index.getImageForArticleByUrl(entryId, imageUrl)
+            if (existingImage != null && files.exists(existingImage.localFilePath)) {
+                return@withContext
+            }
+
+            val imageId = ArticleImageFileStore.imageId(entryId, imageUrl)
+            val staging = files.staging(imageId)
             var stored = false
+            var target: File? = null
             try {
-                if (!preferencesManager.getImageDownloadEnabled()) return@withContext
-                if (!remoteResourcePolicy.allows(imageUrl)) return@withContext
-
-                val existingImage = articleImageDao.getImageForArticleByUrl(entryId, imageUrl)
-                if (existingImage != null && fileExists(existingImage.localFilePath)) {
-                    return@withContext
-                }
-
-                // Download image
-                val request = Request.Builder().url(imageUrl).build()
-                withNetworkRetries {
-                    safeHttpClient.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            throw HttpStatusException(response.code, response.header(RETRY_AFTER_HEADER))
-                        }
-                        if (!remoteResourcePolicy.allows(response.request.url.toString())) return@use
-
-                        val body = response.body
-                        val contentType = body.contentType()?.toString()
-                        if (contentType?.startsWith("image/", ignoreCase = true) != true) return@use
-
-                        // A declared length settles it without spending any bandwidth at all. Most
-                        // CDNs send the image chunked and declare nothing, which is what the streaming
-                        // cap below is for.
-                        val declaredLength = body.contentLength()
-                        if (declaredLength > MAX_IMAGE_BYTES) {
-                            if (BuildConfig.DEBUG) {
-                                Log.d(TAG, "Skipping $imageUrl: $declaredLength bytes exceeds the per-image cap")
-                            }
-                            return@use
-                        }
-
-                        val imageId = generateImageId(entryId, imageUrl)
-                        val extension = getFileExtension(contentType, imageUrl)
-                        val target = File(imagesDir, "$imageId$extension")
-                        val staging = File(imagesDir, ".$imageId-${UUID.randomUUID()}.tmp")
-                        localFile = staging
-
-                        // Streamed with the cap applied as it goes. A response without a declared
-                        // length — anything chunked, which is most CDNs — used to sail past the check
-                        // above and be downloaded in full before its size could be objected to.
-                        val fileSize = copyAtMost(body.byteStream(), staging, MAX_IMAGE_BYTES)
-                        if (fileSize == null) {
-                            if (BuildConfig.DEBUG) {
-                                Log.d(TAG, "Discarding $imageUrl: larger than the per-image cap")
-                            }
-                            return@use
-                        }
-
-                        moveIntoCache(staging, target)
-                        localFile = target
-
-                        val articleImage = ArticleImage(
+                val downloaded = downloader.download(imageUrl, staging) ?: return@withContext
+                val targetFile = files.target(imageId, getFileExtension(downloaded.contentType, imageUrl))
+                target = targetFile
+                storageMutex.withLock {
+                    files.move(staging, targetFile)
+                    index.insert(
+                        ArticleImage(
                             id = imageId,
                             entryId = entryId,
                             originalUrl = imageUrl,
-                            localFilePath = target.absolutePath,
-                            mimeType = contentType,
+                            localFilePath = targetFile.absolutePath,
+                            mimeType = downloaded.contentType,
                             downloadedAt = Instant.now(),
-                            fileSize = fileSize
+                            fileSize = downloaded.fileSize
                         )
-
-                        articleImageDao.insertArticleImage(articleImage)
-                        stored = true
-                        enforceCacheBudget()
-                    }
+                    )
+                    stored = true
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 if (BuildConfig.DEBUG) {
-                    Log.e(TAG, "Failed to download/store image $imageUrl for entry $entryId", e)
+                    Log.e(TAG, "Failed to index image $imageUrl for entry $entryId", e)
                 }
             } finally {
-                if (!stored) localFile?.delete()
+                if (!stored) {
+                    files.delete(staging)
+                    target?.let { files.delete(it) }
+                }
             }
         }
 
     override suspend fun getLocalImagePath(entryId: Long, imageUrl: String): String? =
-        articleImageDao.getImageForArticleByUrl(entryId, imageUrl)?.let { image ->
-            if (fileExists(image.localFilePath)) image.localFilePath
+        index.getImageForArticleByUrl(entryId, imageUrl)?.let { image ->
+            if (files.exists(image.localFilePath)) image.localFilePath
             else {
-                articleImageDao.deleteArticleImage(image)
+                index.delete(image)
                 null
             }
         }
 
-    /** Every downloaded image of one article, keyed by the address it was published under. */
     override suspend fun getLocalImagePaths(entryId: Long): Map<String, String> =
-        articleImageDao.getImagesForArticle(entryId).mapNotNull { image ->
-            if (fileExists(image.localFilePath)) {
+        index.getImagesForArticle(entryId).mapNotNull { image ->
+            if (files.exists(image.localFilePath)) {
                 image.originalUrl to image.localFilePath
             } else {
-                articleImageDao.deleteArticleImage(image)
+                index.delete(image)
                 null
             }
         }.toMap()
 
     override suspend fun getLocalImagePaths(entryIds: List<Long>): Map<Long, Map<String, String>> {
         if (entryIds.isEmpty()) return emptyMap()
-        val images = articleImageDao.getImagesForArticles(entryIds.distinct())
-        val missingImageIds = images.filterNot { image -> fileExists(image.localFilePath) }
+        val images = index.getImagesForArticles(entryIds.distinct())
+        val missingImageIds = images.filterNot { image -> files.exists(image.localFilePath) }
             .map { it.id }
-        missingImageIds.chunked(DELETE_CHUNK).forEach { chunk ->
-            articleImageDao.deleteByIds(chunk)
-        }
+        if (missingImageIds.isNotEmpty()) index.deleteByIds(missingImageIds)
         return images.asSequence()
-            .filter { image -> image.id !in missingImageIds }
+            .filter { it.id !in missingImageIds }
             .groupBy { it.entryId }
-            .mapValues { (_, images) ->
-                images.associate { image -> image.originalUrl to image.localFilePath }
+            .mapValues { (_, articleImages) ->
+                articleImages.associate { image -> image.originalUrl to image.localFilePath }
             }
     }
 
     override fun observeLocalImagePaths(entryId: Long): Flow<Map<String, String>> =
-        articleImageDao.observeImagesForArticle(entryId).map { images ->
+        index.observeImagesForArticle(entryId).map { images ->
             images.mapNotNull { image ->
-                val path = image.localFilePath.takeIf(fileExists) ?: return@mapNotNull null
+                val path = image.localFilePath.takeIf(files::exists) ?: return@mapNotNull null
                 image.originalUrl to path
             }.toMap()
         }
 
     override suspend fun setExpectedImages(entryId: Long, imageUrls: List<String>) {
-        articleImageDao.deleteExpectedImagesForArticle(entryId)
-        val expected = imageUrls.distinct().map { url -> ArticleImageManifest(entryId, url) }
-        if (expected.isNotEmpty()) articleImageDao.insertExpectedImages(expected)
+        index.setExpectedImages(entryId, imageUrls)
     }
 
     override suspend fun invalidateArticleImages(entryId: Long) = withContext(Dispatchers.IO) {
-        val entryIds = listOf(entryId)
-        articleImageDao.getImagePathsForArticles(entryIds).forEach { path -> File(path).delete() }
-        articleImageDao.deleteImagesForArticles(entryIds)
-        articleImageDao.deleteExpectedImagesForArticles(entryIds)
+        index.getImagePathsForArticles(listOf(entryId)).forEach { path -> File(path).delete() }
+        index.deleteImagesForArticles(listOf(entryId))
+        index.deleteExpectedImagesForArticles(listOf(entryId))
     }
 
-    override suspend fun clearAll(): Unit = cacheBudgetMutex.withLock {
+    override suspend fun clearAll(): Unit = storageMutex.withLock {
         withContext(Dispatchers.IO) {
-            articleImageDao.clearAll()
-            articleImageDao.clearExpectedImages()
-            imagesDir.listFiles()?.forEach(File::deleteRecursively)
+            index.clearAll()
+            files.clearAll()
         }
-    }
-
-    /**
-     * Copies [input] into [target], stopping and reporting null once it goes past [limit]. Returns
-     * how many bytes were written.
-     */
-    private fun copyAtMost(input: InputStream, target: File, limit: Long): Long? {
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var written = 0L
-        FileOutputStream(target).use { output ->
-            input.use { source ->
-                while (true) {
-                    val read = source.read(buffer)
-                    if (read < 0) break
-                    written += read
-                    if (written > limit) return null
-                    output.write(buffer, 0, read)
-                }
-            }
-        }
-        return written
-    }
-
-    private fun moveIntoCache(staging: File, target: File) {
-        try {
-            Files.move(
-                staging.toPath(),
-                target.toPath(),
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING
-            )
-        } catch (_: AtomicMoveNotSupportedException) {
-            Files.move(
-                staging.toPath(),
-                target.toPath(),
-                StandardCopyOption.REPLACE_EXISTING
-            )
-        }
-    }
-
-    /**
-     * Keeps the image directory under the configured budget by dropping the oldest downloads
-     * first. Without it a large backlog fills the device, and offline is exactly when the user
-     * cannot free space by re-downloading anything.
-     *
-     * Serialized: prefetching runs bounded parallel downloads and each one asks for this
-     * afterwards. Concurrently, every caller read the same total, walked the same oldest-first list
-     * and deleted the same files, cutting the cache to a fraction of its budget — including images
-     * downloaded moments earlier for the trip the reader was packing for.
-     */
-    override suspend fun enforceCacheBudget(): Unit = cacheBudgetMutex.withLock {
-        val budgetBytes = preferencesManager.getImageCacheBudgetMegabytes() * BYTES_PER_MEGABYTE
-        if (budgetBytes <= 0) return@withLock
-
-        var storedBytes = articleImageDao.getTotalImageBytes()
-        if (storedBytes <= budgetBytes) return@withLock
-
-        while (storedBytes > budgetBytes) {
-            val images = articleImageDao.getImagesOldestFirst(DELETE_CHUNK)
-            if (images.isEmpty()) break
-            for (image in images) {
-                if (storedBytes <= budgetBytes) break
-                File(image.localFilePath).delete()
-                articleImageDao.deleteArticleImage(image)
-                storedBytes -= image.fileSize ?: 0L
-            }
-        }
-        Log.i(TAG, "Image cache trimmed to $storedBytes bytes")
-    }
-
-    /**
-     * Drops what is stored for articles the cache no longer holds. Reads the article ids rather
-     * than the image rows: retention and full-sync reconciliation can orphan thousands at once.
-     */
-    override suspend fun cleanupOrphanedImages() {
-        while (true) {
-            val orphaned = articleImageDao.getOrphanedImageEntryIds(DELETE_CHUNK)
-            if (orphaned.isEmpty()) break
-            articleImageDao.getImagePathsForArticles(orphaned).forEach { File(it).delete() }
-            articleImageDao.deleteImagesForArticles(orphaned)
-            articleImageDao.deleteExpectedImagesForArticles(orphaned)
-        }
-        while (true) {
-            val orphaned = articleImageDao.getOrphanedExpectedEntryIds(DELETE_CHUNK)
-            if (orphaned.isEmpty()) break
-            articleImageDao.deleteExpectedImagesForArticles(orphaned)
-        }
-    }
-
-    private fun generateImageId(entryId: Long, imageUrl: String): String {
-        val input = "$entryId-$imageUrl"
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(input.toByteArray(UTF_8))
-        return hash.joinToString("") { "%02x".format(it) }
     }
 
     private fun getFileExtension(contentType: String?, imageUrl: String): String {
@@ -345,5 +157,24 @@ class ArticleImageRepository(
             .getOrDefault("")
             .lowercase()
         return URL_EXTENSIONS[urlExtension] ?: ".img"
+    }
+
+    private companion object {
+        const val TAG = "ArticleImageRepo"
+        val MIME_TYPE_EXTENSIONS = mapOf(
+            "image/gif" to ".gif",
+            "image/jpeg" to ".jpg",
+            "image/png" to ".png",
+            "image/svg+xml" to ".svg",
+            "image/webp" to ".webp"
+        )
+        val URL_EXTENSIONS = mapOf(
+            "gif" to ".gif",
+            "jpeg" to ".jpg",
+            "jpg" to ".jpg",
+            "png" to ".png",
+            "svg" to ".svg",
+            "webp" to ".webp"
+        )
     }
 }

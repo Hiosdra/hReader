@@ -27,15 +27,24 @@ class ArticleImageRepositoryTest {
     private val articleImageDao = mockk<ArticleImageDao>(relaxed = true)
     private val okHttpClient = OkHttpClient()
     private val preferencesManager = mockk<SyncPreferences>(relaxed = true)
-    private val repo: ArticleImageRepository = ArticleImageRepository(
-        context,
-        articleImageDao,
-        okHttpClient,
-        preferencesManager,
-        RemoteResourcePolicyAdapter(allowedHosts = { setOf("example.com") })
-    ) { path ->
+    private val imageIndex = ArticleImageIndex(articleImageDao)
+    private val imageFiles = ArticleImageFileStore(context) { path ->
         path == "/tmp/image.jpg" || path == "/tmp/orphan.jpg"
     }
+    private val imageMaintenance = ArticleImageMaintenance(
+        imageIndex,
+        imageFiles,
+        preferencesManager
+    )
+    private val repo: ArticleImageRepository = ArticleImageRepository(
+        imageIndex,
+        ArticleImageRemoteDownloader(
+            okHttpClient,
+            RemoteResourcePolicyAdapter(allowedHosts = { setOf("example.com") })
+        ),
+        imageFiles,
+        preferencesManager
+    )
 
     @Test
     fun getLocalImagePath_returnsPath_whenImageExists() = runBlocking {
@@ -94,7 +103,7 @@ class ArticleImageRepositoryTest {
         coEvery { articleImageDao.getImagePathsForArticles(listOf(99L)) } returns listOf("/tmp/orphan.jpg")
         coEvery { articleImageDao.deleteImagesForArticles(listOf(99L)) } returns Unit
 
-        repo.cleanupOrphanedImages()
+        imageMaintenance.cleanupOrphaned()
 
         coVerify { articleImageDao.deleteImagesForArticles(listOf(99L)) }
     }
@@ -104,7 +113,7 @@ class ArticleImageRepositoryTest {
         coEvery { articleImageDao.getOrphanedImageEntryIds(500) } returns emptyList()
         coEvery { articleImageDao.getOrphanedExpectedEntryIds(500) } returns emptyList()
 
-        repo.cleanupOrphanedImages()
+        imageMaintenance.cleanupOrphaned()
 
         coVerify(exactly = 0) { articleImageDao.deleteImagesForArticles(any()) }
     }
@@ -114,7 +123,7 @@ class ArticleImageRepositoryTest {
         coEvery { articleImageDao.getOrphanedImageEntryIds(500) } returns emptyList()
         coEvery { articleImageDao.getOrphanedExpectedEntryIds(500) } returnsMany listOf(listOf(99L), emptyList())
 
-        repo.cleanupOrphanedImages()
+        imageMaintenance.cleanupOrphaned()
 
         coVerify { articleImageDao.deleteExpectedImagesForArticles(listOf(99L)) }
     }

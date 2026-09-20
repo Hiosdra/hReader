@@ -245,8 +245,6 @@ private class FullPagePageStore(
 
     override suspend fun getOfflinePage(entryId: Long, originalUrl: String) = null
 
-    override suspend fun cleanupOrphanedPages() = Unit
-
     override suspend fun clearAll() = Unit
 }
 

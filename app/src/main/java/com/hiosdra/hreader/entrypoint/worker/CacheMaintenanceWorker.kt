@@ -5,8 +5,8 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
-import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleMaintenanceStore
+import com.hiosdra.hreader.core.application.port.out.CacheMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import kotlinx.coroutines.CancellationException
@@ -18,13 +18,13 @@ class CacheMaintenanceWorker(
     appContext: Context,
     params: WorkerParameters,
     private val articleRepository: ArticleMaintenanceStore,
-    private val articleContentRepository: ArticleContentStore,
+    private val cacheMaintenance: CacheMaintenanceStore,
     private val syncPerformanceLogger: SyncPerformanceTracker,
     private val errorReportingManager: ErrorReporter
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = try {
         syncPerformanceLogger.measureSyncTime(SyncPerformanceOperation.ORPHANED_CONTENT_CLEANUP) {
-            articleContentRepository.cleanupOrphanedContent()
+            cacheMaintenance.maintain()
         }
         articleRepository.backfillMissingPreviews(PREVIEW_BACKFILL_LIMIT)
         Result.success()
