@@ -103,11 +103,22 @@ fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: Feed
                         }
                     }
                 )
-                AiOverviewPreloadSetting(
+                FeedSwitchSetting(
+                    title = stringResource(R.string.feeds_preload_ai_overview),
+                    description = stringResource(R.string.feeds_preload_ai_overview_description),
                     checked = feed.preloadAiOverview,
                     enabled = !uiState.isBusy,
                     onCheckedChange = { enabled ->
                         viewModel.setAiOverviewPreloading(feed.id, enabled)
+                    }
+                )
+                FeedSwitchSetting(
+                    title = stringResource(R.string.feeds_auto_mark_read),
+                    description = stringResource(R.string.feeds_auto_mark_read_description),
+                    checked = feed.autoMarkRead,
+                    enabled = !uiState.isBusy,
+                    onCheckedChange = { enabled ->
+                        viewModel.setAutoMarkRead(feed.id, enabled)
                     }
                 )
             } else {
@@ -118,7 +129,9 @@ fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: Feed
 }
 
 @Composable
-private fun AiOverviewPreloadSetting(
+private fun FeedSwitchSetting(
+    title: String,
+    description: String,
     checked: Boolean,
     enabled: Boolean,
     onCheckedChange: (Boolean) -> Unit
@@ -137,11 +150,11 @@ private fun AiOverviewPreloadSetting(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(R.string.feeds_preload_ai_overview),
+                text = title,
                 style = MaterialTheme.typography.titleSmall
             )
             Text(
-                text = stringResource(R.string.feeds_preload_ai_overview_description),
+                text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

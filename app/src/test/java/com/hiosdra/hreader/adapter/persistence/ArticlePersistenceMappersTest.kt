@@ -32,7 +32,8 @@ class ArticlePersistenceMappersTest {
             feedId = 7L,
             feedTitle = null,
             feedSiteUrl = "https://example.com",
-            feedUrl = null
+            feedUrl = null,
+            feedAutoMarkRead = null
         ).toListEntry()
 
         assertEquals(42L, entry.id)
@@ -61,7 +62,8 @@ class ArticlePersistenceMappersTest {
             feedId = 7L,
             feedTitle = "Feed",
             feedSiteUrl = null,
-            feedUrl = "https://example.com/feed"
+            feedUrl = "https://example.com/feed",
+            feedAutoMarkRead = false
         ).toEntry()
 
         assertEquals(42L, entry.id)
@@ -69,6 +71,7 @@ class ArticlePersistenceMappersTest {
         assertEquals(ArticleStatus.READ, entry.status)
         assertNull(entry.content)
         assertEquals("Feed", entry.feed.title)
+        assertFalse(entry.feed.autoMarkRead)
         assertFalse(entry.isBacklog)
     }
 
@@ -108,10 +111,13 @@ class ArticlePersistenceMappersTest {
             title = "Feed",
             siteUrl = "https://example.com",
             feedUrl = "https://example.com/feed",
-            preloadAiOverview = true
+            preloadAiOverview = true,
+            autoMarkRead = false
         ).toArticleFeed()
 
         assertTrue(feed.preloadAiOverview)
+        assertFalse(feed.autoMarkRead)
         assertTrue(feed.copy().toArticleFeedEntity().preloadAiOverview)
+        assertFalse(feed.toArticleFeedEntity().autoMarkRead)
     }
 }

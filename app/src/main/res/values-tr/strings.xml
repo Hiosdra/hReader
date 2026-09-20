@@ -215,6 +215,9 @@
     <string name="feeds_preload_ai_overview">Yapay zekâ özetlerini önceden yükle</string>
     <string name="feeds_preload_ai_overview_description">Senkronizasyondan sonra bu kaynaktaki okunmamış makaleler için özet oluşturun. Gemma çevrimdışı çalışır; bulut modelleri makale metnini seçilen sağlayıcıya gönderir ve ağ bağlantısı gerektirir.</string>
     <string name="feeds_preload_ai_overview_error">Yapay zekâ özeti ön yükleme ayarı kaydedilemedi.</string>
+    <string name="feeds_auto_mark_read">Okurken makaleleri okundu olarak işaretle</string>
+    <string name="feeds_auto_mark_read_description">Etkinleştirildiğinde bu akıştaki makaleler arasında gezinmek onları otomatik olarak okundu işaretler. Durum yine de elle değiştirilebilir.</string>
+    <string name="feeds_auto_mark_read_error">Otomatik okundu işaretleme ayarı kaydedilemedi.</string>
     <string name="feeds_imported">İçe aktarıldı: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="one">%1$d eklendi</item><item quantity="other">%1$d eklendi</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="one">%1$d zaten abonelikte</item><item quantity="other">%1$d zaten abonelikte</item></plurals>

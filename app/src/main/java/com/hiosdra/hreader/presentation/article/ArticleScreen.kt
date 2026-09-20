@@ -191,7 +191,7 @@ fun ArticleScreen(
             if (ttsController.state.value.articleId?.let { it != entry.id } == true) {
                 ttsController.pause()
             }
-            if (!entry.isRead) {
+            if (shouldAutomaticallyMarkRead(entry)) {
                 viewModel.updateReadStatus(page, true)
             }
         }

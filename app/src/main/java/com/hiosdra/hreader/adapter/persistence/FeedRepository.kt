@@ -46,10 +46,12 @@ class FeedRepository(
         val feeds = backend.getFeeds()
         val incoming = db.withTransaction {
             val existingSettings = feedDao.getAllFeedsImmediate()
-                .associate { it.id to it.preloadAiOverview }
+                .associateBy { it.id }
             val persistedFeeds = feeds.map { feed ->
+                val existing = existingSettings[feed.id]
                 feed.toFeedEntity().copy(
-                    preloadAiOverview = existingSettings[feed.id] ?: feed.preloadAiOverview
+                    preloadAiOverview = existing?.preloadAiOverview ?: feed.preloadAiOverview,
+                    autoMarkRead = existing?.autoMarkRead ?: feed.autoMarkRead
                 )
             }
             val incomingIds = persistedFeeds.mapTo(hashSetOf()) { it.id }
@@ -88,6 +90,10 @@ class FeedRepository(
 
     override suspend fun setAiOverviewPreloading(feedId: Long, enabled: Boolean) {
         feedDao.updateAiOverviewPreloading(feedId, enabled)
+    }
+
+    override suspend fun setAutoMarkRead(feedId: Long, enabled: Boolean) {
+        feedDao.updateAutoMarkRead(feedId, enabled)
     }
 
     override suspend fun exportOpml(title: String): String = buildOpml(getCachedFeeds(), title)
@@ -132,7 +138,8 @@ private fun FeedEntity.toFeed(): Feed = Feed(
     title = title,
     siteUrl = siteUrl,
     feedUrl = feedUrl,
-    preloadAiOverview = preloadAiOverview
+    preloadAiOverview = preloadAiOverview,
+    autoMarkRead = autoMarkRead
 )
 
 private fun Feed.toFeedEntity(): FeedEntity = FeedEntity(
@@ -140,5 +147,6 @@ private fun Feed.toFeedEntity(): FeedEntity = FeedEntity(
     title = title,
     siteUrl = siteUrl,
     feedUrl = feedUrl,
-    preloadAiOverview = preloadAiOverview
+    preloadAiOverview = preloadAiOverview,
+    autoMarkRead = autoMarkRead
 )

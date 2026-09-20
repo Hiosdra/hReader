@@ -33,6 +33,9 @@ interface FeedDao {
     @Query("UPDATE feeds SET preloadAiOverview = :enabled WHERE id = :feedId")
     suspend fun updateAiOverviewPreloading(feedId: Long, enabled: Boolean)
 
+    @Query("UPDATE feeds SET autoMarkRead = :enabled WHERE id = :feedId")
+    suspend fun updateAutoMarkRead(feedId: Long, enabled: Boolean)
+
     @Query("DELETE FROM feeds WHERE id = :feedId")
     suspend fun deleteById(feedId: Long)
 

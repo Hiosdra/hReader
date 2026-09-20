@@ -215,6 +215,9 @@
     <string name="feeds_preload_ai_overview">Pré-carregar resumos de IA</string>
     <string name="feeds_preload_ai_overview_description">Após a sincronização, gere resumos para os artigos não lidos desta fonte. O Gemma funciona offline; modelos em nuvem enviam o texto do artigo ao provedor selecionado e precisam de conexão de rede.</string>
     <string name="feeds_preload_ai_overview_error">Não foi possível salvar a configuração de pré-carregamento dos resumos de IA.</string>
+    <string name="feeds_auto_mark_read">Marcar artigos como lidos durante a leitura</string>
+    <string name="feeds_auto_mark_read_description">Quando ativada, passar pelos artigos deste feed os marca automaticamente como lidos. O status ainda pode ser alterado manualmente.</string>
+    <string name="feeds_auto_mark_read_error">Não foi possível salvar a configuração de marcação automática como lido.</string>
     <string name="feeds_imported">Importados: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="one">%1$d adicionado</item><item quantity="many">%1$d adicionados</item><item quantity="other">%1$d adicionados</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="one">%1$d já assinado</item><item quantity="many">%1$d já assinados</item><item quantity="other">%1$d já assinados</item></plurals>
