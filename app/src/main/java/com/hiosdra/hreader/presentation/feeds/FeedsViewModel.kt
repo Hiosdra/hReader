@@ -180,6 +180,30 @@ class FeedsViewModel(
         }
     }
 
+    fun setAutoMarkRead(feedId: Long, enabled: Boolean) {
+        if (_uiState.value.isBusy) return
+        val current = _uiState.value.feeds.firstOrNull { it.id == feedId } ?: return
+        if (current.autoMarkRead == enabled) return
+
+        updateAutoMarkRead(feedId, enabled)
+        retryAction = null
+        _uiState.value = _uiState.value.copy(isBusy = true, message = null)
+        viewModelScope.launch {
+            val result = runCatchingCancellable {
+                feeds.setAutoMarkRead(feedId, enabled)
+            }
+            val failed = result.isFailure
+            if (failed) updateAutoMarkRead(feedId, current.autoMarkRead)
+            retryAction = { setAutoMarkRead(feedId, enabled) }.takeIf { failed }
+            _uiState.value = _uiState.value.copy(
+                isBusy = false,
+                message = UiText.Resource(R.string.feeds_auto_mark_read_error).takeIf { failed },
+                messageIsError = failed,
+                messageCanRetry = failed
+            )
+        }
+    }
+
     fun importOpml(xml: String) {
         runFeedAction(
             success = {
@@ -327,6 +351,19 @@ class FeedsViewModel(
         }
         val updatedFilteredFeeds = _uiState.value.filteredFeeds.map { feed ->
             if (feed.id == feedId) feed.copy(preloadAiOverview = enabled) else feed
+        }
+        _uiState.value = _uiState.value.copy(
+            feeds = updatedFeeds,
+            filteredFeeds = updatedFilteredFeeds
+        )
+    }
+
+    private fun updateAutoMarkRead(feedId: Long, enabled: Boolean) {
+        val updatedFeeds = _uiState.value.feeds.map { feed ->
+            if (feed.id == feedId) feed.copy(autoMarkRead = enabled) else feed
+        }
+        val updatedFilteredFeeds = _uiState.value.filteredFeeds.map { feed ->
+            if (feed.id == feedId) feed.copy(autoMarkRead = enabled) else feed
         }
         _uiState.value = _uiState.value.copy(
             feeds = updatedFeeds,

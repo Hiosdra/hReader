@@ -26,7 +26,8 @@ data class ArticleListItem(
     val feedId: Long,
     val feedTitle: String?,
     val feedSiteUrl: String?,
-    val feedUrl: String?
+    val feedUrl: String?,
+    val feedAutoMarkRead: Boolean?
 )
 
 /** The reader metadata plus its feed. The body is loaded only for the nearby pages. */
@@ -44,7 +45,8 @@ data class ArticleReaderItem(
     val feedId: Long,
     val feedTitle: String?,
     val feedSiteUrl: String?,
-    val feedUrl: String?
+    val feedUrl: String?,
+    val feedAutoMarkRead: Boolean?
 )
 
 /** Just enough of an article to derive its stored preview from the body. */

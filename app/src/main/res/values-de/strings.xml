@@ -224,6 +224,9 @@
     <string name="feeds_preload_ai_overview">KI-Zusammenfassungen vorab erstellen</string>
     <string name="feeds_preload_ai_overview_description">Nach der Synchronisierung Zusammenfassungen für ungelesene Artikel aus dieser Quelle erstellen. Gemma funktioniert offline; Cloud-Modelle senden den Artikeltext an den ausgewählten Anbieter und benötigen eine Netzwerkverbindung.</string>
     <string name="feeds_preload_ai_overview_error">Die Einstellung für KI-Zusammenfassungen konnte nicht gespeichert werden.</string>
+    <string name="feeds_auto_mark_read">Artikel beim Lesen als gelesen markieren</string>
+    <string name="feeds_auto_mark_read_description">Wenn aktiviert, werden Artikel aus diesem Feed beim Wechseln automatisch als gelesen markiert. Der Status kann weiterhin manuell geändert werden.</string>
+    <string name="feeds_auto_mark_read_error">Die Einstellung zum automatischen Markieren als gelesen konnte nicht gespeichert werden.</string>
     <string name="feeds_imported">Importiert: %1$s, %2$s, %3$s</string>
     <plurals name="feeds_imported_added"><item quantity="one">%1$d hinzugefügt</item><item quantity="other">%1$d hinzugefügt</item></plurals>
     <plurals name="feeds_imported_subscribed"><item quantity="one">%1$d bereits abonniert</item><item quantity="other">%1$d bereits abonniert</item></plurals>

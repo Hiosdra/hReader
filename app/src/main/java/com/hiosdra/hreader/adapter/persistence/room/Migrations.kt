@@ -282,6 +282,12 @@ val MIGRATION_22_23 = object : Migration(22, 23) {
     }
 }
 
+val MIGRATION_23_24 = object : Migration(23, 24) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `feeds` ADD COLUMN `autoMarkRead` INTEGER NOT NULL DEFAULT 1")
+    }
+}
+
 val APP_MIGRATIONS = arrayOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
@@ -290,7 +296,8 @@ val APP_MIGRATIONS = arrayOf(
     MIGRATION_19_20,
     MIGRATION_20_21,
     MIGRATION_21_22,
-    MIGRATION_22_23
+    MIGRATION_22_23,
+    MIGRATION_23_24
 )
 
 private const val ENCLOSURE_RECORD_SEPARATOR = "\u001e"

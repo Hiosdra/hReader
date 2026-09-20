@@ -322,7 +322,8 @@ private fun Feed.toArticleFeedEntity() = FeedEntity(
     title = title,
     siteUrl = siteUrl,
     feedUrl = feedUrl,
-    preloadAiOverview = preloadAiOverview
+    preloadAiOverview = preloadAiOverview,
+    autoMarkRead = autoMarkRead
 )
 
 private class ArticleSyncEngineIntegrationTestApplication : Application()

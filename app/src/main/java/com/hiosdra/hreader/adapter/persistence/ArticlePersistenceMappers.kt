@@ -43,7 +43,8 @@ internal fun ArticleListItem.toListEntry(): ArticleListEntry = ArticleListEntry(
         id = feedId,
         title = feedTitle.orEmpty(),
         siteUrl = feedSiteUrl,
-        feedUrl = feedUrl.orEmpty()
+        feedUrl = feedUrl.orEmpty(),
+        autoMarkRead = feedAutoMarkRead ?: true
     ),
     imageUrl = leadImageUrl,
     status = status ?: ArticleStatus.UNREAD,
@@ -62,7 +63,8 @@ internal fun ArticleReaderItem.toEntry(): Entry = Entry(
         id = feedId,
         title = feedTitle.orEmpty(),
         siteUrl = feedSiteUrl,
-        feedUrl = feedUrl.orEmpty()
+        feedUrl = feedUrl.orEmpty(),
+        autoMarkRead = feedAutoMarkRead ?: true
     ),
     readingTime = readingTime,
     enclosures = enclosures,
@@ -75,7 +77,8 @@ internal fun FeedEntity.toArticleFeed(): Feed = Feed(
     title = title,
     siteUrl = siteUrl,
     feedUrl = feedUrl,
-    preloadAiOverview = preloadAiOverview
+    preloadAiOverview = preloadAiOverview,
+    autoMarkRead = autoMarkRead
 )
 
 internal fun Entry.toEntity(): ArticleEntity = ArticleEntity(
@@ -100,5 +103,6 @@ internal fun Feed.toArticleFeedEntity(): FeedEntity = FeedEntity(
     title = title,
     siteUrl = siteUrl,
     feedUrl = feedUrl,
-    preloadAiOverview = preloadAiOverview
+    preloadAiOverview = preloadAiOverview,
+    autoMarkRead = autoMarkRead
 )

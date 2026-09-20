@@ -14,7 +14,8 @@ private const val LIST_COLUMNS =
         "a.publishedAt AS publishedAt, a.preview AS preview, a.readingTime AS readingTime, " +
         "a.leadImageUrl AS leadImageUrl, a.status AS status, " +
         "a.backlogFetchedAt AS backlogFetchedAt, a.feedId AS feedId, " +
-        "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl"
+        "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl, " +
+        "f.autoMarkRead AS feedAutoMarkRead"
 
 private const val FROM_ARTICLES_WITH_FEED = "FROM articles a LEFT JOIN feeds f ON f.id = a.feedId"
 private const val FROM_ARTICLES = "FROM articles a"
@@ -170,7 +171,8 @@ interface ArticleQueryDao {
             "a.publishedAt AS publishedAt, a.preview AS preview, a.readingTime AS readingTime, " +
             "a.enclosures AS enclosures, a.status AS status, " +
             "a.backlogFetchedAt AS backlogFetchedAt, a.feedId AS feedId, " +
-            "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl " +
+            "f.title AS feedTitle, f.siteUrl AS feedSiteUrl, f.feedUrl AS feedUrl, " +
+            "f.autoMarkRead AS feedAutoMarkRead " +
             "$FROM_ARTICLES_WITH_FEED " +
             "WHERE a.id IN (:ids) ORDER BY a.publishedAt ASC, a.id ASC"
     )
