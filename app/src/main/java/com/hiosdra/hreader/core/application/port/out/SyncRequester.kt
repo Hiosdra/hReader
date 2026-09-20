@@ -21,6 +21,7 @@ interface SyncRequester {
     ): SyncOperationId? = request(SyncIntent.User(forceFullSync, userVisible, operationTitle))
     fun resyncNow(): SyncOperationId? = request(SyncIntent.Resync)
     fun observeRequestedSync(): Flow<SyncOperationStatus>
+    fun observeOperation(operationId: SyncOperationId): Flow<SyncOperationStatus>
     fun observeSyncActivity(): Flow<Boolean> = observeRequestedSync()
         .map { it.isRunning }
         .distinctUntilChanged()

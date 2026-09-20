@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -242,6 +243,22 @@ class SyncScheduler(
 
     override fun observeRequestedSync(): Flow<SyncOperationStatus> =
         observeSyncPipeline().map { it.status }
+
+    override fun observeOperation(operationId: SyncOperationId): Flow<SyncOperationStatus> {
+        val workId = runCatching { UUID.fromString(operationId.value) }.getOrNull()
+            ?: return flowOf(
+                SyncOperationStatus(
+                    state = SyncOperationState.FAILED,
+                    operationIds = setOf(operationId)
+                )
+            )
+        return workManager.getWorkInfoByIdFlow(workId)
+            .map { info ->
+                info?.let { operationStatus(it, operationId) }
+                    ?: SyncOperationStatus(operationIds = setOf(operationId))
+            }
+            .distinctUntilChanged()
+    }
 
     override fun observeSyncActivity(): Flow<Boolean> = combine(
         workManager.getWorkInfosForUniqueWorkFlow(CONTENT_SYNC_WORK),
@@ -466,4 +483,29 @@ internal fun operationStatus(infos: List<WorkInfo>): SyncOperationStatus {
         return SyncOperationStatus(state = SyncOperationState.CANCELLED, operationIds = operationIds)
     }
     return SyncOperationStatus(state = SyncOperationState.SUCCEEDED, operationIds = operationIds)
+}
+
+private fun operationStatus(
+    info: WorkInfo,
+    operationId: SyncOperationId
+): SyncOperationStatus = when (info.state) {
+    WorkInfo.State.FAILED -> SyncOperationStatus(
+        state = SyncOperationState.FAILED,
+        errorMessage = info.outputData.getString(KEY_ERROR_MESSAGE),
+        operationIds = setOf(operationId)
+    )
+    WorkInfo.State.CANCELLED -> SyncOperationStatus(
+        state = SyncOperationState.CANCELLED,
+        operationIds = setOf(operationId)
+    )
+    WorkInfo.State.SUCCEEDED -> SyncOperationStatus(
+        state = SyncOperationState.SUCCEEDED,
+        operationIds = setOf(operationId)
+    )
+    WorkInfo.State.RUNNING,
+    WorkInfo.State.ENQUEUED,
+    WorkInfo.State.BLOCKED -> SyncOperationStatus(
+        state = SyncOperationState.RUNNING,
+        operationIds = setOf(operationId)
+    )
 }

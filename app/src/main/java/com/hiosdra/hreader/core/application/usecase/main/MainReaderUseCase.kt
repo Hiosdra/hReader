@@ -43,6 +43,9 @@ class MainReaderUseCase(
 
     fun observeSync(): Flow<SyncOperationStatus> = sync.observeRequestedSync()
 
+    fun observeOperation(operationId: SyncOperationId): Flow<SyncOperationStatus> =
+        sync.observeOperation(operationId)
+
     fun observeHasCompletedSync(): Flow<Boolean> = syncHealth.observe()
         .map { it.lastSuccessfulSyncAt > 0L }
         .distinctUntilChanged()

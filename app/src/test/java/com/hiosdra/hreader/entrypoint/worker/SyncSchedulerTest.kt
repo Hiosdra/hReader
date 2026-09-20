@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.entrypoint.worker
 
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
+import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import android.app.Application
 import android.content.Context
@@ -354,6 +355,21 @@ class SyncSchedulerTest {
         val status = operationStatus(listOf(workInfo(WorkInfo.State.CANCELLED)))
 
         assertEquals(SyncOperationState.CANCELLED, status.state)
+    }
+
+    @Test
+    fun observeOperation_reportsThePrimaryWorkStateWithoutWaitingForThePipeline() = runBlocking {
+        val operationId = UUID.randomUUID()
+        val info = workInfo(WorkInfo.State.SUCCEEDED).also {
+            every { it.id } returns operationId
+        }
+        every { workManager.getWorkInfoByIdFlow(operationId) } returns flowOf(info)
+
+        val id = SyncOperationId(operationId.toString())
+        val status = scheduler.observeOperation(id).first()
+
+        assertEquals(SyncOperationState.SUCCEEDED, status.state)
+        assertEquals(setOf(id), status.operationIds)
     }
 
     @Test
