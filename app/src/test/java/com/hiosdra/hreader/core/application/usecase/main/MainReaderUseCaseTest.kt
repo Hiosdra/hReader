@@ -8,10 +8,15 @@ import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.sync.SyncHealthSnapshot
+import com.hiosdra.hreader.core.application.sync.SyncOperationId
+import com.hiosdra.hreader.core.application.sync.SyncOperationState
+import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -49,5 +54,34 @@ class MainReaderUseCaseTest {
         collection.join()
 
         assertEquals(listOf(false, true), values)
+    }
+
+    @Test
+    fun `operation observation is scoped to the requested work`() = runTest {
+        val operationId = SyncOperationId("primary")
+        val sync = mockk<SyncRequester>()
+        every { sync.observeOperation(operationId) } returns flowOf(
+            SyncOperationStatus(
+                state = SyncOperationState.SUCCEEDED,
+                operationIds = setOf(operationId)
+            )
+        )
+
+        val reader = MainReaderUseCase(
+            articles = mockk<ArticleQueryStore>(relaxed = true),
+            articleMutations = mockk<ArticleMutationStore>(relaxed = true),
+            cache = mockk<CacheStore>(relaxed = true),
+            aiModels = mockk<AiModelCatalog>(relaxed = true),
+            syncHealth = mockk<SyncHealthStore>(relaxed = true),
+            sync = sync,
+            network = mockk<NetworkStatus> {
+                every { isOnline } returns MutableStateFlow(true)
+            }
+        )
+
+        assertEquals(
+            SyncOperationState.SUCCEEDED,
+            reader.observeOperation(operationId).first().state
+        )
     }
 }

@@ -276,8 +276,8 @@ class MainViewModel(
                 )
             }
             try {
-                val status = reader.observeSync().first { current ->
-                    operationId in current.operationIds && current.state != SyncOperationState.IDLE &&
+                val status = reader.observeOperation(operationId).first { current ->
+                    current.state != SyncOperationState.IDLE &&
                         current.state != SyncOperationState.RUNNING
                 }
                 query.update { it.withSessionRestarted(Instant.now()) }
