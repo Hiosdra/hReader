@@ -196,8 +196,7 @@ fun SettingsScreen(
             item {
                 SettingsGroup(
                     title = stringResource(R.string.travel_mode_title),
-                    summary = stringResource(R.string.settings_offline_reading),
-                    initiallyExpanded = true
+                    summary = stringResource(R.string.settings_offline_reading)
                 ) {
                     TravelModeSettingsSection(
                         offline = offline,
