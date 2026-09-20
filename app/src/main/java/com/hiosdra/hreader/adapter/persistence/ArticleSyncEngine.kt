@@ -157,7 +157,7 @@ internal class ArticleSyncEngine(
             )
         }
         db.withTransaction {
-            feedDao.insertFeeds(feeds.preservingAiOverviewPreloading())
+            feedDao.insertFeeds(feeds.preservingFeedSettings())
             articleRecordDao.insertArticles(articles)
         }
     }
@@ -166,7 +166,7 @@ internal class ArticleSyncEngine(
         val feeds = entries.associate { it.feed.id to it.feed.toArticleFeedEntity() }.values.toList()
         val articles = entries.map { it.toEntity() }
         val result = db.withTransaction {
-            feedDao.insertFeeds(feeds.preservingAiOverviewPreloading())
+            feedDao.insertFeeds(feeds.preservingFeedSettings())
             insertArticlesPreservingPendingStatus(articles).also { persistenceResult ->
                 if (fullSyncRunId != null) {
                     fullSyncSeenDao.insertAll(
@@ -200,7 +200,7 @@ internal class ArticleSyncEngine(
         val fetchedFeeds = api.getFeeds().map { it.toArticleFeedEntity() }
         checkSession(ownerKey)
         db.withTransaction {
-            val incoming = fetchedFeeds.preservingAiOverviewPreloading()
+            val incoming = fetchedFeeds.preservingFeedSettings()
             val incomingIds = incoming.mapTo(hashSetOf()) { it.id }
             val staleIds = feedDao.getAllIds().filterNot(incomingIds::contains)
             if (incoming.isNotEmpty()) feedDao.insertFeeds(incoming)
@@ -212,9 +212,15 @@ internal class ArticleSyncEngine(
         return fetchedFeeds.mapTo(hashSetOf()) { it.id }
     }
 
-    private suspend fun List<FeedEntity>.preservingAiOverviewPreloading(): List<FeedEntity> {
-        val existingSettings = feedDao.getAllFeedsImmediate().associate { it.id to it.preloadAiOverview }
-        return map { feed -> feed.copy(preloadAiOverview = existingSettings[feed.id] ?: feed.preloadAiOverview) }
+    private suspend fun List<FeedEntity>.preservingFeedSettings(): List<FeedEntity> {
+        val existingSettings = feedDao.getAllFeedsImmediate().associateBy { it.id }
+        return map { feed ->
+            val existing = existingSettings[feed.id]
+            feed.copy(
+                preloadAiOverview = existing?.preloadAiOverview ?: feed.preloadAiOverview,
+                autoMarkRead = existing?.autoMarkRead ?: feed.autoMarkRead
+            )
+        }
     }
 
     private suspend fun insertArticlesPreservingPendingStatus(
