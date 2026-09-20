@@ -80,6 +80,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
+import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.article.ArticleListGrouped
@@ -465,6 +466,8 @@ internal fun MainScreen(
                 error = stringResource(R.string.main_could_not_read_stored_articles),
                 hasSearchQuery = uiState.searchQuery.isNotBlank(),
                 showReadArticles = uiState.showReadArticles,
+                readCount = uiState.readCount,
+                isSyncing = false,
                 feedId = feedId,
                 onRetry = { articles.retry() },
                 onClearSearch = { viewModel.updateSearchQuery("") },
@@ -477,15 +480,20 @@ internal fun MainScreen(
                 }
             )
 
-            articles.itemCount == 0 && uiState.syncState == com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING ->
+            articles.itemCount == 0 &&
+                !uiState.hasCompletedSync &&
+                uiState.readCount == 0 &&
+                uiState.syncState == SyncOperationState.RUNNING ->
                 InitialSyncState(modifier = Modifier.padding(paddingValues))
 
-            articles.itemCount == 0 && uiState.syncState == com.hiosdra.hreader.core.application.sync.SyncOperationState.FAILED ->
+            articles.itemCount == 0 && uiState.syncState == SyncOperationState.FAILED ->
                 EmptyState(
                     modifier = Modifier.padding(paddingValues),
-                    error = stringResource(R.string.main_sync_failed),
+                    error = stringResource(R.string.error_refresh_articles),
                     hasSearchQuery = uiState.searchQuery.isNotBlank(),
                     showReadArticles = uiState.showReadArticles,
+                    readCount = uiState.readCount,
+                    isSyncing = false,
                     feedId = feedId,
                     onRetry = viewModel::refreshFromNetwork,
                     onClearSearch = { viewModel.updateSearchQuery("") },
@@ -503,6 +511,8 @@ internal fun MainScreen(
                 error = null,
                 hasSearchQuery = uiState.searchQuery.isNotBlank(),
                 showReadArticles = uiState.showReadArticles,
+                readCount = uiState.readCount,
+                isSyncing = uiState.syncState == SyncOperationState.RUNNING,
                 feedId = feedId,
                 onRetry = viewModel::refreshFromNetwork,
                 onClearSearch = { viewModel.updateSearchQuery("") },
@@ -608,6 +618,8 @@ private fun EmptyState(
     error: String?,
     hasSearchQuery: Boolean,
     showReadArticles: Boolean,
+    readCount: Int,
+    isSyncing: Boolean,
     feedId: Long?,
     onRetry: () -> Unit,
     onClearSearch: () -> Unit,
@@ -620,7 +632,29 @@ private fun EmptyState(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+        ) {
+            if (isSyncing) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 20.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Text(
+                        text = stringResource(R.string.notification_sync_text),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             when {
                 error != null -> {
                     Text(
@@ -645,15 +679,31 @@ private fun EmptyState(
                     }
                 }
 
-                !showReadArticles -> {
+                !showReadArticles && readCount > 0 -> {
+                    Icon(
+                        imageVector = Icons.Filled.Done,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
                     Text(
-                        text = stringResource(R.string.main_no_unread_articles),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                        text = stringResource(R.string.main_all_caught_up),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = stringResource(R.string.main_all_caught_up_message),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                     Button(onClick = onShowAllArticles, modifier = Modifier.padding(top = 20.dp)) {
                         Text(stringResource(R.string.main_show_all_from_empty))
+                    }
+                    TextButton(onClick = onRetry) {
+                        Text(stringResource(R.string.main_refresh_now))
                     }
                 }
 

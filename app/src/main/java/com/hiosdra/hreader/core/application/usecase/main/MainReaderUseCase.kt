@@ -6,6 +6,7 @@ import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
 import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
 import com.hiosdra.hreader.core.application.port.out.CacheStore
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
+import com.hiosdra.hreader.core.application.port.out.SyncHealthStore
 import com.hiosdra.hreader.core.application.port.out.SyncRequester
 import com.hiosdra.hreader.core.application.sync.SyncIntent
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
@@ -15,6 +16,8 @@ import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import com.hiosdra.hreader.core.domain.model.Feed
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.time.Instant
 
 class MainReaderUseCase(
@@ -22,6 +25,7 @@ class MainReaderUseCase(
     private val articleMutations: ArticleMutationStore,
     private val cache: CacheStore,
     private val aiModels: AiModelCatalog,
+    private val syncHealth: SyncHealthStore,
     private val sync: SyncRequester,
     network: NetworkStatus
 ) {
@@ -38,6 +42,10 @@ class MainReaderUseCase(
     fun requestRefresh(): SyncOperationId? = sync.request(SyncIntent.User(userVisible = true))
 
     fun observeSync(): Flow<SyncOperationStatus> = sync.observeRequestedSync()
+
+    fun observeHasCompletedSync(): Flow<Boolean> = syncHealth.observe()
+        .map { it.lastSuccessfulSyncAt > 0L }
+        .distinctUntilChanged()
 
     fun prepareForOffline(): SyncOperationId? = sync.prepareForOffline()
 

@@ -73,6 +73,8 @@
     <string name="main_offline_refresh">Offline — connect to a network to refresh.</string>
     <string name="main_nothing_matches_search">Nothing matches that search</string>
     <string name="main_no_unread_articles">No unread articles in this scope</string>
+    <string name="main_all_caught_up">You\'re all caught up</string>
+    <string name="main_all_caught_up_message">Nothing new right now. We\'ll bring new stories here after the next sync.</string>
     <string name="main_show_all_from_empty">Show all articles</string>
     <string name="main_no_articles">No articles yet</string>
     <string name="main_no_feed_articles">No articles for this feed</string>
@@ -81,7 +83,6 @@
     <string name="main_add_subscription">Add subscription</string>
     <string name="main_refresh_now">Refresh now</string>
     <string name="main_syncing_first_time">Your first sync is running. Articles will appear here as soon as they are downloaded.</string>
-    <string name="main_sync_failed">The first sync could not be completed.</string>
     <string name="main_offline_banner">Offline — showing downloaded articles. Anything you read syncs when you are back online.</string>
     <string name="main_ai_model_unavailable_title">AI model unavailable</string>
     <string name="main_ai_model_unavailable_message">The selected AI model %1$s is unavailable. Download it or pick another model in Settings.</string>
