@@ -170,16 +170,8 @@ internal fun ArticleMetadata(
         if (aiOverview != null || isGeneratingOverview) {
             AnimatedVisibility(
                 visible = isAiExpanded,
-                enter = slideInVertically(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
-                ) + fadeIn(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
-                ),
-                exit = slideOutVertically(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                ) + fadeOut(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                )
+                enter = aiPanelEnter(),
+                exit = aiPanelExit()
             ) {
                 Card(
                     modifier = Modifier
@@ -213,19 +205,7 @@ internal fun ArticleMetadata(
                         Spacer(modifier = Modifier.height(8.dp))
                         AnimatedContent(
                             targetState = isGeneratingOverview,
-                            transitionSpec = {
-                                (fadeIn(
-                                    animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
-                                ) + scaleIn(
-                                    initialScale = 0.98f,
-                                    animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
-                                )) togetherWith (fadeOut(
-                                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                                ) + scaleOut(
-                                    targetScale = 0.98f,
-                                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                                ))
-                            },
+                            transitionSpec = { aiContentTransition() },
                             label = "AI summary content"
                         ) { generating ->
                             if (generating) {
@@ -295,32 +275,12 @@ internal fun ArticleMetadata(
         if (credibilityEnabled && (credibilityReport != null || isAnalyzingCredibility)) {
             AnimatedVisibility(
                 visible = isCredibilityExpanded,
-                enter = slideInVertically(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
-                ) + fadeIn(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
-                ),
-                exit = slideOutVertically(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                ) + fadeOut(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                )
+                enter = aiPanelEnter(),
+                exit = aiPanelExit()
             ) {
                 AnimatedContent(
                     targetState = isAnalyzingCredibility,
-                    transitionSpec = {
-                        (fadeIn(
-                            animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
-                        ) + scaleIn(
-                            initialScale = 0.98f,
-                            animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
-                        )) togetherWith (fadeOut(
-                            animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                        ) + scaleOut(
-                            targetScale = 0.98f,
-                            animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                        ))
-                    },
+                    transitionSpec = { aiContentTransition() },
                     label = "credibility content"
                 ) { analyzing ->
                     CredibilityCard(
@@ -372,6 +332,26 @@ internal fun ArticleMetadata(
         }
     }
 }
+
+private fun aiPanelEnter() = slideInVertically(
+    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
+) + fadeIn(animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD)))
+
+private fun aiPanelExit() = slideOutVertically(
+    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+) + fadeOut(animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT)))
+
+private fun aiContentTransition() = (fadeIn(
+    animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+) + scaleIn(
+    initialScale = 0.98f,
+    animationSpec = tween(MotionDuration.scaled(MotionDuration.QUICK))
+)) togetherWith (fadeOut(
+    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+) + scaleOut(
+    targetScale = 0.98f,
+    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
+))
 
 @Composable
 private fun articleAiProgressLabel(progress: ArticleAiProgress?): String = when (progress?.phase) {

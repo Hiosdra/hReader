@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.presentation.article
 
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
@@ -9,6 +10,9 @@ import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import com.hiosdra.hreader.presentation.text.UiText
+
+internal val CONTENT_UNAVAILABLE_MESSAGE = UiText.Resource(R.string.article_content_unavailable)
+internal val PARTIAL_CONTENT_MESSAGE = UiText.Resource(R.string.article_partial_content)
 
 enum class ArticleContentLoadState {
     LOADING,
@@ -182,4 +186,27 @@ internal fun ArticleUiState.getContentProvenance(entryId: Long): ArticleContentP
             )
         }
     }
+}
+
+internal fun ArticleUiState.displayedProvenance(
+    entry: Entry,
+    webViewActive: Boolean
+): ArticleContentProvenance {
+    if (!webViewActive) return getContentProvenance(entry.id)
+    if (content.isOnline) {
+        return ArticleContentProvenance(
+            kind = ArticleContentKind.EXTERNAL_WEB_PAGE,
+            sourceUrl = entry.url,
+            delivery = ArticleContentDelivery.NETWORK
+        )
+    }
+    return content.offlinePages[entry.id]?.let { page ->
+        ArticleContentProvenance(
+            kind = ArticleContentKind.SAVED_WEB_PAGE,
+            sourceUrl = page.finalUrl.ifBlank { page.originalUrl },
+            fetchedAt = page.fetchedAt,
+            delivery = ArticleContentDelivery.LOCAL_STORAGE,
+            isComplete = page.isComplete
+        )
+    } ?: getContentProvenance(entry.id)
 }

@@ -55,9 +55,6 @@ import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsModel
-import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
-import com.hiosdra.hreader.core.domain.model.ArticleContentKind
-import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
@@ -79,8 +76,6 @@ internal const val FEED_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.72f
 internal const val WEB_PAGER_SNAP_POSITIONAL_THRESHOLD = 0.85f
 internal const val READING_POSITION_SAMPLE_MILLIS = 400L
 
-// Compose packs layout dimensions into 18 bits. Keep a margin below the 262143 px
-// representable maximum because Modifier.height converts Dp back to integer pixels.
 internal const val MAX_SAFE_ARTICLE_WEB_VIEW_HEIGHT_PX = 262_000
 
 internal fun safeArticleWebViewHeightPx(contentHeightPx: Int): Int =
@@ -127,13 +122,19 @@ fun ArticleScreen(
     }
     var isWebViewMode by remember { mutableStateOf(false) }
     var textScale by rememberSaveable { mutableFloatStateOf(1f) }
-    // The pager opens on page 0 and only then jumps to the article being read, so
-    // neither read state nor the reader's position may be touched before it lands.
     var pagerPositioned by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val feedbackScope = rememberCoroutineScope()
     val onFeedback: (FeedbackRequest) -> Unit = { request ->
         feedbackScope.launch { snackbarHostState.showFeedback(request) }
+    }
+    fun reloadArticleList() {
+        viewModel.openList(
+            feedId = routeArguments.feedId,
+            startArticleId = routeArguments.startArticleId,
+            includeRead = routeArguments.includeRead,
+            sessionStartMillis = routeArguments.sessionStartMillis
+        )
     }
     ArticleRouteEffectHost(
         effects = effects,
@@ -155,12 +156,7 @@ fun ArticleScreen(
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
     LaunchedEffect(routeArguments) {
-        viewModel.openList(
-            feedId = routeArguments.feedId,
-            startArticleId = routeArguments.startArticleId,
-            includeRead = routeArguments.includeRead,
-            sessionStartMillis = routeArguments.sessionStartMillis
-        )
+        reloadArticleList()
     }
 
     val currentOfflinePageAvailable = navigation.entries
@@ -173,17 +169,12 @@ fun ArticleScreen(
         }
     }
 
-    // The view model owns where the reader is, so it also survives a configuration
-    // change; the pager is placed from it once and reports back from then on.
     LaunchedEffect(navigation.entries.size) {
         if (pagerPositioned || navigation.entries.isEmpty()) return@LaunchedEffect
         pagerState.scrollToPage(navigation.currentIndex.coerceIn(navigation.entries.indices))
         pagerPositioned = true
     }
 
-    // Read state follows the page the pager settles on. Pages that are merely
-    // composed - the ones passed on the way to the opened article, or a neighbour
-    // revealed by a swipe that snaps back - stay unread.
     LaunchedEffect(pagerPositioned) {
         if (!pagerPositioned) return@LaunchedEffect
         snapshotFlow { pagerState.settledPage }.collect { page ->
@@ -197,8 +188,6 @@ fun ArticleScreen(
         }
     }
 
-    // Reporting back only once the pager has been placed keeps page 0 - where it
-    // still sits on the first frame - from overwriting the position it was sent to.
     LaunchedEffect(pagerState.settledPage, pagerPositioned) {
         if (!pagerPositioned) return@LaunchedEffect
         if (pagerState.settledPage != navigation.currentIndex && pagerState.settledPage in navigation.entries.indices) {
@@ -211,21 +200,7 @@ fun ArticleScreen(
     val currentWebViewAvailable = content.isOnline || currentOfflinePage != null
     val currentWebViewActive = isWebViewMode && currentWebViewAvailable
     val currentDisplayedProvenance = currentEntry?.let { entry ->
-        when {
-            currentWebViewActive && content.isOnline -> ArticleContentProvenance(
-                kind = ArticleContentKind.EXTERNAL_WEB_PAGE,
-                sourceUrl = entry.url,
-                delivery = ArticleContentDelivery.NETWORK
-            )
-            currentWebViewActive && currentOfflinePage != null -> ArticleContentProvenance(
-                kind = ArticleContentKind.SAVED_WEB_PAGE,
-                sourceUrl = currentOfflinePage.finalUrl.ifBlank { currentOfflinePage.originalUrl },
-                fetchedAt = currentOfflinePage.fetchedAt,
-                delivery = ArticleContentDelivery.LOCAL_STORAGE,
-                isComplete = currentOfflinePage.isComplete
-            )
-            else -> viewModel.getContentProvenanceForEntry(entry.id)
-        }
+        uiState.displayedProvenance(entry, currentWebViewActive)
     }
     val ttsContent = currentEntry?.let { viewModel.getContentForEntry(it.id) }
     val contentLoadFinished = currentEntry?.let { entry ->
@@ -315,8 +290,8 @@ fun ArticleScreen(
             )
         },
         topBar = {
-            Column {
-                ArticleTopBar(
+            ArticleScreenTopBar(
+                state = ArticleScreenTopBarState(
                     entryUrl = currentEntry?.url,
                     feedTitle = currentEntry?.feed?.title,
                     listPosition = navigation.currentListPosition,
@@ -325,6 +300,14 @@ fun ArticleScreen(
                     canUseWebView = currentWebViewAvailable,
                     isRead = currentEntry?.isRead == true,
                     textScale = textScale,
+                    ttsContentState = ttsContentState,
+                    isTtsActive = ttsState.articleId != null,
+                    isOnline = content.isOnline,
+                    defaultPaywallBypassMethod = configuredPaywallBypassMethod,
+                    canUsePaywallBypass = canUsePaywallBypass,
+                    displayedProvenance = currentDisplayedProvenance
+                ),
+                actions = ArticleScreenTopBarActions(
                     onDecreaseTextScale = {
                         textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
                             .coerceAtLeast(MIN_ARTICLE_TEXT_SCALE)
@@ -349,8 +332,6 @@ fun ArticleScreen(
                             dispatchEffect(ArticleRouteEffect.ShareArticle(entry.title, entry.url))
                         }
                     },
-                    ttsContentState = ttsContentState,
-                    isTtsActive = ttsState.articleId != null,
                     onInvokeTts = {
                         if (ttsState.articleId != null) {
                             ttsPlayerSheetVisible = true
@@ -360,31 +341,14 @@ fun ArticleScreen(
                             }?.let { playArticleTts(it) }
                         }
                     },
-                    isOnline = content.isOnline,
-                    defaultPaywallBypassMethod = configuredPaywallBypassMethod,
-                    canUsePaywallBypass = canUsePaywallBypass,
-                    onOpenInChrome = {
-                        currentEntry?.url?.let(openArticleInChrome)
-                    },
+                    onOpenInChrome = { currentEntry?.url?.let(openArticleInChrome) },
                     onBypassPaywall = { method ->
                         currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
                     },
-                    onOpenPaywallMethodPicker = { paywallMethodPickerVisible = true }
+                    onOpenPaywallMethodPicker = { paywallMethodPickerVisible = true },
+                    onSwitchToFeed = { isWebViewMode = false }
                 )
-                if (currentWebViewActive && currentDisplayedProvenance != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        ArticleContentProvenanceStatus(
-                            provenance = currentDisplayedProvenance,
-                            onSwitchToFeed = { isWebViewMode = false }
-                        )
-                    }
-                }
-            }
+            )
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -411,19 +375,14 @@ fun ArticleScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = navigation.error?.resolve().orEmpty(),
+                                text = navigation.error.resolve(),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center
                             )
                             TextButton(
                                 onClick = {
-                                    viewModel.openList(
-                                        feedId = routeArguments.feedId,
-                                        startArticleId = routeArguments.startArticleId,
-                                        includeRead = routeArguments.includeRead,
-                                        sessionStartMillis = routeArguments.sessionStartMillis
-                                    )
+                                    reloadArticleList()
                                 },
                                 modifier = Modifier.padding(top = 8.dp)
                             ) {
@@ -440,41 +399,25 @@ fun ArticleScreen(
                         textScale = textScale,
                         paddingValues = paddingValues,
                         bottomContentPadding = articleBottomContentPadding,
-                        getContentForEntry = { entryId -> viewModel.getContentForEntry(entryId) },
-                        getContentStateForEntry = { entryId -> viewModel.getContentStateForEntry(entryId) },
-                        getContentProvenanceForEntry = { entryId ->
-                            viewModel.getContentProvenanceForEntry(entryId)
-                        },
-                        getLeadImageForEntry = { entryId -> viewModel.getLeadImageForEntry(entryId) },
-                        getOfflinePageForEntry = { entryId -> viewModel.getOfflinePageForEntry(entryId) },
-                        loadedContentIds = content.content.keys,
-                        loadedReadingPositionIds = content.readingProgress.loadedIds,
-                        readingProgressForEntry = { entryId -> viewModel.getReadingProgressForEntry(entryId) },
-                        onReadingProgressChanged = viewModel::saveReadingProgress,
-                        onReadingCompleted = viewModel::clearReadingProgress,
-                        onRetryContent = viewModel::retryContent,
-                        readerPreferences = readerPreferences,
-                        articleImageLoader = articleImageLoader,
-                        coilImageLoader = coilImageLoader,
-                        remoteResourcePolicy = remoteResourcePolicy,
-                        onEffect = dispatchEffect,
-                        localImagePaths = content.localImagePaths,
-                        isOnline = content.isOnline,
-                        aiOverviews = ai.aiOverviews,
-                        aiProvider = ai.aiProvider,
-                        generatingOverviewIds = ai.generatingOverviewIds,
-                        aiOverviewProgress = ai.aiOverviewProgress,
-                        onAiOverview = { entryId -> viewModel.generateAiOverview(entryId) },
-                        credibilityEnabled = ai.credibilityEnabled,
-                        credibilityReports = ai.credibilityReports,
-                        analyzingCredibilityIds = ai.analyzingCredibilityIds,
-                        onAnalyzeCredibility = { entryId, force -> viewModel.analyzeCredibility(entryId, force) },
-                        defaultPaywallBypassMethod = configuredPaywallBypassMethod,
-                        canUsePaywallBypass = { url ->
-                            url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
-                        },
-                        onOpenInChrome = openArticleInChrome,
-                        onBypassPaywall = openArticleThroughPaywall
+                        bindings = ArticlePagerBindings(
+                            state = uiState,
+                            readerPreferences = readerPreferences,
+                            articleImageLoader = articleImageLoader,
+                            coilImageLoader = coilImageLoader,
+                            remoteResourcePolicy = remoteResourcePolicy,
+                            onReadingProgressChanged = viewModel::saveReadingProgress,
+                            onReadingCompleted = viewModel::clearReadingProgress,
+                            onRetryContent = viewModel::retryContent,
+                            onEffect = dispatchEffect,
+                            onAiOverview = viewModel::generateAiOverview,
+                            onAnalyzeCredibility = viewModel::analyzeCredibility,
+                            defaultPaywallBypassMethod = configuredPaywallBypassMethod,
+                            canUsePaywallBypass = { url ->
+                                url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
+                            },
+                            onOpenInChrome = openArticleInChrome,
+                            onBypassPaywall = openArticleThroughPaywall
+                        )
                     )
                 }
             }
@@ -611,10 +554,6 @@ private fun ArticleContentErrorBanner(
     }
 }
 
-/**
- * Shows [message] once and clears it, whether the reader acted on it or let it time out. Keyed on
- * the message so a second, different failure is announced rather than swallowed.
- */
 @Composable
 private fun RetryableSnackbar(
     hostState: SnackbarHostState,

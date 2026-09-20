@@ -35,10 +35,8 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-/** Keeps a long list of options inside the dialog instead of pushing its buttons off screen. */
 private val CHOICE_LIST_MAX_HEIGHT = 320.dp
 
-/** The intervals WorkManager can express cleanly, above its own fifteen-minute floor. */
 private val SYNC_INTERVAL_CHOICES = listOf(15, 30, 60, 180, 360, 720, 1440)
 
 @Composable
@@ -158,10 +156,6 @@ fun SyncSection(
     }
 }
 
-/**
- * A lazy, height-capped list rather than a plain column: the hour picker offers twenty-four
- * options, which laid out in full runs off the bottom of the dialog with no way to scroll to it.
- */
 @Composable
 private fun <T> ChoiceDialog(
     title: String,

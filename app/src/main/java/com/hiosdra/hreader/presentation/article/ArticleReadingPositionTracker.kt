@@ -15,82 +15,48 @@ import kotlinx.coroutines.flow.sample
 
 @OptIn(FlowPreview::class)
 @Composable
-internal fun ArticleWebViewReadingPosition(
+internal fun ArticleReadingPositionTracker(
     entryId: Long,
     contentKey: Int,
+    effectKey: Any,
     readingPositionLoaded: Boolean,
     savedReadingProgress: Float?,
-    scrollY: Int,
-    contentHeightPx: Int,
-    viewportHeightPx: Int,
-    contentHeightSettled: Boolean,
-    webViewReady: Boolean,
-    onRestoreScrollY: (Int) -> Unit,
+    positionReady: Boolean,
+    currentProgress: () -> Pair<Float, Boolean>,
+    restorePosition: suspend (Float) -> Unit,
     onReadingProgressChanged: (Long, Float) -> Unit,
     onReadingCompleted: (Long) -> Unit
 ) {
     var restoredContentPositionKey by rememberSaveable(entryId) { mutableStateOf<Int?>(null) }
     var readingCompletionReported by rememberSaveable(entryId) { mutableStateOf(false) }
-    val latestOnRestoreScrollY = rememberUpdatedState(onRestoreScrollY)
+    val latestPositionReady = rememberUpdatedState(positionReady)
+    val latestCurrentProgress = rememberUpdatedState(currentProgress)
     val latestReadingPositionLoaded = rememberUpdatedState(readingPositionLoaded)
-    val latestScrollY = rememberUpdatedState(scrollY)
-    val latestContentHeightPx = rememberUpdatedState(contentHeightPx)
-    val latestViewportHeightPx = rememberUpdatedState(viewportHeightPx)
-    val latestContentHeightSettled = rememberUpdatedState(contentHeightSettled)
-    val latestWebViewReady = rememberUpdatedState(webViewReady)
+    val latestRestorePosition = rememberUpdatedState(restorePosition)
     val latestOnReadingProgressChanged = rememberUpdatedState(onReadingProgressChanged)
     val latestOnReadingCompleted = rememberUpdatedState(onReadingCompleted)
 
-    LaunchedEffect(
-        entryId,
-        contentKey,
-        readingPositionLoaded,
-        savedReadingProgress,
-        contentHeightPx,
-        viewportHeightPx,
-        contentHeightSettled,
-        webViewReady
-    ) {
+    LaunchedEffect(entryId, contentKey, effectKey, readingPositionLoaded, savedReadingProgress, positionReady) {
         if (
             restoredContentPositionKey == contentKey ||
             !readingPositionLoaded ||
-            !webViewReady ||
-            contentHeightPx <= 0 ||
-            viewportHeightPx <= 0 ||
-            !contentHeightSettled
+            !positionReady
         ) {
             return@LaunchedEffect
         }
-        val maxScrollPx = readerWebViewMaxScrollPx(contentHeightPx, viewportHeightPx)
         val progress = savedReadingProgress
-        if (progress == null || maxScrollPx == 0) {
+        if (progress == null) {
             restoredContentPositionKey = contentKey
             return@LaunchedEffect
         }
-
-        latestOnRestoreScrollY.value(articleScrollOffset(progress, maxScrollPx))
+        latestRestorePosition.value(progress)
         restoredContentPositionKey = contentKey
     }
 
-    LaunchedEffect(
-        entryId,
-        contentKey,
-        readingPositionLoaded,
-        contentHeightSettled,
-        webViewReady,
-        readerWebViewMaxScrollPx(contentHeightPx, viewportHeightPx)
-    ) {
-        if (!readingPositionLoaded || !contentHeightSettled || !webViewReady) {
-            return@LaunchedEffect
-        }
+    LaunchedEffect(entryId, contentKey, effectKey, readingPositionLoaded, positionReady) {
+        if (!readingPositionLoaded || !positionReady) return@LaunchedEffect
         readingCompletionReported = false
-        snapshotFlow {
-            val maxScrollPx = readerWebViewMaxScrollPx(
-                latestContentHeightPx.value,
-                latestViewportHeightPx.value
-            )
-            articleScrollProgress(latestScrollY.value, maxScrollPx) to (maxScrollPx > 0)
-        }
+        snapshotFlow { latestCurrentProgress.value() }
             .filter { (_, ready) -> ready }
             .sample(READING_POSITION_SAMPLE_MILLIS)
             .collect { (progress, _) ->
@@ -106,21 +72,11 @@ internal fun ArticleWebViewReadingPosition(
             }
     }
 
-    DisposableEffect(entryId, contentKey, contentHeightSettled, webViewReady) {
+    DisposableEffect(entryId, contentKey, effectKey, positionReady) {
         onDispose {
-            if (
-                !latestReadingPositionLoaded.value ||
-                !latestContentHeightSettled.value ||
-                !latestWebViewReady.value
-            ) {
-                return@onDispose
-            }
-            val maxScrollPx = readerWebViewMaxScrollPx(
-                latestContentHeightPx.value,
-                latestViewportHeightPx.value
-            )
-            if (maxScrollPx <= 0) return@onDispose
-            val progress = articleScrollProgress(latestScrollY.value, maxScrollPx)
+            if (!latestReadingPositionLoaded.value || !latestPositionReady.value) return@onDispose
+            val (progress, ready) = latestCurrentProgress.value()
+            if (!ready) return@onDispose
             if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
                 latestOnReadingCompleted.value(entryId)
             } else {

@@ -49,19 +49,19 @@ internal object TtsTextProcessor {
         model: TtsModel,
         sourceChunks: List<TtsChunk>,
         language: String = ""
-    ): List<TtsChunk> = sourceChunks.flatMap { chunk ->
-        when {
-            model == TtsModel.COQUI_PL_MAI_FEMALE -> chunks(
-                PolishTtsTextNormalizer.normalize(chunk.text),
-                addTerminalPunctuation = false
-            ).withBoundary(chunk.boundaryBefore)
+    ): List<TtsChunk> {
+        val normalizer = when {
+            model == TtsModel.COQUI_PL_MAI_FEMALE -> PolishTtsTextNormalizer::normalize
             model == TtsModel.SUPERTONIC && language.substringBefore('-').equals("en", true) ->
-                chunks(
-                    EnglishTechnicalTtsTextNormalizer.normalize(chunk.text),
-                    addTerminalPunctuation = false
-                ).withBoundary(chunk.boundaryBefore)
-            else -> listOf(chunk)
+                EnglishTechnicalTtsTextNormalizer::normalize
+            else -> null
         }
+        return normalizer?.let { normalize ->
+            sourceChunks.flatMap { chunk ->
+                chunks(normalize(chunk.text), addTerminalPunctuation = false)
+                    .withBoundary(chunk.boundaryBefore)
+            }
+        } ?: sourceChunks
     }
 
     private fun normalizedBlocks(blocks: List<ReadableBlock>): List<ReadableBlock> =
@@ -75,32 +75,25 @@ internal object TtsTextProcessor {
     private fun chunkBlocks(
         blocks: List<ReadableBlock>,
         maxCharacters: Int = DEFAULT_MAX_CHARACTERS
-    ): List<TtsChunk> {
+    ): List<TtsChunk> = buildList {
         require(maxCharacters > 0)
-        val result = mutableListOf<TtsChunk>()
+        var firstChunk = true
         blocks.forEach { block ->
-            val pieces = sentenceParts(block.text, maxCharacters)
-            var buffer = StringBuilder()
-            var boundary = if (result.isEmpty()) {
-                TtsChunkBoundary.START
-            } else {
-                block.boundaryBefore
-            }
-            pieces.forEach { piece ->
-                if (
-                    buffer.isNotEmpty() &&
-                    buffer.length + 1 + piece.length > maxCharacters
-                ) {
-                    result += TtsChunk(buffer.toString(), boundary)
-                    buffer = StringBuilder()
-                    boundary = TtsChunkBoundary.CONTINUATION
+            chunks(block.text, maxCharacters, addTerminalPunctuation = false)
+                .forEachIndexed { index, text ->
+                    add(
+                        TtsChunk(
+                            text = text,
+                            boundaryBefore = when {
+                                firstChunk -> TtsChunkBoundary.START
+                                index == 0 -> block.boundaryBefore
+                                else -> TtsChunkBoundary.CONTINUATION
+                            }
+                        )
+                    )
+                    firstChunk = false
                 }
-                if (buffer.isNotEmpty()) buffer.append(' ')
-                buffer.append(piece)
             }
-            if (buffer.isNotEmpty()) result += TtsChunk(buffer.toString(), boundary)
-        }
-        return result
     }
 
     private fun List<String>.withBoundary(boundary: TtsChunkBoundary): List<TtsChunk> =

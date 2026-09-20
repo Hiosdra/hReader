@@ -106,14 +106,7 @@ fun SyncHealthSnapshot.recordFinished(
 ): SyncHealthSnapshot {
     val normalizedRunId = runId.normalizedRunId()
     if (normalizedRunId.isEmpty() && lastRun?.runId?.isNotEmpty() == true) return this
-    val runningRun = if (normalizedRunId.isEmpty()) {
-        lastRun?.takeIf { it.state == SyncRunState.RUNNING }
-    } else {
-        activeRuns.firstOrNull { it.runId == normalizedRunId }
-            ?: lastRun?.takeIf {
-                it.runId == normalizedRunId && it.state == SyncRunState.RUNNING
-            }
-    }
+    val runningRun = runFor(normalizedRunId, requireRunning = true)
     if (normalizedRunId.isNotEmpty() && runningRun == null) return this
 
     val existingFeeds = feeds.associateBy { it.feedId }
@@ -188,11 +181,7 @@ fun SyncHealthSnapshot.recordFinished(
         lastAttemptedSyncAt = maxOf(lastAttemptedSyncAt, attemptedAt),
         lastRun = if (shouldReplaceLastRun) completedRun else lastRun,
         feeds = nextFeeds,
-        activeRuns = if (normalizedRunId.isEmpty()) {
-            activeRuns
-        } else {
-            activeRuns.filterNot { it.runId == normalizedRunId }
-        }
+        activeRuns = withoutRun(normalizedRunId)
     )
 }
 
@@ -203,12 +192,7 @@ fun SyncHealthSnapshot.recordStageFailure(
 ): SyncHealthSnapshot {
     val normalizedRunId = runId.normalizedRunId()
     if (normalizedRunId.isEmpty() && lastRun?.runId?.isNotEmpty() == true) return this
-    val previousRun = if (normalizedRunId.isEmpty()) {
-        lastRun
-    } else {
-        activeRuns.firstOrNull { it.runId == normalizedRunId }
-            ?: lastRun?.takeIf { it.runId == normalizedRunId }
-    }
+    val previousRun = runFor(normalizedRunId)
     if (normalizedRunId.isNotEmpty() && previousRun == null) return this
 
     val hasSuccessfulWork = lastSuccessfulSyncAt > 0L ||
@@ -234,11 +218,7 @@ fun SyncHealthSnapshot.recordStageFailure(
         } else {
             lastRun
         },
-        activeRuns = if (normalizedRunId.isEmpty()) {
-            activeRuns
-        } else {
-            activeRuns.filterNot { it.runId == normalizedRunId }
-        }
+        activeRuns = withoutRun(normalizedRunId)
     )
 }
 
@@ -248,14 +228,7 @@ fun SyncHealthSnapshot.recordCancelled(
 ): SyncHealthSnapshot {
     val normalizedRunId = runId.normalizedRunId()
     if (normalizedRunId.isEmpty() && lastRun?.runId?.isNotEmpty() == true) return this
-    val previousRun = if (normalizedRunId.isEmpty()) {
-        lastRun?.takeIf { it.state == SyncRunState.RUNNING }
-    } else {
-        activeRuns.firstOrNull { it.runId == normalizedRunId }
-            ?: lastRun?.takeIf {
-                it.runId == normalizedRunId && it.state == SyncRunState.RUNNING
-            }
-    }
+    val previousRun = runFor(normalizedRunId, requireRunning = true)
     if (normalizedRunId.isNotEmpty() && previousRun == null) return this
 
     val cancelledRun = (previousRun ?: SyncRunSummary(startedAt = completedAt)).copy(
@@ -270,11 +243,7 @@ fun SyncHealthSnapshot.recordCancelled(
         } else {
             lastRun
         },
-        activeRuns = if (normalizedRunId.isEmpty()) {
-            activeRuns
-        } else {
-            activeRuns.filterNot { it.runId == normalizedRunId }
-        }
+        activeRuns = withoutRun(normalizedRunId)
     )
 }
 
@@ -311,6 +280,23 @@ fun SyncHealthSnapshot.resolveFreshness(
 }
 
 private fun String.normalizedRunId(): String = trim()
+
+private fun SyncHealthSnapshot.runFor(
+    runId: String,
+    requireRunning: Boolean = false
+): SyncRunSummary? {
+    val matches = { run: SyncRunSummary ->
+        run.runId == runId && (!requireRunning || run.state == SyncRunState.RUNNING)
+    }
+    return if (runId.isEmpty()) {
+        lastRun?.takeIf { !requireRunning || it.state == SyncRunState.RUNNING }
+    } else {
+        activeRuns.firstOrNull(matches) ?: lastRun?.takeIf(matches)
+    }
+}
+
+private fun SyncHealthSnapshot.withoutRun(runId: String): List<SyncRunSummary> =
+    if (runId.isEmpty()) activeRuns else activeRuns.filterNot { it.runId == runId }
 
 fun SyncFeedStatus.resolveFreshness(
     now: Long,

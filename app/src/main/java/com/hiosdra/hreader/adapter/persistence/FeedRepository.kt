@@ -27,13 +27,8 @@ class FeedRepository(
     private val articleRecordDao: ArticleRecordDao,
     private val db: AppDatabase
 ) : FeedStore {
-    /**
-     * The subscription list as last synced. Serving it from the cache is what lets the screen open
-     * without a connection at all: it used to go straight to the backend and show an error.
-     */
     override suspend fun getCachedFeeds(): List<Feed> = feedDao.getAllFeeds().first().map { it.toFeed() }
 
-    /** Unread counts from the cached articles, so the list still adds up while offline. */
     override suspend fun getCachedUnreadCounts(): Map<Long, Int> =
         observeUnreadCounts().first()
 
@@ -71,10 +66,6 @@ class FeedRepository(
     override suspend fun discoverFeeds(url: String): List<DiscoveredFeed> = backend.discoverFeeds(url)
     override suspend fun verifyConnection(): Int = backend.verifyConnection()
 
-    /**
-     * The server first: dropping the local copy of a feed the backend still carries would only
-     * bring it back on the next sync, along with every article in it.
-     */
     override suspend fun deleteFeed(feedId: Long) {
         backend.deleteFeed(feedId)
         db.withTransaction {
@@ -98,11 +89,6 @@ class FeedRepository(
 
     override suspend fun exportOpml(title: String): String = buildOpml(getCachedFeeds(), title)
 
-    /**
-     * Subscribes to everything in the file that is not subscribed to already. One failure does not
-     * stop the rest: a single unreachable feed in a hundred-line export should not cost the other
-     * ninety-nine.
-     */
     override suspend fun importOpml(xml: String): OpmlImportResult {
         val parsed = parseOpml(xml)
         if (parsed.isEmpty()) return OpmlImportResult(added = 0, skipped = 0, failed = emptyList())

@@ -8,6 +8,7 @@ import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
+import androidx.work.ListenableWorker
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
@@ -81,11 +82,6 @@ internal fun offlinePreparationStage(tags: Set<String>): OfflinePreparationStage
     else -> OfflinePreparationStage.IDLE
 }
 
-/**
- * Every enqueue point in the app, so they cannot drift apart on constraints. They did: the periodic
- * registration required a network while the one the activity enqueued on exit did not, which meant
- * a week offline spent five retries and a fistful of radio wakeups every time the app was closed.
- */
 class SyncScheduler(
     private val context: Context,
     private val backendPreferences: BackendPreferences,
@@ -114,13 +110,6 @@ class SyncScheduler(
             .launchIn(scope)
     }
 
-    /**
-     * Built per enqueue rather than once: the reader can change the metered and roaming rules at
-     * any time, and a cached Constraints would keep scheduling against the old ones.
-     *
-     * Roaming is expressed as a capability on a [NetworkRequest] because [NetworkType] has no term
-     * for it. `NOT_ROAMING` needs API 28 and the app requires 29.
-     */
     private fun networkConstraints(
         avoidLowStorage: Boolean = false,
         avoidLowBattery: Boolean = false
@@ -139,8 +128,6 @@ class SyncScheduler(
                     if (unmeteredOnly) addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
                 }
                 .build()
-            // The NetworkType is kept as the fallback for platforms that cannot honour the request,
-            // so the constraint degrades to "any connection" rather than to none at all.
             builder.setRequiredNetworkRequest(request, networkType)
         }
         if (avoidLowStorage) {
@@ -152,12 +139,6 @@ class SyncScheduler(
         return builder.build()
     }
 
-    /**
-     * Registers the periodic sync, or cancels it when there is nothing to sync against. Every
-     * caller — app start, a changed setting, signing out — goes through here, so signing out stops
-     * the worker instead of leaving it waking the radio hourly to fail on a missing token, and
-     * configuring an account again brings it back without waiting for the next launch.
-     */
     override fun schedulePeriodicSync() {
         enqueueMaintenance()
         if (!backendPreferences.hasBackendCredentials()) {
@@ -177,9 +158,6 @@ class SyncScheduler(
                     .build()
             )
             .build()
-        // UPDATE rather than KEEP so installs that registered this worker without constraints pick
-        // the new ones up instead of keeping the old registration forever. It is also what applies
-        // a changed interval or a newly turned-on Wi-Fi-only rule.
         workManager.enqueueUniquePeriodicWork(
             CONTENT_SYNC_WORK,
             ExistingPeriodicWorkPolicy.UPDATE,
@@ -187,10 +165,6 @@ class SyncScheduler(
         )
     }
 
-    /**
-     * Prefetching runs after a sync rather than on its own schedule: on an independent timer it
-     * regularly fired against the previous article set and re-fetched nothing useful.
-     */
     override fun enqueuePrefetch(runId: String?) {
         val syncRunId = runId ?: UUID.randomUUID().toString()
         workManager.beginUniqueWork(
@@ -200,10 +174,6 @@ class SyncScheduler(
         ).then(aiOverviewPreloadRequest()).then(maintenanceRequest()).enqueue()
     }
 
-    /**
-     * A sync the reader has just asked for by doing something — switching backend, finishing setup
-     * — rather than one the clock asked for. Unthrottled, because it answers an action.
-     */
     override fun request(intent: SyncIntent): SyncOperationId? {
         if (!backendPreferences.hasBackendCredentials()) return null
         val plan = syncCoordinator.plan(intent)
@@ -288,7 +258,6 @@ class SyncScheduler(
             }
             .distinctUntilChanged()
 
-    /** Stops everything in flight. What is queued has no account left to run against. */
     override suspend fun cancelAllSync() {
         listOf(CONTENT_SYNC_WORK, SYNC_PIPELINE_WORK, MAINTENANCE_WORK).forEach { workName ->
             workManager.cancelUniqueWork(workName).await()
@@ -300,22 +269,15 @@ class SyncScheduler(
         }
     }
 
-    /** Sync then prefetch when the app goes to the background, at most once every two minutes. */
     override fun enqueueBackgroundSyncChain() {
         if (!backendPreferences.hasBackendCredentials()) return
         val now = System.currentTimeMillis()
-        // Held in preferences rather than in memory: the throttle used to live in a static field,
-        // which reset on every process death and let the chain run far more often than intended.
         if (now - syncPreferences.getLastChainedSyncTimestamp() < CHAINED_SYNC_THROTTLE_MILLIS) return
         syncPreferences.setLastChainedSyncTimestamp(now)
 
         request(SyncIntent.Background)
     }
 
-    /**
-     * The prefetch stage reports how many articles it has stored, so the settings screen can show
-     * progress rather than an indeterminate spinner of unknown length.
-     */
     override fun observeOfflinePreparation(): Flow<OfflinePreparationProgress> =
         observeSyncPipeline(offlineOnly = true)
 
@@ -348,44 +310,26 @@ class SyncScheduler(
         plan: SyncPlan,
         operationTitle: String,
         runId: String
-    ) = OneTimeWorkRequestBuilder<ContentSyncWorker>()
-        .setConstraints(
-            networkConstraints(
-                avoidLowStorage = plan.travelMode,
-                avoidLowBattery = plan.travelMode && !plan.expedited
-            )
-        )
-        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
-        .setInputData(
-            Data.Builder()
-                .putBoolean(KEY_FORCE_FULL_SYNC, plan.forceFullSync)
-                .putBoolean(KEY_ENQUEUE_PREFETCH, false)
-                .putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
-                .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
-                .putString(KEY_OPERATION_TITLE, operationTitle)
-                .putString(KEY_SYNC_RUN_ID, runId)
-                .build()
-        )
-        .apply {
-            if (plan.expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            if (plan.offlinePreparation) {
-                addTag(OFFLINE_PREPARATION_TAG)
-                addTag(OFFLINE_SYNC_STAGE_TAG)
-            }
-            if (plan.fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
-        }
-        .build()
+    ) = oneTimeRequest<ContentSyncWorker>(
+        constraints = networkConstraints(
+            avoidLowStorage = plan.travelMode,
+            avoidLowBattery = plan.travelMode && !plan.expedited
+        ),
+        inputData = Data.Builder()
+            .putBoolean(KEY_FORCE_FULL_SYNC, plan.forceFullSync)
+            .putBoolean(KEY_ENQUEUE_PREFETCH, false)
+            .putOperationData(plan, operationTitle, runId)
+            .build(),
+        expedited = plan.expedited,
+        tags = planTags(plan, OFFLINE_SYNC_STAGE_TAG)
+    )
 
-    private fun maintenanceRequest() =
-        OneTimeWorkRequestBuilder<CacheMaintenanceWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiresStorageNotLow(true)
-                    .setRequiresBatteryNotLow(true)
-                    .build()
-            )
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
+    private fun maintenanceRequest() = oneTimeRequest<CacheMaintenanceWorker>(
+        constraints = Constraints.Builder()
+            .setRequiresStorageNotLow(true)
+            .setRequiresBatteryNotLow(true)
             .build()
+    )
 
     private fun enqueueMaintenance() {
         workManager.enqueueUniqueWork(
@@ -399,91 +343,101 @@ class SyncScheduler(
         plan: SyncPlan = syncCoordinator.plan(SyncIntent.Periodic),
         operationTitle: String = context.getString(R.string.notification_sync_title),
         runId: String? = null
-    ) =
-        OneTimeWorkRequestBuilder<ArticleContentSyncWorker>()
-            .setConstraints(
-                networkConstraints(
-                    avoidLowStorage = true,
-                    avoidLowBattery = !plan.expedited
-                )
-            )
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
-            .setInputData(
-                Data.Builder()
-                    .putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
-                    .putBoolean(KEY_DRAIN_REMAINING, plan.drainRemaining)
-                    .putBoolean(KEY_DOWNLOAD_ALL_IMAGES, plan.fullOfflinePreparation)
-                    .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
-                    .putString(KEY_OPERATION_TITLE, operationTitle)
-                    .apply { runId?.let { putString(KEY_SYNC_RUN_ID, it) } }
-                    .build()
-            )
-            .apply {
-                if (plan.expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                if (plan.offlinePreparation) {
-                    addTag(OFFLINE_PREPARATION_TAG)
-                    addTag(OFFLINE_CONTENT_STAGE_TAG)
-                }
-                if (plan.fullOfflinePreparation) addTag(FULL_OFFLINE_PREPARATION_TAG)
-            }
-            .build()
+    ) = oneTimeRequest<ArticleContentSyncWorker>(
+        constraints = networkConstraints(
+            avoidLowStorage = true,
+            avoidLowBattery = !plan.expedited
+        ),
+        inputData = Data.Builder()
+            .putOperationData(plan, operationTitle, runId)
+            .putBoolean(KEY_DRAIN_REMAINING, plan.drainRemaining)
+            .putBoolean(KEY_DOWNLOAD_ALL_IMAGES, plan.fullOfflinePreparation)
+            .build(),
+        expedited = plan.expedited,
+        tags = planTags(plan, OFFLINE_CONTENT_STAGE_TAG)
+    )
 
     private fun aiOverviewPreloadRequest(
         plan: SyncPlan = syncCoordinator.plan(SyncIntent.Periodic)
     ): OneTimeWorkRequest {
         val modelId = aiPreferences.getAiModelId()
-        return OneTimeWorkRequestBuilder<ArticleAiOverviewPreloadWorker>()
-            .setConstraints(
-                aiOverviewPreloadConstraints(
-                    modelId = modelId,
-                    avoidLowBattery = plan.travelMode && !plan.expedited
-                )
-            )
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
-            .setInputData(Data.Builder().putString(KEY_AI_MODEL_ID, modelId).build())
-            .build()
+        return oneTimeRequest<ArticleAiOverviewPreloadWorker>(
+            constraints = aiOverviewPreloadConstraints(
+                modelId = modelId,
+                avoidLowBattery = plan.travelMode && !plan.expedited
+            ),
+            inputData = Data.Builder().putString(KEY_AI_MODEL_ID, modelId).build(),
+            expedited = false
+        )
     }
 
     private fun aiOverviewPreloadConstraints(
         modelId: String,
         avoidLowBattery: Boolean
-    ): Constraints =
-        if (AiModel.providerFor(modelId) == AiProvider.OPENROUTER) {
-            networkConstraints(avoidLowStorage = true, avoidLowBattery = avoidLowBattery)
-        } else {
-            Constraints.Builder()
-                .setRequiresStorageNotLow(true)
-                .apply { if (avoidLowBattery) setRequiresBatteryNotLow(true) }
-                .build()
-        }
+    ): Constraints = if (AiModel.providerFor(modelId) == AiProvider.OPENROUTER) {
+        networkConstraints(avoidLowStorage = true, avoidLowBattery = avoidLowBattery)
+    } else {
+        Constraints.Builder()
+            .setRequiresStorageNotLow(true)
+            .apply { if (avoidLowBattery) setRequiresBatteryNotLow(true) }
+            .build()
+    }
 
     private fun fullPageRequest(
         plan: SyncPlan,
         operationTitle: String,
         runId: String? = null
-    ) = OneTimeWorkRequestBuilder<FullPageSyncWorker>()
-        .setConstraints(
-            networkConstraints(
-                avoidLowStorage = true,
-                avoidLowBattery = !plan.expedited
-            )
+    ) = oneTimeRequest<FullPageSyncWorker>(
+        constraints = networkConstraints(
+            avoidLowStorage = true,
+            avoidLowBattery = !plan.expedited
+        ),
+        inputData = Data.Builder()
+            .putOperationData(plan, operationTitle, runId)
+            .build(),
+        expedited = plan.expedited,
+        tags = listOf(
+            OFFLINE_PREPARATION_TAG,
+            FULL_OFFLINE_PREPARATION_TAG,
+            OFFLINE_PAGES_STAGE_TAG
         )
+    )
+
+    private inline fun <reified Worker : ListenableWorker> oneTimeRequest(
+        constraints: Constraints,
+        inputData: Data = Data.EMPTY,
+        expedited: Boolean = false,
+        tags: List<String> = emptyList()
+    ): OneTimeWorkRequest = OneTimeWorkRequestBuilder<Worker>()
+        .setConstraints(constraints)
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
-        .setInputData(
-            Data.Builder()
-                .putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
-                .putBoolean(KEY_USER_VISIBLE, plan.userVisible)
-                .putString(KEY_OPERATION_TITLE, operationTitle)
-                .apply { runId?.let { putString(KEY_SYNC_RUN_ID, it) } }
-                .build()
-        )
+        .setInputData(inputData)
         .apply {
-            if (plan.expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            addTag(OFFLINE_PREPARATION_TAG)
-            addTag(FULL_OFFLINE_PREPARATION_TAG)
-            addTag(OFFLINE_PAGES_STAGE_TAG)
+            if (expedited) {
+                setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            }
+            tags.forEach(::addTag)
         }
         .build()
+
+    private fun planTags(plan: SyncPlan, stageTag: String): List<String> = buildList {
+        if (plan.offlinePreparation) {
+            add(OFFLINE_PREPARATION_TAG)
+            add(stageTag)
+        }
+        if (plan.fullOfflinePreparation) add(FULL_OFFLINE_PREPARATION_TAG)
+    }
+
+    private fun Data.Builder.putOperationData(
+        plan: SyncPlan,
+        operationTitle: String,
+        runId: String?
+    ): Data.Builder = apply {
+        putBoolean(KEY_IGNORE_QUIET_HOURS, plan.ignoreQuietHours)
+        putBoolean(KEY_USER_VISIBLE, plan.userVisible)
+        putString(KEY_OPERATION_TITLE, operationTitle)
+        runId?.let { putString(KEY_SYNC_RUN_ID, it) }
+    }
 }
 
 internal fun operationStatus(infos: List<WorkInfo>): SyncOperationStatus {

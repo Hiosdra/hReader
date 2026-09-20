@@ -6,12 +6,6 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-/**
- * Bypass services supported by the app, mirroring the set offered by ShareToBypass.
- *
- * A method either appends the article URL to [baseUrl] as a path segment ([queryParam] is null)
- * or passes it as the [queryParam] query parameter.
- */
 class PaywallBypassService : PaywallBypass {
     override fun getBypassUrl(originalUrl: String, method: PaywallBypassMethod): String {
         val target = originalUrl.trim()

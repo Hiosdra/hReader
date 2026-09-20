@@ -21,7 +21,6 @@ data class FeedsUiState(
     val unreadCounts: Map<Long, Int> = emptyMap(),
     val isLoading: Boolean = false,
     val error: UiText? = null,
-    /** Result of the last delete, rename or import, for a snackbar rather than a dialog. */
     val message: UiText? = null,
     val messageIsError: Boolean = false,
     val messageCanRetry: Boolean = false,
@@ -38,11 +37,6 @@ class FeedsViewModel(
     )
     val uiState: StateFlow<FeedsUiState> = _uiState.asStateFlow()
 
-    /**
-     * Where each feed sits, settled when the panel opens and held until it opens again. Counts keep
-     * arriving after the list is on screen — from the cache first, then the server — and reordering
-     * on each of them would move the rows under the reader's finger.
-     */
     private var rowOrder: Map<Long, Int> = emptyMap()
     private var resettleRows = true
     private var retryAction: (() -> Unit)? = null
@@ -92,10 +86,6 @@ class FeedsViewModel(
         _uiState.value = _uiState.value.copy(filteredFeeds = filteredFeeds)
     }
 
-    /**
-     * The cache first, the server second. Subscriptions change rarely and the local copy is
-     * complete, so a failed refresh is only an error when there is nothing cached to show.
-     */
     private fun loadFeeds() {
         if (_uiState.value.isLoading) return
 
@@ -128,10 +118,6 @@ class FeedsViewModel(
         }
     }
 
-    /**
-     * The server decides first. Removing the feed locally and letting the sync catch up would show
-     * it gone and then bring it back, articles and all, the next time the app synced.
-     */
     fun deleteFeed(feedId: Long) {
         val title = _uiState.value.feeds.find { it.id == feedId }?.title
         runFeedAction(
@@ -157,51 +143,27 @@ class FeedsViewModel(
     }
 
     fun setAiOverviewPreloading(feedId: Long, enabled: Boolean) {
-        if (_uiState.value.isBusy) return
-        val current = _uiState.value.feeds.firstOrNull { it.id == feedId } ?: return
-        if (current.preloadAiOverview == enabled) return
-
-        updateAiOverviewPreloading(feedId, enabled)
-        retryAction = null
-        _uiState.value = _uiState.value.copy(isBusy = true, message = null)
-        viewModelScope.launch {
-            val result = runCatchingCancellable {
-                feeds.setAiOverviewPreloading(feedId, enabled)
-            }
-            val failed = result.isFailure
-            if (failed) updateAiOverviewPreloading(feedId, current.preloadAiOverview)
-            retryAction = { setAiOverviewPreloading(feedId, enabled) }.takeIf { failed }
-            _uiState.value = _uiState.value.copy(
-                isBusy = false,
-                message = UiText.Resource(R.string.feeds_preload_ai_overview_error).takeIf { failed },
-                messageIsError = failed,
-                messageCanRetry = failed
-            )
-        }
+        updateFeedSetting(
+            feedId = feedId,
+            enabled = enabled,
+            isEnabled = Feed::preloadAiOverview,
+            update = { feed, value -> feed.copy(preloadAiOverview = value) },
+            action = { feeds.setAiOverviewPreloading(feedId, enabled) },
+            errorRes = R.string.feeds_preload_ai_overview_error,
+            retry = { setAiOverviewPreloading(feedId, enabled) }
+        )
     }
 
     fun setAutoMarkRead(feedId: Long, enabled: Boolean) {
-        if (_uiState.value.isBusy) return
-        val current = _uiState.value.feeds.firstOrNull { it.id == feedId } ?: return
-        if (current.autoMarkRead == enabled) return
-
-        updateAutoMarkRead(feedId, enabled)
-        retryAction = null
-        _uiState.value = _uiState.value.copy(isBusy = true, message = null)
-        viewModelScope.launch {
-            val result = runCatchingCancellable {
-                feeds.setAutoMarkRead(feedId, enabled)
-            }
-            val failed = result.isFailure
-            if (failed) updateAutoMarkRead(feedId, current.autoMarkRead)
-            retryAction = { setAutoMarkRead(feedId, enabled) }.takeIf { failed }
-            _uiState.value = _uiState.value.copy(
-                isBusy = false,
-                message = UiText.Resource(R.string.feeds_auto_mark_read_error).takeIf { failed },
-                messageIsError = failed,
-                messageCanRetry = failed
-            )
-        }
+        updateFeedSetting(
+            feedId = feedId,
+            enabled = enabled,
+            isEnabled = Feed::autoMarkRead,
+            update = { feed, value -> feed.copy(autoMarkRead = value) },
+            action = { feeds.setAutoMarkRead(feedId, enabled) },
+            errorRes = R.string.feeds_auto_mark_read_error,
+            retry = { setAutoMarkRead(feedId, enabled) }
+        )
     }
 
     fun importOpml(xml: String) {
@@ -228,10 +190,6 @@ class FeedsViewModel(
         ) { feeds.importOpml(xml) }
     }
 
-    /**
-     * [write] receives the OPML and reports whether it landed. The panel owns the file handle the
-     * storage picker returned; the view model owns what to say about the outcome.
-     */
     suspend fun exportOpmlTo(title: String, write: suspend (String) -> Boolean) {
         retryAction = null
         val opml = runCatchingCancellable { feeds.exportOpml(title) }
@@ -345,29 +303,44 @@ class FeedsViewModel(
         }
     }
 
-    private fun updateAiOverviewPreloading(feedId: Long, enabled: Boolean) {
-        val updatedFeeds = _uiState.value.feeds.map { feed ->
-            if (feed.id == feedId) feed.copy(preloadAiOverview = enabled) else feed
+    private fun updateFeedSetting(
+        feedId: Long,
+        enabled: Boolean,
+        isEnabled: (Feed) -> Boolean,
+        update: (Feed, Boolean) -> Feed,
+        action: suspend () -> Unit,
+        errorRes: Int,
+        retry: () -> Unit
+    ) {
+        if (_uiState.value.isBusy) return
+        val current = _uiState.value.feeds.firstOrNull { it.id == feedId } ?: return
+        if (isEnabled(current) == enabled) return
+
+        updateFeed(feedId) { feed -> update(feed, enabled) }
+        retryAction = null
+        _uiState.value = _uiState.value.copy(isBusy = true, message = null)
+        viewModelScope.launch {
+            val result = runCatchingCancellable { action() }
+            val failed = result.isFailure
+            if (failed) updateFeed(feedId) { feed -> update(feed, isEnabled(current)) }
+            retryAction = retry.takeIf { failed }
+            _uiState.value = _uiState.value.copy(
+                isBusy = false,
+                message = UiText.Resource(errorRes).takeIf { failed },
+                messageIsError = failed,
+                messageCanRetry = failed
+            )
         }
-        val updatedFilteredFeeds = _uiState.value.filteredFeeds.map { feed ->
-            if (feed.id == feedId) feed.copy(preloadAiOverview = enabled) else feed
-        }
-        _uiState.value = _uiState.value.copy(
-            feeds = updatedFeeds,
-            filteredFeeds = updatedFilteredFeeds
-        )
     }
 
-    private fun updateAutoMarkRead(feedId: Long, enabled: Boolean) {
-        val updatedFeeds = _uiState.value.feeds.map { feed ->
-            if (feed.id == feedId) feed.copy(autoMarkRead = enabled) else feed
-        }
-        val updatedFilteredFeeds = _uiState.value.filteredFeeds.map { feed ->
-            if (feed.id == feedId) feed.copy(autoMarkRead = enabled) else feed
-        }
+    private fun updateFeed(feedId: Long, transform: (Feed) -> Feed) {
         _uiState.value = _uiState.value.copy(
-            feeds = updatedFeeds,
-            filteredFeeds = updatedFilteredFeeds
+            feeds = _uiState.value.feeds.map { feed ->
+                if (feed.id == feedId) transform(feed) else feed
+            },
+            filteredFeeds = _uiState.value.filteredFeeds.map { feed ->
+                if (feed.id == feedId) transform(feed) else feed
+            }
         )
     }
 }
@@ -390,17 +363,12 @@ private fun <T> feedActionUiText(
     onFailure = failure
 )
 
-/** The feeds with something to read come first, the rest alphabetically. */
 internal fun sortSubscriptions(feeds: List<Feed>, unreadCounts: Map<Long, Int>): List<Feed> =
     feeds.sortedWith(
         compareByDescending<Feed> { unreadCounts[it.id] ?: 0 }
             .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title }
     )
 
-/**
- * The positions [rowOrder] already holds. Feeds it has never placed — a fresh subscription, an OPML
- * import — go after them, among themselves in the order [sortSubscriptions] would give.
- */
 internal fun holdRowOrder(
     feeds: List<Feed>,
     unreadCounts: Map<Long, Int>,

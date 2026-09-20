@@ -40,53 +40,12 @@ import java.time.Instant
 
 private const val TAG = "MainViewModel"
 
-/** Long enough that typing does not run a query per keystroke, short enough to feel immediate. */
 private const val SEARCH_DEBOUNCE_MILLIS = 250L
 
 private const val KEY_SHOW_READ = "show_read_articles"
 private const val KEY_SEARCH_QUERY = "search_query"
 
-/**
- * How far past the action's own timestamp an article still counts as part of it. Marking a backlog
- * read is one statement per few hundred articles, so the stamps span a moment rather than an
- * instant; nothing the reader could open lands inside it.
- */
 private val UNDO_GRACE: Duration = Duration.ofSeconds(2)
-
-/**
- * A completed action the reader can still take back, surfaced as a snackbar.
- *
- * [markedAt] is when the action ran. Taking it back reverts what it changed and nothing else, so an
- * article opened while the snackbar was still up keeps the read state the reader just gave it.
- */
-data class UndoableAction(
-    val id: Long,
-    val message: UiText,
-    val articleIds: List<Long>,
-    val markedAt: Instant
-)
-
-data class MainUiState(
-    val isRefreshing: Boolean = false,
-    val error: UiText? = null,
-    val feedTitle: String? = null,
-    val searchQuery: String = "",
-    val unavailableAiModelId: String? = null,
-    val isOnline: Boolean = true,
-    /**
-     * Read articles stay in the cache for a month, so hiding them is a view choice rather than a
-     * fact about what is stored. Showing them also brings in the offline backlog, which is read by
-     * definition.
-     */
-    val showReadArticles: Boolean = false,
-    val unreadCount: Int = 0,
-    val readCount: Int = 0,
-    val syncState: SyncOperationState = SyncOperationState.IDLE,
-    val hasCompletedSync: Boolean = false,
-    val offlinePreparation: OfflinePreparationProgress = OfflinePreparationProgress(),
-    val isBulkReadStateUpdating: Boolean = false,
-    val undo: UndoableAction? = null
-)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(
@@ -110,7 +69,6 @@ class MainViewModel(
         )
     )
 
-    /** What the text field holds, which lags the query it drives by one debounce. */
     private val searchInput = MutableStateFlow(_uiState.value.searchQuery)
 
     private val cacheReady = MutableStateFlow(false)
@@ -119,10 +77,6 @@ class MainViewModel(
         .filter { it }
         .flatMapLatest { query }
 
-    /**
-     * Cached in the view-model scope so a configuration change re-collects the pages already
-     * loaded instead of starting the list again from the top.
-     */
     val articles: Flow<PagingData<ArticleListItem>> = readyQuery
         .flatMapLatest { articlePaging.pageArticles(it) }
         .cachedIn(viewModelScope)
@@ -169,15 +123,6 @@ class MainViewModel(
         }
     }
 
-    /**
-     * Only what the reader types afterwards is debounced. The first value is the query the screen
-     * opened with, which [query] already holds — running it again would rebuild the list a quarter
-     * of a second after it appeared.
-     *
-     * The drop comes before the debounce. After it, the first value to arrive is whatever the
-     * debounce settles on, so someone who started typing within the debounce window had their
-     * first search discarded and the list went on showing everything until they typed again.
-     */
     @OptIn(FlowPreview::class)
     private fun observeSearchInput() {
         searchInput
@@ -188,10 +133,6 @@ class MainViewModel(
             .launchIn(viewModelScope)
     }
 
-    /**
-     * Counted in SQLite over the whole list rather than over the loaded pages: with the list read
-     * a page at a time, counting what is on screen would report a fraction of the real total.
-     */
     private fun observeCounts() {
         readyQuery
             .map { it.feedId }
@@ -243,7 +184,6 @@ class MainViewModel(
         query.update { it.withFeed(feedId, Instant.now()) }
     }
 
-    /** The query the reader is looking at, for opening one of its articles. */
     internal fun currentQuery(): ArticleListQuery = query.value
 
     fun updateSearchQuery(text: String) {
@@ -330,19 +270,12 @@ class MainViewModel(
         applyReadStatus(listOf(entryId), read = checked)
     }
 
-    /**
-     * Marking everything read happens at once and is offered back afterwards, rather than being
-     * guarded by a confirmation dialog: the dialog cost a tap every single time and still could not
-     * put anything right when the answer was wrong.
-     */
     fun markAllAsRead(onMarkedAsRead: (Long) -> Unit = {}) {
         if (_uiState.value.isBulkReadStateUpdating) return
         _uiState.update { it.copy(isBulkReadStateUpdating = true) }
         val current = query.value
         viewModelScope.launch {
             try {
-                // Only what this actually changes. Sweeping in the already-read ones would push a
-                // no-op update for every article the cache holds.
                 val ids = runCatchingCancellable { reader.unreadIds(current.feedId) }
                     .getOrElse {
                         Log.w(TAG, "Could not read the unread set", it)
@@ -381,8 +314,6 @@ class MainViewModel(
         val action = _uiState.value.undo ?: return
         _uiState.update { it.copy(undo = null) }
         viewModelScope.launch {
-            // Only what the action itself marked. Reading an article while the snackbar is up
-            // stamps it later than the action did, and used to be swept back to unread with it.
             val revertible = runCatchingCancellable {
                 reader.idsStillReadSince(action.articleIds, action.markedAt.plus(UNDO_GRACE))
             }.getOrElse {
@@ -403,11 +334,6 @@ class MainViewModel(
         }
     }
 
-    /**
-     * Written straight to the cache; the list is a view over it and redraws itself. The failure is
-     * logged rather than surfaced — the change is stored locally and queued for the next sync, so
-     * the reader has lost nothing worth a dialog.
-     */
     private fun applyReadStatus(entryIds: List<Long>, read: Boolean, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             persistReadStatus(entryIds, read, onSuccess)

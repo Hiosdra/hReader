@@ -42,10 +42,6 @@ interface FreshRssApiService {
         @Field("T") writeToken: String
     ): QuickAddResponse
 
-    /**
-     * The subscription editor: [action] is `edit` to rename and `unsubscribe` to drop a feed,
-     * [streamId] is the `feed/<id>` form the stream list uses.
-     */
     @FormUrlEncoded
     @POST("reader/api/0/subscription/edit")
     suspend fun editSubscription(

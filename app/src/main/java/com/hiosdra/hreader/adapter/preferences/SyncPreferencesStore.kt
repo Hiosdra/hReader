@@ -13,35 +13,34 @@ import kotlinx.coroutines.flow.map
 internal class SyncPreferencesStore(
     private val storage: PreferenceStorage
 ) : SyncPreferences {
-    override fun getLastSyncTimestamp(): Long =
-        storage.get(SyncPreferenceKeys.lastSyncTimestamp) ?: 0L
+    override fun getLastSyncTimestamp(): Long = storage.value(SyncPreferenceKeys.lastSyncTimestamp, 0L)
 
     override fun setLastSyncTimestamp(timestamp: Long) {
-        storage.update { this[SyncPreferenceKeys.lastSyncTimestamp] = timestamp }
+        storage.set(SyncPreferenceKeys.lastSyncTimestamp, timestamp)
     }
 
     override fun getCacheOwnerKey(): String =
-        storage.get(SyncPreferenceKeys.cacheOwner).orEmpty()
+        storage.value(SyncPreferenceKeys.cacheOwner, "")
 
     override fun setCacheOwnerKey(ownerKey: String) {
-        storage.update { this[SyncPreferenceKeys.cacheOwner] = ownerKey }
+        storage.set(SyncPreferenceKeys.cacheOwner, ownerKey)
     }
 
     override fun isCacheCleanupPending(): Boolean =
-        storage.get(SyncPreferenceKeys.cacheCleanupPending) ?: false
+        storage.value(SyncPreferenceKeys.cacheCleanupPending, false)
 
     override fun setCacheCleanupPending(pending: Boolean) {
-        storage.update { this[SyncPreferenceKeys.cacheCleanupPending] = pending }
+        storage.set(SyncPreferenceKeys.cacheCleanupPending, pending)
     }
 
     override fun observeLastSyncTimestamp(): Flow<Long> =
-        storage.observe(SyncPreferenceKeys.lastSyncTimestamp).map { it ?: 0L }
+        storage.observeValue(SyncPreferenceKeys.lastSyncTimestamp, 0L)
 
     override fun getLastFullSyncTimestamp(): Long =
-        storage.get(SyncPreferenceKeys.lastFullSyncTimestamp) ?: 0L
+        storage.value(SyncPreferenceKeys.lastFullSyncTimestamp, 0L)
 
     override fun setLastFullSyncTimestamp(timestamp: Long) {
-        storage.update { this[SyncPreferenceKeys.lastFullSyncTimestamp] = timestamp }
+        storage.set(SyncPreferenceKeys.lastFullSyncTimestamp, timestamp)
     }
 
     override fun getSyncCheckpoint(): SyncCheckpoint? =
@@ -58,78 +57,77 @@ internal class SyncPreferencesStore(
     }
 
     override fun getOfflineBacklogTarget(): Int =
-        (storage.get(SyncPreferenceKeys.offlineBacklogTarget) ?: DEFAULT_OFFLINE_BACKLOG_TARGET)
+        storage.value(SyncPreferenceKeys.offlineBacklogTarget, DEFAULT_OFFLINE_BACKLOG_TARGET)
             .coerceAtLeast(0)
 
     override fun setOfflineBacklogTarget(target: Int) {
         val normalizedTarget = target.coerceAtLeast(0)
-        storage.update { this[SyncPreferenceKeys.offlineBacklogTarget] = normalizedTarget }
+        storage.set(SyncPreferenceKeys.offlineBacklogTarget, normalizedTarget)
     }
 
     override fun getImageDownloadEnabled(): Boolean =
-        storage.get(SyncPreferenceKeys.imageDownloadEnabled) ?: true
+        storage.value(SyncPreferenceKeys.imageDownloadEnabled, true)
 
     override fun setImageDownloadEnabled(enabled: Boolean) {
-        storage.update { this[SyncPreferenceKeys.imageDownloadEnabled] = enabled }
+        storage.set(SyncPreferenceKeys.imageDownloadEnabled, enabled)
     }
 
     override fun getImageCacheBudgetMegabytes(): Int =
-        (storage.get(SyncPreferenceKeys.imageCacheBudgetMegabytes) ?: DEFAULT_IMAGE_CACHE_BUDGET_MB)
+        storage.value(SyncPreferenceKeys.imageCacheBudgetMegabytes, DEFAULT_IMAGE_CACHE_BUDGET_MB)
             .coerceAtLeast(0)
 
     override fun setImageCacheBudgetMegabytes(megabytes: Int) {
         val normalizedMegabytes = megabytes.coerceAtLeast(0)
-        storage.update { this[SyncPreferenceKeys.imageCacheBudgetMegabytes] = normalizedMegabytes }
+        storage.set(SyncPreferenceKeys.imageCacheBudgetMegabytes, normalizedMegabytes)
     }
 
     override fun getSyncIntervalMinutes(): Int =
-        (storage.get(SyncPreferenceKeys.syncIntervalMinutes) ?: SyncDefaults.INTERVAL_MINUTES)
+        storage.value(SyncPreferenceKeys.syncIntervalMinutes, SyncDefaults.INTERVAL_MINUTES)
             .coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES)
 
     override fun setSyncIntervalMinutes(minutes: Int) {
         val normalizedMinutes = minutes.coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES)
-        storage.update { this[SyncPreferenceKeys.syncIntervalMinutes] = normalizedMinutes }
+        storage.set(SyncPreferenceKeys.syncIntervalMinutes, normalizedMinutes)
     }
 
     override fun observeSyncIntervalMinutes(): Flow<Int> =
-        storage.observe(SyncPreferenceKeys.syncIntervalMinutes).map {
-            (it ?: SyncDefaults.INTERVAL_MINUTES).coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES)
-        }
+        storage.observeValue(SyncPreferenceKeys.syncIntervalMinutes, SyncDefaults.INTERVAL_MINUTES)
+            .map { it.coerceAtLeast(MIN_SYNC_INTERVAL_MINUTES) }
 
     override fun getSyncMode(): SyncMode =
         SyncMode.fromName(storage.get(SyncPreferenceKeys.syncMode))
 
     override fun setSyncMode(mode: SyncMode) {
-        storage.update { this[SyncPreferenceKeys.syncMode] = mode.name }
+        storage.set(SyncPreferenceKeys.syncMode, mode.name)
     }
 
     override fun getSyncOnUnmeteredOnly(): Boolean =
-        storage.get(SyncPreferenceKeys.syncOnUnmeteredOnly) ?: false
+        storage.value(SyncPreferenceKeys.syncOnUnmeteredOnly, false)
 
     override fun setSyncOnUnmeteredOnly(enabled: Boolean) {
-        storage.update { this[SyncPreferenceKeys.syncOnUnmeteredOnly] = enabled }
+        storage.set(SyncPreferenceKeys.syncOnUnmeteredOnly, enabled)
     }
 
     override fun getSyncWhileRoaming(): Boolean =
-        storage.get(SyncPreferenceKeys.syncWhileRoaming) ?: true
+        storage.value(SyncPreferenceKeys.syncWhileRoaming, true)
 
     override fun setSyncWhileRoaming(enabled: Boolean) {
-        storage.update { this[SyncPreferenceKeys.syncWhileRoaming] = enabled }
+        storage.set(SyncPreferenceKeys.syncWhileRoaming, enabled)
     }
 
     override fun getQuietHoursEnabled(): Boolean =
-        storage.get(SyncPreferenceKeys.quietHoursEnabled) ?: false
+        storage.value(SyncPreferenceKeys.quietHoursEnabled, false)
 
     override fun setQuietHoursEnabled(enabled: Boolean) {
-        storage.update { this[SyncPreferenceKeys.quietHoursEnabled] = enabled }
+        storage.set(SyncPreferenceKeys.quietHoursEnabled, enabled)
     }
 
     override fun getQuietHoursStartHour(): Int =
-        (storage.get(SyncPreferenceKeys.quietHoursStart) ?: SyncDefaults.QUIET_HOURS_START)
+        storage.value(SyncPreferenceKeys.quietHoursStart, SyncDefaults.QUIET_HOURS_START)
             .coerceIn(0, 23)
 
     override fun getQuietHoursEndHour(): Int =
-        (storage.get(SyncPreferenceKeys.quietHoursEnd) ?: SyncDefaults.QUIET_HOURS_END)
+        storage.value(SyncPreferenceKeys.quietHoursEnd, SyncDefaults.QUIET_HOURS_END)
             .coerceIn(0, 23)
 
     override fun setQuietHours(startHour: Int, endHour: Int) {
@@ -142,10 +140,10 @@ internal class SyncPreferencesStore(
     }
 
     override fun getLastChainedSyncTimestamp(): Long =
-        storage.get(SyncPreferenceKeys.lastChainedSyncTimestamp) ?: 0L
+        storage.value(SyncPreferenceKeys.lastChainedSyncTimestamp, 0L)
 
     override fun setLastChainedSyncTimestamp(timestamp: Long) {
-        storage.update { this[SyncPreferenceKeys.lastChainedSyncTimestamp] = timestamp }
+        storage.set(SyncPreferenceKeys.lastChainedSyncTimestamp, timestamp)
     }
 
     private fun encodeSyncCheckpoint(checkpoint: SyncCheckpoint): String {

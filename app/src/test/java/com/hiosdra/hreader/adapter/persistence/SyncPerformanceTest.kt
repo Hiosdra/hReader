@@ -9,7 +9,6 @@ class SyncPerformanceTest {
 
     @Test
     fun `incremental sync should be used when last sync is within 24 hours`() {
-        // Test the logic for when to use incremental sync
         val currentTime = System.currentTimeMillis()
         val lastSyncTimestamp = currentTime - (12 * 60 * 60 * 1000L) // 12 hours ago
 
@@ -53,7 +52,6 @@ class SyncPerformanceTest {
 
     @Test
     fun `article content prefetch should have reasonable limit`() {
-        // Simulate having many unread articles
         val totalUnreadArticles = 500
         val prefetchLimit = 50
 

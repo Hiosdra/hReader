@@ -183,8 +183,6 @@ class CredibilityRepositoryTest {
 
         repo.cleanupOrphanedReports(emptySet())
 
-        // Articles are deleted routinely now — by retention and by full-sync reconciliation — so
-        // an empty article table is a normal state, not a signal that something went wrong.
         assertEquals(listOf(1L, 2L), deleted.captured)
     }
 

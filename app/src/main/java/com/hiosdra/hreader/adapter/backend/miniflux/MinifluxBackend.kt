@@ -43,11 +43,6 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
     ): EntriesPage =
         fetchEntries(READ_AND_UNREAD, changedAfter = changedAfter.epochSecond, limit = limit, cursor = cursor)
 
-    /**
-     * Descending by id, so a page walks backwards from the newest entry and [cursor] is the oldest
-     * id already seen. Ordering by id rather than date keeps the keyset stable even when a feed
-     * backdates what it publishes.
-     */
     override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage = withCursorRetries(cursor) {
         apiService.getEntries(
             statuses = READ_AND_UNREAD,
@@ -68,8 +63,6 @@ class MinifluxBackend(private val apiService: MinifluxApiService) : FeedBackend 
         apiService.getFeedCounters().unreads.mapKeys { it.key.toLong() }
     }
 
-    // Creating a feed is not idempotent: a retried POST after a client-side timeout would
-    // subscribe twice, so this call takes the failure instead.
     override suspend fun createFeed(feedUrl: String) = withFeedFailureMapping {
         apiService.createFeed(CreateFeedRequest(feed_url = feedUrl))
         Unit
@@ -126,7 +119,6 @@ internal fun String?.toEntryIdCursor(): Long? = this?.toLongOrNull()
 
 internal fun MinifluxEntriesResponse.toEntriesPage(limit: Int): EntriesPage = EntriesPage(
     entries = entries.map { it.toDomain() },
-    // Entries come back ordered by id, so the last id of a full page is where the next one resumes.
     cursor = entries.lastOrNull()?.id?.toString()?.takeIf { entries.size >= limit }
 )
 

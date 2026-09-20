@@ -13,14 +13,14 @@ internal class TtsPreferencesStore(
         TtsModel.fromName(storage.get(TtsPreferenceKeys.ttsModel))
 
     override fun setTtsModel(model: TtsModel) {
-        storage.update { this[TtsPreferenceKeys.ttsModel] = model.name }
+        storage.set(TtsPreferenceKeys.ttsModel, model.name)
     }
 
     override fun getTtsModelForLanguage(language: String): TtsModel =
         getTtsLanguageOverrides()[language] ?: getTtsModel()
 
     override fun getTtsLanguageOverrides(): Map<String, TtsModel> =
-        parseTtsLanguageOverrides(storage.get(TtsPreferenceKeys.ttsLanguageOverrides).orEmpty())
+        parseTtsLanguageOverrides(storage.value(TtsPreferenceKeys.ttsLanguageOverrides, emptySet()))
 
     override fun setTtsLanguageOverride(language: String, model: TtsModel?) {
         storage.update {
@@ -31,21 +31,21 @@ internal class TtsPreferencesStore(
     }
 
     override fun getTtsSpeed(): Float =
-        (storage.get(TtsPreferenceKeys.ttsSpeed) ?: 1f).coerceIn(0.7f, 1.4f)
+        storage.value(TtsPreferenceKeys.ttsSpeed, 1f).coerceIn(0.7f, 1.4f)
 
     override fun setTtsSpeed(speed: Float) {
         val normalizedSpeed = speed.coerceIn(0.7f, 1.4f)
-        storage.update { this[TtsPreferenceKeys.ttsSpeed] = normalizedSpeed }
+        storage.set(TtsPreferenceKeys.ttsSpeed, normalizedSpeed)
     }
 
     override fun getTtsAdvancedSettings(): TtsAdvancedSettings = TtsAdvancedSettings(
-        numThreads = (storage.get(TtsPreferenceKeys.ttsThreads) ?: 4).coerceIn(1, 4),
-        silenceScale = (storage.get(TtsPreferenceKeys.ttsSilenceScale) ?: 0.2f).coerceIn(0f, 1f),
-        supertonicSpeaker = (storage.get(TtsPreferenceKeys.ttsSupertonicSpeaker) ?: 0)
+        numThreads = storage.value(TtsPreferenceKeys.ttsThreads, 4).coerceIn(1, 4),
+        silenceScale = storage.value(TtsPreferenceKeys.ttsSilenceScale, 0.2f).coerceIn(0f, 1f),
+        supertonicSpeaker = storage.value(TtsPreferenceKeys.ttsSupertonicSpeaker, 0)
             .coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.SUPERTONIC)),
-        supertonicSteps = (storage.get(TtsPreferenceKeys.ttsSupertonicSteps) ?: 8).coerceIn(4, 12),
-        kokoroSpeaker = (storage.get(TtsPreferenceKeys.ttsKokoroSpeaker) ?: 0).coerceIn(0, 102),
-        kittenSpeaker = (storage.get(TtsPreferenceKeys.ttsKittenSpeaker) ?: 0).coerceIn(0, 7),
+        supertonicSteps = storage.value(TtsPreferenceKeys.ttsSupertonicSteps, 8).coerceIn(4, 12),
+        kokoroSpeaker = storage.value(TtsPreferenceKeys.ttsKokoroSpeaker, 0).coerceIn(0, 102),
+        kittenSpeaker = storage.value(TtsPreferenceKeys.ttsKittenSpeaker, 0).coerceIn(0, 7),
         vitsNoiseScale = (
             storage.get(TtsPreferenceKeys.ttsVitsNoiseScale)
                 ?: storage.get(TtsPreferenceKeys.legacyTtsVitsNoiseScale)

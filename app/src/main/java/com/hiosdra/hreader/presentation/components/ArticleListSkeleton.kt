@@ -35,10 +35,6 @@ import com.hiosdra.hreader.presentation.theme.MotionDuration
 
 private const val PLACEHOLDER_ROWS = 6
 
-/**
- * The shape the list is about to take, in place of a spinner in the middle of an empty screen.
- * It also keeps the layout from jumping when the real rows arrive.
- */
 @Composable
 fun ArticleListSkeleton(modifier: Modifier = Modifier) {
     val loadingDescription = stringResource(R.string.loading_articles)

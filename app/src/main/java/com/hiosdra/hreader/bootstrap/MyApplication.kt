@@ -55,7 +55,6 @@ class MyApplication : Application() {
         startupScope.launch {
             preferenceWrites.awaitReady()
             koin.get<ErrorReportingManager>().initialize()
-            // Content prefetching is chained off each successful sync, not scheduled separately.
             syncScheduler.schedulePeriodicSync()
             syncScheduler.start()
         }

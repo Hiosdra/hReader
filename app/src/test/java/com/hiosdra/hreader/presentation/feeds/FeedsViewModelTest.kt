@@ -65,7 +65,6 @@ class FeedsSearchTest {
             Feed(id = 3, title = "Programming Blog", siteUrl = "https://programming.example.com", feedUrl = "https://programming.example.com/feed")
         )
         
-        // Test filtering by title (case-insensitive)
         val techResults = filterFeeds(feeds, "tech")
         assertEquals(1, techResults.size)
         assertEquals("Tech News", techResults[0].title)
@@ -83,7 +82,6 @@ class FeedsSearchTest {
             Feed(id = 3, title = "Programming Blog", siteUrl = "https://programming.example.com", feedUrl = "https://programming.example.com/feed")
         )
         
-        // Test filtering by site URL
         val programmingResults = filterFeeds(feeds, "programming.example.com")
         assertEquals(1, programmingResults.size)
         assertEquals("Programming Blog", programmingResults[0].title)
@@ -108,7 +106,6 @@ class FeedsSearchTest {
             Feed(id = 2, title = "Science Daily", siteUrl = "https://science.example.com", feedUrl = "https://science.example.com/feed")
         )
         
-        // Test case insensitivity
         val upperResults = filterFeeds(feeds, "TECH")
         assertEquals(1, upperResults.size)
         assertEquals("Tech News", upperResults[0].title)
@@ -129,9 +126,6 @@ class FeedsSearchTest {
         assertTrue(results.isEmpty())
     }
 
-    /**
-     * Extract the filtering logic for testing purposes
-     */
     private fun filterFeeds(feeds: List<Feed>, query: String): List<Feed> {
         val normalizedQuery = query.lowercase().trim()
         return if (normalizedQuery.isEmpty()) {

@@ -46,11 +46,6 @@ interface ArticleContentDao {
     @Query("DELETE FROM article_contents WHERE entryId IN (:entryIds)")
     suspend fun deleteArticlesContent(entryIds: List<Long>)
 
-    /**
-     * Which articles have their text stored. Orphan detection needs the ids and nothing else, and
-     * every row here carries a full article body — reading them all to compare a number is how a
-     * cache stocked for a long trip runs the worker out of memory.
-     */
     @Query("SELECT entryId FROM article_contents")
     suspend fun getAllContentEntryIds(): List<Long>
 

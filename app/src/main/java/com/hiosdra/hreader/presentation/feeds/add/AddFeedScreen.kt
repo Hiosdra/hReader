@@ -42,7 +42,6 @@ import com.hiosdra.hreader.presentation.text.resolve
 @Composable
 fun AddFeedScreen(
     navController: NavController,
-    /** A URL shared into the app from elsewhere, so the field is already filled in. */
     initialUrl: String? = null,
     addFeedViewModel: AddFeedViewModel,
     onFeedAdded: () -> Unit = {},
