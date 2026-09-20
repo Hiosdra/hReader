@@ -548,9 +548,10 @@
     <string name="main_scope_search">검색: %1$s</string>
     <string name="main_clear_filters">필터 지우기</string>
     <string name="main_no_unread_articles">이 범위에 읽지 않은 기사가 없습니다</string>
+    <string name="main_all_caught_up">모두 확인했습니다</string>
+    <string name="main_all_caught_up_message">지금은 새로운 기사가 없습니다. 다음 동기화 후 새 기사가 여기에 표시됩니다.</string>
     <string name="main_show_all_from_empty">모든 기사 보기</string>
     <string name="main_syncing_first_time">첫 동기화가 진행 중입니다. 다운로드가 완료되면 기사가 여기에 표시됩니다.</string>
-    <string name="main_sync_failed">첫 동기화를 완료하지 못했습니다.</string>
     <string name="onboarding_optional_settings">선택 설정</string>
     <string name="onboarding_optional_settings_summary">진단 및 AI 요약은 나중에 설정할 수 있습니다</string>
     <string name="settings_group_reading_summary">텍스트 표시, 음성 및 링크 옵션</string>

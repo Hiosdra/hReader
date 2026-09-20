@@ -82,6 +82,7 @@ data class MainUiState(
     val unreadCount: Int = 0,
     val readCount: Int = 0,
     val syncState: SyncOperationState = SyncOperationState.IDLE,
+    val hasCompletedSync: Boolean = false,
     val offlinePreparation: OfflinePreparationProgress = OfflinePreparationProgress(),
     val isBulkReadStateUpdating: Boolean = false,
     val undo: UndoableAction? = null
@@ -140,6 +141,11 @@ class MainViewModel(
         viewModelScope.launch {
             reader.observeSync().collect { status ->
                 _uiState.update { it.copy(syncState = status.state) }
+            }
+        }
+        viewModelScope.launch {
+            reader.observeHasCompletedSync().collect { hasCompleted ->
+                _uiState.update { it.copy(hasCompletedSync = hasCompleted) }
             }
         }
         viewModelScope.launch {

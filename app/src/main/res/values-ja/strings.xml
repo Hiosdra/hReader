@@ -548,9 +548,10 @@
     <string name="main_scope_search">検索: %1$s</string>
     <string name="main_clear_filters">フィルターをクリア</string>
     <string name="main_no_unread_articles">この範囲に未読の記事はありません</string>
+    <string name="main_all_caught_up">すべて確認しました</string>
+    <string name="main_all_caught_up_message">今は新しい記事はありません。次回の同期後に新しい記事がここに表示されます。</string>
     <string name="main_show_all_from_empty">すべての記事を表示</string>
     <string name="main_syncing_first_time">初回同期を実行中です。ダウンロードが完了すると記事がここに表示されます。</string>
-    <string name="main_sync_failed">初回同期を完了できませんでした。</string>
     <string name="onboarding_optional_settings">任意設定</string>
     <string name="onboarding_optional_settings_summary">診断とAI要約は後で設定できます</string>
     <string name="settings_group_reading_summary">テキスト表示、音声、リンクのオプション</string>

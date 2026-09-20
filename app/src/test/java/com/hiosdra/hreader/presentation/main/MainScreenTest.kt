@@ -1,8 +1,10 @@
 package com.hiosdra.hreader.presentation.main
 
 import android.app.Application
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation.NavController
@@ -40,13 +42,13 @@ class MainScreenTest {
 
     @Test
     fun `empty unread list offers to show all articles`() {
-        val viewModel = viewModel(MainUiState(showReadArticles = false))
+        val viewModel = viewModel(MainUiState(showReadArticles = false, readCount = 1))
         setContent(viewModel)
         val context = RuntimeEnvironment.getApplication()
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText(
-            context.getString(R.string.main_no_unread_articles)
+            context.getString(R.string.main_all_caught_up)
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText(
             context.getString(R.string.main_show_all_from_empty)
@@ -57,7 +59,43 @@ class MainScreenTest {
     }
 
     @Test
-    fun `failed initial sync shows retry action`() {
+    fun `completed sync does not show first sync state`() {
+        val viewModel = viewModel(
+            MainUiState(
+                readCount = 1,
+                syncState = SyncOperationState.RUNNING,
+                hasCompletedSync = true
+            )
+        )
+        setContent(viewModel)
+        val context = RuntimeEnvironment.getApplication()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            context.getString(R.string.main_all_caught_up)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            context.getString(R.string.notification_sync_text)
+        ).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(
+            context.getString(R.string.main_syncing_first_time)
+        ).assertCountEquals(0)
+    }
+
+    @Test
+    fun `running sync before first success shows first sync state`() {
+        val viewModel = viewModel(MainUiState(syncState = SyncOperationState.RUNNING))
+        setContent(viewModel)
+        val context = RuntimeEnvironment.getApplication()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            context.getString(R.string.main_syncing_first_time)
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `failed sync shows retry action`() {
         val retries = AtomicInteger()
         val viewModel = viewModel(
             MainUiState(
@@ -71,7 +109,7 @@ class MainScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText(
-            context.getString(R.string.main_sync_failed)
+            context.getString(R.string.error_refresh_articles)
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.action_retry)).performClick()
 

@@ -556,9 +556,10 @@
     <string name="main_scope_search">Recherche : %1$s</string>
     <string name="main_clear_filters">Effacer les filtres</string>
     <string name="main_no_unread_articles">Aucun article non lu dans cette portée</string>
+    <string name="main_all_caught_up">Vous êtes à jour</string>
+    <string name="main_all_caught_up_message">Rien de nouveau pour le moment. Les nouveaux articles apparaîtront ici après la prochaine synchronisation.</string>
     <string name="main_show_all_from_empty">Afficher tous les articles</string>
     <string name="main_syncing_first_time">La première synchronisation est en cours. Les articles apparaîtront ici dès qu’ils seront téléchargés.</string>
-    <string name="main_sync_failed">La première synchronisation n’a pas pu être terminée.</string>
     <string name="onboarding_optional_settings">Paramètres facultatifs</string>
     <string name="onboarding_optional_settings_summary">Les diagnostics et les résumés IA peuvent être configurés plus tard</string>
     <string name="settings_group_reading_summary">Affichage du texte, voix et options des liens</string>

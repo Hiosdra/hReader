@@ -73,6 +73,8 @@
     <string name="main_offline_refresh">Brak połączenia — połącz się z siecią, aby odświeżyć.</string>
     <string name="main_nothing_matches_search">Nic nie pasuje do wyszukiwania</string>
     <string name="main_no_unread_articles">Brak nieprzeczytanych artykułów w tym zakresie</string>
+    <string name="main_all_caught_up">Wszystko przeczytane</string>
+    <string name="main_all_caught_up_message">Na razie nie ma nic nowego. Nowe artykuły pojawią się tutaj po kolejnej synchronizacji.</string>
     <string name="main_show_all_from_empty">Pokaż wszystkie artykuły</string>
     <string name="main_no_articles">Brak artykułów</string>
     <string name="main_no_feed_articles">Brak artykułów w tym kanale</string>
@@ -81,7 +83,6 @@
     <string name="main_add_subscription">Dodaj subskrypcję</string>
     <string name="main_refresh_now">Odśwież teraz</string>
     <string name="main_syncing_first_time">Trwa pierwsza synchronizacja. Artykuły pojawią się tutaj po pobraniu.</string>
-    <string name="main_sync_failed">Nie udało się ukończyć pierwszej synchronizacji.</string>
     <string name="main_offline_banner">Brak połączenia — wyświetlam pobrane artykuły. To, co przeczytasz, zsynchronizuje się po powrocie online.</string>
     <string name="main_ai_model_unavailable_title">Model AI niedostępny</string>
     <string name="main_ai_model_unavailable_message">Wybrany model AI %1$s jest niedostępny. Pobierz go albo wybierz inny model w Ustawieniach.</string>
