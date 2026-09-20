@@ -46,50 +46,54 @@ class ArticleReaderEntriesTest {
     fun `reader state keeps article payloads around the current page only`() {
         val entries = (1L..5L).map(::entry)
         val state = ArticleUiState(
-            entries = entries,
-            currentIndex = 2,
-            content = entries.associate { it.id to "<p>${it.id}</p>" },
-            contentLoadStates = entries.associate { it.id to ArticleContentLoadState.FULL },
-            contentProvenance = entries.associate { item ->
-                item.id to ArticleContentProvenance(ArticleContentKind.FULL_ARTICLE)
-            },
-            leadImages = entries.associate { it.id to "https://example.com/${it.id}.jpg" },
-            localImagePaths = entries.associate { it.id to mapOf("image" to "/tmp/${it.id}.jpg") },
-            offlinePages = entries.associate { item ->
-                item.id to OfflinePage(
-                    entryId = item.id,
-                    originalUrl = item.url,
-                    baseUrl = "https://offline.hreader.local/article/${item.id}/",
-                    html = "<p>${item.id}</p>",
-                    resourceDirectory = "/tmp/${item.id}",
-                    isComplete = true
-                )
-            }
+            navigation = ArticleNavigationState(entries = entries, currentIndex = 2),
+            content = ArticleContentState(
+                content = entries.associate { it.id to "<p>${it.id}</p>" },
+                contentLoadStates = entries.associate { it.id to ArticleContentLoadState.FULL },
+                contentProvenance = entries.associate { item ->
+                    item.id to ArticleContentProvenance(ArticleContentKind.FULL_ARTICLE)
+                },
+                leadImages = entries.associate { it.id to "https://example.com/${it.id}.jpg" },
+                localImagePaths = entries.associate { it.id to mapOf("image" to "/tmp/${it.id}.jpg") },
+                offlinePages = entries.associate { item ->
+                    item.id to OfflinePage(
+                        entryId = item.id,
+                        originalUrl = item.url,
+                        baseUrl = "https://offline.hreader.local/article/${item.id}/",
+                        html = "<p>${item.id}</p>",
+                        resourceDirectory = "/tmp/${item.id}",
+                        isComplete = true
+                    )
+                }
+            )
         )
 
         val trimmed = state.trimReaderState()
 
-        assertEquals(setOf(2L, 3L, 4L), trimmed.content.keys)
-        assertEquals(setOf(2L, 3L, 4L), trimmed.contentLoadStates.keys)
-        assertEquals(setOf(2L, 3L, 4L), trimmed.contentProvenance.keys)
-        assertEquals(setOf(2L, 3L, 4L), trimmed.leadImages.keys)
-        assertEquals(setOf(2L, 3L, 4L), trimmed.localImagePaths.keys)
-        assertEquals(setOf(2L, 3L, 4L), trimmed.offlinePages.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.content.content.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.content.contentLoadStates.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.content.contentProvenance.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.content.leadImages.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.content.localImagePaths.keys)
+        assertEquals(setOf(2L, 3L, 4L), trimmed.content.offlinePages.keys)
     }
 
     @Test
     fun `explicit loading state wins over cached fallback while retry is pending`() {
         val state = ArticleUiState(
-            entries = listOf(entry(1)),
-            content = mapOf(1L to "<p>Preview</p>"),
-            partialContentIds = setOf(1L),
-            contentLoadStates = mapOf(1L to ArticleContentLoadState.LOADING)
+            navigation = ArticleNavigationState(entries = listOf(entry(1))),
+            content = ArticleContentState(
+                content = mapOf(1L to "<p>Preview</p>"),
+                partialContentIds = setOf(1L),
+                contentLoadStates = mapOf(1L to ArticleContentLoadState.LOADING)
+            )
         )
 
-        assertEquals(ArticleContentLoadState.LOADING, state.contentLoadState(1L))
+        assertEquals(ArticleContentLoadState.LOADING, state.content.contentLoadState(1L))
         assertEquals(
             ArticleContentLoadState.FALLBACK,
-            state.copy(contentLoadStates = emptyMap()).contentLoadState(1L)
+            state.copy(content = state.content.copy(contentLoadStates = emptyMap()))
+                .content.contentLoadState(1L)
         )
     }
 

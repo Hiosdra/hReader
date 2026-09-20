@@ -110,6 +110,49 @@ class SettingsViewModel(
     private val settings: SettingsUseCase,
     private val storageUseCase: StorageUseCase
 ) : ViewModel() {
+    val actions = SettingsActions(
+        server = ServerSettingsActions(
+            onBackendTypeRequested = ::onBackendTypeRequested,
+            onCancelBackendSwitch = ::cancelBackendSwitch,
+            onConfirmBackendSwitch = ::confirmBackendSwitch,
+            onServerUrlChange = ::onServerUrlChange,
+            onUsernameChange = ::onUsernameChange,
+            onSecretChange = ::onSecretChange,
+            onTestConnection = ::testConnection,
+            onApplySettings = ::applyServerSettings
+        ),
+        sync = SyncSettingsActions(
+            onIntervalChange = ::onSyncIntervalChange,
+            onSyncModeChange = ::onSyncModeChange,
+            onUnmeteredOnlyChange = ::onUnmeteredOnlyChange,
+            onSyncWhileRoamingChange = ::onSyncWhileRoamingChange,
+            onQuietHoursEnabledChange = ::onQuietHoursEnabledChange,
+            onQuietHoursChange = ::onQuietHoursChange
+        ),
+        offline = OfflineSettingsActions(
+            onPrepare = ::prepareForOffline,
+            onFullOfflineSync = ::prepareFullOffline,
+            onBacklogTargetChange = ::onBacklogTargetChange,
+            onImageDownloadEnabledChange = ::onImageDownloadEnabledChange,
+            onImageCacheBudgetChange = ::onImageCacheBudgetChange
+        ),
+        storage = StorageSettingsActions(
+            onRefresh = ::refreshStorage,
+            onCleanup = ::cleanupStorage
+        ),
+        ai = AiSettingsActions(
+            onOpenRouterApiKeyChange = ::onOpenRouterApiKeyChange,
+            onModelSearchQueryChange = ::onModelSearchQueryChange,
+            onFreeOnlyChange = ::onFreeOnlyChange,
+            onReloadModels = { loadAiModels(forceRefresh = true) },
+            onModelSelected = ::onModelSelected
+        ),
+        localData = LocalDataSettingsActions(
+            onResyncFromScratch = ::resyncFromScratch,
+            onSignOut = ::signOut
+        )
+    )
+
     private var serverDraft = settings.getBackendConfiguration()
     private val _uiState = MutableStateFlow(currentSettings(serverDraft))
     val uiState: StateFlow<ServerSettingsUiState> = _uiState.asStateFlow()

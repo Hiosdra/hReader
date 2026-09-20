@@ -75,6 +75,7 @@ fun SettingsScreen(
     val offline by settingsViewModel.offline.collectAsStateWithLifecycle()
     val sync by settingsViewModel.sync.collectAsStateWithLifecycle()
     val storage by settingsViewModel.storage.collectAsStateWithLifecycle()
+    val actions = remember(settingsViewModel) { settingsViewModel.actions }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
     var selectedBypassMethod by remember { mutableStateOf(readerPreferences.getPaywallBypassMethod()) }
     var bionicReadingEnabled by remember { mutableStateOf(readerPreferences.getBionicReadingEnabled()) }
@@ -150,14 +151,14 @@ fun SettingsScreen(
                         state = serverSettings,
                         onBackendTypeChange = { backendType ->
                             requestNotificationPermission {
-                                settingsViewModel.onBackendTypeRequested(backendType)
+                                actions.server.onBackendTypeRequested(backendType)
                             }
                         },
-                        onServerUrlChange = settingsViewModel::onServerUrlChange,
-                        onUsernameChange = settingsViewModel::onUsernameChange,
-                        onSecretChange = settingsViewModel::onSecretChange,
-                        onTestConnection = settingsViewModel::testConnection,
-                        onApplySettings = settingsViewModel::applyServerSettings,
+                        onServerUrlChange = actions.server.onServerUrlChange,
+                        onUsernameChange = actions.server.onUsernameChange,
+                        onSecretChange = actions.server.onSecretChange,
+                        onTestConnection = actions.server.onTestConnection,
+                        onApplySettings = actions.server.onApplySettings,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -177,12 +178,12 @@ fun SettingsScreen(
                 ) {
                     SyncSection(
                         state = sync,
-                        onIntervalChange = settingsViewModel::onSyncIntervalChange,
-                        onSyncModeChange = settingsViewModel::onSyncModeChange,
-                        onUnmeteredOnlyChange = settingsViewModel::onUnmeteredOnlyChange,
-                        onSyncWhileRoamingChange = settingsViewModel::onSyncWhileRoamingChange,
-                        onQuietHoursEnabledChange = settingsViewModel::onQuietHoursEnabledChange,
-                        onQuietHoursChange = settingsViewModel::onQuietHoursChange,
+                        onIntervalChange = actions.sync.onIntervalChange,
+                        onSyncModeChange = actions.sync.onSyncModeChange,
+                        onUnmeteredOnlyChange = actions.sync.onUnmeteredOnlyChange,
+                        onSyncWhileRoamingChange = actions.sync.onSyncWhileRoamingChange,
+                        onQuietHoursEnabledChange = actions.sync.onQuietHoursEnabledChange,
+                        onQuietHoursChange = actions.sync.onQuietHoursChange,
                         onOpenFreshness = { navController?.navigate(Routes.SYNC_HEALTH) },
                         modifier = Modifier.padding(16.dp)
                     )
@@ -204,14 +205,14 @@ fun SettingsScreen(
                     OfflineReadinessSection(
                         state = offline,
                         onPrepare = {
-                            requestNotificationPermission(settingsViewModel::prepareForOffline)
+                            requestNotificationPermission(actions.offline.onPrepare)
                         },
                         onFullOfflineSync = {
-                            requestNotificationPermission(settingsViewModel::prepareFullOffline)
+                            requestNotificationPermission(actions.offline.onFullOfflineSync)
                         },
-                        onBacklogTargetChange = settingsViewModel::onBacklogTargetChange,
-                        onImageDownloadEnabledChange = settingsViewModel::onImageDownloadEnabledChange,
-                        onImageCacheBudgetChange = settingsViewModel::onImageCacheBudgetChange,
+                        onBacklogTargetChange = actions.offline.onBacklogTargetChange,
+                        onImageDownloadEnabledChange = actions.offline.onImageDownloadEnabledChange,
+                        onImageCacheBudgetChange = actions.offline.onImageCacheBudgetChange,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -224,8 +225,8 @@ fun SettingsScreen(
                 ) {
                     StorageSettingsSection(
                         state = storage,
-                        onRefresh = settingsViewModel::refreshStorage,
-                        onCleanup = settingsViewModel::cleanupStorage
+                        onRefresh = actions.storage.onRefresh,
+                        onCleanup = actions.storage.onCleanup
                     )
                 }
             }
@@ -270,7 +271,7 @@ fun SettingsScreen(
                         credibilityScoreEnabled = credibilityScoreEnabled,
                         onCredibilityScoreChange = onToggleCredibilityScore,
                         openRouterApiKey = openRouterApiKey,
-                        onOpenRouterApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
+                        onOpenRouterApiKeyChange = actions.ai.onOpenRouterApiKeyChange,
                         aiModels = aiModels,
                         onOpenModelPicker = { showModelSheet = true }
                     )
@@ -293,7 +294,7 @@ fun SettingsScreen(
                         canSignOut = serverSettings.hasAllFields,
                         isBusy = serverSettings.isSwitchingBackend,
                         onResyncFromScratch = {
-                            requestNotificationPermission(settingsViewModel::resyncFromScratch)
+                            requestNotificationPermission(actions.localData.onResyncFromScratch)
                         },
                         onSignOut = { showSignOutDialog = true }
                     )
@@ -305,8 +306,8 @@ fun SettingsScreen(
             BackendSwitchDialog(
                 currentBackend = serverSettings.backendType,
                 targetBackend = target,
-                onConfirm = settingsViewModel::confirmBackendSwitch,
-                onDismiss = settingsViewModel::cancelBackendSwitch
+                onConfirm = actions.server.onConfirmBackendSwitch,
+                onDismiss = actions.server.onCancelBackendSwitch
             )
         }
         if (showBypassDialog) {
@@ -323,11 +324,11 @@ fun SettingsScreen(
         if (showModelSheet) {
             AiModelSheet(
                 state = aiModels,
-                onSearchQueryChange = settingsViewModel::onModelSearchQueryChange,
-                onFreeOnlyChange = settingsViewModel::onFreeOnlyChange,
-                onReload = { settingsViewModel.loadAiModels(forceRefresh = true) },
+                onSearchQueryChange = actions.ai.onModelSearchQueryChange,
+                onFreeOnlyChange = actions.ai.onFreeOnlyChange,
+                onReload = actions.ai.onReloadModels,
                 onModelSelected = { model ->
-                    settingsViewModel.onModelSelected(model)
+                    actions.ai.onModelSelected(model)
                     showModelSheet = false
                 },
                 onDismiss = { showModelSheet = false }
@@ -349,7 +350,7 @@ fun SettingsScreen(
                     TextButton(
                         onClick = {
                             showSignOutDialog = false
-                            settingsViewModel.signOut()
+                            actions.localData.onSignOut()
                         },
                         enabled = !serverSettings.isSwitchingBackend
                     ) {

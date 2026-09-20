@@ -203,32 +203,41 @@ fun AppNavigation(
         composable(
             route = Routes.ARTICLE,
             arguments = listOf(
-                navArgument("feedId") { type = NavType.LongType; defaultValue = Routes.FEED_ID_NONE },
+                navArgument("feedId") {
+                    type = NavType.LongType
+                    defaultValue = Routes.FEED_ID_NONE
+                },
                 navArgument("startId") { type = NavType.LongType },
-                navArgument("includeRead") { type = NavType.BoolType; defaultValue = false },
-                navArgument("session") { type = NavType.LongType; defaultValue = 0L }
+                navArgument("includeRead") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+                navArgument("session") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                }
             )
         ) { backStackEntry ->
-            val arguments = backStackEntry.arguments
-            val rawFeedId = arguments?.getLong("feedId") ?: Routes.FEED_ID_NONE
-            ArticleScreen(
-                navController = navController,
-                feedId = rawFeedId.takeIf { it != Routes.FEED_ID_NONE },
-                startArticleId = arguments?.getLong("startId") ?: 0L,
-                includeRead = arguments?.getBoolean("includeRead") ?: false,
-                sessionStartMillis = arguments?.getLong("session") ?: 0L,
-                readerPreferences = readerPreferences,
-                ttsPreferences = ttsPreferences,
-                paywallBypassService = paywallBypass,
-                ttsModelManager = ttsModelManager,
-                ttsController = articleTtsPlayer,
-                articleImageLoader = articleImageLoader,
-                coilImageLoader = coilImageLoader,
-                remoteResourcePolicy = remoteResourcePolicy,
-                articleImageSharer = articleImageSharer,
-                articleImageDownloader = articleImageDownloader,
-                viewModel = koinViewModel()
-            )
+            val routeArguments = backStackEntry.arguments.toArticleRouteArguments()
+            if (routeArguments == null) {
+                Text(text = stringResource(R.string.article_load_error))
+            } else {
+                ArticleScreen(
+                    navController = navController,
+                    routeArguments = routeArguments,
+                    readerPreferences = readerPreferences,
+                    ttsPreferences = ttsPreferences,
+                    paywallBypassService = paywallBypass,
+                    ttsModelManager = ttsModelManager,
+                    ttsController = articleTtsPlayer,
+                    articleImageLoader = articleImageLoader,
+                    coilImageLoader = coilImageLoader,
+                    remoteResourcePolicy = remoteResourcePolicy,
+                    articleImageSharer = articleImageSharer,
+                    articleImageDownloader = articleImageDownloader,
+                    viewModel = koinViewModel()
+                )
+            }
         }
         composable(
             route = Routes.FEED,
