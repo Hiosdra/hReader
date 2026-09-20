@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import com.hiosdra.hreader.core.application.tts.TtsAdvancedSettings
+import com.hiosdra.hreader.core.application.tts.TtsModel
+import com.hiosdra.hreader.core.application.tts.TtsModelCatalog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 
@@ -160,7 +162,7 @@ internal fun migrateLegacyPreferenceKeys(preferences: MutablePreferences) {
 internal fun TtsAdvancedSettings.normalizedForStorage() = copy(
     numThreads = numThreads.coerceIn(1, 4),
     silenceScale = silenceScale.coerceIn(0f, 1f),
-    supertonicSpeaker = supertonicSpeaker.coerceIn(0, 9),
+    supertonicSpeaker = supertonicSpeaker.coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.SUPERTONIC)),
     supertonicSteps = supertonicSteps.coerceIn(4, 12),
     kokoroSpeaker = kokoroSpeaker.coerceIn(0, 102),
     kittenSpeaker = kittenSpeaker.coerceIn(0, 7),

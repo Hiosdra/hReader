@@ -9,41 +9,106 @@ import java.text.BreakIterator
 import java.text.Normalizer
 import java.util.Locale
 
+internal enum class TtsChunkBoundary(val pauseBeforeMillis: Int) {
+    START(0),
+    HEADING(450),
+    PARAGRAPH(320),
+    CONTINUATION(120)
+}
+
+internal data class TtsChunk(
+    val text: String,
+    val boundaryBefore: TtsChunkBoundary
+)
+
 internal data class TtsArticleText(
-    val chunks: List<String>,
+    val chunks: List<TtsChunk>,
     val languageSample: String
 )
 
 internal object TtsTextProcessor {
     fun fromHtml(title: String, html: String): TtsArticleText {
         val document = Jsoup.parse(html).apply {
-            select("script, style, nav, footer, aside, noscript, figure").remove()
+            select(REMOVED_SELECTORS).remove()
         }
-        val body = buildString {
-            document.body().childNodes().forEach { appendReadableText(it, this) }
-        }
-        val normalizedTitle = normalize(title)
-        val normalizedBody = normalize(body)
-        val source = listOf(normalizedTitle, normalizedBody)
-            .filter(String::isNotBlank)
-            .joinToString(PARAGRAPH_SEPARATOR)
-        val languageSample = stripLanguageNoise(normalizedBody.ifBlank { normalizedTitle })
+        val titleBlocks = normalizedBlocks(
+            listOf(ReadableBlock(title, TtsChunkBoundary.HEADING))
+        )
+        val bodyBlocks = normalizedBlocks(readableBlocks(document.body()))
+        val languageSource = bodyBlocks.joinToString(" ", transform = ReadableBlock::text)
+        val fallbackLanguageSource = titleBlocks.joinToString(" ", transform = ReadableBlock::text)
         return TtsArticleText(
-            chunks = chunks(source),
-            languageSample = languageSample
+            chunks = chunkBlocks(titleBlocks + bodyBlocks),
+            languageSample = stripLanguageNoise(
+                languageSource.ifBlank { fallbackLanguageSource }
+            )
         )
     }
 
-    fun forModel(model: TtsModel, sourceChunks: List<String>): List<String> =
-        if (model == TtsModel.COQUI_PL_MAI_FEMALE) {
-            sourceChunks.flatMap { chunk ->
+    fun forModel(
+        model: TtsModel,
+        sourceChunks: List<TtsChunk>,
+        language: String = ""
+    ): List<TtsChunk> = sourceChunks.flatMap { chunk ->
+        when {
+            model == TtsModel.COQUI_PL_MAI_FEMALE -> chunks(
+                PolishTtsTextNormalizer.normalize(chunk.text),
+                addTerminalPunctuation = false
+            ).withBoundary(chunk.boundaryBefore)
+            model == TtsModel.SUPERTONIC && language.substringBefore('-').equals("en", true) ->
                 chunks(
-                    PolishTtsTextNormalizer.normalize(chunk),
+                    EnglishTechnicalTtsTextNormalizer.normalize(chunk.text),
                     addTerminalPunctuation = false
-                )
+                ).withBoundary(chunk.boundaryBefore)
+            else -> listOf(chunk)
+        }
+    }
+
+    private fun normalizedBlocks(blocks: List<ReadableBlock>): List<ReadableBlock> =
+        blocks.flatMap { block ->
+            normalize(block.text)
+                .split(PARAGRAPH_SEPARATOR)
+                .filter(String::isNotBlank)
+                .map { block.copy(text = it) }
+        }
+
+    private fun chunkBlocks(
+        blocks: List<ReadableBlock>,
+        maxCharacters: Int = DEFAULT_MAX_CHARACTERS
+    ): List<TtsChunk> {
+        require(maxCharacters > 0)
+        val result = mutableListOf<TtsChunk>()
+        blocks.forEach { block ->
+            val pieces = sentenceParts(block.text, maxCharacters)
+            var buffer = StringBuilder()
+            var boundary = if (result.isEmpty()) {
+                TtsChunkBoundary.START
+            } else {
+                block.boundaryBefore
             }
-        } else {
-            sourceChunks
+            pieces.forEach { piece ->
+                if (
+                    buffer.isNotEmpty() &&
+                    buffer.length + 1 + piece.length > maxCharacters
+                ) {
+                    result += TtsChunk(buffer.toString(), boundary)
+                    buffer = StringBuilder()
+                    boundary = TtsChunkBoundary.CONTINUATION
+                }
+                if (buffer.isNotEmpty()) buffer.append(' ')
+                buffer.append(piece)
+            }
+            if (buffer.isNotEmpty()) result += TtsChunk(buffer.toString(), boundary)
+        }
+        return result
+    }
+
+    private fun List<String>.withBoundary(boundary: TtsChunkBoundary): List<TtsChunk> =
+        mapIndexed { index, text ->
+            TtsChunk(
+                text = text,
+                boundaryBefore = if (index == 0) boundary else TtsChunkBoundary.CONTINUATION
+            )
         }
 
     fun chunks(
@@ -138,22 +203,71 @@ internal object TtsTextProcessor {
         return boundary.coerceAtLeast(1)
     }
 
-    private fun appendReadableText(node: Node, output: StringBuilder) {
-        when (node) {
-            is TextNode -> output.append(node.getWholeText())
-            is Element -> {
-                val tag = node.tagName().lowercase(Locale.ROOT)
-                if (tag == "br") {
-                    output.append('\n')
-                } else {
-                    if (tag in BLOCK_ELEMENTS) output.append('\n')
-                    node.childNodes().forEach { appendReadableText(it, output) }
-                    if (tag in BLOCK_ELEMENTS) output.append('\n')
+    private fun readableBlocks(body: Element): List<ReadableBlock> {
+        val blocks = mutableListOf<ReadableBlock>()
+
+        fun appendInline(node: Node, output: StringBuilder) {
+            when (node) {
+                is TextNode -> output.append(node.getWholeText())
+                is Element -> {
+                    if (node.tagName().equals("br", ignoreCase = true)) {
+                        output.append('\n')
+                    } else {
+                        node.childNodes().forEach { appendInline(it, output) }
+                    }
+                }
+                else -> node.childNodes().forEach { appendInline(it, output) }
+            }
+        }
+
+        fun visitContainer(container: Node) {
+            val looseText = StringBuilder()
+
+            fun flushLooseText() {
+                if (looseText.isNotBlank()) {
+                    blocks += ReadableBlock(looseText.toString(), TtsChunkBoundary.PARAGRAPH)
+                    looseText.clear()
                 }
             }
-            else -> node.childNodes().forEach { appendReadableText(it, output) }
+
+            container.childNodes().forEach { node ->
+                if (node is Element) {
+                    val tag = node.tagName().lowercase(Locale.ROOT)
+                    when {
+                        tag in REMOVED_TAGS -> Unit
+                        tag == "br" -> looseText.append('\n')
+                        tag in BLOCK_ELEMENTS -> {
+                            flushLooseText()
+                            if (node.children().any {
+                                    it.tagName().lowercase(Locale.ROOT) in BLOCK_ELEMENTS
+                                }) {
+                                visitContainer(node)
+                            } else {
+                                blocks += ReadableBlock(node.text(), blockBoundary(tag))
+                            }
+                        }
+                        else -> appendInline(node, looseText)
+                    }
+                } else if (node is TextNode) {
+                    looseText.append(node.getWholeText())
+                } else {
+                    node.childNodes().forEach { appendInline(it, looseText) }
+                }
+            }
+            flushLooseText()
         }
+
+        visitContainer(body)
+        return blocks
     }
+
+    private fun blockBoundary(tag: String): TtsChunkBoundary =
+        if (tag in HEADING_ELEMENTS) TtsChunkBoundary.HEADING else TtsChunkBoundary.PARAGRAPH
+
+    private data class ReadableBlock(
+        val text: String,
+        val boundaryBefore: TtsChunkBoundary
+    )
 
     private fun normalize(text: String, addTerminalPunctuation: Boolean = true): String {
         if (text.isBlank()) return ""
@@ -164,7 +278,7 @@ internal object TtsTextProcessor {
                 .replace('\u00A0', ' ')
                 .replace('\u2028', '\n')
                 .replace(Regex("[\\u200B-\\u200D\\uFEFF]"), "")
-                .replace('…', '.')
+                .replace("…", "...")
                 .replace(Regex("[“”„‟]"), "\"")
                 .replace(Regex("[‘’‚‛]"), "'")
                 .replace('—', ',')
@@ -222,8 +336,15 @@ internal object TtsTextProcessor {
     private val BLOCK_ELEMENTS = setOf(
         "address", "article", "blockquote", "dd", "div", "dl", "dt", "h1", "h2", "h3",
         "h4", "h5", "h6", "header", "li", "main", "ol", "p", "pre", "section", "table",
-        "td", "th", "tr", "ul"
+        "td", "th", "tr", "ul", "figure", "figcaption"
     )
+    private val HEADING_ELEMENTS = setOf("h1", "h2", "h3", "h4", "h5", "h6")
+    private val REMOVED_TAGS = setOf("script", "style", "nav", "footer", "aside", "noscript", "form")
+    private const val REMOVED_SELECTORS =
+        "script, style, nav, footer, aside, noscript, form, img, svg, video, audio, " +
+            "#comments, .comments, #comment, .comment, #comment-section, .comment-section, " +
+            "#disqus_thread, .disqus_thread, #respond, .respond, [id*=comments], " +
+            "[class*=comments], [id*=disqus], [class*=disqus]"
     private val ABBREVIATION_END = Regex(
         "(?i)(?:\\b(?:mr|mrs|ms|dr|prof|sr|jr|st|e\\.g|i\\.e|etc|np|tj|itd|itp|m\\.in|tzw)\\.)$"
     )

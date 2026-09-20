@@ -323,10 +323,12 @@ private fun AdvancedTtsSettings(
     )
     when (model.family) {
         TtsEngineFamily.SUPERTONIC -> {
+            val voiceRange = TtsModelCatalog.voiceIdRange(model)
             IntegerSetting(
                 label = stringResource(R.string.tts_speaker_id),
                 value = settings.supertonicSpeaker,
-                range = 0..9,
+                range = voiceRange,
+                displayValue = TtsModelCatalog.supertonicVoiceName(settings.supertonicSpeaker),
                 onValueChange = { onSettingsChange(settings.copy(supertonicSpeaker = it)) }
             )
             AdvancedSlider(
@@ -426,6 +428,7 @@ private fun IntegerSetting(
     label: String,
     value: Int,
     range: IntRange,
+    displayValue: String = value.toString(),
     onValueChange: (Int) -> Unit
 ) {
     Row(
@@ -435,7 +438,10 @@ private fun IntegerSetting(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(stringResource(R.string.tts_integer_value, label, value), style = MaterialTheme.typography.bodyMedium)
+        Text(
+            stringResource(R.string.tts_setting_value, label, displayValue),
+            style = MaterialTheme.typography.bodyMedium
+        )
         Row {
             TextButton(
                 onClick = { onValueChange(value - 1) },
