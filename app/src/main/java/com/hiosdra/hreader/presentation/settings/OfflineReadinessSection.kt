@@ -15,6 +15,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -44,19 +45,21 @@ fun OfflineReadinessSection(
     onBacklogTargetChange: (Int) -> Unit,
     onImageDownloadEnabledChange: (Boolean) -> Unit,
     onImageCacheBudgetChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    canPrepare: Boolean = true,
+    onRetry: (() -> Unit)? = null
 ) {
     val readiness = state.readiness
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = readiness.headline(),
+            text = state.headline(),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         LinearProgressIndicator(
-            progress = { readiness.contentProgress() },
+            progress = { state.contentProgress() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp)
@@ -76,7 +79,7 @@ fun OfflineReadinessSection(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onPrepare,
-            enabled = !state.isPreparing,
+            enabled = !state.isPreparing && canPrepare,
             modifier = Modifier.fillMaxWidth()
         ) {
             if (state.isPreparing && !state.isFullOfflinePreparation) {
@@ -87,7 +90,7 @@ fun OfflineReadinessSection(
         }
         Button(
             onClick = onFullOfflineSync,
-            enabled = !state.isPreparing,
+            enabled = !state.isPreparing && canPrepare,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
@@ -125,12 +128,21 @@ fun OfflineReadinessSection(
             modifier = Modifier.padding(top = 4.dp)
         )
         when (state.preparationStatus.state) {
-            SyncOperationState.SUCCEEDED -> Text(
-                text = readiness.downloadCompleteMessage(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            SyncOperationState.SUCCEEDED -> {
+                Text(
+                    text = state.completionMessage(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (state.missingPreparationCount() == 0) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                if (state.missingPreparationCount() > 0) {
+                    RetryOfflinePreparationButton(onRetry)
+                }
+            }
             SyncOperationState.FAILED -> {
                 val errorMessage = state.preparationStatus.error?.let { stringResource(it.messageResId) }
                     ?: state.preparationStatus.errorMessage
@@ -141,6 +153,7 @@ fun OfflineReadinessSection(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+                RetryOfflinePreparationButton(onRetry)
             }
             SyncOperationState.CANCELLED -> Text(
                 text = stringResource(R.string.offline_download_cancelled),
@@ -207,8 +220,39 @@ fun OfflineReadinessSection(
 }
 
 @Composable
-private fun OfflineReadiness.downloadCompleteMessage(): String =
-    if (missingImageCount > 0) {
+private fun RetryOfflinePreparationButton(onRetry: (() -> Unit)?) {
+    if (onRetry != null) {
+        TextButton(onClick = onRetry) {
+            Text(stringResource(R.string.action_retry))
+        }
+    }
+}
+
+private fun OfflineUiState.missingPreparationCount(): Int {
+    val missingContent = missingContentForPreparation
+    val missingPages = if (isFullOfflinePreparation) readiness.missingFullPageCount else 0
+    val missingImages = if (imageDownloadEnabled) readiness.missingImageCount else 0
+    return missingContent + missingImages + missingPages
+}
+
+private val OfflineUiState.missingContentForPreparation: Int
+    get() = if (isFullOfflinePreparation) {
+        readiness.missingFullContentCount
+    } else {
+        readiness.missingContentCount
+    }
+
+@Composable
+private fun OfflineUiState.completionMessage(): String =
+    if (missingPreparationCount() > 0) {
+        stringResource(R.string.offline_download_partial, missingPreparationCount())
+    } else {
+        readiness.downloadCompleteMessage(includeImages = imageDownloadEnabled)
+    }
+
+@Composable
+private fun OfflineReadiness.downloadCompleteMessage(includeImages: Boolean): String =
+    if (includeImages && missingImageCount > 0) {
         pluralStringResource(
             R.plurals.offline_download_complete_missing_images,
             missingImageCount,
@@ -219,19 +263,34 @@ private fun OfflineReadiness.downloadCompleteMessage(): String =
     }
 
 @Composable
-private fun OfflineReadiness.headline(): String = when {
-    offlineTargetCount == 0 -> stringResource(R.string.offline_nothing_available)
-    isComplete -> pluralStringResource(R.plurals.offline_ready, offlineTargetCount, offlineTargetCount)
+private fun OfflineUiState.headline(): String = when {
+    readiness.offlineTargetCount == 0 -> stringResource(R.string.offline_nothing_available)
+    missingContentForPreparation == 0 -> pluralStringResource(
+        R.plurals.offline_ready,
+        readiness.offlineTargetCount,
+        readiness.offlineTargetCount
+    )
     else -> pluralStringResource(
         R.plurals.offline_available,
-        offlineTargetCount,
-        storedContentCount,
-        offlineTargetCount
+        readiness.offlineTargetCount,
+        storedContentCountForPreparation,
+        readiness.offlineTargetCount
     )
 }
 
-private fun OfflineReadiness.contentProgress(): Float =
-    if (offlineTargetCount == 0) 0f else (storedContentCount.toFloat() / offlineTargetCount).coerceIn(0f, 1f)
+private val OfflineUiState.storedContentCountForPreparation: Int
+    get() = if (isFullOfflinePreparation) {
+        readiness.storedFullContentCount
+    } else {
+        readiness.storedContentCount
+    }
+
+private fun OfflineUiState.contentProgress(): Float =
+    if (readiness.offlineTargetCount == 0) {
+        0f
+    } else {
+        (storedContentCountForPreparation.toFloat() / readiness.offlineTargetCount).coerceIn(0f, 1f)
+    }
 
 @Composable
 private fun OfflineReadiness.detailLine(): String {

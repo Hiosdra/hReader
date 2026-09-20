@@ -309,6 +309,32 @@ class SyncSchedulerTest {
     }
 
     @Test
+    fun travelMode_usesStorageAndBatteryConstraintsForEveryDownloadStage() {
+        val syncRequest = slot<OneTimeWorkRequest>()
+        val stageRequests = mutableListOf<OneTimeWorkRequest>()
+        every {
+            workManager.beginUniqueWork(
+                "SyncPipeline",
+                ExistingWorkPolicy.REPLACE,
+                capture(syncRequest)
+            )
+        } returns workContinuation
+        every { workContinuation.then(capture(stageRequests)) } returns workContinuation
+
+        assertNotNull(scheduler.prepareTravelMode(fullOffline = true))
+
+        assertFalse(syncRequest.captured.workSpec.expedited)
+        assertTrue(syncRequest.captured.workSpec.constraints.requiresStorageNotLow())
+        assertTrue(syncRequest.captured.workSpec.constraints.requiresBatteryNotLow())
+        assertTrue(stageRequests[0].workSpec.constraints.requiresStorageNotLow())
+        assertTrue(stageRequests[0].workSpec.constraints.requiresBatteryNotLow())
+        assertTrue(stageRequests[1].workSpec.constraints.requiresStorageNotLow())
+        assertTrue(stageRequests[1].workSpec.constraints.requiresBatteryNotLow())
+        assertTrue(stageRequests[2].workSpec.constraints.requiresStorageNotLow())
+        assertTrue(stageRequests[2].workSpec.constraints.requiresBatteryNotLow())
+    }
+
+    @Test
     fun identifies_each_offline_preparation_stage() {
         assertEquals(
             OfflinePreparationStage.SYNCING,

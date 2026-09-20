@@ -239,7 +239,11 @@ class SettingsViewModel(
         startOfflinePreparation(fullOffline = true)
     }
 
-    private fun startOfflinePreparation(fullOffline: Boolean) {
+    fun prepareTravelMode(fullOffline: Boolean) {
+        startOfflinePreparation(fullOffline = fullOffline, travelMode = true)
+    }
+
+    private fun startOfflinePreparation(fullOffline: Boolean, travelMode: Boolean = false) {
         offlineAwaitingOperation = true
         offlineOperationId = null
         _offline.value = _offline.value.copy(
@@ -250,10 +254,10 @@ class SettingsViewModel(
             preparationStage = OfflinePreparationStage.SYNCING,
             preparationStatus = SyncOperationStatus(SyncOperationState.RUNNING)
         )
-        val operationId = if (fullOffline) {
-            settings.prepareFullOffline()
-        } else {
-            settings.prepareForOffline()
+        val operationId = when {
+            travelMode -> settings.prepareTravelMode(fullOffline)
+            fullOffline -> settings.prepareFullOffline()
+            else -> settings.prepareForOffline()
         }
         if (operationId == null) {
             offlineAwaitingOperation = false

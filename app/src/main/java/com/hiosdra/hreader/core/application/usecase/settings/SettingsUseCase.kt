@@ -62,6 +62,7 @@ class SettingsUseCase(
     fun observeRequestedSync() = sync.observeRequestedSync()
     fun prepareForOffline() = sync.request(SyncIntent.PrepareOffline)
     fun prepareFullOffline() = sync.request(SyncIntent.PrepareFullOffline)
+    fun prepareTravelMode(fullOffline: Boolean) = sync.prepareTravelMode(fullOffline)
     fun schedulePeriodicSync() = sync.schedulePeriodicSync()
     suspend fun cancelAllSync() = sync.cancelAllSync()
 

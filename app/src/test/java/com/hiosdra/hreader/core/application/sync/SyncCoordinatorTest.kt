@@ -67,6 +67,21 @@ class SyncCoordinatorTest {
     }
 
     @Test
+    fun `travel mode drains safely without expedited work`() {
+        val plan = coordinator.plan(SyncIntent.PrepareTravelMode(fullOffline = true))
+
+        assertTrue(plan.forceFullSync)
+        assertFalse(plan.expedited)
+        assertFalse(plan.ignoreQuietHours)
+        assertTrue(plan.userVisible)
+        assertTrue(plan.drainRemaining)
+        assertTrue(plan.offlinePreparation)
+        assertTrue(plan.fullOfflinePreparation)
+        assertTrue(plan.includeFullPages)
+        assertTrue(plan.travelMode)
+    }
+
+    @Test
     fun `user intent carries its visibility and full-sync request`() {
         val plan = coordinator.plan(
             SyncIntent.User(

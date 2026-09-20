@@ -121,7 +121,6 @@ internal fun MainScreen(
     var offlineBannerDismissed by rememberSaveable { mutableStateOf(false) }
     val undoActionLabel = stringResource(R.string.action_undo)
     val retryActionLabel = stringResource(R.string.action_retry)
-    val offlineStartedMessage = stringResource(R.string.offline_downloading)
 
     BackHandler(enabled = searchActive.value) {
         searchActive.value = false
@@ -343,21 +342,16 @@ internal fun MainScreen(
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            stringResource(R.string.offline_download_reading),
+                                            stringResource(R.string.main_travel_mode),
                                             style = MaterialTheme.typography.labelLarge
                                         )
                                     },
                                     onClick = {
                                         expanded.value = false
-                                        if (viewModel.prepareForOffline()) {
-                                            snackbarScope.launch {
-                                                snackbarHostState.showFeedback(
-                                                    FeedbackRequest(message = offlineStartedMessage)
-                                                )
-                                            }
+                                        navController.navigate(Routes.TRAVEL_MODE) {
+                                            launchSingleTop = true
                                         }
-                                    },
-                                    enabled = uiState.isOnline && !uiState.offlinePreparation.isRunning
+                                    }
                                 )
                                 DropdownMenuItem(
                                     text = {
@@ -435,7 +429,12 @@ internal fun MainScreen(
                     showReadArticles = uiState.showReadArticles,
                     onShowReadArticles = viewModel::setShowReadArticles,
                     onClearSearch = { viewModel.updateSearchQuery("") },
-                    onLeaveFeed = onLeaveFeed
+                    onLeaveFeed = onLeaveFeed,
+                    onOpenTravelMode = {
+                        navController.navigate(Routes.TRAVEL_MODE) {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
         },
@@ -784,7 +783,8 @@ private fun ArticleScopeBar(
     showReadArticles: Boolean,
     onShowReadArticles: (Boolean) -> Unit,
     onClearSearch: () -> Unit,
-    onLeaveFeed: () -> Unit
+    onLeaveFeed: () -> Unit,
+    onOpenTravelMode: () -> Unit
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -835,6 +835,10 @@ private fun ArticleScopeBar(
                     }
                 )
             }
+            AssistChip(
+                onClick = onOpenTravelMode,
+                label = { Text(stringResource(R.string.main_travel_mode)) }
+            )
         }
     }
 }

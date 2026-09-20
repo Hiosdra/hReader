@@ -213,6 +213,15 @@ fun SettingsScreen(
                         onBacklogTargetChange = actions.offline.onBacklogTargetChange,
                         onImageDownloadEnabledChange = actions.offline.onImageDownloadEnabledChange,
                         onImageCacheBudgetChange = actions.offline.onImageCacheBudgetChange,
+                        onRetry = {
+                            requestNotificationPermission {
+                                if (offline.isFullOfflinePreparation) {
+                                    actions.offline.onFullOfflineSync()
+                                } else {
+                                    actions.offline.onPrepare()
+                                }
+                            }
+                        },
                         modifier = Modifier.padding(16.dp)
                     )
                 }

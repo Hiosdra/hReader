@@ -58,6 +58,7 @@ import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.presentation.settings.SettingsScreen
 import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
 import com.hiosdra.hreader.presentation.sync.SyncHealthScreen
+import com.hiosdra.hreader.presentation.travel.TravelModeScreen
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 import com.hiosdra.hreader.R
 import androidx.compose.ui.res.stringResource
@@ -179,6 +180,13 @@ fun AppNavigation(
                 feedsViewModel = koinViewModel(),
                 networkStatus = networkStatus,
                 imageDependencies = articleImageDependencies
+            )
+        }
+        composable(Routes.TRAVEL_MODE) {
+            TravelModeScreen(
+                navController = navController,
+                networkStatus = networkStatus,
+                settingsViewModel = koinViewModel()
             )
         }
         composable(
