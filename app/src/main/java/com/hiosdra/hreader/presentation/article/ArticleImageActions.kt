@@ -3,7 +3,6 @@ package com.hiosdra.hreader.presentation.article
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,5 +64,4 @@ internal fun ImageActionsDialog(
 internal fun copyTextToClipboard(context: Context, label: String, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
-    Toast.makeText(context, context.getString(R.string.article_copied), Toast.LENGTH_SHORT).show()
 }

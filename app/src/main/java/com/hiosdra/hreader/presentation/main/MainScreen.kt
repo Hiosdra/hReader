@@ -46,10 +46,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +61,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,6 +84,9 @@ import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.article.ArticleListGrouped
 import com.hiosdra.hreader.presentation.components.ArticleListSkeleton
+import com.hiosdra.hreader.presentation.feedback.FeedbackKind
+import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
+import com.hiosdra.hreader.presentation.feedback.showFeedback
 import com.hiosdra.hreader.presentation.text.resolve
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 import kotlinx.coroutines.launch
@@ -116,9 +118,9 @@ internal fun MainScreen(
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
+    var offlineBannerDismissed by rememberSaveable { mutableStateOf(false) }
     val undoActionLabel = stringResource(R.string.action_undo)
     val retryActionLabel = stringResource(R.string.action_retry)
-    val offlineRefreshMessage = stringResource(R.string.main_offline_refresh)
     val offlineStartedMessage = stringResource(R.string.offline_downloading)
 
     BackHandler(enabled = searchActive.value) {
@@ -138,22 +140,28 @@ internal fun MainScreen(
         if (uiState.searchQuery.isNotBlank()) searchActive.value = true
     }
 
+    LaunchedEffect(uiState.isOnline) {
+        if (uiState.isOnline) offlineBannerDismissed = false
+    }
+
     // Actions that already happened are offered back, instead of being asked about beforehand.
     uiState.undo?.let { undo ->
         val undoMessage = undo.message.resolve()
         LaunchedEffect(undo.id) {
             try {
-                val result = snackbarHostState.showSnackbar(
-                    message = undoMessage,
-                    actionLabel = undoActionLabel,
-                    duration = SnackbarDuration.Long
+                snackbarHostState.showFeedback(
+                    FeedbackRequest(
+                        message = undoMessage,
+                        kind = FeedbackKind.UNDO,
+                        actionLabel = undoActionLabel,
+                        onAction = viewModel::undoLastAction
+                    )
                 )
-                if (result == SnackbarResult.ActionPerformed) viewModel.undoLastAction()
             } finally {
                 // Also when this is cancelled. Opening an article takes the snackbar off screen
                 // without dismissing it, and the offer used to be waiting again on the way back —
                 // by then covering articles the reader had gone on to read deliberately.
-                viewModel.dismissUndo()
+                viewModel.dismissUndo(undo.id)
             }
         }
     }
@@ -164,13 +172,15 @@ internal fun MainScreen(
         val errorMessage = message.resolve()
         LaunchedEffect(message) {
             if (articles.itemCount == 0) return@LaunchedEffect
-            val result = snackbarHostState.showSnackbar(
-                message = errorMessage,
-                actionLabel = retryActionLabel,
-                duration = SnackbarDuration.Long
+            snackbarHostState.showFeedback(
+                FeedbackRequest(
+                    message = errorMessage,
+                    kind = FeedbackKind.RECOVERABLE_ERROR,
+                    actionLabel = retryActionLabel,
+                    onAction = viewModel::refreshFromNetwork
+                )
             )
             viewModel.dismissError()
-            if (result == SnackbarResult.ActionPerformed) viewModel.refreshFromNetwork()
         }
     }
 
@@ -181,8 +191,8 @@ internal fun MainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (!uiState.isOnline) {
-                    OfflineBanner()
+                if (!uiState.isOnline && !offlineBannerDismissed) {
+                    OfflineBanner(onDismiss = { offlineBannerDismissed = true })
                 }
                 uiState.unavailableAiModelId?.let { modelId ->
                     AiModelUnavailableBanner(
@@ -260,7 +270,11 @@ internal fun MainScreen(
                         // for us, and a reader who taps refresh has better information than a
                         // greyed-out button does; a genuinely unreachable server reports itself.
                         IconButton(
-                            onClick = { if (!uiState.isRefreshing) viewModel.refreshFromNetwork() },
+                            onClick = {
+                                if (uiState.isOnline && !uiState.isRefreshing) {
+                                    viewModel.refreshFromNetwork()
+                                }
+                            },
                             enabled = !uiState.isRefreshing,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
@@ -337,7 +351,9 @@ internal fun MainScreen(
                                         expanded.value = false
                                         if (viewModel.prepareForOffline()) {
                                             snackbarScope.launch {
-                                                snackbarHostState.showSnackbar(offlineStartedMessage)
+                                                snackbarHostState.showFeedback(
+                                                    FeedbackRequest(message = offlineStartedMessage)
+                                                )
                                             }
                                         }
                                     },
@@ -528,13 +544,7 @@ internal fun MainScreen(
             else -> PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = {
-                    if (uiState.isOnline) {
-                        viewModel.refreshFromNetwork()
-                    } else {
-                        snackbarScope.launch {
-                            snackbarHostState.showSnackbar(offlineRefreshMessage)
-                        }
-                    }
+                    if (uiState.isOnline) viewModel.refreshFromNetwork()
                 },
                 modifier = Modifier
                     .fillMaxSize()
@@ -830,20 +840,33 @@ private fun ArticleScopeBar(
 }
 
 @Composable
-private fun OfflineBanner() {
+private fun OfflineBanner(onDismiss: () -> Unit) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = stringResource(R.string.main_offline_banner),
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+                .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.main_offline_banner),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 4.dp)
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.action_dismiss)
+                )
+            }
+        }
     }
 }
 

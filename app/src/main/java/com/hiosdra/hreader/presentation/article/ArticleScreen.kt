@@ -12,12 +12,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -39,9 +40,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.navigation.NavHostController
 import coil3.ImageLoader as CoilImageLoader
-import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
@@ -61,10 +63,14 @@ import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
+import com.hiosdra.hreader.presentation.feedback.FeedbackKind
+import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
+import com.hiosdra.hreader.presentation.feedback.showFeedback
 import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
 import com.hiosdra.hreader.presentation.text.resolve
 import com.hiosdra.hreader.R
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 internal const val MIN_ARTICLE_TEXT_SCALE = 0.85f
 internal const val MAX_ARTICLE_TEXT_SCALE = 1.35f
@@ -120,6 +126,10 @@ fun ArticleScreen(
     // neither read state nor the reader's position may be touched before it lands.
     var pagerPositioned by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val feedbackScope = rememberCoroutineScope()
+    val onFeedback: (FeedbackRequest) -> Unit = { request ->
+        feedbackScope.launch { snackbarHostState.showFeedback(request) }
+    }
 
     val ttsState by ttsController.state.collectAsStateWithLifecycle()
     val ttsModelStatuses by ttsModelManager.statuses.collectAsStateWithLifecycle()
@@ -388,12 +398,27 @@ fun ArticleScreen(
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = uiState.error?.resolve().orEmpty(),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = uiState.error?.resolve().orEmpty(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                            TextButton(
+                                onClick = {
+                                    viewModel.openList(
+                                        feedId = feedId,
+                                        startArticleId = startArticleId,
+                                        includeRead = includeRead,
+                                        sessionStartMillis = sessionStartMillis
+                                    )
+                                },
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Text(stringResource(R.string.action_retry))
+                            }
+                        }
                     }
                 }
                 uiState.entries.isNotEmpty() -> {
@@ -439,7 +464,8 @@ fun ArticleScreen(
                             url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
                         },
                         onOpenInChrome = openArticleInChrome,
-                        onBypassPaywall = openArticleThroughPaywall
+                        onBypassPaywall = openArticleThroughPaywall,
+                        onFeedback = onFeedback
                     )
                 }
             }
@@ -451,7 +477,7 @@ fun ArticleScreen(
                     hostState = snackbarHostState,
                     message = error.resolve(),
                     actionLabel = stringResource(R.string.action_retry).takeIf {
-                        currentEntryId != null && uiState.aiProvider == AiProvider.GEMMA_LOCAL
+                        currentEntryId != null
                     },
                     onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
                     onDismissed = viewModel::clearOverviewError
@@ -463,6 +489,7 @@ fun ArticleScreen(
                     ArticleContentErrorBanner(
                         message = message.resolve(),
                         onRetry = { viewModel.retryContent(currentEntryId) },
+                        onDismiss = viewModel::clearContentError,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = articleBottomContentPadding + 8.dp)
@@ -476,7 +503,7 @@ fun ArticleScreen(
                     hostState = snackbarHostState,
                     message = error.resolve(),
                     actionLabel = stringResource(R.string.action_retry).takeIf {
-                        currentEntryId != null && uiState.aiProvider == AiProvider.GEMMA_LOCAL
+                        currentEntryId != null
                     },
                     onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
                     onDismissed = viewModel::clearScoreError
@@ -540,6 +567,7 @@ fun ArticleScreen(
 private fun ArticleContentErrorBanner(
     message: String,
     onRetry: () -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -563,6 +591,13 @@ private fun ArticleContentErrorBanner(
             TextButton(onClick = onRetry) {
                 Text(stringResource(R.string.action_retry), color = MaterialTheme.colorScheme.onErrorContainer)
             }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.action_dismiss),
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
         }
     }
 }
@@ -580,12 +615,14 @@ private fun RetryableSnackbar(
     onDismissed: () -> Unit
 ) {
     LaunchedEffect(message) {
-        val result = hostState.showSnackbar(
-            message = message,
-            actionLabel = actionLabel,
-            duration = SnackbarDuration.Long
+        hostState.showFeedback(
+            FeedbackRequest(
+                message = message,
+                kind = FeedbackKind.RECOVERABLE_ERROR,
+                actionLabel = actionLabel,
+                onAction = onAction
+            )
         )
         onDismissed()
-        if (result == SnackbarResult.ActionPerformed) onAction()
     }
 }

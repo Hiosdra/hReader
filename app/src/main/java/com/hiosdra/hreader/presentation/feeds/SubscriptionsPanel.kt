@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -57,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.text.resolve
+import com.hiosdra.hreader.presentation.text.UiText
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.service.displayUrl
@@ -92,6 +92,11 @@ fun SubscriptionsPanel(
 
     var feedPendingRename by remember { mutableStateOf<Feed?>(null) }
     var feedPendingDeletion by remember { mutableStateOf<Feed?>(null) }
+    var offlineMessageDismissed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(visible, isOnline) {
+        if (!visible || isOnline) offlineMessageDismissed = false
+    }
 
     LaunchedEffect(visible) {
         if (visible) viewModel.reload()
@@ -161,61 +166,22 @@ fun SubscriptionsPanel(
         if (uiState.isBusy) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
-        // A drawer has no scaffold to hang a snackbar on, so what an import or an unsubscribe did
-        // is said in place, where the list it changed is.
         uiState.message?.let { message ->
-            val messageColor = if (uiState.messageIsError) {
-                MaterialTheme.colorScheme.onErrorContainer
-            } else {
-                MaterialTheme.colorScheme.onSecondaryContainer
-            }
-            val messageBackground = if (uiState.messageIsError) {
-                MaterialTheme.colorScheme.errorContainer
-            } else {
-                MaterialTheme.colorScheme.secondaryContainer
-            }
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(messageBackground)
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = message.resolve(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = messageColor,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(vertical = 8.dp)
-                )
-                if (uiState.messageCanRetry) {
-                    TextButton(onClick = viewModel::retryLastAction) {
-                        Text(stringResource(R.string.action_retry), color = messageColor)
-                    }
-                }
-                IconButton(onClick = viewModel::dismissMessage) {
-                    Icon(
-                        Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.action_dismiss),
-                        tint = messageColor
-                    )
-                }
-            }
+            FeedActionFeedback(
+                message = message,
+                isError = uiState.messageIsError,
+                canRetry = uiState.messageCanRetry,
+                onRetry = viewModel::retryLastAction,
+                onDismiss = viewModel::dismissMessage
+            )
         }
-        if (!isOnline) {
-            Text(
-                text = stringResource(R.string.feeds_offline_changes),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.errorContainer)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+        if (!isOnline && !offlineMessageDismissed) {
+            FeedActionFeedback(
+                message = UiText.Resource(R.string.feeds_offline_changes),
+                isError = true,
+                canRetry = false,
+                onRetry = {},
+                onDismiss = { offlineMessageDismissed = true }
             )
         }
         when {

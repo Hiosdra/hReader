@@ -18,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -38,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
+import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
+import com.hiosdra.hreader.presentation.feedback.showFeedback
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import kotlinx.coroutines.launch
@@ -71,6 +72,15 @@ fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: Feed
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
+            uiState.message?.let { message ->
+                FeedActionFeedback(
+                    message = message,
+                    isError = uiState.messageIsError,
+                    canRetry = uiState.messageCanRetry,
+                    onRetry = viewModel::retryLastAction,
+                    onDismiss = viewModel::dismissMessage
+                )
+            }
             if (feed != null) {
                 FeedAddress(
                     label = stringResource(R.string.feeds_site_url),
@@ -78,10 +88,7 @@ fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: Feed
                     onCopy = {
                         copyUrl(context, feed.siteUrl.orEmpty())
                         scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = copiedMessage,
-                                duration = SnackbarDuration.Short
-                            )
+                            snackbarHostState.showFeedback(FeedbackRequest(message = copiedMessage))
                         }
                     }
                 )
@@ -92,10 +99,7 @@ fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: Feed
                     onCopy = {
                         copyUrl(context, feed.feedUrl.orEmpty())
                         scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = copiedMessage,
-                                duration = SnackbarDuration.Short
-                            )
+                            snackbarHostState.showFeedback(FeedbackRequest(message = copiedMessage))
                         }
                     }
                 )

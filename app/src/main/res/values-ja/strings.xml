@@ -169,6 +169,7 @@
     <string name="article_download_image">画像をダウンロード</string>
     <string name="article_share_image">画像を共有</string>
     <string name="article_copied">コピーしました</string>
+    <string name="article_image_downloaded">画像をダウンロードしました</string>
     <string name="article_downloading">ダウンロード中</string>
     <string name="article_download_failed">ダウンロードを開始できませんでした</string>
     <string name="article_image">画像</string>

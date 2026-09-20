@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.presentation.article
 
-import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +30,7 @@ import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.R
+import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
 import coil3.ImageLoader as CoilImageLoader
 
 @Composable
@@ -73,7 +73,8 @@ internal fun ArticlePager(
     defaultPaywallBypassMethod: PaywallBypassMethod = PaywallBypassMethod.SMRY_AI,
     canUsePaywallBypass: (String) -> Boolean = { false },
     onOpenInChrome: (String) -> Unit = {},
-    onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> }
+    onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> },
+    onFeedback: (FeedbackRequest) -> Unit = {}
 ) {
     val context = LocalContext.current
     val articleLinkLabel = stringResource(R.string.article_link)
@@ -122,7 +123,7 @@ internal fun ArticlePager(
                             page = offlinePage,
                             onLinkClick = { url ->
                                 copyTextToClipboard(context, articleLinkLabel, url)
-                                Toast.makeText(context, offlineLinkCopiedMessage, Toast.LENGTH_SHORT).show()
+                                onFeedback(FeedbackRequest(message = offlineLinkCopiedMessage))
                             },
                             readingPositionLoaded = entry.id in loadedReadingPositionIds,
                             savedReadingProgress = readingProgressForEntry(entry.id),
@@ -181,7 +182,8 @@ internal fun ArticlePager(
                         defaultPaywallBypassMethod = defaultPaywallBypassMethod,
                         canUsePaywallBypass = canUsePaywallBypass,
                         onOpenInChrome = onOpenInChrome,
-                        onBypassPaywall = onBypassPaywall
+                        onBypassPaywall = onBypassPaywall,
+                        onFeedback = onFeedback
                     )
                 }
             }

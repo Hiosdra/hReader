@@ -169,6 +169,7 @@
     <string name="article_download_image">下载图片</string>
     <string name="article_share_image">分享图片</string>
     <string name="article_copied">已复制</string>
+    <string name="article_image_downloaded">图片已下载</string>
     <string name="article_downloading">正在下载</string>
     <string name="article_download_failed">无法开始下载</string>
     <string name="article_image">图片</string>
