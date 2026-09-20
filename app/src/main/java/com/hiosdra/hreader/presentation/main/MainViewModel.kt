@@ -393,8 +393,14 @@ class MainViewModel(
         }
     }
 
-    fun dismissUndo() {
-        _uiState.update { it.copy(undo = null) }
+    fun dismissUndo(actionId: Long? = null) {
+        _uiState.update { state ->
+            if (actionId == null || state.undo?.id == actionId) {
+                state.copy(undo = null)
+            } else {
+                state
+            }
+        }
     }
 
     /**

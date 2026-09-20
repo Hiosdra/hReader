@@ -199,6 +199,7 @@
     <string name="article_download_image">Pobierz obraz</string>
     <string name="article_share_image">Udostępnij obraz</string>
     <string name="article_copied">Skopiowano</string>
+    <string name="article_image_downloaded">Obraz pobrano</string>
     <string name="article_downloading">Pobieranie</string>
     <string name="article_download_failed">Nie można rozpocząć pobierania</string>
     <string name="article_image">Obraz</string>

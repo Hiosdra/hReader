@@ -169,6 +169,7 @@
     <string name="article_download_image">Görseli indir</string>
     <string name="article_share_image">Görseli paylaş</string>
     <string name="article_copied">Kopyalandı</string>
+    <string name="article_image_downloaded">Görsel indirildi</string>
     <string name="article_downloading">İndiriliyor</string>
     <string name="article_download_failed">İndirme başlatılamadı</string>
     <string name="article_image">Görsel</string>

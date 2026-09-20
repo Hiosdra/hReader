@@ -1,6 +1,5 @@
 package com.hiosdra.hreader.presentation.article
 
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.rememberScrollableState
@@ -67,6 +66,8 @@ import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
+import com.hiosdra.hreader.presentation.feedback.FeedbackKind
+import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
 import com.hiosdra.hreader.presentation.navigation.openChromeCustomTab
 import com.hiosdra.hreader.R
 import java.time.format.DateTimeFormatter
@@ -121,7 +122,8 @@ internal fun ArticleContent(
     defaultPaywallBypassMethod: PaywallBypassMethod = PaywallBypassMethod.SMRY_AI,
     canUsePaywallBypass: (String) -> Boolean = { false },
     onOpenInChrome: (String) -> Unit = {},
-    onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> }
+    onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> },
+    onFeedback: (FeedbackRequest) -> Unit = {}
 ) {
     val locale = LocalLocale.current.platformLocale
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
@@ -163,12 +165,14 @@ internal fun ArticleContent(
     val articleLinkLabel = stringResource(R.string.article_link)
     val offlineLinkCopiedMessage = stringResource(R.string.article_offline_link_copied)
     val imageUrlLabel = stringResource(R.string.article_image_url)
+    val copiedMessage = stringResource(R.string.article_copied)
     val downloadingRequiresConnectionMessage = stringResource(R.string.article_downloading_requires_connection)
     val sharingRequiresConnectionMessage = stringResource(R.string.article_sharing_requires_connection)
     val preparingImageMessage = stringResource(R.string.article_preparing_image)
     val imageSharingFailedMessage = stringResource(R.string.article_image_sharing_failed)
-    val imageDownloadedMessage = stringResource(R.string.article_downloading)
+    val imageDownloadedMessage = stringResource(R.string.article_image_downloaded)
     val imageDownloadFailedMessage = stringResource(R.string.article_download_failed)
+    val retryActionLabel = stringResource(R.string.action_retry)
     val loadingArticlesDescription = stringResource(R.string.loading_articles)
     val density = LocalDensity.current
     val minimumWebViewHeightPx = with(density) { 240.dp.roundToPx() }
@@ -445,7 +449,7 @@ internal fun ArticleContent(
             openChromeCustomTab(context, url)
         } else {
             copyTextToClipboard(context, articleLinkLabel, url)
-            Toast.makeText(context, offlineLinkCopiedMessage, Toast.LENGTH_SHORT).show()
+            onFeedback(FeedbackRequest(message = offlineLinkCopiedMessage))
         }
     }
     Surface(
@@ -570,13 +574,14 @@ internal fun ArticleContent(
             },
             onCopy = {
                 copyTextToClipboard(context, imageUrlLabel, actionsUrl)
+                onFeedback(FeedbackRequest(message = copiedMessage))
                 imageActionsUrl = null
             },
             onDownload = {
                 if (isOnline) {
                     imageDownloadUrl = actionsUrl
                 } else {
-                    Toast.makeText(context, downloadingRequiresConnectionMessage, Toast.LENGTH_SHORT).show()
+                    onFeedback(FeedbackRequest(message = downloadingRequiresConnectionMessage))
                 }
                 imageActionsUrl = null
             },
@@ -584,7 +589,7 @@ internal fun ArticleContent(
                 if (isOnline) {
                     imageShareUrl = actionsUrl
                 } else {
-                    Toast.makeText(context, sharingRequiresConnectionMessage, Toast.LENGTH_SHORT).show()
+                    onFeedback(FeedbackRequest(message = sharingRequiresConnectionMessage))
                 }
                 imageActionsUrl = null
             }
@@ -594,18 +599,37 @@ internal fun ArticleContent(
     if (downloadTarget != null) {
         LaunchedEffect(downloadTarget) {
             val downloaded = imageDownloader.download(downloadTarget)
-            val message = if (downloaded) imageDownloadedMessage else imageDownloadFailedMessage
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             imageDownloadUrl = null
+            onFeedback(
+                if (downloaded) {
+                    FeedbackRequest(message = imageDownloadedMessage)
+                } else {
+                    FeedbackRequest(
+                        message = imageDownloadFailedMessage,
+                        kind = FeedbackKind.RECOVERABLE_ERROR,
+                        actionLabel = retryActionLabel,
+                        onAction = { imageDownloadUrl = downloadTarget }
+                    )
+                }
+            )
         }
     }
     val shareTarget = imageShareUrl
     if (shareTarget != null) {
         LaunchedEffect(shareTarget) {
-            Toast.makeText(context, preparingImageMessage, Toast.LENGTH_SHORT).show()
+            onFeedback(FeedbackRequest(message = preparingImageMessage))
             val shared = imageSharer.share(entry.title, shareTarget)
-            if (!shared) Toast.makeText(context, imageSharingFailedMessage, Toast.LENGTH_SHORT).show()
             imageShareUrl = null
+            if (!shared) {
+                onFeedback(
+                    FeedbackRequest(
+                        message = imageSharingFailedMessage,
+                        kind = FeedbackKind.RECOVERABLE_ERROR,
+                        actionLabel = retryActionLabel,
+                        onAction = { imageShareUrl = shareTarget }
+                    )
+                )
+            }
         }
     }
     val zoomUrl = zoomImageUrl

@@ -195,6 +195,7 @@
     <string name="article_download_image">Download image</string>
     <string name="article_share_image">Share image</string>
     <string name="article_copied">Copied</string>
+    <string name="article_image_downloaded">Image downloaded</string>
     <string name="article_downloading">Downloading</string>
     <string name="article_download_failed">Could not start the download</string>
     <string name="article_image">Image</string>

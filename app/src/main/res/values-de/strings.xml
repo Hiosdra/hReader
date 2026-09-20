@@ -178,6 +178,7 @@
     <string name="article_download_image">Bild herunterladen</string>
     <string name="article_share_image">Bild teilen</string>
     <string name="article_copied">Kopiert</string>
+    <string name="article_image_downloaded">Bild heruntergeladen</string>
     <string name="article_downloading">Wird heruntergeladen</string>
     <string name="article_download_failed">Download konnte nicht gestartet werden</string>
     <string name="article_image">Bild</string>

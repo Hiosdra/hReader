@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation.NavController
@@ -114,6 +115,25 @@ class MainScreenTest {
         composeTestRule.onNodeWithText(context.getString(R.string.action_retry)).performClick()
 
         assertEquals(1, retries.get())
+    }
+
+    @Test
+    fun `offline banner can be dismissed without changing offline state`() {
+        val viewModel = viewModel(MainUiState(isOnline = false))
+        setContent(viewModel)
+        val context = RuntimeEnvironment.getApplication()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            context.getString(R.string.main_offline_banner)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            context.getString(R.string.action_dismiss)
+        ).performClick()
+
+        composeTestRule.onAllNodesWithText(
+            context.getString(R.string.main_offline_banner)
+        ).assertCountEquals(0)
     }
 
     private fun viewModel(state: MainUiState): MainViewModel =

@@ -169,6 +169,7 @@
     <string name="article_download_image">Scarica immagine</string>
     <string name="article_share_image">Condividi immagine</string>
     <string name="article_copied">Copiato</string>
+    <string name="article_image_downloaded">Immagine scaricata</string>
     <string name="article_downloading">Download in corso</string>
     <string name="article_download_failed">Impossibile avviare il download</string>
     <string name="article_image">Immagine</string>
