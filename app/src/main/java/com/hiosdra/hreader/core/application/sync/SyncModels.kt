@@ -11,6 +11,7 @@ sealed interface SyncIntent {
     data object Resync : SyncIntent
     data object PrepareOffline : SyncIntent
     data object PrepareFullOffline : SyncIntent
+    data class PrepareTravelMode(val fullOffline: Boolean) : SyncIntent
     data class User(
         val forceFullSync: Boolean = false,
         val userVisible: Boolean = false,
@@ -26,7 +27,8 @@ data class SyncPlan(
     val drainRemaining: Boolean = false,
     val offlinePreparation: Boolean = false,
     val fullOfflinePreparation: Boolean = false,
-    val includeFullPages: Boolean = false
+    val includeFullPages: Boolean = false,
+    val travelMode: Boolean = false
 )
 
 enum class SyncCheckpointMode {
@@ -75,6 +77,17 @@ class SyncCoordinator {
             offlinePreparation = true,
             fullOfflinePreparation = true,
             includeFullPages = true
+        )
+        is SyncIntent.PrepareTravelMode -> SyncPlan(
+            forceFullSync = true,
+            expedited = false,
+            ignoreQuietHours = false,
+            userVisible = true,
+            drainRemaining = true,
+            offlinePreparation = true,
+            fullOfflinePreparation = intent.fullOffline,
+            includeFullPages = intent.fullOffline,
+            travelMode = true
         )
         is SyncIntent.User -> SyncPlan(
             forceFullSync = intent.forceFullSync,

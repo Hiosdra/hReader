@@ -28,6 +28,7 @@ data class SyncSettingsActions(
 data class OfflineSettingsActions(
     val onPrepare: () -> Unit,
     val onFullOfflineSync: () -> Unit,
+    val onTravelModePrepare: (Boolean) -> Unit,
     val onBacklogTargetChange: (Int) -> Unit,
     val onImageDownloadEnabledChange: (Boolean) -> Unit,
     val onImageCacheBudgetChange: (Int) -> Unit

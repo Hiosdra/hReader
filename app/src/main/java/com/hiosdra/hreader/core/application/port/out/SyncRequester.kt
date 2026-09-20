@@ -31,4 +31,6 @@ interface SyncRequester {
     fun enqueueBackgroundSyncChain()
     fun prepareForOffline(): SyncOperationId? = request(SyncIntent.PrepareOffline)
     fun prepareFullOffline(): SyncOperationId? = request(SyncIntent.PrepareFullOffline)
+    fun prepareTravelMode(fullOffline: Boolean): SyncOperationId? =
+        request(SyncIntent.PrepareTravelMode(fullOffline))
 }

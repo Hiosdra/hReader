@@ -267,6 +267,7 @@ fun AppNavigation(
                 gemmaModelManager = gemmaModelManager,
                 gemmaModelDownloadScheduler = gemmaModelDownloadScheduler,
                 gemmaModelLifecycle = gemmaModelLifecycle,
+                networkStatus = networkStatus,
                 settingsViewModel = koinViewModel(),
                 onSignedOut = {
                     navController.navigate(Routes.SERVER_SETUP) {

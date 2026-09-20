@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.sync.SyncMode
+import com.hiosdra.hreader.core.application.sync.SyncOperationState
+import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.storage.StorageCategory
 import com.hiosdra.hreader.core.application.storage.StorageCategoryUsage
 import com.hiosdra.hreader.core.application.storage.StorageCleanupAction
@@ -140,6 +142,39 @@ class SettingsSectionsTest {
         assertEquals(1, prepareCalls.get())
         assertEquals(false, imageSetting.get())
         assertEquals(500, cacheBudget.get())
+    }
+
+    @Test
+    fun `offline section offers retry when preparation leaves content missing`() {
+        val retryCalls = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+
+        composeTestRule.setContent {
+            HReaderTheme {
+                OfflineReadinessSection(
+                    state = OfflineUiState(
+                        readiness = OfflineReadiness(
+                            offlineTargetCount = 2,
+                            storedContentCount = 1
+                        ),
+                        preparationStatus = SyncOperationStatus(SyncOperationState.SUCCEEDED)
+                    ),
+                    onPrepare = {},
+                    onFullOfflineSync = {},
+                    onBacklogTargetChange = {},
+                    onImageDownloadEnabledChange = {},
+                    onImageCacheBudgetChange = {},
+                    onRetry = { retryCalls.incrementAndGet() }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            context.getString(R.string.offline_download_partial, 1)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.action_retry)).performClick()
+
+        assertEquals(1, retryCalls.get())
     }
 
     @Test

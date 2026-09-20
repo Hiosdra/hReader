@@ -211,6 +211,11 @@ class SyncScheduler(
             SyncIntent.Resync -> R.string.notification_resync_title
             SyncIntent.PrepareOffline -> R.string.notification_offline_title
             SyncIntent.PrepareFullOffline -> R.string.notification_full_offline_title
+            is SyncIntent.PrepareTravelMode -> if (intent.fullOffline) {
+                R.string.notification_full_offline_title
+            } else {
+                R.string.notification_offline_title
+            }
             else -> R.string.notification_sync_title
         }
         val policy = if (intent == SyncIntent.Background) {
@@ -233,7 +238,7 @@ class SyncScheduler(
         var continuation = workManager
             .beginUniqueWork(SYNC_PIPELINE_WORK, policy, syncWork)
             .then(prefetchRequest(plan, operationTitle, syncRunId))
-            .then(aiOverviewPreloadRequest())
+            .then(aiOverviewPreloadRequest(plan))
         if (plan.includeFullPages) {
             continuation = continuation.then(fullPageRequest(plan, operationTitle, syncRunId))
         }
@@ -344,7 +349,12 @@ class SyncScheduler(
         operationTitle: String,
         runId: String
     ) = OneTimeWorkRequestBuilder<ContentSyncWorker>()
-        .setConstraints(networkConstraints())
+        .setConstraints(
+            networkConstraints(
+                avoidLowStorage = plan.travelMode,
+                avoidLowBattery = plan.travelMode && !plan.expedited
+            )
+        )
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
         .setInputData(
             Data.Builder()
@@ -418,21 +428,32 @@ class SyncScheduler(
             }
             .build()
 
-    private fun aiOverviewPreloadRequest(): OneTimeWorkRequest {
+    private fun aiOverviewPreloadRequest(
+        plan: SyncPlan = syncCoordinator.plan(SyncIntent.Periodic)
+    ): OneTimeWorkRequest {
         val modelId = aiPreferences.getAiModelId()
         return OneTimeWorkRequestBuilder<ArticleAiOverviewPreloadWorker>()
-            .setConstraints(aiOverviewPreloadConstraints(modelId))
+            .setConstraints(
+                aiOverviewPreloadConstraints(
+                    modelId = modelId,
+                    avoidLowBattery = plan.travelMode && !plan.expedited
+                )
+            )
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
             .setInputData(Data.Builder().putString(KEY_AI_MODEL_ID, modelId).build())
             .build()
     }
 
-    private fun aiOverviewPreloadConstraints(modelId: String): Constraints =
+    private fun aiOverviewPreloadConstraints(
+        modelId: String,
+        avoidLowBattery: Boolean
+    ): Constraints =
         if (AiModel.providerFor(modelId) == AiProvider.OPENROUTER) {
-            networkConstraints(avoidLowStorage = true)
+            networkConstraints(avoidLowStorage = true, avoidLowBattery = avoidLowBattery)
         } else {
             Constraints.Builder()
                 .setRequiresStorageNotLow(true)
+                .apply { if (avoidLowBattery) setRequiresBatteryNotLow(true) }
                 .build()
         }
 
