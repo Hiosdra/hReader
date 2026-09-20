@@ -565,4 +565,10 @@
     <string name="settings_group_collapsed">접힘</string>
     <string name="settings_operation_article_reconciliation">기사 조정</string>
     <string name="settings_network_metrics">네트워크: 요청 %1$d개, 오류 %2$d개, 전송 %3$dB, %4$dB/s, 평균 %5$dms, 최대 동시 실행 %6$d개.</string>
+    <string name="main_mark_all_read">일치하는 글을 읽음으로 표시</string>
+    <string name="main_mark_all_unread">일치하는 글을 읽지 않음으로 표시</string>
+    <string name="main_mark_through_here">여기까지 모두 읽음으로 표시</string>
+    <string name="main_swipe_mark_read">읽음으로 표시</string>
+    <string name="main_swipe_mark_unread">읽지 않음으로 표시</string>
+    <string name="main_article_actions">글 작업</string>
 </resources>

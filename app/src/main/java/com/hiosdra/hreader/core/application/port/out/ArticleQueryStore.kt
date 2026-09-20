@@ -7,9 +7,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface ArticleQueryStore {
     suspend fun listWindow(query: ArticleListQuery, articleId: Long, radius: Int): ArticleListWindow
-    suspend fun unreadIds(feedId: Long?): List<Long>
-    fun observeUnreadCount(feedId: Long?): Flow<Int>
-    fun observeReadCount(feedId: Long?): Flow<Int>
+    fun observeUnreadCount(query: ArticleListQuery): Flow<Int>
+    fun observeReadCount(query: ArticleListQuery): Flow<Int>
     fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>>
     suspend fun getFeed(feedId: Long): Feed?
 }

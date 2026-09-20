@@ -565,4 +565,10 @@
     <string name="settings_group_collapsed">折りたたみ済み</string>
     <string name="settings_operation_article_reconciliation">記事の照合</string>
     <string name="settings_network_metrics">ネットワーク: %1$d件のリクエスト、%2$d件のエラー、%3$d B転送、%4$d B/s、平均%5$d ms、最大同時実行数%6$d。</string>
+    <string name="main_mark_all_read">一致する記事を既読にする</string>
+    <string name="main_mark_all_unread">一致する記事を未読にする</string>
+    <string name="main_mark_through_here">ここまでをすべて既読にする</string>
+    <string name="main_swipe_mark_read">既読にする</string>
+    <string name="main_swipe_mark_unread">未読にする</string>
+    <string name="main_article_actions">記事の操作</string>
 </resources>

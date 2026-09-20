@@ -569,4 +569,10 @@
     <string name="settings_group_collapsed">Daraltıldı</string>
     <string name="settings_operation_article_reconciliation">Makale uzlaştırma</string>
     <string name="settings_network_metrics">Ağ: %1$d istek, %2$d hata, %3$d B aktarıldı, %4$d B/sn, ortalama %5$d ms, en fazla %6$d eşzamanlı.</string>
+    <string name="main_mark_all_read">Eşleşen makaleleri okundu olarak işaretle</string>
+    <string name="main_mark_all_unread">Eşleşen makaleleri okunmadı olarak işaretle</string>
+    <string name="main_mark_through_here">Buraya kadar olanların tümünü okundu olarak işaretle</string>
+    <string name="main_swipe_mark_read">Okundu olarak işaretle</string>
+    <string name="main_swipe_mark_unread">Okunmadı olarak işaretle</string>
+    <string name="main_article_actions">Makale işlemleri</string>
 </resources>

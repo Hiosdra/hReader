@@ -565,4 +565,10 @@
     <string name="settings_group_collapsed">已收起</string>
     <string name="settings_operation_article_reconciliation">文章协调</string>
     <string name="settings_network_metrics">网络：%1$d 个请求，%2$d 个错误，传输 %3$d B，%4$d B/s，平均 %5$d ms，最大并发 %6$d。</string>
+    <string name="main_mark_all_read">将匹配的文章标记为已读</string>
+    <string name="main_mark_all_unread">将匹配的文章标记为未读</string>
+    <string name="main_mark_through_here">将此处之前的所有内容标记为已读</string>
+    <string name="main_swipe_mark_read">标记为已读</string>
+    <string name="main_swipe_mark_unread">标记为未读</string>
+    <string name="main_article_actions">文章操作</string>
 </resources>

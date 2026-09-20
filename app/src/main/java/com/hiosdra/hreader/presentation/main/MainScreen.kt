@@ -107,10 +107,7 @@ internal fun MainScreen(
 
     LaunchedEffect(feedId) { viewModel.setFeed(feedId) }
 
-    // The counter and "mark all read" are about the whole list, which a search is not showing.
-    // Left visible they offered to mark hundreds of articles the reader could not see.
-    val isSearching = uiState.searchQuery.isNotBlank()
-    val unreadCount = if (isSearching) 0 else uiState.unreadCount
+    val unreadCount = uiState.unreadCount
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val listState = rememberSaveable(feedId, saver = LazyListState.Saver) { LazyListState() }
     val searchActive = rememberSaveable { mutableStateOf(false) }
@@ -315,6 +312,41 @@ internal fun MainScreen(
                                     .clip(MaterialTheme.shapes.small)
                                     .background(MaterialTheme.colorScheme.surfaceContainer)
                             ) {
+                                if (uiState.unreadCount > 0) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                stringResource(R.string.main_mark_all_read),
+                                                style = MaterialTheme.typography.labelLarge
+                                            )
+                                        },
+                                        onClick = {
+                                            expanded.value = false
+                                            viewModel.markAllAsRead(onFeedMarkedRead)
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Filled.Done,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    )
+                                }
+                                if (uiState.readCount > 0) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                stringResource(R.string.main_mark_all_unread),
+                                                style = MaterialTheme.typography.labelLarge
+                                            )
+                                        },
+                                        onClick = {
+                                            expanded.value = false
+                                            viewModel.markAllAsUnread()
+                                        }
+                                    )
+                                }
                                 if (uiState.readCount > 0 || uiState.showReadArticles) {
                                     DropdownMenuItem(
                                         text = {
@@ -566,6 +598,8 @@ internal fun MainScreen(
                         )
                     },
                     onCheckedChange = viewModel::updateEntryReadStatus,
+                    onMarkReadThrough = viewModel::markReadThrough,
+                    onSwipeReadStatus = viewModel::updateEntryReadStatus,
                     imageDependencies = imageDependencies,
                     readStateAnimationEnabled = !uiState.isBulkReadStateUpdating &&
                         uiState.syncState != com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING,

@@ -3,10 +3,14 @@ package com.hiosdra.hreader.adapter.persistence
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleQueryDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
+import com.hiosdra.hreader.core.domain.model.ArticleStatus
+import io.mockk.every
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.verify
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -56,5 +60,24 @@ class ArticleQueryRepositoryWindowTest {
         assertTrue(window.ids.contains(1L))
         assertEquals(0, window.windowStartIndex)
         assertEquals(0, window.currentIndex)
+    }
+
+    @Test
+    fun `search unread count uses the database search scope`() = runBlocking {
+        every {
+            articleDao.observeUnreadSearchCountFor(
+                7L,
+                "science*",
+                "%science%",
+                ArticleStatus.READ
+            )
+        } returns kotlinx.coroutines.flow.flowOf(6)
+
+        val count = repository.observeUnreadCount(
+            ArticleListQuery(feedId = 7L, searchQuery = "science")
+        ).first()
+
+        assertEquals(6, count)
+        verify(exactly = 0) { articleDao.observeUnreadCountFor(any(), any()) }
     }
 }

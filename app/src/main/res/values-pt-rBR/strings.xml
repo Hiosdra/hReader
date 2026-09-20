@@ -573,4 +573,10 @@
     <string name="settings_group_collapsed">Recolhida</string>
     <string name="settings_operation_article_reconciliation">Reconciliação de artigos</string>
     <string name="settings_network_metrics">Rede: %1$d solicitações, %2$d erros, %3$d B transferidos, %4$d B/s, média de %5$d ms, máximo de %6$d simultâneas.</string>
+    <string name="main_mark_all_read">Marcar artigos correspondentes como lidos</string>
+    <string name="main_mark_all_unread">Marcar artigos correspondentes como não lidos</string>
+    <string name="main_mark_through_here">Marcar tudo até aqui como lido</string>
+    <string name="main_swipe_mark_read">Marcar como lido</string>
+    <string name="main_swipe_mark_unread">Marcar como não lido</string>
+    <string name="main_article_actions">Ações do artigo</string>
 </resources>

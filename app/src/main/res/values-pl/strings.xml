@@ -642,4 +642,10 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="sync_content_failed">Synchronizacja artykułów nie powiodła się.</string>
     <string name="sync_article_content_failed">Nie udało się pobrać treści artykułów.</string>
     <string name="settings_network_metrics">Sieć: %1$d żądań, %2$d błędów, przesłano %3$d B, %4$d B/s, średnio %5$d ms, maks. %6$d równolegle.</string>
+    <string name="main_mark_all_read">Zaznacz pasujące artykuły jako przeczytane</string>
+    <string name="main_mark_all_unread">Zaznacz pasujące artykuły jako nieprzeczytane</string>
+    <string name="main_mark_through_here">Oznacz wszystko do tego miejsca jako przeczytane</string>
+    <string name="main_swipe_mark_read">Oznacz jako przeczytane</string>
+    <string name="main_swipe_mark_unread">Oznacz jako nieprzeczytane</string>
+    <string name="main_article_actions">Działania artykułu</string>
 </resources>

@@ -140,14 +140,15 @@ internal class ArticleQueryRepository(
         )
     }
 
-    override suspend fun unreadIds(feedId: Long?): List<Long> =
-        articleQueryDao.getUnreadIds(feedId).toArticleIds("the unread set")
+    override fun observeUnreadCount(query: ArticleListQuery): Flow<Int> =
+        searchCounts(query) { ftsQuery, titleQuery ->
+            articleQueryDao.observeUnreadSearchCountFor(query.feedId, ftsQuery, titleQuery)
+        } ?: articleQueryDao.observeUnreadCountFor(query.feedId)
 
-    override fun observeUnreadCount(feedId: Long?): Flow<Int> =
-        articleQueryDao.observeUnreadCountFor(feedId)
-
-    override fun observeReadCount(feedId: Long?): Flow<Int> =
-        articleQueryDao.observeReadCountFor(feedId)
+    override fun observeReadCount(query: ArticleListQuery): Flow<Int> =
+        searchCounts(query) { ftsQuery, titleQuery ->
+            articleQueryDao.observeReadSearchCountFor(query.feedId, ftsQuery, titleQuery)
+        } ?: articleQueryDao.observeReadCountFor(query.feedId)
 
     override fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
         articleQueryDao.getArticlesWithFeedByIds(ids.map { it.toString() }).map { rows ->
@@ -155,4 +156,11 @@ internal class ArticleQueryRepository(
         }
 
     override suspend fun getFeed(feedId: Long): Feed? = feedDao.getFeedById(feedId)?.toArticleFeed()
+
+    private fun <T> searchCounts(
+        query: ArticleListQuery,
+        searched: (ftsQuery: String, titleQuery: String) -> Flow<T>
+    ): Flow<T>? = buildFtsMatchQuery(query.searchQuery.trim())?.let { ftsQuery ->
+        searched(ftsQuery, buildLikePattern(query.searchQuery))
+    }
 }

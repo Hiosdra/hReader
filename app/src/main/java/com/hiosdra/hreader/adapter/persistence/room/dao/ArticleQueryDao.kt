@@ -136,16 +136,6 @@ interface ArticleQueryDao {
     ): List<String>
 
     @Query(
-        "SELECT a.id $FROM_ARTICLES " +
-            "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND (a.status IS NULL OR a.status != :readStatus)"
-    )
-    suspend fun getUnreadIds(
-        feedId: Long?,
-        readStatus: ArticleStatus = ArticleStatus.READ
-    ): List<String>
-
-    @Query(
         "SELECT COUNT(*) FROM articles a " +
             "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
             "AND (a.status IS NULL OR a.status != :readStatus)"
@@ -162,6 +152,34 @@ interface ArticleQueryDao {
     )
     fun observeReadCountFor(
         feedId: Long?,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): Flow<Int>
+
+    @Query(
+        "SELECT COUNT(*) FROM articles a " +
+            "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
+            "AND (a.status IS NULL OR a.status != :readStatus) " +
+            "AND (a.rowid IN (SELECT rowid FROM articles_fts WHERE articles_fts MATCH :ftsQuery) " +
+            "OR LOWER((SELECT f.title FROM feeds f WHERE f.id = a.feedId)) LIKE :titleQuery)"
+    )
+    fun observeUnreadSearchCountFor(
+        feedId: Long?,
+        ftsQuery: String,
+        titleQuery: String,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): Flow<Int>
+
+    @Query(
+        "SELECT COUNT(*) FROM articles a " +
+            "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
+            "AND a.status = :readStatus " +
+            "AND (a.rowid IN (SELECT rowid FROM articles_fts WHERE articles_fts MATCH :ftsQuery) " +
+            "OR LOWER((SELECT f.title FROM feeds f WHERE f.id = a.feedId)) LIKE :titleQuery)"
+    )
+    fun observeReadSearchCountFor(
+        feedId: Long?,
+        ftsQuery: String,
+        titleQuery: String,
         readStatus: ArticleStatus = ArticleStatus.READ
     ): Flow<Int>
 

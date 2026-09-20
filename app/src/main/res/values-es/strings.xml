@@ -576,4 +576,10 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="settings_group_collapsed">Contraída</string>
     <string name="settings_operation_article_reconciliation">Conciliación de artículos</string>
     <string name="settings_network_metrics">Red: %1$d solicitudes, %2$d errores, %3$d B transferidos, %4$d B/s, media %5$d ms, máximo %6$d simultáneas.</string>
+    <string name="main_mark_all_read">Marcar como leídos los artículos coincidentes</string>
+    <string name="main_mark_all_unread">Marcar como no leídos los artículos coincidentes</string>
+    <string name="main_mark_through_here">Marcar todo hasta aquí como leído</string>
+    <string name="main_swipe_mark_read">Marcar como leído</string>
+    <string name="main_swipe_mark_unread">Marcar como no leído</string>
+    <string name="main_article_actions">Acciones del artículo</string>
 </resources>

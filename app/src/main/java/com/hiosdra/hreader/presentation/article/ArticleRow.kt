@@ -9,17 +9,31 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -45,6 +59,8 @@ internal fun ArticleRow(
     entry: ArticleRowModel,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
+    onMarkReadThrough: (Long) -> Unit,
+    onSwipeReadStatus: (entryId: Long, checked: Boolean) -> Unit,
     imageDependencies: ArticleImageDependencies,
     readStateAnimationEnabled: Boolean,
     isOnline: Boolean = true,
@@ -55,6 +71,23 @@ internal fun ArticleRow(
         if (checked) R.string.article_read else R.string.article_unread
     )
     val readStatusActionDescription = stringResource(readStatusActionLabel(checked))
+    val articleActionsDescription = stringResource(R.string.main_article_actions)
+    var actionsExpanded by remember { mutableStateOf(false) }
+    val swipeState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onSwipeReadStatus(entry.id, true)
+                    false
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onSwipeReadStatus(entry.id, false)
+                    false
+                }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        }
+    )
 
     // Read rows are dimmed, not hidden. Below this the summary drops under the 4.5:1 needed to
     // stay readable, and a read article still has to be re-findable by eye.
@@ -86,30 +119,34 @@ internal fun ArticleRow(
         targetIndicatorColor
     }
 
-    Card(
-        onClick = { onOpen(entry.id) },
+    SwipeToDismissBox(
+        state = swipeState,
+        enableDismissFromStartToEnd = !checked,
+        enableDismissFromEndToStart = checked,
+        backgroundContent = { TriageSwipeBackground(isRead = checked) },
         modifier = Modifier
             .fillMaxWidth()
-            // Two adjacent cards each contribute their vertical margin, so the gap between
-            // them is twice this. The list draws no divider between rows, only the spacing.
             .padding(horizontal = 12.dp, vertical = 3.dp)
-            // Read state reaches a screen reader as state rather than as a colour and an opacity,
-            // which is all a sighted reader was ever given.
-            .semantics {
-                stateDescription = readStateDescription
-            },
-        shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = sectionCardColors()
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
+        Card(
+            onClick = { onOpen(entry.id) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    stateDescription = readStateDescription
+                },
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = sectionCardColors()
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.Top
@@ -209,15 +246,68 @@ internal fun ArticleRow(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Checkbox(
-                    checked = checked,
-                    onCheckedChange = { onCheckedChange(entry.id, it) },
-                    modifier = Modifier.semantics {
-                        contentDescription = readStatusActionDescription
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Box {
+                            IconButton(
+                                onClick = { actionsExpanded = true },
+                                modifier = Modifier.semantics {
+                                    contentDescription = articleActionsDescription
+                                }
+                            ) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = null)
+                            }
+                            DropdownMenu(
+                                expanded = actionsExpanded,
+                                onDismissRequest = { actionsExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(stringResource(readStatusActionLabel(checked)))
+                                    },
+                                    onClick = {
+                                        actionsExpanded = false
+                                        onCheckedChange(entry.id, !checked)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.main_mark_through_here)) },
+                                    onClick = {
+                                        actionsExpanded = false
+                                        onMarkReadThrough(entry.id)
+                                    }
+                                )
+                            }
+                        }
+                        Checkbox(
+                            checked = checked,
+                            onCheckedChange = { onCheckedChange(entry.id, it) },
+                            modifier = Modifier.semantics {
+                                contentDescription = readStatusActionDescription
+                            }
+                        )
                     }
-                )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun TriageSwipeBackground(isRead: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.secondaryContainer),
+        contentAlignment = if (isRead) Alignment.CenterEnd else Alignment.CenterStart
+    ) {
+        Text(
+            text = stringResource(
+                if (isRead) R.string.main_swipe_mark_unread else R.string.main_swipe_mark_read
+            ),
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
     }
 }

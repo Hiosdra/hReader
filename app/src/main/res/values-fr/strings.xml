@@ -573,4 +573,10 @@
     <string name="settings_group_collapsed">Réduite</string>
     <string name="settings_operation_article_reconciliation">Réconciliation des articles</string>
     <string name="settings_network_metrics">Réseau : %1$d requêtes, %2$d erreurs, %3$d o transférés, %4$d o/s, moyenne de %5$d ms, maximum %6$d en parallèle.</string>
+    <string name="main_mark_all_read">Marquer les articles correspondants comme lus</string>
+    <string name="main_mark_all_unread">Marquer les articles correspondants comme non lus</string>
+    <string name="main_mark_through_here">Marquer tout jusqu’ici comme lu</string>
+    <string name="main_swipe_mark_read">Marquer comme lu</string>
+    <string name="main_swipe_mark_unread">Marquer comme non lu</string>
+    <string name="main_article_actions">Actions sur l’article</string>
 </resources>

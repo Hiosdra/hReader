@@ -15,6 +15,7 @@ import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
+import com.hiosdra.hreader.core.domain.model.ArticleStatusUpdate
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.text.UiText
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,7 +36,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Duration
 import java.time.Instant
 
 private const val TAG = "MainViewModel"
@@ -47,23 +47,16 @@ private const val KEY_SHOW_READ = "show_read_articles"
 private const val KEY_SEARCH_QUERY = "search_query"
 
 /**
- * How far past the action's own timestamp an article still counts as part of it. Marking a backlog
- * read is one statement per few hundred articles, so the stamps span a moment rather than an
- * instant; nothing the reader could open lands inside it.
- */
-private val UNDO_GRACE: Duration = Duration.ofSeconds(2)
-
-/**
  * A completed action the reader can still take back, surfaced as a snackbar.
  *
- * [markedAt] is when the action ran. Taking it back reverts what it changed and nothing else, so an
- * article opened while the snackbar was still up keeps the read state the reader just gave it.
+ * [readAt] identifies the rows changed by the action. Taking it back reverts what it changed and
+ * nothing else, so an article opened while the snackbar was still up keeps its read state.
  */
 data class UndoableAction(
     val id: Long,
     val message: UiText,
-    val articleIds: List<Long>,
-    val markedAt: Instant
+    val changedCount: Int,
+    val readAt: Instant
 )
 
 data class MainUiState(
@@ -193,15 +186,12 @@ class MainViewModel(
      * a page at a time, counting what is on screen would report a fraction of the real total.
      */
     private fun observeCounts() {
-        readyQuery
-            .map { it.feedId }
-            .distinctUntilChanged()
-            .flatMapLatest { feedId ->
-                combine(
-                    reader.observeUnreadCount(feedId),
-                    reader.observeReadCount(feedId)
-                ) { unread, read -> unread to read }
-            }
+        readyQuery.flatMapLatest { currentQuery ->
+            combine(
+                reader.observeUnreadCount(currentQuery),
+                reader.observeReadCount(currentQuery)
+            ) { unread, read -> unread to read }
+        }
             .onEach { (unread, read) ->
                 _uiState.update { it.copy(unreadCount = unread, readCount = read) }
             }
@@ -336,41 +326,30 @@ class MainViewModel(
      * put anything right when the answer was wrong.
      */
     fun markAllAsRead(onMarkedAsRead: (Long) -> Unit = {}) {
+        applyBulkReadStatus(
+            read = true,
+            onSuccess = { current ->
+                if (current.searchQuery.isBlank()) current.feedId?.let(onMarkedAsRead)
+            }
+        )
+    }
+
+    fun markAllAsUnread() {
+        applyBulkReadStatus(read = false)
+    }
+
+    fun markReadThrough(articleId: Long) {
         if (_uiState.value.isBulkReadStateUpdating) return
         _uiState.update { it.copy(isBulkReadStateUpdating = true) }
         val current = query.value
         viewModelScope.launch {
             try {
-                // Only what this actually changes. Sweeping in the already-read ones would push a
-                // no-op update for every article the cache holds.
-                val ids = runCatchingCancellable { reader.unreadIds(current.feedId) }
+                val result = runCatchingCancellable { reader.markReadThrough(current, articleId) }
                     .getOrElse {
-                        Log.w(TAG, "Could not read the unread set", it)
+                        Log.w(TAG, "Could not mark articles read through $articleId", it)
                         return@launch
                     }
-                if (ids.isEmpty()) return@launch
-
-                persistReadStatus(
-                    entryIds = ids,
-                    read = true,
-                    onSuccess = {
-                        _uiState.update {
-                            it.copy(
-                                undo = UndoableAction(
-                                    id = System.currentTimeMillis(),
-                                    message = UiText.Plural(
-                                        id = R.plurals.main_marked_articles_read,
-                                        count = ids.size,
-                                        args = listOf(ids.size)
-                                    ),
-                                    articleIds = ids,
-                                    markedAt = Instant.now()
-                                )
-                            )
-                        }
-                        current.feedId?.let(onMarkedAsRead)
-                    }
-                )
+                offerUndo(result)
             } finally {
                 _uiState.update { it.copy(isBulkReadStateUpdating = false) }
             }
@@ -381,15 +360,10 @@ class MainViewModel(
         val action = _uiState.value.undo ?: return
         _uiState.update { it.copy(undo = null) }
         viewModelScope.launch {
-            // Only what the action itself marked. Reading an article while the snackbar is up
-            // stamps it later than the action did, and used to be swept back to unread with it.
-            val revertible = runCatchingCancellable {
-                reader.idsStillReadSince(action.articleIds, action.markedAt.plus(UNDO_GRACE))
-            }.getOrElse {
-                Log.w(TAG, "Could not work out what the undo covers", it)
-                return@launch
-            }
-            if (revertible.isNotEmpty()) applyReadStatus(revertible, read = false)
+            runCatchingCancellable { reader.undoReadStatus(action.readAt) }
+                .onFailure {
+                    Log.w(TAG, "Could not undo the bulk read action", it)
+                }
         }
     }
 
@@ -400,6 +374,44 @@ class MainViewModel(
             } else {
                 state
             }
+        }
+    }
+
+    private fun applyBulkReadStatus(read: Boolean, onSuccess: (ArticleListQuery) -> Unit = {}) {
+        if (_uiState.value.isBulkReadStateUpdating) return
+        _uiState.update { it.copy(isBulkReadStateUpdating = true) }
+        val current = query.value
+        viewModelScope.launch {
+            try {
+                val result = runCatchingCancellable { reader.updateReadStatus(current, read) }
+                    .getOrElse {
+                        Log.w(TAG, "Could not update read state for the current scope", it)
+                        return@launch
+                    }
+                if (read) offerUndo(result)
+                if (result.changedCount > 0) onSuccess(current)
+            } finally {
+                _uiState.update { it.copy(isBulkReadStateUpdating = false) }
+            }
+        }
+    }
+
+    private fun offerUndo(result: ArticleStatusUpdate) {
+        val readAt = result.readAt ?: return
+        if (result.changedCount == 0) return
+        _uiState.update {
+            it.copy(
+                undo = UndoableAction(
+                    id = System.currentTimeMillis(),
+                    message = UiText.Plural(
+                        id = R.plurals.main_marked_articles_read,
+                        count = result.changedCount,
+                        args = listOf(result.changedCount)
+                    ),
+                    changedCount = result.changedCount,
+                    readAt = readAt
+                )
+            )
         }
     }
 

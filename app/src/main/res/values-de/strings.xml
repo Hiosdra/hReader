@@ -581,4 +581,10 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="settings_group_collapsed">Eingeklappt</string>
     <string name="settings_operation_article_reconciliation">Artikelabgleich</string>
     <string name="settings_network_metrics">Netzwerk: %1$d Anfragen, %2$d Fehler, %3$d B übertragen, %4$d B/s, durchschnittlich %5$d ms, max. %6$d gleichzeitig.</string>
+    <string name="main_mark_all_read">Übereinstimmende Artikel als gelesen markieren</string>
+    <string name="main_mark_all_unread">Übereinstimmende Artikel als ungelesen markieren</string>
+    <string name="main_mark_through_here">Alles bis hierhin als gelesen markieren</string>
+    <string name="main_swipe_mark_read">Als gelesen markieren</string>
+    <string name="main_swipe_mark_unread">Als ungelesen markieren</string>
+    <string name="main_article_actions">Artikelaktionen</string>
 </resources>

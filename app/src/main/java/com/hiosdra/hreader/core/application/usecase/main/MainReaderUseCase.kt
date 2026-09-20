@@ -13,6 +13,8 @@ import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
+import com.hiosdra.hreader.core.domain.model.ArticleListQuery
+import com.hiosdra.hreader.core.domain.model.ArticleStatusUpdate
 import com.hiosdra.hreader.core.domain.model.Feed
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,9 +33,9 @@ class MainReaderUseCase(
 ) {
     val isOnline: StateFlow<Boolean> = network.isOnline
 
-    fun observeUnreadCount(feedId: Long?): Flow<Int> = articles.observeUnreadCount(feedId)
+    fun observeUnreadCount(query: ArticleListQuery): Flow<Int> = articles.observeUnreadCount(query)
 
-    fun observeReadCount(feedId: Long?): Flow<Int> = articles.observeReadCount(feedId)
+    fun observeReadCount(query: ArticleListQuery): Flow<Int> = articles.observeReadCount(query)
 
     suspend fun getFeed(feedId: Long): Feed? = articles.getFeed(feedId)
 
@@ -54,15 +56,21 @@ class MainReaderUseCase(
 
     fun observeOfflinePreparation(): Flow<OfflinePreparationProgress> = sync.observeOfflinePreparation()
 
-    suspend fun unreadIds(feedId: Long?): List<Long> = articles.unreadIds(feedId)
-
     suspend fun updateReadStatus(articleIds: List<Long>, read: Boolean) = articleMutations.updateReadStatus(
         articleIds.map(Long::toString),
         if (read) ArticleStatus.READ else ArticleStatus.UNREAD
     )
 
-    suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long> =
-        articleMutations.idsStillReadSince(articleIds, readBefore)
+    suspend fun updateReadStatus(query: ArticleListQuery, read: Boolean): ArticleStatusUpdate =
+        articleMutations.updateReadStatus(
+            query,
+            if (read) ArticleStatus.READ else ArticleStatus.UNREAD
+        )
+
+    suspend fun markReadThrough(query: ArticleListQuery, articleId: Long): ArticleStatusUpdate =
+        articleMutations.markReadThrough(query, articleId)
+
+    suspend fun undoReadStatus(readAt: Instant): Int = articleMutations.undoReadStatus(readAt)
 
     suspend fun checkSelectedAiModel(): SelectedModelStatus = aiModels.checkSelectedModel()
 }

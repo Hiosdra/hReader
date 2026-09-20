@@ -573,4 +573,10 @@
     <string name="settings_group_collapsed">Compressa</string>
     <string name="settings_operation_article_reconciliation">Riconciliazione degli articoli</string>
     <string name="settings_network_metrics">Rete: %1$d richieste, %2$d errori, %3$d B trasferiti, %4$d B/s, media %5$d ms, massimo %6$d simultanee.</string>
+    <string name="main_mark_all_read">Segna come letti gli articoli corrispondenti</string>
+    <string name="main_mark_all_unread">Segna come non letti gli articoli corrispondenti</string>
+    <string name="main_mark_through_here">Segna tutto fino a qui come letto</string>
+    <string name="main_swipe_mark_read">Segna come letto</string>
+    <string name="main_swipe_mark_unread">Segna come non letto</string>
+    <string name="main_article_actions">Azioni sull’articolo</string>
 </resources>

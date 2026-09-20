@@ -65,6 +65,12 @@
     <string name="main_scope_search">Search: %1$s</string>
     <string name="main_clear_filters">Clear filters</string>
     <string name="main_clear_search">Clear search</string>
+    <string name="main_mark_all_read">Mark matching articles as read</string>
+    <string name="main_mark_all_unread">Mark matching articles as unread</string>
+    <string name="main_mark_through_here">Mark everything up to here as read</string>
+    <string name="main_swipe_mark_read">Mark as read</string>
+    <string name="main_swipe_mark_unread">Mark as unread</string>
+    <string name="main_article_actions">Article actions</string>
     <plurals name="main_mark_articles_read">
         <item quantity="one">Mark %1$d article as read</item>
         <item quantity="other">Mark %1$d articles as read</item>
