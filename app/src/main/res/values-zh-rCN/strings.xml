@@ -548,9 +548,10 @@
     <string name="main_scope_search">搜索：%1$s</string>
     <string name="main_clear_filters">清除筛选条件</string>
     <string name="main_no_unread_articles">此范围内没有未读文章</string>
+    <string name="main_all_caught_up">你已读完所有内容</string>
+    <string name="main_all_caught_up_message">目前没有新内容。下一次同步后，新文章会显示在这里。</string>
     <string name="main_show_all_from_empty">显示所有文章</string>
     <string name="main_syncing_first_time">正在进行首次同步。文章下载后会显示在这里。</string>
-    <string name="main_sync_failed">无法完成首次同步。</string>
     <string name="onboarding_optional_settings">可选设置</string>
     <string name="onboarding_optional_settings_summary">可稍后配置诊断和 AI 摘要</string>
     <string name="settings_group_reading_summary">文本显示、语音和链接选项</string>

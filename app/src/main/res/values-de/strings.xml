@@ -564,9 +564,10 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="main_scope_search">Suche: %1$s</string>
     <string name="main_clear_filters">Filter löschen</string>
     <string name="main_no_unread_articles">Keine ungelesenen Artikel in diesem Bereich</string>
+    <string name="main_all_caught_up">Du bist auf dem neuesten Stand</string>
+    <string name="main_all_caught_up_message">Gerade gibt es nichts Neues. Nach der nächsten Synchronisierung erscheinen hier neue Artikel.</string>
     <string name="main_show_all_from_empty">Alle Artikel anzeigen</string>
     <string name="main_syncing_first_time">Die erste Synchronisierung läuft. Artikel erscheinen hier, sobald sie heruntergeladen sind.</string>
-    <string name="main_sync_failed">Die erste Synchronisierung konnte nicht abgeschlossen werden.</string>
     <string name="onboarding_optional_settings">Optionale Einstellungen</string>
     <string name="onboarding_optional_settings_summary">Diagnose und KI-Zusammenfassungen können später eingerichtet werden</string>
     <string name="settings_group_reading_summary">Textanzeige, Sprache und Linkoptionen</string>

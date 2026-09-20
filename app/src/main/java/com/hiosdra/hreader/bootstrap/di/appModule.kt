@@ -344,6 +344,7 @@ val appModule = module {
             articleMutations = get<ArticleMutationStore>(),
             cache = get<CacheStore>(),
             aiModels = get<AiModelCatalog>(),
+            syncHealth = get<SyncHealthStore>(),
             sync = get<SyncRequester>(),
             network = get<NetworkStatus>()
         )

@@ -559,9 +559,10 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="main_scope_search">Búsqueda: %1$s</string>
     <string name="main_clear_filters">Borrar filtros</string>
     <string name="main_no_unread_articles">No hay artículos sin leer en este ámbito</string>
+    <string name="main_all_caught_up">Estás al día</string>
+    <string name="main_all_caught_up_message">No hay nada nuevo por ahora. Los nuevos artículos aparecerán aquí después de la próxima sincronización.</string>
     <string name="main_show_all_from_empty">Mostrar todos los artículos</string>
     <string name="main_syncing_first_time">La primera sincronización está en curso. Los artículos aparecerán aquí en cuanto se descarguen.</string>
-    <string name="main_sync_failed">No se pudo completar la primera sincronización.</string>
     <string name="onboarding_optional_settings">Ajustes opcionales</string>
     <string name="onboarding_optional_settings_summary">Los diagnósticos y los resúmenes de IA se pueden configurar más tarde</string>
     <string name="settings_group_reading_summary">Visualización del texto, voz y opciones de enlaces</string>
