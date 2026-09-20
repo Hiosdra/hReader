@@ -45,6 +45,7 @@ import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
+import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
@@ -67,6 +68,7 @@ fun SettingsScreen(
     gemmaModelManager: GemmaModelGateway,
     gemmaModelDownloadScheduler: GemmaModelDownloadRequester,
     gemmaModelLifecycle: GemmaModelLifecycle,
+    networkStatus: NetworkStatus,
     settingsViewModel: SettingsViewModel
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -75,6 +77,7 @@ fun SettingsScreen(
     val offline by settingsViewModel.offline.collectAsStateWithLifecycle()
     val sync by settingsViewModel.sync.collectAsStateWithLifecycle()
     val storage by settingsViewModel.storage.collectAsStateWithLifecycle()
+    val isOnline by networkStatus.isOnline.collectAsStateWithLifecycle()
     val actions = remember(settingsViewModel) { settingsViewModel.actions }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
     var selectedBypassMethod by remember { mutableStateOf(readerPreferences.getPaywallBypassMethod()) }
@@ -191,38 +194,17 @@ fun SettingsScreen(
             }
 
             item {
-                Text(
-                    text = stringResource(R.string.settings_offline_reading),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
+                SettingsGroup(
+                    title = stringResource(R.string.travel_mode_title),
+                    summary = stringResource(R.string.settings_offline_reading),
+                    initiallyExpanded = true
                 ) {
-                    OfflineReadinessSection(
-                        state = offline,
-                        onPrepare = {
-                            requestNotificationPermission(actions.offline.onPrepare)
-                        },
-                        onFullOfflineSync = {
-                            requestNotificationPermission(actions.offline.onFullOfflineSync)
-                        },
-                        onBacklogTargetChange = actions.offline.onBacklogTargetChange,
-                        onImageDownloadEnabledChange = actions.offline.onImageDownloadEnabledChange,
-                        onImageCacheBudgetChange = actions.offline.onImageCacheBudgetChange,
-                        onRetry = {
-                            requestNotificationPermission {
-                                if (offline.isFullOfflinePreparation) {
-                                    actions.offline.onFullOfflineSync()
-                                } else {
-                                    actions.offline.onPrepare()
-                                }
-                            }
-                        },
-                        modifier = Modifier.padding(16.dp)
+                    TravelModeSettingsSection(
+                        offline = offline,
+                        sync = sync,
+                        isOnline = isOnline,
+                        actions = actions.offline,
+                        requestNotificationPermission = requestNotificationPermission
                     )
                 }
             }

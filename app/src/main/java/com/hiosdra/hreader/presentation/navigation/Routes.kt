@@ -15,7 +15,6 @@ object Routes {
 
     const val SERVER_SETUP = "server_setup"
     const val MAIN = "main"
-    const val TRAVEL_MODE = "travel_mode"
     const val FEED = "feed/{feedId}"
     const val ADD_FEED = "add_feed?url={url}"
 

@@ -132,6 +132,7 @@ class SettingsViewModel(
         offline = OfflineSettingsActions(
             onPrepare = ::prepareForOffline,
             onFullOfflineSync = ::prepareFullOffline,
+            onTravelModePrepare = ::prepareTravelMode,
             onBacklogTargetChange = ::onBacklogTargetChange,
             onImageDownloadEnabledChange = ::onImageDownloadEnabledChange,
             onImageCacheBudgetChange = ::onImageCacheBudgetChange
