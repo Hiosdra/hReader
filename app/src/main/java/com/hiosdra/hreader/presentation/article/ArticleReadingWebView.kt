@@ -42,6 +42,7 @@ internal fun ArticleReadingWebView(
     onContentLoadStarted: (() -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
     scrollController: ArticleWebViewScrollController? = null,
+    showScrollbar: Boolean = true,
     configure: ReaderWebView.() -> Unit,
     load: ReaderWebView.() -> Unit,
     interceptRequest: (WebView?, WebResourceRequest?) -> WebResourceResponse? = { _, _ -> null },
@@ -225,19 +226,21 @@ internal fun ArticleReadingWebView(
                     },
                     modifier = Modifier.fillMaxSize()
                 )
-                VerticalScrollbar(
-                    metrics = if (isScrollable) {
-                        VerticalScrollbarMetrics(
-                            thumbFraction = scrollbarThumbFraction,
-                            positionFraction = scrollProgress
-                        )
-                    } else {
-                        null
-                    },
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 2.dp)
-                )
+                if (showScrollbar) {
+                    VerticalScrollbar(
+                        metrics = if (isScrollable) {
+                            VerticalScrollbarMetrics(
+                                thumbFraction = scrollbarThumbFraction,
+                                positionFraction = scrollProgress
+                            )
+                        } else {
+                            null
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 2.dp)
+                    )
+                }
             }
         }
     }

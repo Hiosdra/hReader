@@ -97,6 +97,7 @@ internal fun ArticleWebView(
         onContentLoadStarted = onContentLoadStarted,
         onImageLongClick = onImageLongClick,
         scrollController = scrollController,
+        showScrollbar = false,
         configure = {
             allowScroll = scrollEnabled
             protectVerticalScrollFromPager = scrollEnabled
