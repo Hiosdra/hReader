@@ -131,7 +131,8 @@ class ArticleViewModel(
                         navigation = it.navigation.resolveList(
                             currentIndex = startIndex,
                             windowStartIndex = window.windowStartIndex,
-                            totalCount = window.totalCount.coerceAtLeast(ids.size)
+                            totalCount = window.totalCount.coerceAtLeast(ids.size),
+                            entryCount = ids.size
                         )
                     )
                 }

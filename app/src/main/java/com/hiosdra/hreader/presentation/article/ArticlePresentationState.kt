@@ -105,9 +105,10 @@ internal fun ArticleNavigationState.selectIndex(index: Int): ArticleNavigationSt
 internal fun ArticleNavigationState.resolveList(
     currentIndex: Int,
     windowStartIndex: Int,
-    totalCount: Int
+    totalCount: Int,
+    entryCount: Int = entries.size
 ): ArticleNavigationState {
-    val resolvedIndex = currentIndex.coerceIn(0, entries.lastIndex.coerceAtLeast(0))
+    val resolvedIndex = currentIndex.coerceIn(0, entryCount.coerceAtLeast(1) - 1)
     val resolvedListSize = totalCount.coerceAtLeast(entries.size)
     val resolvedPosition = (windowStartIndex + resolvedIndex + 1)
         .coerceIn(1, resolvedListSize.coerceAtLeast(1))

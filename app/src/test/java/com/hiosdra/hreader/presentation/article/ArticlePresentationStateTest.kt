@@ -41,6 +41,19 @@ class ArticlePresentationStateTest {
     }
 
     @Test
+    fun `resolving a list before entries arrive keeps the selected page`() {
+        val resolved = ArticleNavigationState().resolveList(
+            currentIndex = 12,
+            windowStartIndex = 11,
+            totalCount = 100,
+            entryCount = 25
+        )
+
+        assertEquals(12, resolved.currentIndex)
+        assertEquals(24, resolved.currentListPosition)
+    }
+
+    @Test
     fun `reading progress is clamped and trimmed with the content window`() {
         val progress = ArticleReadingProgressState(
             positions = mapOf(1L to -1f, 2L to 0.4f, 3L to 1.2f),
