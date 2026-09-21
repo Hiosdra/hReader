@@ -126,6 +126,12 @@ internal fun ArticleContentState.contentLoadState(entryId: Long): ArticleContent
         else -> ArticleContentLoadState.LOADING
     }
 
+internal fun ArticleContentState.errorFor(entryId: Long): UiText? = when {
+    entryId in partialContentIds -> PARTIAL_CONTENT_MESSAGE
+    contentLoadStates[entryId] == ArticleContentLoadState.UNAVAILABLE -> CONTENT_UNAVAILABLE_MESSAGE
+    else -> null
+}
+
 internal fun ArticleContentState.trimTo(retainedIds: Set<Long>): ArticleContentState = copy(
     content = content.filterKeys { it in retainedIds },
     contentLoadStates = contentLoadStates.filterKeys { it in retainedIds },
@@ -145,6 +151,9 @@ internal fun ArticleAiState.trimTo(retainedIds: Set<Long>): ArticleAiState = cop
 
 internal fun ArticleUiState.readerWindowIds(index: Int = navigation.currentIndex): Set<Long> =
     navigation.readerWindowIds(index)
+
+internal fun ArticleUiState.isCurrentEntry(entryId: Long): Boolean =
+    navigation.entries.getOrNull(navigation.currentIndex)?.id == entryId
 
 internal fun ArticleUiState.trimReaderState(index: Int = navigation.currentIndex): ArticleUiState {
     val retainedIds = readerWindowIds(index)

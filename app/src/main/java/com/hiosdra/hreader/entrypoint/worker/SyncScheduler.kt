@@ -366,8 +366,7 @@ class SyncScheduler(
                 modelId = modelId,
                 avoidLowBattery = plan.travelMode && !plan.expedited
             ),
-            inputData = Data.Builder().putString(KEY_AI_MODEL_ID, modelId).build(),
-            expedited = false
+            inputData = Data.Builder().putString(KEY_AI_MODEL_ID, modelId).build()
         )
     }
 

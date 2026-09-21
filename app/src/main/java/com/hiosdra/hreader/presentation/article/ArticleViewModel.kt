@@ -73,16 +73,11 @@ class ArticleViewModel(
     fun setCurrentIndex(index: Int) {
         _uiState.update { state ->
             val arrivedAt = state.navigation.entries.getOrNull(index)?.id
-            val contentError = when {
-                arrivedAt in state.content.partialContentIds -> PARTIAL_CONTENT_MESSAGE
-                state.content.contentLoadStates[arrivedAt] == ArticleContentLoadState.UNAVAILABLE -> {
-                    CONTENT_UNAVAILABLE_MESSAGE
-                }
-                else -> null
-            }
             state.copy(
                 navigation = state.navigation.selectIndex(index),
-                content = state.content.copy(contentError = contentError)
+                content = state.content.copy(
+                    contentError = arrivedAt?.let(state.content::errorFor)
+                )
             ).trimReaderState(index)
         }
         contentCoordinator.loadAround(index)

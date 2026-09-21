@@ -84,9 +84,6 @@ internal class ArticleContentCoordinator(
         requestedContentIds.remove(entryId)
         uiState.update { state ->
             val hasUsableStoredContent = hasReadableArticleText(state.content.content[entryId])
-            val isCurrentEntry = state.navigation.entries
-                .getOrNull(state.navigation.currentIndex)
-                ?.id == entryId
             state.copy(
                 content = state.content.copy(
                     content = if (hasUsableStoredContent) {
@@ -107,7 +104,7 @@ internal class ArticleContentCoordinator(
                         state.content.contentProvenance - entryId
                     },
                     partialContentIds = state.content.partialContentIds - entryId,
-                    contentError = if (isCurrentEntry) null else state.content.contentError
+                    contentError = if (state.isCurrentEntry(entryId)) null else state.content.contentError
                 )
             )
         }
@@ -356,9 +353,6 @@ internal class ArticleContentCoordinator(
             if (entryId in state.readerWindowIds()) transform(state) else state
         }
     }
-
-    private fun ArticleUiState.isCurrentEntry(entryId: Long): Boolean =
-        navigation.entries.getOrNull(navigation.currentIndex)?.id == entryId
 
     private fun ArticleUiState.withPartialContent(entryId: Long) = copy(
         content = content.copy(
