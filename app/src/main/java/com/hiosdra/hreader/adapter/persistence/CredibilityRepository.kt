@@ -17,7 +17,6 @@ import java.time.LocalDate
 private const val TAG = "CredibilityRepo"
 private const val LINE_SEPARATOR = "\n"
 
-/** Below SQLite's 999 bound-variable ceiling on Android. */
 private const val DELETE_CHUNK = 500
 private const val FIELD_SEPARATOR = "\u001f"
 
@@ -82,17 +81,10 @@ class CredibilityRepository(
             }
     }
 
-    /**
-     * An empty [currentEntryIds] is not treated as suspicious. It used to be — nothing deleted
-     * articles then, so an empty table could only mean something had gone wrong. Retention and
-     * full-sync reconciliation delete them routinely now, which makes "no articles left" a normal
-     * state and exactly the point at which every stored report has become an orphan.
-     */
     override suspend fun cleanupOrphanedReports(currentEntryIds: Set<Long>) {
         val stored = articleCredibilityDao.getAllEntryIds()
         val orphaned = stored.filterNot { currentEntryIds.contains(it) }
         if (orphaned.isEmpty()) return
-        // Chunked below SQLite's 999 bound-variable ceiling: a prune can orphan thousands at once.
         orphaned.chunked(DELETE_CHUNK).forEach { articleCredibilityDao.deleteAll(it) }
     }
 

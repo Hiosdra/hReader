@@ -6,9 +6,9 @@ internal class SentryPreferencesStore(
     private val storage: PreferenceStorage
 ) : SentryPreferences {
     override fun getSentryReportingEnabled(): Boolean =
-        storage.get(SentryPreferenceKeys.reportingEnabled) ?: true
+        storage.value(SentryPreferenceKeys.reportingEnabled, true)
 
     override fun setSentryReportingEnabled(enabled: Boolean) {
-        storage.update { this[SentryPreferenceKeys.reportingEnabled] = enabled }
+        storage.set(SentryPreferenceKeys.reportingEnabled, enabled)
     }
 }

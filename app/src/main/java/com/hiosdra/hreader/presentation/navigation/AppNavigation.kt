@@ -293,12 +293,6 @@ fun AppNavigation(
     }
 }
 
-/**
- * Which subscription the list is showing is state of this screen, not a destination of its own. As
- * a second route under the same `main` path it overlapped the one the app starts on, so opening a
- * feed left nothing distinct on the back stack and neither back gesture nor arrow could return to
- * all items. Leaving a feed is a state change instead, and both of them make it.
- */
 @Composable
 private fun MainWithSubscriptions(
     navController: NavHostController,

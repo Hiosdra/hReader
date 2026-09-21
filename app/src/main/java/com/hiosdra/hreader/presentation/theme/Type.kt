@@ -6,9 +6,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// A comprehensive set of typography styles for the application
 val Typography = Typography(
-    // Display styles for large headers
     displayLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
@@ -31,7 +29,6 @@ val Typography = Typography(
         letterSpacing = 0.sp
     ),
 
-    // Headline styles for section headers
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
@@ -54,7 +51,6 @@ val Typography = Typography(
         letterSpacing = 0.sp
     ),
 
-    // Title styles for content titles
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
@@ -77,7 +73,6 @@ val Typography = Typography(
         letterSpacing = 0.sp
     ),
     
-    // Body styles for main content
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
@@ -100,7 +95,6 @@ val Typography = Typography(
         letterSpacing = 0.25.sp
     ),
     
-    // Label styles for UI elements
     labelLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,

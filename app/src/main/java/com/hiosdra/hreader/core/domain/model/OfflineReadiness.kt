@@ -2,10 +2,6 @@ package com.hiosdra.hreader.core.domain.model
 
 import java.time.Instant
 
-/**
- * What a reader about to lose connectivity needs to know: how much of the cache is actually
- * readable offline, not how many articles the list happens to show.
- */
 data class OfflineReadiness(
     val articleCount: Int = 0,
     val unreadCount: Int = 0,

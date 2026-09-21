@@ -139,11 +139,6 @@ class ContentSyncWorker(
         }
     }
 
-    /**
-     * Reported as success rather than retried: a retry would keep waking the radio through the
-     * night, which is precisely what the setting exists to prevent. The periodic worker fires
-     * again after the window closes.
-     */
     private fun isSilenced(): Boolean {
         if (inputData.getBoolean(KEY_IGNORE_QUIET_HOURS, false)) return false
         if (!preferencesManager.getQuietHoursEnabled()) return false

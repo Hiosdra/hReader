@@ -9,15 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 
-/**
- * Online means a usable network, which is not the same as a validated one.
- *
- * A marina hotspot behind a captive portal offers a network that claims `NET_CAPABILITY_INTERNET`
- * with nothing behind it, so that one is excluded outright. Validation is not required though:
- * the backend this app talks to is self-hosted and frequently on the same LAN, where the platform's
- * check against a Google endpoint fails while the server is perfectly reachable. Demanding it
- * declared exactly that setup offline and refused to sync it.
- */
 class NetworkMonitor(context: Context) : NetworkStatus {
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val observedNetworks = mutableSetOf<Network>()
@@ -34,8 +25,6 @@ class NetworkMonitor(context: Context) : NetworkStatus {
             updateOnline()
         }
         override fun onUnavailable() { updateOnline() }
-        // Validation lands after the network becomes available, so without this a portal that
-        // never lets a request through would stay marked online.
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
             synchronized(observedNetworks) { observedNetworks.add(network) }
             updateOnline()
@@ -69,10 +58,6 @@ class NetworkMonitor(context: Context) : NetworkStatus {
         _isOnline.value = checkAnyOnline()
     }
 
-    // Only the two things worth asserting. Every further capability required here is another way to
-    // report a working connection as offline, which is the expensive direction to be wrong in:
-    // it hides the reader's articles and stops the sync, while being wrong the other way costs a
-    // failed request and a message saying so.
     private fun NetworkCapabilities.reachesInternet(): Boolean =
         hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
             !hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)

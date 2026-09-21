@@ -56,8 +56,6 @@ internal fun ArticleRow(
     )
     val readStatusActionDescription = stringResource(readStatusActionLabel(checked))
 
-    // Read rows are dimmed, not hidden. Below this the summary drops under the 4.5:1 needed to
-    // stay readable, and a read article still has to be re-findable by eye.
     val targetAlpha = if (checked) 0.70f else 1f
     val contentAlpha = if (readStateAnimationEnabled) {
         animateFloatAsState(
@@ -70,8 +68,6 @@ internal fun ArticleRow(
     }
     val titleWeight = if (checked) FontWeight.Normal else FontWeight.SemiBold
     val targetIndicatorColor = if (checked) {
-        // Solid, because the row already dims it. Fading it as well left it invisible, and
-        // outline against the accent is contrast enough to tell the two states apart.
         MaterialTheme.colorScheme.outline
     } else {
         MaterialTheme.colorScheme.primary
@@ -90,11 +86,7 @@ internal fun ArticleRow(
         onClick = { onOpen(entry.id) },
         modifier = Modifier
             .fillMaxWidth()
-            // Two adjacent cards each contribute their vertical margin, so the gap between
-            // them is twice this. The list draws no divider between rows, only the spacing.
             .padding(horizontal = 12.dp, vertical = 3.dp)
-            // Read state reaches a screen reader as state rather than as a colour and an opacity,
-            // which is all a sighted reader was ever given.
             .semantics {
                 stateDescription = readStateDescription
             },
@@ -119,7 +111,6 @@ internal fun ArticleRow(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(bottom = 4.dp)
                         ) {
-                            // Decoration: the same fact is already announced as state on the card.
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
@@ -128,9 +119,6 @@ internal fun ArticleRow(
                                     .clearAndSetSemantics { }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            // The feed name yields space instead of taking all of it. Unweighted it
-                            // was measured first, and against a long name in a row narrowed by a
-                            // thumbnail the time was left a single character wide, one digit per line.
                             Text(
                                 text = entry.feedTitle,
                                 style = MaterialTheme.typography.labelMedium,
@@ -156,8 +144,6 @@ internal fun ArticleRow(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
-                        // Plain text by the time it is stored. Deriving it here ran an HTML parse
-                        // and four regexes per row, on the frame that scrolls the list.
                         entry.preview?.takeIf { it.isNotBlank() }?.let { preview ->
                             Text(
                                 text = preview,
@@ -177,9 +163,6 @@ internal fun ArticleRow(
                                 .clip(MaterialTheme.shapes.small),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Fills the square it was given: at fillMaxWidth the height followed the
-                            // source aspect ratio, so a portrait photo stood taller than its slot.
-                            // No description — it illustrates the headline that is read out anyway.
                             OfflineAwareImage(
                                 entryId = entry.id,
                                 imageUrl = entry.imageUrl,

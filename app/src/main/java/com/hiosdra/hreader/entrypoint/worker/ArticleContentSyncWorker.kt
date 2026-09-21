@@ -31,20 +31,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 private const val MAX_RUN_ATTEMPTS = 5
 
-/** How often stored progress is published. Per article it would be a write per download. */
 private const val PROGRESS_REPORT_INTERVAL_MILLIS = 1000L
 
-/**
- * How many article bodies one run downloads.
- *
- * WorkManager stops a worker after ten minutes. Submitting the whole backlog meant a large cache
- * never reached the end of the queue, so the enclosure images that follow it never ran at all —
- * every run was killed partway through the same first stage. A bounded run finishes, and what is
- * left over is picked up by the next one, because articles already stored are skipped.
- */
 private const val MAX_ARTICLES_PER_RUN = 500
 
-/** How long the image stage may run before it hands the rest of the window to article bodies. */
 private val IMAGE_STAGE_BUDGET_NANOS = TimeUnit.MINUTES.toNanos(3)
 
 class ArticleContentSyncWorker(
@@ -79,9 +69,6 @@ class ArticleContentSyncWorker(
         )
 
     override suspend fun doWork(): Result {
-        // Downloading bodies and images is where the bandwidth and the radio time actually go, so
-        // quiet hours have to cover it. Silencing only the article sync still left the prefetch
-        // chained behind it running through the night.
         if (isSilenced()) {
             Log.i(TAG, "Inside quiet hours; skipping the prefetch")
             return Result.success()
@@ -109,8 +96,6 @@ class ArticleContentSyncWorker(
                 return Result.success()
             }
 
-            // Images first. They are what the list and the opened article show, they are small, and
-            // behind an unbounded article-text stage they never ran at all.
             downloadEnclosureImages(
                 targets = targets,
                 downloadAllImages = downloadAllImages,
@@ -118,10 +103,6 @@ class ArticleContentSyncWorker(
             )
             val remaining = prefetchArticleContent(targets, syncMode)
 
-            // Only when the reader asked for the whole cache. A background run leaves the rest to
-            // the next sync rather than spending backoff and radio time chasing a backlog nobody
-            // is waiting on — and what it stored is kept either way, so the next run starts from
-            // where this one stopped.
             if (remaining > 0 && shouldDrainRemaining() && runAttemptCount < MAX_RUN_ATTEMPTS) {
                 Log.i(TAG, "$remaining articles still without text; asking for another run")
                 return Result.retry()
@@ -168,12 +149,6 @@ class ArticleContentSyncWorker(
         )
     }
 
-    /**
-     * Progress is published on a timer rather than per article: the prefetch runs bounded parallel
-     * downloads, and a WorkManager write per completion would cost more than the work.
-     *
-     * Returns how many articles are still without stored text once this run's slice is done.
-     */
     private suspend fun prefetchArticleContent(
         targets: List<PrefetchTarget>,
         syncMode: SyncMode
@@ -233,14 +208,6 @@ class ArticleContentSyncWorker(
         }
     }
 
-    /**
-     * Bounded by the clock rather than by a count. Images already on disk are skipped in a single
-     * indexed read, so each run reaches further into the queue than the last — a fixed count would
-     * spend its whole allowance re-skipping the same first articles and never move.
-     *
-     * The budget is what keeps this stage from consuming the run: it goes first so that it is not
-     * starved, and stops in time to leave the article bodies their share.
-     */
     private suspend fun downloadEnclosureImages(
         targets: List<PrefetchTarget>,
         downloadAllImages: Boolean,

@@ -21,7 +21,6 @@ import androidx.compose.ui.semantics.Role
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 
-/** A closed set of eight short options, so a dialog is enough; the host lives here, not in settings. */
 @Composable
 fun PaywallBypassDialog(
     selected: PaywallBypassMethod,

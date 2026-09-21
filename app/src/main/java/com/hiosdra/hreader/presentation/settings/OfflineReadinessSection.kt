@@ -33,10 +33,6 @@ private val BACKLOG_TARGETS = listOf(0, 200, 500, 1000)
 private val CACHE_BUDGETS_MB = listOf(200, 500, 1000)
 private const val BYTES_PER_MEGABYTE = 1024.0 * 1024
 
-/**
- * The one screen that answers "can I leave now?". Everything on it is a count of what is already on
- * the device, because that is what survives losing signal — not what the server holds.
- */
 @Composable
 fun OfflineReadinessSection(
     state: OfflineUiState,
@@ -101,8 +97,6 @@ fun OfflineReadinessSection(
                 Text(stringResource(R.string.offline_download_pages))
             }
         }
-        // A real count rather than a spinner of unknown length: the reader is deciding whether
-        // there is time to finish before leaving.
         if (state.isPreparing) {
             Spacer(modifier = Modifier.height(8.dp))
             val progress = state.preparationProgress

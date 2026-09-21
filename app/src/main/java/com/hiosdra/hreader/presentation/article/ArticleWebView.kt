@@ -1,17 +1,9 @@
 package com.hiosdra.hreader.presentation.article
 
-import android.view.View
-import android.webkit.RenderProcessGoneDetail
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -19,10 +11,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.domain.service.cleanUrl
@@ -52,318 +42,163 @@ internal fun ArticleWebView(
     readerPreferences: ReaderPreferences,
     remoteResourcePolicy: RemoteResourcePolicy
 ) {
-    val textColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.onSurface.toArgb())
-    val linkColorHex = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.primary.toArgb())
-    val codeBg = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.surfaceVariant.toArgb())
-    val ruleColor = String.format("#%06X", 0xFFFFFF and MaterialTheme.colorScheme.outlineVariant.toArgb())
-
-    // Read by the request interceptor below, which outlives any single recomposition: the client is
-    // built once with the WebView, while the downloaded images arrive with the article body.
-    val currentLocalImagePaths = rememberUpdatedState(localImagePaths)
-    val currentScrollEnabled = rememberUpdatedState(scrollEnabled)
-    val currentOnContentHeightChanged = rememberUpdatedState(onContentHeightChanged)
-    val currentOnContentLoadStarted = rememberUpdatedState(onContentLoadStarted)
-    val currentRestoreScrollY = rememberUpdatedState(restoreScrollY)
-    val currentOnScrollYChanged = rememberUpdatedState(onScrollYChanged)
-    val currentOnScrollProgress = rememberUpdatedState(onScrollProgress)
-    val currentOnLinkClick = rememberUpdatedState(onLinkClick)
-    val currentOnImageLongClick = rememberUpdatedState(onImageLongClick)
-    val currentRemoteResourcePolicy = rememberUpdatedState(remoteResourcePolicy)
-    val currentAllowNetworkLoads = rememberUpdatedState(allowNetworkLoads)
-    val resourceScope = rememberCoroutineScope()
-
-    // Watched rather than read once, so turning the setting on redraws the article already open.
+    val colors = ArticleHtmlColors(
+        text = MaterialTheme.colorScheme.onSurface.toArgb(),
+        link = MaterialTheme.colorScheme.primary.toArgb(),
+        code = MaterialTheme.colorScheme.surfaceVariant.toArgb(),
+        rule = MaterialTheme.colorScheme.outlineVariant.toArgb()
+    )
     val bionicReadingEnabled by readerPreferences.observeBionicReadingEnabled()
         .collectAsStateWithLifecycle(initialValue = readerPreferences.getBionicReadingEnabled())
     var processedContent by remember(articleContent) { mutableStateOf(articleContent) }
-    androidx.compose.runtime.LaunchedEffect(
-        articleContent,
-        bionicReadingEnabled
-    ) {
-        val content = articleContent
+    LaunchedEffect(articleContent, bionicReadingEnabled) {
         processedContent = if (bionicReadingEnabled) {
             withContext(Dispatchers.Default) {
-                BionicReadingProcessor.processTextToBionicCached(content)
+                BionicReadingProcessor.processTextToBionicCached(articleContent)
             }
         } else {
-            content
+            articleContent
         }
     }
 
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val contentTopInsetCssPx = contentTopInsetPx.coerceAtLeast(0) / density
-    val htmlData = remember(
-        processedContent,
-        textColorHex,
-        linkColorHex,
-        codeBg,
-        ruleColor,
-        contentTopInsetCssPx
-    ) {
+    val density = LocalDensity.current.density
+    val htmlData = remember(processedContent, colors, contentTopInsetPx, density) {
         articleHtml(
-            processedContent,
-            textColorHex,
-            linkColorHex,
-            codeBg,
-            ruleColor,
-            contentTopInsetCssPx
+            body = processedContent,
+            textColorHex = colors.textHex,
+            linkColorHex = colors.linkHex,
+            codeBg = colors.codeHex,
+            ruleColor = colors.ruleHex,
+            contentTopInsetCssPx = contentTopInsetPx.coerceAtLeast(0) / density
         )
     }
-
-    /**
-     * What was last handed to the WebView. The update block runs on every recomposition — a read
-     * state changing or images arriving — and reloading there threw away the reader's position in
-     * the article each time.
-     */
-    val loadedHtml = remember { mutableStateOf<String?>(null) }
-    val loadedBaseUrl = remember { mutableStateOf<String?>(null) }
-    val loadedWebView = remember { mutableStateOf<ReaderWebView?>(null) }
-    val lastAppliedRestoreScrollY = remember { mutableIntStateOf(Int.MIN_VALUE) }
+    val currentLocalImagePaths = rememberUpdatedState(localImagePaths)
+    val currentRemoteResourcePolicy = rememberUpdatedState(remoteResourcePolicy)
+    val currentAllowNetworkLoads = rememberUpdatedState(allowNetworkLoads)
+    val currentScrollEnabled = rememberUpdatedState(scrollEnabled)
+    val currentRestoreScrollY = rememberUpdatedState(restoreScrollY)
+    val currentTextScale = rememberUpdatedState(textScale)
+    val resourceScope = rememberCoroutineScope()
     var loadedLocalImagePathsKey by remember { mutableStateOf<Int?>(null) }
-    var renderProcessError by remember(articleContent, baseUrl) { mutableStateOf(false) }
-    var renderAttempt by remember(articleContent, baseUrl) { mutableIntStateOf(0) }
 
-    if (renderProcessError) {
-        ReaderWebViewError(
-            modifier = modifier,
-            onRetry = {
-                renderProcessError = false
-                renderAttempt += 1
+    ArticleReadingWebView(
+        entryId = baseUrl?.hashCode()?.toLong() ?: htmlData.hashCode().toLong(),
+        pageKey = htmlData,
+        contentKey = htmlData.hashCode(),
+        modifier = modifier,
+        readingPositionLoaded = false,
+        savedReadingProgress = null,
+        onReadingProgressChanged = { _, _ -> },
+        onReadingCompleted = {},
+        initialScrollY = restoreScrollY,
+        onScrollYChanged = onScrollYChanged,
+        onScrollProgress = onScrollProgress,
+        onContentHeightChanged = onContentHeightChanged,
+        onContentLoadStarted = onContentLoadStarted,
+        onImageLongClick = onImageLongClick,
+        scrollController = scrollController,
+        showScrollbar = false,
+        configure = {
+            allowScroll = scrollEnabled
+            protectVerticalScrollFromPager = scrollEnabled
+            settings.hardenArticleContent()
+            settings.defaultFontSize = 16
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            isVerticalScrollBarEnabled = false
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = if (scrollEnabled) {
+                android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            } else {
+                android.view.View.OVER_SCROLL_NEVER
             }
-        )
-    } else {
-        key(renderAttempt, articleContent, baseUrl) {
-            AndroidView(
-                factory = { context ->
-                    ReaderWebView(context).apply {
-                        scrollController?.attach(this)
-                        var lastScrollY = -1
-                        val progressReporter = ReaderWebViewScrollProgressReporter { progress, _, _ ->
-                            currentOnScrollProgress.value?.invoke(progress)
-                        }
-                        fun updateScrollProgress(wv: ReaderWebView) {
-                            if (wv.isReleased) return
-                            val progress = progressReporter.update(wv)
-                            if (lastScrollY != wv.scrollY || progress == 0f || progress == 1f) {
-                                lastScrollY = wv.scrollY
-                                currentOnScrollYChanged.value?.invoke(wv.scrollY)
-                            }
-                        }
-                        allowScroll = currentScrollEnabled.value
-                        settings.hardenArticleContent()
-                        settings.defaultFontSize = 16
-                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                        isVerticalScrollBarEnabled = false
-                        isHorizontalScrollBarEnabled = false
-                        overScrollMode = if (allowScroll) {
-                            View.OVER_SCROLL_IF_CONTENT_SCROLLS
-                        } else {
-                            View.OVER_SCROLL_NEVER
-                        }
-                        webViewClient = object : WebViewClient() {
-                            override fun onRenderProcessGone(
-                                view: WebView,
-                                detail: RenderProcessGoneDetail
-                            ): Boolean {
-                                loadedWebView.value = null
-                                (view as? ReaderWebView)?.destroyAfterRenderProcessGone()
-                                renderProcessError = true
-                                return true
-                            }
-
-                            /**
-                             * Serves an image from the copy prefetching downloaded instead of fetching it
-                             * again. Interception rather than rewriting the `src` to a `file://` address:
-                             * the document is loaded under the article's own https origin, which is not
-                             * allowed to pull in local files.
-                             */
-                            override fun shouldInterceptRequest(
-                                view: WebView?,
-                                request: WebResourceRequest?
-                            ): WebResourceResponse? {
-                                val url = request?.url?.toString() ?: return null
-                                val localPath = currentLocalImagePaths.value[url]
-                                if (!localPath.isNullOrBlank()) {
-                                    serveLocalArticleImage(localPath, view?.context?.filesDir)?.let { return it }
-                                }
-                                if (!isHttpResource(url)) return null
-                                if (currentRemoteResourcePolicy.value.allows(url)) return null
-                                return blockedResourceResponse()
-                            }
-
-                            override fun shouldOverrideUrlLoading(
-                                view: WebView?,
-                                request: WebResourceRequest?
-                            ): Boolean {
-                                val url = request?.url?.toString() ?: return false
-                                val cleanedUrl = cleanUrl(url)
-                                if (!isAllowedArticleLink(cleanedUrl)) return true
-                                if (!currentAllowNetworkLoads.value) {
-                                    currentOnLinkClick.value?.invoke(cleanedUrl)
-                                    return true
-                                }
-                                val policy = currentRemoteResourcePolicy.value
-                                resourceScope.launch(Dispatchers.IO) {
-                                    if (!policy.allows(cleanedUrl)) return@launch
-                                    withContext(Dispatchers.Main.immediate) {
-                                        currentOnLinkClick.value?.invoke(cleanedUrl)
-                                    }
-                                }
-                                return true
-                            }
-
-                            override fun onPageFinished(view: WebView?, url: String?) {
-                                super.onPageFinished(view, url)
-                                val readerView = view as? ReaderWebView ?: return
-                                readerView.contentLayoutReady = true
-                                readerView.postIfActive {
-                                    readerView.scrollTo(0, readerView.pageLoadRestoreScrollY)
-                                    readerView.scheduleContentHeightUpdatesWithSettled { height, settled ->
-                                        if (readerView.contentLayoutReady) {
-                                            currentOnContentHeightChanged.value?.invoke(
-                                                height,
-                                                readerView.loadedContentTopInsetPx,
-                                                settled
-                                            )
-                                        }
-                                    }
-                                    updateScrollProgress(readerView)
-                                }
-                            }
-                        }
-                        webChromeClient = object : WebChromeClient() {
-                            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                                val readerView = view as? ReaderWebView ?: return
-                                if (newProgress == 100) {
-                                    readerView.scheduleContentHeightUpdatesWithSettled { height, settled ->
-                                        if (readerView.contentLayoutReady) {
-                                            currentOnContentHeightChanged.value?.invoke(
-                                                height,
-                                                readerView.loadedContentTopInsetPx,
-                                                settled
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
-                            val readerView = view as? ReaderWebView ?: return@addOnLayoutChangeListener
-                            readerView.scheduleContentHeightUpdatesWithSettled { height, settled ->
-                                if (readerView.contentLayoutReady) {
-                                    currentOnContentHeightChanged.value?.invoke(
-                                        height,
-                                        readerView.loadedContentTopInsetPx,
-                                        settled
-                                    )
-                                }
-                            }
-                        }
-                        setOnScrollChangeListener { v, _, _, _, _ ->
-                            if (v is ReaderWebView) updateScrollProgress(v)
-                        }
-                        setOnLongClickListener { v: View ->
-                            val result = (v as? WebView)?.hitTestResult
-                            if (result != null) {
-                                val type = result.type
-                                if (type == WebView.HitTestResult.IMAGE_TYPE ||
-                                    type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
-                                ) {
-                                    val url = result.extra
-                                    if (!url.isNullOrBlank()) {
-                                        currentOnImageLongClick.value?.invoke(url)
-                                        return@setOnLongClickListener true
-                                    }
-                                }
-                            }
-                            false
-                        }
+            loadedContentTopInsetPx = contentTopInsetPx
+        },
+        interceptRequest = { view, request ->
+            val url = request?.url?.toString() ?: return@ArticleReadingWebView null
+            val localPath = currentLocalImagePaths.value[url]
+            if (!localPath.isNullOrBlank()) {
+                serveLocalArticleImage(localPath, view?.context?.filesDir)
+                    ?.let { return@ArticleReadingWebView it }
+            }
+            if (!isHttpResource(url) || currentRemoteResourcePolicy.value.allows(url)) {
+                null
+            } else {
+                blockedResourceResponse()
+            }
+        },
+        handleUrlLoading = { _, request ->
+            val url = request?.url?.toString() ?: return@ArticleReadingWebView false
+            val cleanedUrl = cleanUrl(url)
+            if (!isAllowedArticleLink(cleanedUrl)) return@ArticleReadingWebView true
+            if (!currentAllowNetworkLoads.value) {
+                onLinkClick?.invoke(cleanedUrl)
+                return@ArticleReadingWebView true
+            }
+            val policy = currentRemoteResourcePolicy.value
+            resourceScope.launch(Dispatchers.IO) {
+                if (policy.allows(cleanedUrl)) {
+                    withContext(Dispatchers.Main.immediate) {
+                        onLinkClick?.invoke(cleanedUrl)
                     }
-                },
-                update = { webView ->
-                    // Images the article references have already been rewritten to local files where they
-                    // were downloaded. Whatever is left points at the network, and offline every one of
-                    // those costs a connect timeout before the page settles.
-                    webView.settings.blockNetworkLoads = !allowNetworkLoads
-                    val localImagePathsKey = localImagePaths.hashCode()
-                    val localImagePathsChanged = loadedLocalImagePathsKey != null &&
-                        loadedLocalImagePathsKey != localImagePathsKey
-                    loadedLocalImagePathsKey = localImagePathsKey
-                    val textZoom = (textScale.coerceIn(0.85f, 1.35f) * 100).roundToInt()
-                    if (webView.settings.textZoom != textZoom) {
-                        webView.settings.textZoom = textZoom
-                        webView.scheduleContentHeightUpdatesWithSettled { height, settled ->
-                            if (webView.contentLayoutReady) {
-                                currentOnContentHeightChanged.value?.invoke(
-                                    height,
-                                    webView.loadedContentTopInsetPx,
-                                    settled
-                                )
-                            }
-                        }
-                    }
-                    webView.allowScroll = currentScrollEnabled.value
-                    scrollController?.attach(webView)
-                    webView.protectVerticalScrollFromPager = webView.allowScroll
-                    webView.isVerticalScrollBarEnabled = false
-                    webView.isHorizontalScrollBarEnabled = false
-                    webView.overScrollMode = if (webView.allowScroll) {
-                        View.OVER_SCROLL_IF_CONTENT_SCROLLS
-                    } else {
-                        View.OVER_SCROLL_NEVER
-                    }
+                }
+            }
+            true
+        },
+        load = {
+            loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
+        },
+        onUpdate = { webView ->
+            webView.settings.blockNetworkLoads = !currentAllowNetworkLoads.value
+            webView.allowScroll = currentScrollEnabled.value
+            webView.protectVerticalScrollFromPager = currentScrollEnabled.value
+            webView.isVerticalScrollBarEnabled = false
+            webView.isHorizontalScrollBarEnabled = false
+            webView.overScrollMode = if (currentScrollEnabled.value) {
+                android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            } else {
+                android.view.View.OVER_SCROLL_NEVER
+            }
+            webView.loadedContentTopInsetPx = contentTopInsetPx
 
-                    val restoreScrollY = currentRestoreScrollY.value
-                    if (lastAppliedRestoreScrollY.intValue != restoreScrollY) {
-                        lastAppliedRestoreScrollY.intValue = restoreScrollY
-                        webView.pageLoadRestoreScrollY = restoreScrollY
-                        webView.postIfActive { webView.scrollTo(0, restoreScrollY) }
-                    }
+            val textZoom = (currentTextScale.value.coerceIn(0.85f, 1.35f) * 100).roundToInt()
+            val textZoomChanged = webView.settings.textZoom != textZoom
+            if (textZoomChanged) webView.settings.textZoom = textZoom
 
-                    val shouldLoadContent =
-                        loadedWebView.value !== webView ||
-                        loadedHtml.value != htmlData ||
-                        loadedBaseUrl.value != baseUrl
-                    if (shouldLoadContent) {
-                        val reloadScrollY = if (loadedWebView.value === webView) {
-                            oversizedArticleScrollYAfterHeaderResize(
-                                webViewScrollY = webView.scrollY,
-                                previousHeaderHeightPx = webView.loadedContentTopInsetPx,
-                                newHeaderHeightPx = contentTopInsetPx
-                            )
-                        } else {
-                            currentRestoreScrollY.value
-                        }
-                        webView.loadedContentTopInsetPx = contentTopInsetPx
-                        webView.pageLoadRestoreScrollY = reloadScrollY.coerceAtLeast(0)
-                        webView.contentLayoutReady = false
-                        webView.cancelContentHeightUpdates()
-                        loadedWebView.value = webView
-                        loadedHtml.value = htmlData
-                        loadedBaseUrl.value = baseUrl
-                        currentOnContentLoadStarted.value?.invoke()
-                        webView.loadDataWithBaseURL(baseUrl, htmlData, "text/html", "UTF-8", null)
-                    } else if (localImagePathsChanged && webView.contentLayoutReady) {
-                        webView.restartContentHeightUpdatesWithSettled { height, settled ->
-                            if (webView.contentLayoutReady) {
-                                currentOnContentHeightChanged.value?.invoke(
-                                    height,
-                                    webView.loadedContentTopInsetPx,
-                                    settled
-                                )
-                            }
-                        }
-                    }
-                },
-                onRelease = { webView ->
-                    scrollController?.detach(webView)
-                    webView.releaseResources()
-                },
-                modifier = modifier
-            )
+            val localImagePathsKey = currentLocalImagePaths.value.hashCode()
+            val localImagePathsChanged = loadedLocalImagePathsKey != null &&
+                loadedLocalImagePathsKey != localImagePathsKey
+            loadedLocalImagePathsKey = localImagePathsKey
+            if ((textZoomChanged || localImagePathsChanged) && webView.contentLayoutReady) {
+                webView.restartContentHeightUpdatesWithSettled { height, settled ->
+                    onContentHeightChanged?.invoke(
+                        height,
+                        webView.loadedContentTopInsetPx,
+                        settled
+                    )
+                }
+            }
+            val currentRestore = currentRestoreScrollY.value
+            if (webView.pageLoadRestoreScrollY != currentRestore) {
+                webView.pageLoadRestoreScrollY = currentRestore
+                webView.postIfActive { webView.scrollTo(0, currentRestore) }
+            }
         }
-    }
+    )
 }
+
+private data class ArticleHtmlColors(
+    val text: Int,
+    val link: Int,
+    val code: Int,
+    val rule: Int
+) {
+    val textHex: String get() = text.toHexColor()
+    val linkHex: String get() = link.toHexColor()
+    val codeHex: String get() = code.toHexColor()
+    val ruleHex: String get() = rule.toHexColor()
+}
+
+private fun Int.toHexColor(): String = String.format("#%06X", 0xFFFFFF and this)
 
 private fun articleHtml(
     body: String,

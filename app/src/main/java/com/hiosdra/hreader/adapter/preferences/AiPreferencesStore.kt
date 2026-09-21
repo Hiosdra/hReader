@@ -4,7 +4,6 @@ import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.ai.GemmaBackend
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 internal class AiPreferencesStore(
     private val storage: PreferenceStorage,
@@ -17,26 +16,26 @@ internal class AiPreferencesStore(
     }
 
     override fun getAiModelId(): String =
-        storage.get(AiPreferenceKeys.aiModel) ?: AiModel.DEFAULT_ID
+        storage.value(AiPreferenceKeys.aiModel, AiModel.DEFAULT_ID)
 
     override fun setAiModelId(modelId: String) {
-        storage.update { this[AiPreferenceKeys.aiModel] = modelId }
+        storage.set(AiPreferenceKeys.aiModel, modelId)
     }
 
-    override fun observeAiModelId(): Flow<String> = storage.observe(AiPreferenceKeys.aiModel)
-        .map { it ?: AiModel.DEFAULT_ID }
+    override fun observeAiModelId(): Flow<String> =
+        storage.observeValue(AiPreferenceKeys.aiModel, AiModel.DEFAULT_ID)
 
     override fun getGemmaBackend(): GemmaBackend =
         GemmaBackend.fromName(storage.get(AiPreferenceKeys.gemmaBackend))
 
     override fun setGemmaBackend(backend: GemmaBackend) {
-        storage.update { this[AiPreferenceKeys.gemmaBackend] = backend.name }
+        storage.set(AiPreferenceKeys.gemmaBackend, backend.name)
     }
 
     override fun getGemmaDownloadOnUnmeteredOnly(): Boolean =
-        storage.get(AiPreferenceKeys.gemmaDownloadUnmeteredOnly) ?: true
+        storage.value(AiPreferenceKeys.gemmaDownloadUnmeteredOnly, true)
 
     override fun setGemmaDownloadOnUnmeteredOnly(enabled: Boolean) {
-        storage.update { this[AiPreferenceKeys.gemmaDownloadUnmeteredOnly] = enabled }
+        storage.set(AiPreferenceKeys.gemmaDownloadUnmeteredOnly, enabled)
     }
 }

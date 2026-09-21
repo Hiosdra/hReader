@@ -68,7 +68,6 @@ import java.io.IOException
 import java.io.OutputStream
 import kotlin.text.Charsets.UTF_8
 
-/** Exporters disagree on the OPML media type, so the picker cannot be narrowed to one. */
 private const val OPML_MIME_TYPE = "text/x-opml"
 private const val MAX_OPML_BYTES = 100L * 1024L * 1024L
 
@@ -147,8 +146,6 @@ fun SubscriptionsPanel(
                             enabled = isOnline,
                             onClick = {
                                 menuOpen = false
-                                // Any type: exporters write OPML as text/xml, application/xml or
-                                // plain octet-stream, and narrowing the picker hides most of them.
                                 importLauncher.launch(arrayOf("*/*"))
                             }
                         )
@@ -286,8 +283,6 @@ fun SubscriptionsPanel(
         }
     }
 
-    // Unsubscribing takes every article in the feed with it and no backend keeps a bin, so this is
-    // one of the few places a confirmation earns the interruption.
     feedPendingDeletion?.let { feed ->
         AlertDialog(
             onDismissRequest = { feedPendingDeletion = null },
@@ -381,7 +376,6 @@ private fun PanelRow(
     onRename: (() -> Unit)? = null,
     onUnsubscribe: (() -> Unit)? = null
 ) {
-    // Secondary feed actions stay behind one menu so the row keeps its reading priority.
     var menuOpen by remember { mutableStateOf(false) }
 
     Row(

@@ -5,106 +5,17 @@ import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.AiModel
 import com.hiosdra.hreader.core.application.settings.BackendConfiguration
-import com.hiosdra.hreader.core.application.sync.SyncDefaults
+import com.hiosdra.hreader.core.application.storage.StorageCleanupAction
+import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.BackendType
-import com.hiosdra.hreader.core.domain.model.OfflineReadiness
-import com.hiosdra.hreader.core.application.sync.SyncOperationState
-import com.hiosdra.hreader.core.application.sync.SyncOperationError
-import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
-import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
-import com.hiosdra.hreader.core.application.sync.SyncOperationId
-import com.hiosdra.hreader.core.application.sync.SyncMode
-import com.hiosdra.hreader.core.application.storage.StorageCleanupAction
-import com.hiosdra.hreader.core.application.storage.StorageCleanupProgress
-import com.hiosdra.hreader.core.application.storage.StorageCleanupResult
-import com.hiosdra.hreader.core.application.storage.StorageSnapshot
 import com.hiosdra.hreader.presentation.text.UiText
 import com.hiosdra.hreader.core.application.usecase.settings.StorageUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
-data class ServerSettingsUiState(
-    val backendType: BackendType = BackendType.FRESHRSS,
-    val serverUrl: String = "",
-    val username: String = "",
-    val secret: String = "",
-    val isTesting: Boolean = false,
-    val statusMessage: UiText? = null,
-    val isConnected: Boolean = false,
-    val pendingBackendType: BackendType? = null,
-    val isSwitchingBackend: Boolean = false,
-    val isApplying: Boolean = false,
-    val isDirty: Boolean = false,
-    val signOutCompleted: Boolean = false
-) {
-    val hasAllFields: Boolean
-        get() = serverUrl.isNotBlank() &&
-            secret.isNotBlank() &&
-            (!backendType.requiresUsername || username.isNotBlank())
-}
-
-data class AiModelsUiState(
-    val selectedModelId: String = AiModel.DEFAULT_ID,
-    val models: List<AiModel> = emptyList(),
-    val searchQuery: String = "",
-    val freeOnly: Boolean = true,
-    val isLoading: Boolean = false,
-    val error: UiText? = null
-) {
-    val visibleModels: List<AiModel>
-        get() = models.filter { (!freeOnly || it.isFree) && it.matches(searchQuery) }
-
-    val selectedModelIsMissing: Boolean
-        get() = models.isNotEmpty() && models.none { it.id == selectedModelId }
-
-    /** Falls back to the id: the list may not have loaded yet, or may never load offline. */
-    val selectedModelName: String
-        get() = models.find { it.id == selectedModelId }?.displayName ?: selectedModelId
-}
-
-data class OfflineUiState(
-    val readiness: OfflineReadiness = OfflineReadiness(),
-    val backlogTarget: Int = 0,
-    val imageDownloadEnabled: Boolean = true,
-    val imageCacheBudgetMegabytes: Int = 0,
-    val isPreparing: Boolean = false,
-    val preparationDone: Int = 0,
-    val preparationTotal: Int = 0,
-    val isFullOfflinePreparation: Boolean = false,
-    val preparationStage: OfflinePreparationStage = OfflinePreparationStage.IDLE,
-    val preparationStatus: SyncOperationStatus = SyncOperationStatus()
-) {
-    /** Null while the worker has not reported counts yet, which reads as indeterminate. */
-    val preparationProgress: Float?
-        get() = if (preparationTotal > 0) preparationDone.toFloat() / preparationTotal else null
-}
-
-data class SyncUiState(
-    val intervalMinutes: Int = SyncDefaults.INTERVAL_MINUTES,
-    val syncMode: SyncMode = SyncMode.SAFE,
-    val unmeteredOnly: Boolean = false,
-    val syncWhileRoaming: Boolean = true,
-    val quietHoursEnabled: Boolean = false,
-    val quietHoursStart: Int = SyncDefaults.QUIET_HOURS_START,
-    val quietHoursEnd: Int = SyncDefaults.QUIET_HOURS_END,
-    val isResyncing: Boolean = false,
-    val resyncStatus: SyncOperationStatus = SyncOperationStatus(),
-    val showResyncStatus: Boolean = false
-)
-
-data class StorageUiState(
-    val snapshot: StorageSnapshot? = null,
-    val isLoading: Boolean = false,
-    val cleanupAction: StorageCleanupAction? = null,
-    val cleanupProgress: StorageCleanupProgress? = null,
-    val cleanupResult: StorageCleanupResult? = null,
-    val error: UiText? = null
-)
 
 class SettingsViewModel(
     private val settings: SettingsUseCase,
@@ -164,333 +75,49 @@ class SettingsViewModel(
     private val _aiModels = MutableStateFlow(AiModelsUiState(selectedModelId = settings.getAiModelId()))
     val aiModels: StateFlow<AiModelsUiState> = _aiModels.asStateFlow()
 
-    private val _offline = MutableStateFlow(currentOfflineSettings())
-    val offline: StateFlow<OfflineUiState> = _offline.asStateFlow()
-    private var offlineAwaitingOperation = false
-    private var offlineOperationId: SyncOperationId? = null
-
-    private val _sync = MutableStateFlow(currentSyncSettings())
-    val sync: StateFlow<SyncUiState> = _sync.asStateFlow()
-    private var resyncAwaitingOperation = false
-    private var resyncOperationId: SyncOperationId? = null
-
-    private val _storage = MutableStateFlow(StorageUiState())
-    val storage: StateFlow<StorageUiState> = _storage.asStateFlow()
+    private val operations = SettingsOperationCoordinator(settings, storageUseCase, viewModelScope)
+    val offline: StateFlow<OfflineUiState> = operations.offline
+    val sync: StateFlow<SyncUiState> = operations.sync
+    val storage: StateFlow<StorageUiState> = operations.storage
 
     init {
         loadAiModels()
-        refreshStorage()
-        viewModelScope.launch {
-            settings.observeOfflineReadiness().collect { readiness ->
-                _offline.value = _offline.value.copy(readiness = readiness)
-            }
-        }
-        viewModelScope.launch {
-            settings.observeOfflinePreparation().collect { progress ->
-                if (offlineAwaitingOperation) {
-                    val expectedOperationId = offlineOperationId ?: return@collect
-                    if (expectedOperationId !in progress.status.operationIds) return@collect
-                }
-                _offline.value = _offline.value.copy(
-                    isPreparing = progress.isRunning,
-                    preparationDone = progress.done,
-                    preparationTotal = progress.total,
-                    isFullOfflinePreparation = progress.isFullOffline,
-                    preparationStage = progress.stage,
-                    preparationStatus = progress.status
-                )
-                if (
-                    offlineAwaitingOperation &&
-                    progress.status.state != SyncOperationState.RUNNING &&
-                    progress.status.state != SyncOperationState.IDLE
-                ) {
-                    offlineAwaitingOperation = false
-                    offlineOperationId = null
-                }
-            }
-        }
-        viewModelScope.launch {
-            settings.observeRequestedSync().collect { status ->
-                val expectedOperationId = resyncOperationId ?: return@collect
-                if (expectedOperationId !in status.operationIds) return@collect
-                _sync.value = _sync.value.copy(resyncStatus = status)
-                if (!resyncAwaitingOperation) return@collect
-                when (status.state) {
-                    SyncOperationState.RUNNING -> {
-                        _sync.value = _sync.value.copy(isResyncing = true)
-                    }
-                    SyncOperationState.SUCCEEDED,
-                    SyncOperationState.FAILED,
-                    SyncOperationState.CANCELLED -> {
-                        resyncAwaitingOperation = false
-                        resyncOperationId = null
-                        _sync.value = _sync.value.copy(isResyncing = false)
-                    }
-                    SyncOperationState.IDLE -> Unit
-                }
-            }
-        }
     }
 
-    fun prepareForOffline() {
-        startOfflinePreparation(fullOffline = false)
+    fun prepareForOffline() = operations.prepareForOffline()
+
+    fun prepareFullOffline() = operations.prepareFullOffline()
+
+    fun prepareTravelMode(fullOffline: Boolean) = operations.prepareTravelMode(fullOffline)
+
+    fun onSyncIntervalChange(minutes: Int) = operations.onSyncIntervalChange(minutes)
+
+    fun onSyncModeChange(mode: SyncMode) = operations.onSyncModeChange(mode)
+
+    fun onUnmeteredOnlyChange(enabled: Boolean) = operations.onUnmeteredOnlyChange(enabled)
+
+    fun onSyncWhileRoamingChange(enabled: Boolean) = operations.onSyncWhileRoamingChange(enabled)
+
+    fun onQuietHoursEnabledChange(enabled: Boolean) = operations.onQuietHoursEnabledChange(enabled)
+
+    fun onQuietHoursChange(startHour: Int, endHour: Int) =
+        operations.onQuietHoursChange(startHour, endHour)
+
+    fun resyncFromScratch() = operations.resyncFromScratch { failure ->
+        _uiState.value = currentSettings(serverDraft).withClearFailure(failure)
     }
 
-    fun prepareFullOffline() {
-        startOfflinePreparation(fullOffline = true)
-    }
+    fun onBacklogTargetChange(target: Int) = operations.onBacklogTargetChange(target)
 
-    fun prepareTravelMode(fullOffline: Boolean) {
-        startOfflinePreparation(fullOffline = fullOffline, travelMode = true)
-    }
+    fun onImageDownloadEnabledChange(enabled: Boolean) =
+        operations.onImageDownloadEnabledChange(enabled)
 
-    private fun startOfflinePreparation(fullOffline: Boolean, travelMode: Boolean = false) {
-        offlineAwaitingOperation = true
-        offlineOperationId = null
-        _offline.value = _offline.value.copy(
-            isPreparing = true,
-            preparationDone = 0,
-            preparationTotal = 0,
-            isFullOfflinePreparation = fullOffline,
-            preparationStage = OfflinePreparationStage.SYNCING,
-            preparationStatus = SyncOperationStatus(SyncOperationState.RUNNING)
-        )
-        val operationId = when {
-            travelMode -> settings.prepareTravelMode(fullOffline)
-            fullOffline -> settings.prepareFullOffline()
-            else -> settings.prepareForOffline()
-        }
-        if (operationId == null) {
-            offlineAwaitingOperation = false
-            offlineOperationId = null
-            _offline.value = _offline.value.copy(
-                isPreparing = false,
-                isFullOfflinePreparation = false,
-                preparationStage = OfflinePreparationStage.IDLE,
-                preparationStatus = SyncOperationStatus(
-                    state = SyncOperationState.FAILED,
-                    error = SyncOperationError.CONFIGURE_SERVER
-                )
-            )
-        } else {
-            offlineAwaitingOperation = true
-            offlineOperationId = operationId
-            watchOfflinePreparation(operationId)
-        }
-    }
+    fun onImageCacheBudgetChange(megabytes: Int) =
+        operations.onImageCacheBudgetChange(megabytes)
 
-    private fun watchOfflinePreparation(operationId: SyncOperationId) {
-        viewModelScope.launch {
-            val terminalProgress = settings.observeOfflinePreparation().first { progress ->
-                operationId in progress.status.operationIds &&
-                    progress.status.state != SyncOperationState.RUNNING &&
-                    progress.status.state != SyncOperationState.IDLE
-            }
-            if (offlineOperationId != operationId) return@launch
-            offlineAwaitingOperation = false
-            offlineOperationId = null
-            _offline.value = _offline.value.copy(
-                isPreparing = terminalProgress.isRunning,
-                preparationDone = terminalProgress.done,
-                preparationTotal = terminalProgress.total,
-                isFullOfflinePreparation = terminalProgress.isFullOffline,
-                preparationStage = terminalProgress.stage,
-                preparationStatus = terminalProgress.status
-            )
-        }
-    }
+    fun refreshStorage() = operations.refreshStorage()
 
-    fun onSyncIntervalChange(minutes: Int) {
-        settings.setSyncIntervalMinutes(minutes)
-        _sync.value = _sync.value.copy(intervalMinutes = settings.getSyncIntervalMinutes())
-        rescheduleSync()
-    }
-
-    fun onSyncModeChange(mode: SyncMode) {
-        settings.setSyncMode(mode)
-        _sync.value = _sync.value.copy(syncMode = settings.getSyncMode())
-    }
-
-    fun onUnmeteredOnlyChange(enabled: Boolean) {
-        settings.setSyncOnUnmeteredOnly(enabled)
-        _sync.value = _sync.value.copy(unmeteredOnly = enabled)
-        rescheduleSync()
-    }
-
-    fun onSyncWhileRoamingChange(enabled: Boolean) {
-        settings.setSyncWhileRoaming(enabled)
-        _sync.value = _sync.value.copy(syncWhileRoaming = enabled)
-        rescheduleSync()
-    }
-
-    fun onQuietHoursEnabledChange(enabled: Boolean) {
-        settings.setQuietHoursEnabled(enabled)
-        _sync.value = _sync.value.copy(quietHoursEnabled = enabled)
-    }
-
-    fun onQuietHoursChange(startHour: Int, endHour: Int) {
-        settings.setQuietHours(startHour, endHour)
-        _sync.value = _sync.value.copy(
-            quietHoursStart = settings.getQuietHoursStartHour(),
-            quietHoursEnd = settings.getQuietHoursEndHour()
-        )
-    }
-
-    /** Constraints and period are fixed at registration, so a changed setting has to re-register. */
-    private fun rescheduleSync() {
-        settings.schedulePeriodicSync()
-    }
-
-    private fun currentSyncSettings() = SyncUiState(
-        intervalMinutes = settings.getSyncIntervalMinutes(),
-        syncMode = settings.getSyncMode(),
-        unmeteredOnly = settings.getSyncOnUnmeteredOnly(),
-        syncWhileRoaming = settings.getSyncWhileRoaming(),
-        quietHoursEnabled = settings.getQuietHoursEnabled(),
-        quietHoursStart = settings.getQuietHoursStartHour(),
-        quietHoursEnd = settings.getQuietHoursEndHour()
-    )
-
-    /**
-     * Throws the local copy away and fetches the account again from nothing.
-     *
-     * The escape hatch for a cache that disagrees with the server and cannot be argued out of it.
-     * It is deliberately the same sequence a backend switch runs, minus the switch: in-flight work
-     * is cancelled first, because a sync that started against the old rows would write them back
-     * into the cache this just emptied.
-     */
-    fun resyncFromScratch() {
-        viewModelScope.launch {
-            resyncAwaitingOperation = false
-            resyncOperationId = null
-            _sync.value = _sync.value.copy(
-                isResyncing = true,
-                resyncStatus = SyncOperationStatus(SyncOperationState.RUNNING),
-                showResyncStatus = true
-            )
-            val cleared = runCatchingCancellable { settings.cancelAndClearBackendData() }
-            // Rescheduled even when clearing failed: leaving the periodic worker deregistered
-            // would turn a failed wipe into an app that never syncs again.
-            settings.schedulePeriodicSync()
-            if (cleared.isSuccess) {
-                val operationId = settings.resyncNow()
-                if (operationId != null) {
-                    resyncOperationId = operationId
-                    resyncAwaitingOperation = true
-                    watchResync(operationId)
-                } else {
-                    resyncAwaitingOperation = false
-                    _sync.value = _sync.value.copy(
-                        isResyncing = false,
-                        resyncStatus = SyncOperationStatus(
-                            state = SyncOperationState.FAILED,
-                            error = SyncOperationError.CONFIGURE_SERVER
-                        )
-                    )
-                }
-            } else {
-                _sync.value = _sync.value.copy(
-                    isResyncing = false,
-                    resyncStatus = SyncOperationStatus(
-                        state = SyncOperationState.FAILED,
-                        error = SyncOperationError.CACHE_UPDATE_FAILED
-                    )
-                )
-            }
-            _uiState.value = currentSettings(serverDraft).withClearFailure(cleared.exceptionOrNull())
-        }
-    }
-
-    private fun watchResync(operationId: SyncOperationId) {
-        viewModelScope.launch {
-            val terminalStatus = settings.observeRequestedSync().first { status ->
-                operationId in status.operationIds && (
-                    status.state == SyncOperationState.SUCCEEDED ||
-                        status.state == SyncOperationState.FAILED ||
-                        status.state == SyncOperationState.CANCELLED
-                    )
-            }
-            if (resyncOperationId != operationId) return@launch
-            resyncAwaitingOperation = false
-            resyncOperationId = null
-            _sync.value = _sync.value.copy(
-                isResyncing = false,
-                resyncStatus = terminalStatus
-            )
-        }
-    }
-
-    fun onBacklogTargetChange(target: Int) {
-        settings.setOfflineBacklogTarget(target)
-        _offline.value = _offline.value.copy(backlogTarget = target)
-    }
-
-    fun onImageDownloadEnabledChange(enabled: Boolean) {
-        settings.setImageDownloadEnabled(enabled)
-        _offline.value = _offline.value.copy(imageDownloadEnabled = enabled)
-    }
-
-    fun onImageCacheBudgetChange(megabytes: Int) {
-        settings.setImageCacheBudgetMegabytes(megabytes)
-        _offline.value = _offline.value.copy(imageCacheBudgetMegabytes = megabytes)
-    }
-
-    fun refreshStorage() {
-        if (_storage.value.cleanupAction != null || _storage.value.isLoading) return
-        viewModelScope.launch {
-            _storage.value = _storage.value.copy(isLoading = true, error = null)
-            val result = runCatchingCancellable { storageUseCase.inspect() }
-            _storage.value = result.fold(
-                onSuccess = { snapshot ->
-                    StorageUiState(snapshot = snapshot)
-                },
-                onFailure = {
-                    _storage.value.copy(
-                        isLoading = false,
-                        error = UiText.Resource(R.string.storage_refresh_failed)
-                    )
-                }
-            )
-        }
-    }
-
-    fun cleanupStorage(action: StorageCleanupAction) {
-        if (_storage.value.cleanupAction != null || _storage.value.isLoading) return
-        viewModelScope.launch {
-            _storage.value = _storage.value.copy(
-                cleanupAction = action,
-                cleanupProgress = null,
-                cleanupResult = null,
-                error = null
-            )
-            val result = runCatchingCancellable {
-                storageUseCase.cleanup(action) { progress ->
-                    _storage.value = _storage.value.copy(cleanupProgress = progress)
-                }
-            }
-            val refreshedStorage = runCatchingCancellable { storageUseCase.inspect() }
-            _storage.value = _storage.value.copy(
-                snapshot = refreshedStorage.getOrNull(),
-                isLoading = false,
-                cleanupAction = null,
-                cleanupProgress = null,
-                cleanupResult = result.getOrNull(),
-                error = if (result.isFailure) {
-                    UiText.Resource(R.string.storage_cleanup_failed)
-                } else if (refreshedStorage.isFailure) {
-                    UiText.Resource(R.string.storage_refresh_failed)
-                } else {
-                    null
-                }
-            )
-        }
-    }
-
-    private fun currentOfflineSettings() = OfflineUiState(
-        backlogTarget = settings.getOfflineBacklogTarget(),
-        imageDownloadEnabled = settings.getImageDownloadEnabled(),
-        imageCacheBudgetMegabytes = settings.getImageCacheBudgetMegabytes()
-    )
+    fun cleanupStorage(action: StorageCleanupAction) = operations.cleanupStorage(action)
 
     fun onOpenRouterApiKeyChange(apiKey: String) {
         settings.setOpenRouterApiKey(apiKey)

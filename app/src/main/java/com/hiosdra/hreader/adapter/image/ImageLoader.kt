@@ -36,7 +36,6 @@ class ImageLoader(
             imageUrl.takeIf { allowNetwork && remoteResourcePolicy.allows(it) }
         }
 
-    /** Where each of this article's images was downloaded, keyed by its published address. */
     override suspend fun getLocalImagePaths(entryId: Long): Map<String, String> = withContext(Dispatchers.IO) {
         articleImageStore.getLocalImagePaths(entryId).also { paths ->
             synchronized(cacheLock) {

@@ -40,19 +40,9 @@ internal class PreferenceStorage(
         produceFile = { applicationContext.preferencesDataStoreFile(SECRETS_FILE) }
     )
 
-    private val preferenceState = AtomicReference<Preferences>(emptyPreferences())
-    private val secretState = AtomicReference<Preferences>(emptyPreferences())
-    private val preferenceStateLock = Any()
-    private val secretStateLock = Any()
-    private val pendingPreferenceTransforms = mutableListOf<MutablePreferences.() -> Unit>()
-    private val pendingSecretTransforms = mutableListOf<MutablePreferences.() -> Unit>()
-    private val preferenceReady = CompletableDeferred<Unit>()
-    private val secretReady = CompletableDeferred<Unit>()
+    private val preferenceStore = PreferenceStoreState()
+    private val secretStore = PreferenceStoreState()
     private val migrationReady = CompletableDeferred<Unit>()
-    private val preferenceWrites = Channel<WriteRequest>(Channel.UNLIMITED)
-    private val secretWrites = Channel<WriteRequest>(Channel.UNLIMITED)
-    private val preferenceWriteFailure = AtomicReference<Throwable?>(null)
-    private val secretWriteFailure = AtomicReference<Throwable?>(null)
 
     init {
         scope.launch {
@@ -60,8 +50,8 @@ internal class PreferenceStorage(
                 migration.migrate(preferencesDataStore, secretDataStore)
                 migrationReady.complete(Unit)
             } catch (error: CancellationException) {
-                preferenceReady.completeExceptionally(error)
-                secretReady.completeExceptionally(error)
+                preferenceStore.ready.completeExceptionally(error)
+                secretStore.ready.completeExceptionally(error)
                 migrationReady.completeExceptionally(error)
                 throw error
             } catch (error: Exception) {
@@ -71,56 +61,44 @@ internal class PreferenceStorage(
         }
         scope.launch {
             migrationReady.await()
-            hydratePreferences()
+            hydrate(preferencesDataStore, preferenceStore)
         }
         scope.launch {
             migrationReady.await()
-            hydrateSecrets()
+            hydrate(secretDataStore, secretStore, recoverReadFailure = true)
         }
         scope.launch {
             processWrites(
                 dataStore = preferencesDataStore,
-                writes = preferenceWrites,
-                failure = preferenceWriteFailure,
-                ready = preferenceReady,
+                state = preferenceStore,
                 storageName = "regular"
             )
         }
         scope.launch {
             processWrites(
                 dataStore = secretDataStore,
-                writes = secretWrites,
-                failure = secretWriteFailure,
-                ready = secretReady,
+                state = secretStore,
                 storageName = "secret"
             )
         }
     }
 
     override suspend fun awaitReady() {
-        preferenceReady.await()
-        secretReady.await()
+        preferenceStore.ready.await()
+        secretStore.ready.await()
     }
 
     override suspend fun awaitWrites() {
         awaitReady()
-        val preferenceCompletion = CompletableDeferred<Unit>()
-        val secretCompletion = CompletableDeferred<Unit>()
-        preferenceWrites.send(WriteRequest({}, preferenceCompletion))
-        secretWrites.send(WriteRequest({}, secretCompletion))
-        val preferenceFailure = awaitCompletion(preferenceCompletion)
-        val secretFailure = awaitCompletion(secretCompletion)
-        preferenceWriteFailure.getAndSet(null)?.let { preferenceFailure ?: throw it }
-        secretWriteFailure.getAndSet(null)?.let { secretFailure ?: throw it }
-        preferenceFailure?.let { throw it }
-        secretFailure?.let { throw it }
+        flush(preferenceStore)
+        flush(secretStore)
     }
 
-    internal fun <T> get(key: Preferences.Key<T>): T? = preferenceState.get()[key]
+    internal fun <T> get(key: Preferences.Key<T>): T? = preferenceStore.values.get()[key]
 
-    internal fun <T> getSecret(key: Preferences.Key<T>): T? = secretState.get()[key]
+    internal fun <T> getSecret(key: Preferences.Key<T>): T? = secretStore.values.get()[key]
 
-    internal fun currentPreferences(): Preferences = preferenceState.get()
+    internal fun currentPreferences(): Preferences = preferenceStore.values.get()
 
     internal fun <T> observe(key: Preferences.Key<T>): Flow<T?> = preferencesDataStore.data
         .map { it[key] }
@@ -129,21 +107,11 @@ internal class PreferenceStorage(
     internal fun observePreferences(): Flow<Preferences> = preferencesDataStore.data
 
     internal fun update(transform: MutablePreferences.() -> Unit) {
-        synchronized(preferenceStateLock) {
-            if (!preferenceReady.isCompleted) pendingPreferenceTransforms += transform
-            val updated = preferenceState.get().toMutablePreferences().apply(transform).toPreferences()
-            preferenceState.set(updated)
-            preferenceWrites.trySend(WriteRequest(transform))
-        }
+        update(preferenceStore, transform)
     }
 
     internal fun updateSecrets(transform: MutablePreferences.() -> Unit) {
-        synchronized(secretStateLock) {
-            if (!secretReady.isCompleted) pendingSecretTransforms += transform
-            val updated = secretState.get().toMutablePreferences().apply(transform).toPreferences()
-            secretState.set(updated)
-            secretWrites.trySend(WriteRequest(transform))
-        }
+        update(secretStore, transform)
     }
 
     internal suspend fun close() {
@@ -151,57 +119,44 @@ internal class PreferenceStorage(
         scope.coroutineContext[Job]?.join()
     }
 
-    private suspend fun hydratePreferences() {
-        try {
-            val loaded = preferencesDataStore.data.first()
-            synchronized(preferenceStateLock) {
-                preferenceState.set(loaded.withPending(pendingPreferenceTransforms))
-                pendingPreferenceTransforms.clear()
-                preferenceReady.complete(Unit)
-            }
-        } catch (error: CancellationException) {
-            preferenceReady.completeExceptionally(error)
-            throw error
-        } catch (error: Throwable) {
-            preferenceReady.completeExceptionally(error)
-            throw error
-        } finally {
-            if (!preferenceReady.isCompleted) preferenceReady.complete(Unit)
-        }
-    }
-
-    private suspend fun hydrateSecrets() {
+    private suspend fun hydrate(
+        dataStore: DataStore<Preferences>,
+        state: PreferenceStoreState,
+        recoverReadFailure: Boolean = false
+    ) {
         try {
             val loaded = try {
-                secretDataStore.data.first()
+                dataStore.data.first()
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
+                if (!recoverReadFailure) throw error
                 Log.e(TAG, "Secret DataStore read failed; retaining in-memory defaults", error)
                 emptyPreferences()
             }
-            synchronized(secretStateLock) {
-                secretState.set(loaded.withPending(pendingSecretTransforms))
-                pendingSecretTransforms.clear()
-                secretReady.complete(Unit)
+            synchronized(state.lock) {
+                state.values.set(loaded.withPending(state.pendingTransforms))
+                state.pendingTransforms.clear()
+                state.ready.complete(Unit)
             }
         } catch (error: CancellationException) {
-            secretReady.completeExceptionally(error)
+            state.ready.completeExceptionally(error)
+            throw error
+        } catch (error: Throwable) {
+            state.ready.completeExceptionally(error)
             throw error
         } finally {
-            if (!secretReady.isCompleted) secretReady.complete(Unit)
+            if (!state.ready.isCompleted) state.ready.complete(Unit)
         }
     }
 
     private suspend fun processWrites(
         dataStore: DataStore<Preferences>,
-        writes: Channel<WriteRequest>,
-        failure: AtomicReference<Throwable?>,
-        ready: CompletableDeferred<Unit>,
+        state: PreferenceStoreState,
         storageName: String
     ) {
-        ready.await()
-        for (request in writes) {
+        state.ready.await()
+        for (request in state.writes) {
             try {
                 dataStore.edit(request.transform)
                 request.completion?.complete(Unit)
@@ -209,10 +164,26 @@ internal class PreferenceStorage(
                 request.completion?.cancel(error)
                 throw error
             } catch (error: Throwable) {
-                failure.set(error)
+                state.writeFailure.set(error)
                 Log.e(TAG, "Could not persist $storageName preferences", error)
                 request.completion?.completeExceptionally(error)
             }
+        }
+    }
+
+    private suspend fun flush(state: PreferenceStoreState) {
+        val completion = CompletableDeferred<Unit>()
+        state.writes.send(WriteRequest({}, completion))
+        val failure = awaitCompletion(completion)
+        state.writeFailure.getAndSet(null)?.let { failure ?: throw it }
+        failure?.let { throw it }
+    }
+
+    private fun update(state: PreferenceStoreState, transform: MutablePreferences.() -> Unit) {
+        synchronized(state.lock) {
+            if (!state.ready.isCompleted) state.pendingTransforms += transform
+            state.values.set(state.values.get().toMutablePreferences().apply(transform).toPreferences())
+            state.writes.trySend(WriteRequest(transform))
         }
     }
 
@@ -232,6 +203,15 @@ internal class PreferenceStorage(
         transforms.forEach { transform -> transform() }
     }.toPreferences()
 
+    private class PreferenceStoreState {
+        val values = AtomicReference<Preferences>(emptyPreferences())
+        val lock = Any()
+        val pendingTransforms = mutableListOf<MutablePreferences.() -> Unit>()
+        val ready = CompletableDeferred<Unit>()
+        val writes = Channel<WriteRequest>(Channel.UNLIMITED)
+        val writeFailure = AtomicReference<Throwable?>(null)
+    }
+
     private data class WriteRequest(
         val transform: MutablePreferences.() -> Unit,
         val completion: CompletableDeferred<Unit>? = null
@@ -243,3 +223,13 @@ internal class PreferenceStorage(
         const val TAG = "PreferenceStorage"
     }
 }
+
+internal fun <T> PreferenceStorage.value(key: Preferences.Key<T>, default: T): T =
+    get(key) ?: default
+
+internal fun <T> PreferenceStorage.set(key: Preferences.Key<T>, value: T) {
+    update { this[key] = value }
+}
+
+internal fun <T> PreferenceStorage.observeValue(key: Preferences.Key<T>, default: T): Flow<T> =
+    observe(key).map { it ?: default }

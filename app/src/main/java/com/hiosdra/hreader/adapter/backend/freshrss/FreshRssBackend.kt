@@ -46,23 +46,12 @@ class FreshRssBackend(
     override suspend fun getUnreadEntries(limit: Int, cursor: String?): EntriesPage =
         withCursorRetries(cursor) { streamContents(limit, cursor, startTimeSeconds = null) }
 
-    /**
-     * Unlike Miniflux this cannot surface entries read on another client, so it keeps excluding
-     * read ones. The Google Reader `ot` parameter filters on the entry date or `lastModified`
-     * (a content change), while marking an entry read updates `lastUserModified` — a different
-     * column that `ot` never looks at. Dropping the exclusion would only enlarge every response.
-     * Reconciling read state here needs the `stream/items/ids` diff instead.
-     */
     override suspend fun getEntriesChangedAfter(
         changedAfter: Instant,
         limit: Int,
         cursor: String?
     ): EntriesPage = withCursorRetries(cursor) { streamContents(limit, cursor, changedAfter.epochSecond) }
 
-    /**
-     * The reading-list stream without the read-state exclusion, newest first, so the backlog fills
-     * with what was published most recently rather than with whatever is still unread.
-     */
     override suspend fun getRecentEntries(limit: Int, cursor: String?): EntriesPage = withCursorRetries(cursor) {
         apiService.getStreamContents(
             output = JSON_OUTPUT,
@@ -84,8 +73,6 @@ class FreshRssBackend(
             .associate { streamIdToFeedId(it.id) to it.count }
     }
 
-    // Subscribing is not idempotent, so a retry after a client-side timeout could add the feed
-    // twice. The caller sees the failure instead.
     override suspend fun createFeed(feedUrl: String) = withFeedFailureMapping {
         val response = apiService.quickAddSubscription(feedUrl, writeToken())
         if (response.numResults < 1) {
@@ -172,11 +159,6 @@ class FreshRssBackend(
 
 private val HEX_ITEM_ID = Regex("[0-9a-fA-F]{16}")
 
-/**
- * An item whose id cannot be read is dropped rather than allowed to fail the page. It used to throw
- * out of the parse, and since a malformed id is not a retryable failure the whole sync stopped —
- * permanently, because the next run met the same entry.
- */
 internal fun StreamContentsResponse.toEntriesPage(): EntriesPage = EntriesPage(
     entries = items.mapNotNull { item -> item.resolveId()?.let { item.toEntry(it) } },
     cursor = continuation?.takeIf { it.isNotBlank() }
@@ -207,9 +189,6 @@ private fun StreamItem.resolveId(): Long? =
     numericId?.toLongOrNull() ?: parseItemId(id)
 
 private fun parseItemId(rawId: String): Long? {
-    // Only the long form (tag:google.com,2005:reader/item/<hex>) carries a hexadecimal id.
-    // A short-form id is decimal, and a 16-digit decimal id is also a valid hex string,
-    // so the prefix — not the shape of the token — decides how to read it.
     val isLongForm = rawId.startsWith(ITEM_ID_TAG_PREFIX)
     val token = rawId.removePrefix(ITEM_ID_TAG_PREFIX).substringAfterLast('/')
     return if (isLongForm && HEX_ITEM_ID.matches(token)) {
@@ -233,15 +212,6 @@ private fun Subscription.toFeed(): Feed = Feed(
     feedUrl = url.orEmpty()
 )
 
-/**
- * A stream id is normally `feed/<number>`. When it is not — some installations name the stream
- * after its address — a digest of the token stands in for the number.
- *
- * [String.hashCode] used to: 32 bits is small enough that a few hundred subscriptions make a
- * collision realistic, and a collision merges two feeds into one row, files one feed's articles
- * under the other's name and lets unsubscribing from either delete both. `absoluteValue` also
- * leaves [Int.MIN_VALUE] negative.
- */
 private fun streamIdToFeedId(streamId: String): Long {
     val token = streamId.removePrefix(FEED_STREAM_PREFIX)
     return token.toLongOrNull() ?: token.digestToId()
@@ -253,8 +223,6 @@ private fun String.digestToId(): Long {
     for (index in 0 until 8) {
         value = (value shl 8) or (digest[index].toLong() and 0xFF)
     }
-    // Only the sign bit is cleared. Folding it in — or shifting it away — would map two digests
-    // that differ solely there onto the same id, which is the collision this is here to avoid.
     return value and Long.MAX_VALUE
 }
 

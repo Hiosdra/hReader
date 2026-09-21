@@ -5,12 +5,6 @@ import com.hiosdra.hreader.adapter.network.withNetworkRetries
 import com.hiosdra.hreader.core.application.exception.CursorExpiredException
 import retrofit2.HttpException
 
-/**
- * Retries [block] on failures the backend can plausibly recover from: transport errors and
- * server-side 5xx/429 responses. A 4xx is a bug in the request or a bad token, so repeating it
- * only wastes time, and a cancellation must propagate untouched or the caller can never be
- * cancelled. Only wrap idempotent calls — a retried POST can create duplicates.
- */
 internal suspend fun <T> withRetries(
     maxAttempts: Int = 3,
     initialDelayMillis: Long = 500,

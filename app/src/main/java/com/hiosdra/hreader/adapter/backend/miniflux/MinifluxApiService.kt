@@ -19,11 +19,6 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface MinifluxApiService {
-    /**
-     * [afterEntryId] drives keyset pagination: offsets shift underneath a sync whenever an entry
-     * changes status mid-run, which silently skips entries. [changedAfter] is a unix timestamp —
-     * Miniflux parses these filters as int64 and quietly ignores anything else.
-     */
     @GET("v1/entries")
     suspend fun getEntries(
         @Query("status") statuses: List<String>,

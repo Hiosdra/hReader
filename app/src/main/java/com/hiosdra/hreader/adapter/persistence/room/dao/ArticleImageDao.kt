@@ -39,7 +39,6 @@ interface ArticleImageDao {
     @Query("SELECT * FROM article_images WHERE entryId = :entryId AND originalUrl = :originalUrl LIMIT 1")
     suspend fun getImageForArticleByUrl(entryId: Long, originalUrl: String): ArticleImage?
 
-    /** Which articles have images stored, for orphan detection without reading every row. */
     @Query("SELECT DISTINCT entryId FROM article_images")
     suspend fun getAllImageEntryIds(): List<Long>
 
@@ -112,7 +111,6 @@ interface ArticleImageDao {
     @Query("SELECT COALESCE(SUM(fileSize), 0) FROM article_images")
     suspend fun getTotalImageBytes(): Long
 
-    /** Oldest first: what the cache budget evicts when it has to make room. */
     @Query("SELECT * FROM article_images ORDER BY downloadedAt ASC LIMIT :limit")
     suspend fun getImagesOldestFirst(limit: Int): List<ArticleImage>
 }

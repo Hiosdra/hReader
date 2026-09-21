@@ -24,11 +24,6 @@ import com.hiosdra.hreader.core.application.ai.AiModel
 
 private const val SHEET_HEIGHT_FRACTION = 0.9f
 
-/**
- * A sheet rather than a dropdown: several hundred models with a search field, a filter and a
- * reload that can fail need room and a scroll of their own. Search and filter stay pinned at the
- * top so they are still reachable once the list is scrolled.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiModelSheet(

@@ -9,11 +9,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/**
- * How long the catalogue is reused before it is fetched again. It used to be held for the life of
- * the process, so the startup check that warns about a withdrawn model was answering from the list
- * pulled when the app first opened — a model retired since would never be reported.
- */
 private const val CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L
 
 class AiModelRepository(
@@ -40,8 +35,6 @@ class AiModelRepository(
     private fun isFresh(): Boolean = System.currentTimeMillis() - cachedAt < CACHE_TTL_MILLIS
 
     override suspend fun checkSelectedModel(): SelectedModelStatus {
-        // Without a key the AI features are unusable anyway, so there is nothing to warn about
-        // and no reason to pull the whole catalogue over the network.
         if (preferencesManager.getOpenRouterApiKey().isBlank()) return SelectedModelStatus.Unknown
         val selectedId = preferencesManager.getAiModelId()
         val models = runCatching { getModels() }.getOrNull() ?: return SelectedModelStatus.Unknown

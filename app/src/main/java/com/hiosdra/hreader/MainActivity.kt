@@ -35,10 +35,6 @@ class MainActivity : ComponentActivity() {
 
 }
 
-/**
- * Where the app was asked to open: the article list, or the subscribe screen with the address
- * another app handed over.
- */
 internal fun Intent.entryPoint(): EntryPoint {
     if (action == Intent.ACTION_VIEW && data?.scheme == SHORTCUT_SCHEME) {
         return EntryPoint.AddFeed(url = null)
@@ -47,10 +43,6 @@ internal fun Intent.entryPoint(): EntryPoint {
     return EntryPoint.AddFeed(url = shared)
 }
 
-/**
- * Shared text is rarely only a URL — most apps put the page title in front of it — so the first
- * http address in it wins rather than the whole string.
- */
 private fun Intent.sharedFeedUrl(): String? {
     val raw = when (action) {
         Intent.ACTION_SEND -> getStringExtra(Intent.EXTRA_TEXT)

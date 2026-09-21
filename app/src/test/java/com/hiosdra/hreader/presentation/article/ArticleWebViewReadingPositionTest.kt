@@ -26,17 +26,20 @@ class ArticleWebViewReadingPositionTest {
         var scrollY by mutableIntStateOf(0)
 
         composeTestRule.setContent {
-            ArticleWebViewReadingPosition(
+            ArticleReadingPositionTracker(
                 entryId = 1L,
                 contentKey = 1,
+                effectKey = listOf(1, 2_000, 1_000),
                 readingPositionLoaded = true,
                 savedReadingProgress = null,
-                scrollY = scrollY,
-                contentHeightPx = 2_000,
-                viewportHeightPx = 1_000,
-                contentHeightSettled = true,
-                webViewReady = true,
-                onRestoreScrollY = {},
+                positionReady = true,
+                currentProgress = {
+                    articleScrollProgress(
+                        scrollY,
+                        readerWebViewMaxScrollPx(contentHeightPx = 2_000, viewportHeightPx = 1_000)
+                    ) to true
+                },
+                restorePosition = {},
                 onReadingProgressChanged = { _, progress -> persistedProgress.set(progress) },
                 onReadingCompleted = {}
             )

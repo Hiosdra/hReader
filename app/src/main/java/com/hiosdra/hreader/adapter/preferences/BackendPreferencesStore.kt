@@ -12,33 +12,20 @@ internal class BackendPreferencesStore(
         BackendType.fromName(storage.get(BackendPreferenceKeys.backendType))
 
     override fun setBackendType(backendType: BackendType) {
-        storage.update { this[BackendPreferenceKeys.backendType] = backendType.name }
+        storage.set(BackendPreferenceKeys.backendType, backendType.name)
     }
 
-    override fun getServerUrl(backendType: BackendType): String = when (backendType) {
-        BackendType.FRESHRSS -> storage.get(BackendPreferenceKeys.freshRssServerUrl).orEmpty()
-        BackendType.MINIFLUX -> storage.get(BackendPreferenceKeys.minifluxServerUrl).orEmpty()
-    }
+    override fun getServerUrl(backendType: BackendType): String =
+        storage.get(backendType.serverUrlKey()).orEmpty()
 
     override fun setServerUrl(backendType: BackendType, url: String) {
-        storage.update {
-            when (backendType) {
-                BackendType.FRESHRSS -> this[BackendPreferenceKeys.freshRssServerUrl] = url
-                BackendType.MINIFLUX -> this[BackendPreferenceKeys.minifluxServerUrl] = url
-            }
-        }
+        storage.set(backendType.serverUrlKey(), url)
     }
 
-    override fun getBackendSecret(backendType: BackendType): String = when (backendType) {
-        BackendType.FRESHRSS -> secrets.get(SecretId.FRESHRSS_API_PASSWORD)
-        BackendType.MINIFLUX -> secrets.get(SecretId.MINIFLUX_API_TOKEN)
-    }
+    override fun getBackendSecret(backendType: BackendType): String = secrets.get(backendType.secretKey())
 
     override fun setBackendSecret(backendType: BackendType, secret: String) {
-        when (backendType) {
-            BackendType.FRESHRSS -> secrets.set(SecretId.FRESHRSS_API_PASSWORD, secret)
-            BackendType.MINIFLUX -> secrets.set(SecretId.MINIFLUX_API_TOKEN, secret)
-        }
+        secrets.set(backendType.secretKey(), secret)
     }
 
     override fun getFreshRssUsername(): String = secrets.get(SecretId.FRESHRSS_USERNAME)
@@ -83,7 +70,18 @@ internal class BackendPreferencesStore(
 
     override fun hasBackendCredentials(): Boolean {
         val backendType = getBackendType()
-        if (getServerUrl(backendType).isBlank() || getBackendSecret(backendType).isBlank()) return false
-        return !backendType.requiresUsername || getFreshRssUsername().isNotBlank()
+        return getServerUrl(backendType).isNotBlank() &&
+            getBackendSecret(backendType).isNotBlank() &&
+            (!backendType.requiresUsername || getFreshRssUsername().isNotBlank())
     }
+}
+
+private fun BackendType.serverUrlKey() = when (this) {
+    BackendType.FRESHRSS -> BackendPreferenceKeys.freshRssServerUrl
+    BackendType.MINIFLUX -> BackendPreferenceKeys.minifluxServerUrl
+}
+
+private fun BackendType.secretKey() = when (this) {
+    BackendType.FRESHRSS -> SecretId.FRESHRSS_API_PASSWORD
+    BackendType.MINIFLUX -> SecretId.MINIFLUX_API_TOKEN
 }

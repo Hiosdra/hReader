@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -138,18 +139,7 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                Text(
-                    text = stringResource(R.string.settings_rss_server),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
-                ) {
+            settingsSection(R.string.settings_rss_server) {
                     BackendServerFields(
                         state = serverSettings,
                         onBackendTypeChange = { backendType ->
@@ -164,21 +154,9 @@ fun SettingsScreen(
                         onApplySettings = actions.server.onApplySettings,
                         modifier = Modifier.padding(16.dp)
                     )
-                }
             }
 
-            item {
-                Text(
-                    text = stringResource(R.string.settings_sync),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = sectionCardColors()
-                ) {
+            settingsSection(R.string.settings_sync) {
                     SyncSection(
                         state = sync,
                         onIntervalChange = actions.sync.onIntervalChange,
@@ -190,105 +168,92 @@ fun SettingsScreen(
                         onOpenFreshness = { navController?.navigate(Routes.SYNC_HEALTH) },
                         modifier = Modifier.padding(16.dp)
                     )
-                }
             }
 
-            item {
-                SettingsGroup(
-                    title = stringResource(R.string.travel_mode_title),
-                    summary = stringResource(R.string.settings_offline_reading)
-                ) {
-                    TravelModeSettingsSection(
-                        offline = offline,
-                        sync = sync,
-                        isOnline = isOnline,
-                        actions = actions.offline,
-                        requestNotificationPermission = requestNotificationPermission
-                    )
-                }
+            settingsGroup(
+                titleRes = R.string.travel_mode_title,
+                summaryRes = R.string.settings_offline_reading
+            ) {
+                TravelModeSettingsSection(
+                    offline = offline,
+                    sync = sync,
+                    isOnline = isOnline,
+                    actions = actions.offline,
+                    requestNotificationPermission = requestNotificationPermission
+                )
             }
 
-            item {
-                SettingsGroup(
-                    title = stringResource(R.string.settings_storage),
-                    summary = stringResource(R.string.settings_group_storage_summary)
-                ) {
-                    StorageSettingsSection(
-                        state = storage,
-                        onRefresh = actions.storage.onRefresh,
-                        onCleanup = actions.storage.onCleanup
-                    )
-                }
+            settingsGroup(
+                titleRes = R.string.settings_storage,
+                summaryRes = R.string.settings_group_storage_summary
+            ) {
+                StorageSettingsSection(
+                    state = storage,
+                    onRefresh = actions.storage.onRefresh,
+                    onCleanup = actions.storage.onCleanup
+                )
             }
 
-            item {
-                SettingsGroup(
-                    title = stringResource(R.string.settings_reading_experience),
-                    summary = stringResource(R.string.settings_group_reading_summary)
-                ) {
-                    ReadingSettingsSection(
-                        bionicReadingEnabled = bionicReadingEnabled,
-                        onBionicReadingChange = onToggleBionicReading,
-                        selectedTtsModel = ttsPreferences.getTtsModel(),
-                        selectedBypassMethod = selectedBypassMethod,
-                        onOpenTts = { navController?.navigate(Routes.TTS_SETTINGS) },
-                        onOpenBypass = { showBypassDialog = true }
-                    )
-                }
+            settingsGroup(
+                titleRes = R.string.settings_reading_experience,
+                summaryRes = R.string.settings_group_reading_summary
+            ) {
+                ReadingSettingsSection(
+                    bionicReadingEnabled = bionicReadingEnabled,
+                    onBionicReadingChange = onToggleBionicReading,
+                    selectedTtsModel = ttsPreferences.getTtsModel(),
+                    selectedBypassMethod = selectedBypassMethod,
+                    onOpenTts = { navController?.navigate(Routes.TTS_SETTINGS) },
+                    onOpenBypass = { showBypassDialog = true }
+                )
             }
 
-            item {
-                SettingsGroup(
-                    title = stringResource(R.string.settings_local_ai),
-                    summary = stringResource(R.string.settings_group_local_ai_summary)
-                ) {
-                    GemmaSettingsSection(
-                        preferences = aiPreferences,
-                        modelManager = gemmaModelManager,
-                        downloadScheduler = gemmaModelDownloadScheduler,
-                        modelLifecycle = gemmaModelLifecycle,
-                        onRequestNotifications = requestNotificationPermission
-                    )
-                }
+            settingsGroup(
+                titleRes = R.string.settings_local_ai,
+                summaryRes = R.string.settings_group_local_ai_summary
+            ) {
+                GemmaSettingsSection(
+                    preferences = aiPreferences,
+                    modelManager = gemmaModelManager,
+                    downloadScheduler = gemmaModelDownloadScheduler,
+                    modelLifecycle = gemmaModelLifecycle,
+                    onRequestNotifications = requestNotificationPermission
+                )
             }
 
-            item {
-                SettingsGroup(
-                    title = stringResource(R.string.settings_ai_features),
-                    summary = stringResource(R.string.settings_group_ai_summary)
-                ) {
-                    AiSettingsSection(
-                        credibilityScoreEnabled = credibilityScoreEnabled,
-                        onCredibilityScoreChange = onToggleCredibilityScore,
-                        openRouterApiKey = openRouterApiKey,
-                        onOpenRouterApiKeyChange = actions.ai.onOpenRouterApiKeyChange,
-                        aiModels = aiModels,
-                        onOpenModelPicker = { showModelSheet = true }
-                    )
-                }
+            settingsGroup(
+                titleRes = R.string.settings_ai_features,
+                summaryRes = R.string.settings_group_ai_summary
+            ) {
+                AiSettingsSection(
+                    credibilityScoreEnabled = credibilityScoreEnabled,
+                    onCredibilityScoreChange = onToggleCredibilityScore,
+                    openRouterApiKey = openRouterApiKey,
+                    onOpenRouterApiKeyChange = actions.ai.onOpenRouterApiKeyChange,
+                    aiModels = aiModels,
+                    onOpenModelPicker = { showModelSheet = true }
+                )
             }
 
-            item {
-                SettingsGroup(
-                    title = stringResource(R.string.settings_privacy_diagnostics),
-                    summary = stringResource(R.string.settings_group_privacy_summary)
-                ) {
-                    DiagnosticsSettingsSection(
-                        errorReportingEnabled = sentryReportingEnabled,
-                        onErrorReportingChange = onToggleSentryReporting,
-                        onShowPerformance = { showPerformanceDialog = true }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    LocalDataSection(
-                        state = sync,
-                        canSignOut = serverSettings.hasAllFields,
-                        isBusy = serverSettings.isSwitchingBackend,
-                        onResyncFromScratch = {
-                            requestNotificationPermission(actions.localData.onResyncFromScratch)
-                        },
-                        onSignOut = { showSignOutDialog = true }
-                    )
-                }
+            settingsGroup(
+                titleRes = R.string.settings_privacy_diagnostics,
+                summaryRes = R.string.settings_group_privacy_summary
+            ) {
+                DiagnosticsSettingsSection(
+                    errorReportingEnabled = sentryReportingEnabled,
+                    onErrorReportingChange = onToggleSentryReporting,
+                    onShowPerformance = { showPerformanceDialog = true }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                LocalDataSection(
+                    state = sync,
+                    canSignOut = serverSettings.hasAllFields,
+                    isBusy = serverSettings.isSwitchingBackend,
+                    onResyncFromScratch = {
+                        requestNotificationPermission(actions.localData.onResyncFromScratch)
+                    },
+                    onSignOut = { showSignOutDialog = true }
+                )
             }
         }
 
@@ -500,4 +465,39 @@ private fun SyncPerformanceRecord.operationLabelRes(): Int = when (operationName
     SyncPerformanceOperation.INCREMENTAL_SYNC.key -> R.string.settings_operation_incremental_sync
     SyncPerformanceOperation.FULL_SYNC.key -> R.string.settings_operation_full_sync
     else -> R.string.settings_operation_other
+}
+
+private fun LazyListScope.settingsGroup(
+    titleRes: Int,
+    summaryRes: Int,
+    content: @Composable () -> Unit
+) {
+    item {
+        SettingsGroup(
+            title = stringResource(titleRes),
+            summary = stringResource(summaryRes),
+            content = content
+        )
+    }
+}
+
+private fun LazyListScope.settingsSection(
+    titleRes: Int,
+    content: @Composable () -> Unit
+) {
+    item {
+        Text(
+            text = stringResource(titleRes),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            colors = sectionCardColors()
+        ) {
+            content()
+        }
+    }
 }

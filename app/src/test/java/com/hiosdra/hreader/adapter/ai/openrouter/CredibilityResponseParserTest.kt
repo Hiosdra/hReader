@@ -63,7 +63,6 @@ class CredibilityResponseParserTest {
     fun readsATenPointScaleAsATenPointScale() {
         assertEquals(0.8f, parser.parse("""{"score": 8}""").score, 0.0001f)
         assertEquals(0.75f, parser.parse("""{"score": 7.5}""").score, 0.0001f)
-        // An explicit percentage still means one, however small.
         assertEquals(0.08f, parser.parse("""{"score": "8%"}""").score, 0.0001f)
     }
 

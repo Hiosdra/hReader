@@ -65,9 +65,6 @@ val networkModule = module {
     single { NetworkMetricsCollector() }
     single<BackendIdentity> { get<ServerConfig>() }
     single<BackendSessionStore> { get<ServerConfig>() }
-    // The login call carries credentials in its form body and gets the auth token back in the
-    // response body, so it uses a client without the app's auth and logging interceptors. The
-    // connection pool and dispatcher are still shared, since newBuilder keeps them.
     single {
         GoogleReaderAuthenticator(get()) {
             get<OkHttpClient>().newBuilder().apply { interceptors().clear() }.build()
@@ -93,10 +90,6 @@ val networkModule = module {
                 }
             )
             .eventListenerFactory(NetworkMetricsEventListener.Factory(get()))
-            // OkHttp defaults to a 10s read timeout, which a self-hosted backend serving a page of
-            // 200 entries with full content routinely exceeds. No callTimeout on purpose: it also
-            // counts time spent queued in the dispatcher, and content prefetching submits every
-            // unread article at once, so a whole-call deadline would fail the tail of that queue.
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)

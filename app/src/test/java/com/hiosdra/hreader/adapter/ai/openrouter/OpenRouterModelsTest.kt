@@ -28,7 +28,6 @@ class OpenRouterModelsTest {
     @Test
     fun testChatMessageToMap() {
         val message = ChatMessage("user", "Test content")
-        // Test basic ChatMessage functionality
         assertEquals("user", message.role)
         assertEquals("Test content", message.content)
     }

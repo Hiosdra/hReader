@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.presentation.article
 
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.domain.model.ArticleContentDelivery
@@ -9,6 +10,9 @@ import com.hiosdra.hreader.core.domain.model.CredibilityReport
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import com.hiosdra.hreader.presentation.text.UiText
+
+internal val CONTENT_UNAVAILABLE_MESSAGE = UiText.Resource(R.string.article_content_unavailable)
+internal val PARTIAL_CONTENT_MESSAGE = UiText.Resource(R.string.article_partial_content)
 
 enum class ArticleContentLoadState {
     LOADING,
@@ -101,9 +105,10 @@ internal fun ArticleNavigationState.selectIndex(index: Int): ArticleNavigationSt
 internal fun ArticleNavigationState.resolveList(
     currentIndex: Int,
     windowStartIndex: Int,
-    totalCount: Int
+    totalCount: Int,
+    entryCount: Int = entries.size
 ): ArticleNavigationState {
-    val resolvedIndex = currentIndex.coerceIn(0, entries.lastIndex.coerceAtLeast(0))
+    val resolvedIndex = currentIndex.coerceIn(0, entryCount.coerceAtLeast(1) - 1)
     val resolvedListSize = totalCount.coerceAtLeast(entries.size)
     val resolvedPosition = (windowStartIndex + resolvedIndex + 1)
         .coerceIn(1, resolvedListSize.coerceAtLeast(1))
@@ -121,6 +126,12 @@ internal fun ArticleContentState.contentLoadState(entryId: Long): ArticleContent
         entryId in content -> ArticleContentLoadState.FULL
         else -> ArticleContentLoadState.LOADING
     }
+
+internal fun ArticleContentState.errorFor(entryId: Long): UiText? = when {
+    entryId in partialContentIds -> PARTIAL_CONTENT_MESSAGE
+    contentLoadStates[entryId] == ArticleContentLoadState.UNAVAILABLE -> CONTENT_UNAVAILABLE_MESSAGE
+    else -> null
+}
 
 internal fun ArticleContentState.trimTo(retainedIds: Set<Long>): ArticleContentState = copy(
     content = content.filterKeys { it in retainedIds },
@@ -141,6 +152,9 @@ internal fun ArticleAiState.trimTo(retainedIds: Set<Long>): ArticleAiState = cop
 
 internal fun ArticleUiState.readerWindowIds(index: Int = navigation.currentIndex): Set<Long> =
     navigation.readerWindowIds(index)
+
+internal fun ArticleUiState.isCurrentEntry(entryId: Long): Boolean =
+    navigation.entries.getOrNull(navigation.currentIndex)?.id == entryId
 
 internal fun ArticleUiState.trimReaderState(index: Int = navigation.currentIndex): ArticleUiState {
     val retainedIds = readerWindowIds(index)
@@ -182,4 +196,27 @@ internal fun ArticleUiState.getContentProvenance(entryId: Long): ArticleContentP
             )
         }
     }
+}
+
+internal fun ArticleUiState.displayedProvenance(
+    entry: Entry,
+    webViewActive: Boolean
+): ArticleContentProvenance {
+    if (!webViewActive) return getContentProvenance(entry.id)
+    if (content.isOnline) {
+        return ArticleContentProvenance(
+            kind = ArticleContentKind.EXTERNAL_WEB_PAGE,
+            sourceUrl = entry.url,
+            delivery = ArticleContentDelivery.NETWORK
+        )
+    }
+    return content.offlinePages[entry.id]?.let { page ->
+        ArticleContentProvenance(
+            kind = ArticleContentKind.SAVED_WEB_PAGE,
+            sourceUrl = page.finalUrl.ifBlank { page.originalUrl },
+            fetchedAt = page.fetchedAt,
+            delivery = ArticleContentDelivery.LOCAL_STORAGE,
+            isComplete = page.isComplete
+        )
+    } ?: getContentProvenance(entry.id)
 }

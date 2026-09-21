@@ -4,17 +4,12 @@ import com.hiosdra.hreader.core.domain.model.Feed
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 
-/** A subscription as an OPML file records it, which is a feed address and not much else. */
 data class OpmlFeed(
     val title: String,
     val feedUrl: String,
     val siteUrl: String?
 )
 
-/**
- * Subscriptions as OPML, the one interchange format every reader agrees on. Built from the cached
- * feed list rather than from the backend: it is complete, and it works offline.
- */
 fun buildOpml(feeds: List<Feed>, title: String): String = buildString {
     append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
     append("<opml version=\"2.0\">\n")
@@ -30,10 +25,6 @@ fun buildOpml(feeds: List<Feed>, title: String): String = buildString {
     append("  </body>\n</opml>\n")
 }
 
-/**
- * Every feed an OPML file names, with the category tree flattened away — outlines nest, and what
- * matters here is the set of addresses to subscribe to. Entries without an `xmlUrl` are folders.
- */
 fun parseOpml(xml: String): List<OpmlFeed> {
     val document = runCatching { Jsoup.parse(xml, "", Parser.xmlParser()) }.getOrNull()
         ?: return emptyList()

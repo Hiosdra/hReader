@@ -53,8 +53,6 @@ fun ZoomableImage(
                 },
             contentAlignment = Alignment.Center
         ) {
-            // The downloaded copy when there is one: zooming an image offline used to fetch the
-            // original address and show nothing, even with the file sitting in the cache.
             OfflineAwareImage(
                 entryId = entryId,
                 imageUrl = url,

@@ -86,9 +86,6 @@ internal fun ArticleTopBar(
 ) {
     TopAppBar(
         title = {
-            // One line, cut short if it has to be. A feed named "Subiektywnie o finansach — Maciej
-            // Samcik" wrapped to four of them, which grew the bar over the status bar above it and
-            // the article below.
             Column {
                 Text(
                     text = feedTitle ?: stringResource(R.string.app_name),
@@ -131,9 +128,6 @@ internal fun ArticleTopBar(
                 DropdownMenu(
                     expanded = overflowExpanded.value,
                     onDismissRequest = { overflowExpanded.value = false },
-                    // The same treatment the list's menu gets, so the two do not read as two
-                    // different components. Clip first: a background painted before it keeps
-                    // square corners.
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.small)
                         .background(MaterialTheme.colorScheme.surfaceContainer)
