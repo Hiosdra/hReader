@@ -52,6 +52,7 @@ import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
 import com.hiosdra.hreader.presentation.feedback.showFeedback
 import com.hiosdra.hreader.presentation.text.resolve
 import com.hiosdra.hreader.presentation.theme.MotionDuration
+import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -257,7 +258,7 @@ internal fun MainScreen(
                     modifier = Modifier.fillMaxSize(),
                     listState = listState,
                     onOpen = { articleId ->
-                        val query = viewModel.currentQuery()
+                        val query = viewModel.currentQuery().withFeed(feedId, Instant.now())
                         navController.navigate(
                             Routes.article(
                                 feedId = query.feedId,
