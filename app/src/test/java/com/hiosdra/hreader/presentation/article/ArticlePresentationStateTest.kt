@@ -5,6 +5,7 @@ import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.core.domain.model.ArticleContentKind
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ArticlePresentationStateTest {
@@ -51,6 +52,12 @@ class ArticlePresentationStateTest {
 
         assertEquals(12, resolved.currentIndex)
         assertEquals(24, resolved.currentListPosition)
+    }
+
+    @Test
+    fun `initial pager page waits for the selected entry`() {
+        assertNull(initialArticlePagerPage(currentIndex = 12, entryCount = 1))
+        assertEquals(12, initialArticlePagerPage(currentIndex = 12, entryCount = 25))
     }
 
     @Test

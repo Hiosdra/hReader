@@ -93,6 +93,9 @@ internal fun articleWebViewRestoreScrollY(
     return (progress.coerceIn(0f, 1f) * maxScrollY).roundToInt()
 }
 
+internal fun initialArticlePagerPage(currentIndex: Int, entryCount: Int): Int? =
+    currentIndex.takeIf { it in 0 until entryCount }
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ArticleScreen(
@@ -169,9 +172,13 @@ fun ArticleScreen(
         }
     }
 
-    LaunchedEffect(navigation.entries.size) {
-        if (pagerPositioned || navigation.entries.isEmpty()) return@LaunchedEffect
-        pagerState.scrollToPage(navigation.currentIndex.coerceIn(navigation.entries.indices))
+    LaunchedEffect(navigation.entries.size, navigation.currentIndex) {
+        val initialPage = initialArticlePagerPage(
+            currentIndex = navigation.currentIndex,
+            entryCount = navigation.entries.size
+        )
+        if (pagerPositioned || initialPage == null) return@LaunchedEffect
+        pagerState.scrollToPage(initialPage)
         pagerPositioned = true
     }
 

@@ -17,16 +17,23 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
+import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
+import com.hiosdra.hreader.core.domain.model.ArticleListQuery
+import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
+import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -136,28 +143,80 @@ class MainScreenTest {
         ).assertCountEquals(0)
     }
 
-    private fun viewModel(state: MainUiState): MainViewModel =
-        mockk<MainViewModel>(relaxed = true).also {
-            every { it.uiState } returns MutableStateFlow(state)
-            every { it.articles } returns flowOf(
-                PagingData.from(
-                    data = emptyList<ArticleListItem>(),
-                    sourceLoadStates = LoadStates(
-                        refresh = LoadState.NotLoading(endOfPaginationReached = true),
-                        prepend = LoadState.NotLoading(endOfPaginationReached = true),
-                        append = LoadState.NotLoading(endOfPaginationReached = true)
+    @Test
+    fun `article click uses requested feed while query update is pending`() {
+        val articleId = 42L
+        val oldQuery = ArticleListQuery(
+            feedId = 1L,
+            sessionStart = Instant.ofEpochMilli(123L)
+        )
+        val viewModel = viewModel(
+            state = MainUiState(),
+            articles = PagingData.from(
+                listOf(
+                    ArticleListItem.Article(
+                        ArticleListEntry(
+                            id = articleId,
+                            title = "Probe article",
+                            preview = null,
+                            author = null,
+                            publishedAt = Instant.ofEpochSecond(articleId),
+                            feed = Feed(1L, "Feed", null, "https://example.com/feed"),
+                            imageUrl = null
+                        )
                     )
                 )
             )
+        )
+        every { viewModel.currentQuery() } returns oldQuery
+        val navController = mockk<NavController>(relaxed = true)
+        setContent(viewModel, feedId = 2L, navController = navController)
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Probe article").performClick()
+
+        val route = io.mockk.slot<String>()
+        verify(exactly = 1) { navController.navigate(capture(route)) }
+        assertTrue(route.captured.startsWith("article?feedId=2&startId=42&includeRead=false&session="))
+        assertNotEquals(
+            Routes.article(
+                feedId = oldQuery.feedId,
+                startArticleId = articleId,
+                includeRead = oldQuery.includeRead,
+                sessionStartMillis = oldQuery.sessionStart.toEpochMilli()
+            ),
+            route.captured
+        )
+    }
+
+    private fun viewModel(
+        state: MainUiState,
+        articles: PagingData<ArticleListItem> = PagingData.from(
+            data = emptyList(),
+            sourceLoadStates = LoadStates(
+                refresh = LoadState.NotLoading(endOfPaginationReached = true),
+                prepend = LoadState.NotLoading(endOfPaginationReached = true),
+                append = LoadState.NotLoading(endOfPaginationReached = true)
+            )
+        )
+    ): MainViewModel =
+        mockk<MainViewModel>(relaxed = true).also {
+            every { it.uiState } returns MutableStateFlow(state)
+            every { it.articles } returns flowOf(articles)
         }
 
-    private fun setContent(viewModel: MainViewModel) {
+    private fun setContent(
+        viewModel: MainViewModel,
+        feedId: Long? = null,
+        navController: NavController = mockk(relaxed = true)
+    ) {
         val context = RuntimeEnvironment.getApplication()
         composeTestRule.setContent {
             HReaderTheme {
                 MainScreen(
-                    navController = mockk<NavController>(relaxed = true),
+                    navController = navController,
                     onOpenSubscriptions = {},
+                    feedId = feedId,
                     viewModel = viewModel,
                     imageDependencies = ArticleImageDependencies(
                         articleImageLoader = mockk<ArticleImageLoader>(relaxed = true),
