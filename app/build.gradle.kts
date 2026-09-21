@@ -1,5 +1,43 @@
 import java.util.Properties
 import java.security.MessageDigest
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
+
+abstract class VerifyLocalArtifactTask : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val artifact: RegularFileProperty
+
+    @get:Input
+    abstract val expectedSha256: Property<String>
+
+    @TaskAction
+    fun verifyArtifact() {
+        val file = artifact.get().asFile
+        check(file.isFile && file.sha256() == expectedSha256.get()) {
+            "Unexpected ${file.name}; update the pinned checksum only with an intentional dependency review"
+        }
+    }
+
+    private fun java.io.File.sha256(): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -58,7 +96,7 @@ val hasReleaseSigning = releaseStoreFile.exists() &&
 val debugStoreFile = rootProject.file(
     signingValue("DEBUG_KEYSTORE_PATH") ?: "keystore/debug.keystore"
 )
-val sherpaOnnxAar = file("libs/sherpa-onnx-1.13.4-arm64.aar")
+val sherpaOnnxAar = layout.projectDirectory.file("libs/sherpa-onnx-1.13.4-arm64.aar")
 val sherpaOnnxAarSha256 = "eaf71494b5246b5338091683868cfeed00b3a6325a893380f9c72f01224e6748"
 
 android {
@@ -166,13 +204,9 @@ ksp {
     arg("room.incremental", "true")
 }
 
-val verifyLocalArtifacts = tasks.register("verifyLocalArtifacts") {
-    inputs.file(sherpaOnnxAar)
-    doLast {
-        check(sherpaOnnxAar.isFile && sherpaOnnxAar.sha256() == sherpaOnnxAarSha256) {
-            "Unexpected Sherpa-ONNX AAR; update the pinned checksum only with an intentional dependency review"
-        }
-    }
+val verifyLocalArtifacts = tasks.register<VerifyLocalArtifactTask>("verifyLocalArtifacts") {
+    artifact.set(sherpaOnnxAar)
+    expectedSha256.set(sherpaOnnxAarSha256)
 }
 
 tasks.named("preBuild") {
@@ -300,17 +334,4 @@ dependencies {
     // Debug Tools
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
-}
-
-private fun File.sha256(): String {
-    val digest = MessageDigest.getInstance("SHA-256")
-    inputStream().use { input ->
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        while (true) {
-            val read = input.read(buffer)
-            if (read < 0) break
-            digest.update(buffer, 0, read)
-        }
-    }
-    return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
 }

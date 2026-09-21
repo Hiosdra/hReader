@@ -40,7 +40,7 @@ jobs:
           packages: platform-tools
 
       - name: Run lint and tests
-        run: ./gradlew --configuration-cache lint test
+        run: ./gradlew lint test
 
   debug_apk:
     name: Debug APK
