@@ -12,8 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.InputStream
-import java.io.OutputStream
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
 private const val MAX_DOWNLOAD_BYTES = 16L * 1024 * 1024
@@ -41,12 +40,11 @@ class ArticleImageDownloadService(
                     return@withContext false
                 }
                 val body = response.body
-                val contentType = body.contentType()?.toString()
-                    ?.substringBefore(';')
-                    ?.trim()
-                    ?.takeIf { it.startsWith("image/", ignoreCase = true) }
+                val contentType = normalizedRasterImageContentType(body.contentType()?.toString())
                     ?: return@withContext false
                 if (body.contentLength() > MAX_DOWNLOAD_BYTES) return@withContext false
+                val bytes = body.byteStream().readAtMost(MAX_DOWNLOAD_BYTES) ?: return@withContext false
+                if (!isSafeRasterImage(contentType, bytes)) return@withContext false
 
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, safeImageFileName(url, contentType))
@@ -60,7 +58,8 @@ class ArticleImageDownloadService(
                 var completed = false
                 try {
                     val copied = resolver.openOutputStream(uri)?.use { output ->
-                        body.byteStream().use { input -> copyAtMost(input, output, MAX_DOWNLOAD_BYTES) }
+                        output.write(bytes)
+                        bytes.size.toLong()
                     }
                     if (copied == null) return@withContext false
                     resolver.update(
@@ -96,20 +95,24 @@ private fun safeImageFileName(url: String, contentType: String): String {
         contentType.contains("png", ignoreCase = true) -> ".png"
         contentType.contains("webp", ignoreCase = true) -> ".webp"
         contentType.contains("gif", ignoreCase = true) -> ".gif"
-        contentType.contains("svg", ignoreCase = true) -> ".svg"
+        contentType.contains("bmp", ignoreCase = true) -> ".bmp"
         else -> ".jpg"
     }
     return if (base.endsWith(extension, ignoreCase = true)) base else base + extension
 }
 
-private fun copyAtMost(input: InputStream, output: OutputStream, limit: Long): Long? {
+private fun java.io.InputStream.readAtMost(limit: Long): ByteArray? {
+    val output = ByteArrayOutputStream()
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    var copied = 0L
-    while (true) {
-        val read = input.read(buffer)
-        if (read < 0) return copied
-        copied += read
-        if (copied > limit) return null
-        output.write(buffer, 0, read)
+    var total = 0L
+    use { input ->
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > limit) return null
+            output.write(buffer, 0, read)
+        }
     }
+    return output.toByteArray()
 }

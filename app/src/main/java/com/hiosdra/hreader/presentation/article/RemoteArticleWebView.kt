@@ -41,6 +41,7 @@ internal fun RemoteArticleWebView(
     val resourceScope = rememberCoroutineScope()
     val currentIsOnline = rememberUpdatedState(isOnline)
     val currentPolicy = rememberUpdatedState(remoteResourcePolicy)
+    val currentUrl = rememberUpdatedState(url)
 
     LaunchedEffect(url, policyAttempt) {
         resourceAllowed = withContext(Dispatchers.IO) { remoteResourcePolicy.allows(url) }
@@ -72,7 +73,13 @@ internal fun RemoteArticleWebView(
             },
             interceptRequest = { _, request: WebResourceRequest? ->
                 val resourceUrl = request?.url?.toString() ?: return@ArticleReadingWebView null
-                if (!isHttpResource(resourceUrl) || currentPolicy.value.allows(resourceUrl)) {
+                if (
+                    !isHttpResource(resourceUrl) ||
+                    (
+                        isSameWebOrigin(resourceUrl, currentUrl.value) &&
+                            currentPolicy.value.allows(resourceUrl)
+                        )
+                ) {
                     null
                 } else {
                     blockedResourceResponse()

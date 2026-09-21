@@ -71,7 +71,7 @@ class ErrorReportingManager(
                 options.setAttachScreenshot(false)
                 options.setAttachViewHierarchy(false)
                 options.setEnableAutoSessionTracking(false)
-                options.setEnableNdk(true)
+                options.setEnableNdk(false)
                 options.setMaxBreadcrumbs(0)
                 options.enableAllAutoBreadcrumbs(false)
             }

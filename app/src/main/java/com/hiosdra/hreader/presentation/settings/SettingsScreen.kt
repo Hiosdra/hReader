@@ -51,6 +51,7 @@ import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
 import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
+import com.hiosdra.hreader.presentation.components.SecureWindowEffect
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.presentation.navigation.Routes
@@ -72,6 +73,7 @@ fun SettingsScreen(
     networkStatus: NetworkStatus,
     settingsViewModel: SettingsViewModel
 ) {
+    SecureWindowEffect()
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsStateWithLifecycle()
     val aiModels by settingsViewModel.aiModels.collectAsStateWithLifecycle()

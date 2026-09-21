@@ -53,6 +53,7 @@ import java.util.concurrent.TimeUnit
 
 private const val FRESHRSS_RETROFIT = "freshrss"
 private const val MINIFLUX_RETROFIT = "miniflux"
+private const val MINIFLUX_CLIENT = "miniflux-client"
 private const val OPENROUTER_RETROFIT = "openrouter"
 
 private const val CONNECT_TIMEOUT_SECONDS = 15L
@@ -94,7 +95,6 @@ val networkModule = module {
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .addInterceptor(get<GoogleReaderAuthInterceptor>())
-            .addInterceptor(get<MinifluxAuthInterceptor>())
             .addInterceptor(get<BackendUrlInterceptor>())
             .addInterceptor(get<HttpLoggingInterceptor>())
             .addNetworkInterceptor { chain ->
@@ -107,6 +107,11 @@ val networkModule = module {
             .dns(resourcePolicy.dns())
             .build()
     }
+    single<OkHttpClient>(named(MINIFLUX_CLIENT)) {
+        get<OkHttpClient>().newBuilder()
+            .addNetworkInterceptor(get<MinifluxAuthInterceptor>())
+            .build()
+    }
     single<Moshi> {
         Moshi.Builder()
             .add(KotlinJsonAdapterFactory())
@@ -114,7 +119,9 @@ val networkModule = module {
     }
 
     single<Retrofit>(named(FRESHRSS_RETROFIT)) { retrofitFor(FRESHRSS_PLACEHOLDER_BASE_URL, get(), get()) }
-    single<Retrofit>(named(MINIFLUX_RETROFIT)) { retrofitFor(MINIFLUX_PLACEHOLDER_BASE_URL, get(), get()) }
+    single<Retrofit>(named(MINIFLUX_RETROFIT)) {
+        retrofitFor(MINIFLUX_PLACEHOLDER_BASE_URL, get(named(MINIFLUX_CLIENT)), get())
+    }
     single<Retrofit>(named(OPENROUTER_RETROFIT)) { retrofitFor("https://openrouter.ai/api/v1/", get(), get()) }
 
     single<FreshRssApiService> { get<Retrofit>(named(FRESHRSS_RETROFIT)).create(FreshRssApiService::class.java) }

@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.android.application)
@@ -57,6 +58,8 @@ val hasReleaseSigning = releaseStoreFile.exists() &&
 val debugStoreFile = rootProject.file(
     signingValue("DEBUG_KEYSTORE_PATH") ?: "keystore/debug.keystore"
 )
+val sherpaOnnxAar = file("libs/sherpa-onnx-1.13.4-arm64.aar")
+val sherpaOnnxAarSha256 = "eaf71494b5246b5338091683868cfeed00b3a6325a893380f9c72f01224e6748"
 
 android {
     namespace = "com.hiosdra.hreader"
@@ -163,6 +166,19 @@ ksp {
     arg("room.incremental", "true")
 }
 
+val verifyLocalArtifacts = tasks.register("verifyLocalArtifacts") {
+    inputs.file(sherpaOnnxAar)
+    doLast {
+        check(sherpaOnnxAar.isFile && sherpaOnnxAar.sha256() == sherpaOnnxAarSha256) {
+            "Unexpected Sherpa-ONNX AAR; update the pinned checksum only with an intentional dependency review"
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(verifyLocalArtifacts)
+}
+
 sentry {
     debug.set(false)
     org.set(sentryOrg)
@@ -170,8 +186,8 @@ sentry {
     authToken.set(sentryAuthToken)
     includeProguardMapping.set(true)
     autoUploadProguardMapping.set(sentryUploadEnabled)
-    uploadNativeSymbols.set(sentryUploadEnabled)
-    autoUploadNativeSymbols.set(sentryUploadEnabled)
+    uploadNativeSymbols.set(false)
+    autoUploadNativeSymbols.set(false)
     includeNativeSources.set(false)
     includeSourceContext.set(false)
     tracingInstrumentation {
@@ -232,9 +248,8 @@ dependencies {
     implementation(libs.moshi.kotlin)
     ksp(libs.moshi.kotlin.codegen)
 
-    // Error reporting with native crash support, without the optional session-replay module.
+    // Error reporting without native crash support or the optional session-replay module.
     implementation(libs.sentry.android.core)
-    implementation(libs.sentry.android.ndk)
 
     // Dependency Injection (Koin)
     implementation(platform(libs.koin.bom))
@@ -254,7 +269,7 @@ dependencies {
     implementation(libs.commons.compress)
 
     // On-device speech synthesis
-    implementation(files("libs/sherpa-onnx-1.13.4-arm64.aar"))
+    implementation(files(sherpaOnnxAar))
 
     // On-device Gemma inference
     implementation(libs.litert.lm.android)
@@ -285,4 +300,17 @@ dependencies {
     // Debug Tools
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+private fun File.sha256(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    inputStream().use { input ->
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
 }

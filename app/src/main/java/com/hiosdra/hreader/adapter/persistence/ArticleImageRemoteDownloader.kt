@@ -1,5 +1,7 @@
 package com.hiosdra.hreader.adapter.persistence
 
+import com.hiosdra.hreader.adapter.image.isSafeRasterImage
+import com.hiosdra.hreader.adapter.image.normalizedRasterImageContentType
 import com.hiosdra.hreader.adapter.network.HttpStatusException
 import com.hiosdra.hreader.adapter.network.NonRetryableNetworkException
 import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
@@ -9,9 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
 
 internal data class DownloadedArticleImage(
     val contentType: String,
@@ -23,7 +24,10 @@ internal class ArticleImageRemoteDownloader(
     private val remoteResourcePolicy: RemoteResourcePolicyAdapter
 ) {
     private val safeHttpClient = httpClient.newBuilder()
-        .apply { interceptors().clear() }
+        .apply {
+            interceptors().clear()
+            networkInterceptors().clear()
+        }
         .addNetworkInterceptor { chain ->
             if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
                 throw NonRetryableNetworkException("Blocked remote resource URL")
@@ -47,13 +51,15 @@ internal class ArticleImageRemoteDownloader(
                             return@withNetworkRetries null
                         }
                         val body = response.body
-                        val contentType = body.contentType()?.toString()
-                            ?.takeIf { it.startsWith("image/", ignoreCase = true) }
+                        val contentType = normalizedRasterImageContentType(body.contentType()?.toString())
                             ?: return@withNetworkRetries null
                         val declaredLength = body.contentLength()
                         if (declaredLength > MAX_IMAGE_BYTES) return@withNetworkRetries null
-                        val fileSize = copyAtMost(body.byteStream(), staging, MAX_IMAGE_BYTES)
+                        val bytes = body.byteStream().readAtMost(MAX_IMAGE_BYTES)
+                            ?.takeIf { isSafeRasterImage(contentType, it) }
                             ?: return@withNetworkRetries null
+                        staging.writeBytes(bytes)
+                        val fileSize = bytes.size.toLong()
                         DownloadedArticleImage(contentType, fileSize)
                     }
                 }
@@ -64,21 +70,20 @@ internal class ArticleImageRemoteDownloader(
             }
         }
 
-    private fun copyAtMost(input: InputStream, target: File, limit: Long): Long? {
+    private fun java.io.InputStream.readAtMost(limit: Long): ByteArray? {
+        val output = ByteArrayOutputStream()
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var written = 0L
-        FileOutputStream(target).use { output ->
-            input.use { source ->
-                while (true) {
-                    val read = source.read(buffer)
-                    if (read < 0) break
-                    written += read
-                    if (written > limit) return null
-                    output.write(buffer, 0, read)
-                }
+        var total = 0L
+        use { input ->
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                if (total > limit) return null
+                output.write(buffer, 0, read)
             }
         }
-        return written
+        return output.toByteArray()
     }
 
     private companion object {

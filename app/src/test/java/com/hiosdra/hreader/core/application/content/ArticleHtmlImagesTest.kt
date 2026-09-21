@@ -91,6 +91,13 @@ class ArticleHtmlImagesTest {
             <p onclick="bad()">Body</p>
             <a href="javascript:alert('bad')">Safe label</a>
             <a href="java&#10;script:alert('bad')">Obfuscated label</a>
+            <a href="data:text/html,<script>alert('bad')</script>">Data link</a>
+            <a href="data:image/png;base64,AAAA">Data image link</a>
+            <a href="file:///etc/passwd">File link</a>
+            <a href="intent://settings">Intent link</a>
+            <img src="data:image/png;base64,AAAA">
+            <img src="data:image/svg+xml,<svg onload='bad()'>">
+            <img srcset="https://safe.example/image.png 1x, javascript:alert('bad') 2x">
             <img src="/photo.jpg">
         """.trimIndent()
 
@@ -107,6 +114,13 @@ class ArticleHtmlImagesTest {
         assertFalse(prepared.html.contains("<script"))
         assertFalse(prepared.html.contains("onclick"))
         assertFalse(prepared.html.contains("javascript:"))
+        assertFalse(prepared.html.contains("data:text/html"))
+        assertFalse(prepared.html.contains("href=\"data:image/png"))
+        assertFalse(prepared.html.contains("file:///"))
+        assertFalse(prepared.html.contains("intent://"))
+        assertFalse(prepared.html.contains("data:image/svg+xml"))
+        assertFalse(prepared.html.contains("srcset"))
+        assertTrue(prepared.html.contains("data:image/png"))
         assertTrue(prepared.html.contains("Obfuscated label"))
         assertFalse(prepared.html.contains("script:"))
     }
