@@ -183,9 +183,5 @@ the [bundled runtime licenses](app/src/main/assets/licenses/README.md), and the
 [TTS model notice](app/src/main/assets/tts/NOTICE) for the current
 attribution and release-gate status.
 
-For contribution and copyright-assignment requirements, see
-[CONTRIBUTING.md](CONTRIBUTING.md), the [assignment process](docs/contributor-assignment-process.md),
-and the [assignment agreement](docs/contributor-assignment-agreement.md).
-
 For maintainers preparing a Google Play release, see the
 [Google Play release guide](docs/google-play-release.md).
