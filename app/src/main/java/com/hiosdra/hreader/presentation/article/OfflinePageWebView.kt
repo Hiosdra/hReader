@@ -94,6 +94,7 @@ private fun offlineMimeType(fileName: String): String = when (fileName.substring
     "jpg", "jpeg" -> "image/jpeg"
     "gif" -> "image/gif"
     "webp" -> "image/webp"
+    "bmp" -> "image/bmp"
     "woff" -> "font/woff"
     "woff2" -> "font/woff2"
     "ttf" -> "font/ttf"

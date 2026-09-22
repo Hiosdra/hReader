@@ -5,6 +5,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
 import com.hiosdra.hreader.adapter.persistence.ArticleImageRepository
 import com.hiosdra.hreader.core.application.port.out.SyncPreferences
+import com.sun.net.httpserver.HttpServer
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -17,7 +18,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import java.io.File
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.nio.file.Files
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(JUnit4::class)
 class ArticleImageRepositoryTest {
@@ -126,5 +131,47 @@ class ArticleImageRepositoryTest {
         imageMaintenance.cleanupOrphaned()
 
         coVerify { articleImageDao.deleteExpectedImagesForArticles(listOf(99L)) }
+    }
+
+    @Test
+    fun remoteDownloader_doesNotInheritNetworkCredentials() = runBlocking {
+        val receivedToken = AtomicReference<String?>()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { httpServer ->
+            httpServer.createContext("/image.png") { exchange ->
+                receivedToken.set(exchange.requestHeaders.getFirst("X-Auth-Token"))
+                val bytes = byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+                exchange.responseHeaders.add("Content-Type", "image/png")
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            httpServer.start()
+        }
+        val staging = Files.createTempFile("hreader-image", ".tmp").toFile()
+        try {
+            val client = OkHttpClient.Builder()
+                .addNetworkInterceptor { chain ->
+                    chain.proceed(
+                        chain.request().newBuilder()
+                            .header("X-Auth-Token", "must-not-leak")
+                            .build()
+                    )
+                }
+                .build()
+            val policy = RemoteResourcePolicyAdapter(
+                allowedHosts = { setOf("127.0.0.1") },
+                resolveHost = { listOf(InetAddress.getByName("127.0.0.1")) }
+            )
+
+            val result = ArticleImageRemoteDownloader(client, policy).download(
+                "http://127.0.0.1:${server.address.port}/image.png",
+                staging
+            )
+
+            assertEquals("image/png", result?.contentType)
+            assertNull(receivedToken.get())
+        } finally {
+            server.stop(0)
+            staging.delete()
+        }
     }
 }

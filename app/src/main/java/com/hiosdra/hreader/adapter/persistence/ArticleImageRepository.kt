@@ -165,6 +165,7 @@ internal class ArticleImageRepository(
             "image/gif" to ".gif",
             "image/jpeg" to ".jpg",
             "image/png" to ".png",
+            "image/bmp" to ".bmp",
             "image/svg+xml" to ".svg",
             "image/webp" to ".webp"
         )
@@ -173,6 +174,7 @@ internal class ArticleImageRepository(
             "jpeg" to ".jpg",
             "jpg" to ".jpg",
             "png" to ".png",
+            "bmp" to ".bmp",
             "svg" to ".svg",
             "webp" to ".webp"
         )

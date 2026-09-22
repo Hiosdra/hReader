@@ -4,6 +4,7 @@ import com.hiosdra.hreader.adapter.network.HttpStatusException
 import com.hiosdra.hreader.adapter.network.NonRetryableNetworkException
 import com.hiosdra.hreader.adapter.network.RETRY_AFTER_HEADER
 import com.hiosdra.hreader.adapter.network.withNetworkRetries
+import com.hiosdra.hreader.core.application.content.sanitizeArticleDocument
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +54,10 @@ internal class ArticlePageArchiver(
     private val remoteResourcePolicy: RemoteResourcePolicyAdapter
 ) {
     private val safeHttpClient = httpClient.newBuilder()
-        .apply { interceptors().clear() }
+        .apply {
+            interceptors().clear()
+            networkInterceptors().clear()
+        }
         .addNetworkInterceptor { chain ->
             if (!remoteResourcePolicy.allows(chain.request().url.toString())) {
                 throw NonRetryableNetworkException("Blocked remote resource URL")
@@ -158,7 +162,8 @@ internal class ArticlePageArchiver(
             styleElements.zip(styleContents).forEach { (element, style) -> element.html(style) }
 
             document.select("a[href]").toList().forEach { element ->
-                resolveUrl(baseUrl, element.attr("href"))?.let { element.attr("href", it) }
+                val localUrl = resolveUrl(baseUrl, element.attr("href"))
+                if (localUrl == null) element.removeAttr("href") else element.attr("href", localUrl)
             }
         }
 
@@ -178,15 +183,11 @@ internal class ArticlePageArchiver(
         }
 
     private fun sanitize(document: Document) {
-        document.select("base, script, noscript, iframe, frame, object, embed, video, audio, form").remove()
         document.select("meta[http-equiv]").filter {
             it.attr("http-equiv").equals("refresh", ignoreCase = true) ||
                 it.attr("http-equiv").equals("content-security-policy", ignoreCase = true)
         }.forEach(Element::remove)
-        document.allElements.forEach { element ->
-            element.attributes().filter { it.key.startsWith("on", ignoreCase = true) }
-                .forEach { element.removeAttr(it.key) }
-        }
+        sanitizeArticleDocument(document, embeddedMediaLabel = null)
     }
 
     private data class CachedResource(

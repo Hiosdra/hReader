@@ -102,6 +102,8 @@ class ArticlePageRepositoryTest {
             assertFalse(html.contains("<script"))
             assertFalse(html.contains("http-equiv=\"refresh\""))
             assertFalse(html.contains("rel=\"preload\""))
+            assertFalse(html.contains("javascript:"))
+            assertFalse(html.contains("data:text/html"))
             assertTrue(html.contains("https://offline.hreader.local/article/42/assets/"))
 
             val css = File(stored.directoryPath, "assets")
@@ -436,6 +438,8 @@ class ArticlePageRepositoryTest {
                     <img src="/images/hero.png">
                     <div style="background-image:url('/images/background.png')">Story</div>
                     <a href="/next">Next</a>
+                    <a href="javascript:alert('bad')">Unsafe link</a>
+                    <a href="data:text/html,<script>alert('bad')</script>">Unsafe data link</a>
                 </body></html>
             """.trimIndent() to "text/html; charset=utf-8"),
             "/styles/main.css" to ("""

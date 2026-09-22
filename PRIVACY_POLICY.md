@@ -1,6 +1,6 @@
 # hReader Privacy Policy
 
-Last updated: 22 August 2026
+Last updated: 21 September 2026
 
 ## Publisher and contact
 
@@ -79,10 +79,25 @@ Sentry crash and diagnostic reporting is enabled by default when the app has a S
 configured. The user can disable it at any time in the privacy and diagnostics settings. After it
 is disabled, hReader does not send new reports.
 
-When enabled, reporting may include technical information needed for diagnosis, such as the
-exception, stack trace, app version, Android version, device model, and app component. hReader
-disables default PII, screenshots, view hierarchy, sessions, NDK, automatic breadcrumbs, and
-automatic session tracking. Sentry processes data under its [Privacy Policy](https://sentry.io/privacy/).
+When enabled, reporting may include technical information needed for diagnosis, such as:
+
+- the exception or error message and a Java/Kotlin stack trace;
+- native (NDK) crash data, such as the signal, native stack trace, thread or module information,
+  and other native crash metadata available from Android and the Sentry SDK;
+- the app version and build, Android version, device model and architecture, and app component;
+- connection metadata that Sentry may receive when the report is sent, such as the IP address and
+  request time.
+
+hReader does not intentionally attach article content, feed content, server credentials, API keys,
+screenshots, view hierarchy, or a user profile to Sentry. Error text supplied by Android or a
+third-party library can contain data that hReader cannot predict, so reports should be treated as
+potentially containing information from the failing operation.
+
+The Android NDK integration is enabled so native crashes from the app's native dependencies can
+be diagnosed. Release builds upload native symbol files to Sentry only when the Sentry upload
+credentials are configured; these files are used to symbolicate native stack traces, and this
+build does not upload native source files. Sentry processes data under its
+[Privacy Policy](https://sentry.io/privacy/).
 
 ## Other network connections
 

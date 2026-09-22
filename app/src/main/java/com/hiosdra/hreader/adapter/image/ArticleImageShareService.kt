@@ -43,8 +43,10 @@ class ArticleImageShareService(
                     return@withContext false
                 }
                 val body = response.body
-                val contentType = body.contentType()?.toString() ?: "image/jpeg"
+                val contentType = normalizedRasterImageContentType(body.contentType()?.toString())
+                    ?: return@withContext false
                 val bytes = body.byteStream().readAtMost(MAX_SHARED_IMAGE_BYTES) ?: return@withContext false
+                if (!isSafeRasterImage(contentType, bytes)) return@withContext false
                 val extension = contentType.imageExtension()
                 val directory = File(appContext.cacheDir, "shared_images").apply { mkdirs() }
                 pruneSharedImages(directory)
@@ -81,7 +83,7 @@ private fun String.imageExtension(): String = when {
     contains("png") -> ".png"
     contains("webp") -> ".webp"
     contains("gif") -> ".gif"
-    contains("svg") -> ".svg"
+    contains("bmp") -> ".bmp"
     contains("jpeg") || contains("jpg") -> ".jpg"
     else -> ".img"
 }
