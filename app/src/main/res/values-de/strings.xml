@@ -615,4 +615,7 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="travel_mode_snapshot_title">Gespeicherte Seiten sind statische Momentaufnahmen</string>
     <string name="travel_mode_snapshot_description">JavaScript, Anmeldung oder Cookies, Paywalls, Formulare, Live-Aktualisierungen, eingebettete Frames und Streamingmedien funktionieren offline möglicherweise nicht. Externe Links bleiben Links; der Reader aktiviert offline niemals stillschweigend uneingeschränkte Netzwerkzugriffe.</string>
     <string name="travel_mode_advanced">Erweiterte Offline-Steuerung</string>
+    <string name="secret_configured">Konfiguriert</string>
+    <string name="secret_not_configured">Nicht konfiguriert</string>
+    <string name="secret_editor_placeholder">Wert eingeben</string>
 </resources>

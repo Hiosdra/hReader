@@ -610,4 +610,7 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="travel_mode_snapshot_title">Las páginas guardadas son instantáneas estáticas</string>
     <string name="travel_mode_snapshot_description">Es posible que JavaScript, el inicio de sesión o las cookies, los muros de pago, los formularios, las actualizaciones en directo, los marcos incrustados y el contenido multimedia en streaming no funcionen sin conexión. Los enlaces externos siguen siendo enlaces; el lector nunca activa silenciosamente un acceso de red sin restricciones mientras estás sin conexión.</string>
     <string name="travel_mode_advanced">Controles sin conexión avanzados</string>
+    <string name="secret_configured">Configurado</string>
+    <string name="secret_not_configured">Sin configurar</string>
+    <string name="secret_editor_placeholder">Introduce el secreto</string>
 </resources>

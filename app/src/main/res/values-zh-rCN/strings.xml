@@ -599,4 +599,7 @@
     <string name="travel_mode_snapshot_title">保存的页面是静态快照</string>
     <string name="travel_mode_snapshot_description">JavaScript、登录或 Cookie、付费墙、表单、实时更新、嵌入式框架和流媒体可能无法离线运行。外部链接仍是链接；离线时阅读器不会暗中启用不受限制的网络加载。</string>
     <string name="travel_mode_advanced">高级离线控制</string>
+    <string name="secret_configured">已配置</string>
+    <string name="secret_not_configured">未配置</string>
+    <string name="secret_editor_placeholder">输入密钥</string>
 </resources>

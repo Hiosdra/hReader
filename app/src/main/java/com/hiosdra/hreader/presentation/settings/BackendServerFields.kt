@@ -12,9 +12,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.model.BackendType
@@ -65,16 +64,11 @@ fun BackendServerFields(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        OutlinedTextField(
+        SecretSettingRow(
+            title = stringResource(state.backendType.secretLabelRes),
             value = state.secret,
-            onValueChange = onSecretChange,
-            label = { Text(stringResource(state.backendType.secretLabelRes)) },
-            supportingText = { Text(stringResource(state.backendType.secretHintRes)) },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            enabled = !state.isSwitchingBackend && !state.isApplying,
-            modifier = Modifier.fillMaxWidth()
+            supportingText = stringResource(state.backendType.secretHintRes),
+            onSave = onSecretChange
         )
         Button(
             onClick = onTestConnection,

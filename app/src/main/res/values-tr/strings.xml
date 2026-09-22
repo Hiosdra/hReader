@@ -603,4 +603,7 @@
     <string name="travel_mode_snapshot_title">Kaydedilmiş sayfalar statik anlık görüntülerdir</string>
     <string name="travel_mode_snapshot_description">JavaScript, giriş veya çerezler, ödeme duvarları, formlar, canlı güncellemeler, gömülü çerçeveler ve akış medyası çevrimdışı çalışmayabilir. Harici bağlantılar bağlantı olarak kalır; okuyucu çevrimdışıyken sınırsız ağ yüklemesini gizlice etkinleştirmez.</string>
     <string name="travel_mode_advanced">Gelişmiş çevrimdışı denetimleri</string>
+    <string name="secret_configured">Yapılandırıldı</string>
+    <string name="secret_not_configured">Yapılandırılmadı</string>
+    <string name="secret_editor_placeholder">Gizli değeri girin</string>
 </resources>

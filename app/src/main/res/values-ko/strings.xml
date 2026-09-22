@@ -599,4 +599,7 @@
     <string name="travel_mode_snapshot_title">저장된 페이지는 정적인 스냅샷입니다</string>
     <string name="travel_mode_snapshot_description">JavaScript, 로그인 또는 쿠키, 페이월, 양식, 실시간 업데이트, 삽입된 프레임 및 스트리밍 미디어는 오프라인에서 작동하지 않을 수 있습니다. 외부 링크는 링크로 유지되며, 리더는 오프라인에서 제한 없는 네트워크 로딩을 몰래 활성화하지 않습니다.</string>
     <string name="travel_mode_advanced">고급 오프라인 제어</string>
+    <string name="secret_configured">구성됨</string>
+    <string name="secret_not_configured">구성되지 않음</string>
+    <string name="secret_editor_placeholder">비밀 값 입력</string>
 </resources>

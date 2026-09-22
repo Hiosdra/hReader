@@ -607,4 +607,7 @@
     <string name="travel_mode_snapshot_title">Les pages enregistrées sont des instantanés statiques</string>
     <string name="travel_mode_snapshot_description">JavaScript, la connexion ou les cookies, les paywalls, les formulaires, les mises à jour en direct, les cadres intégrés et les médias en streaming peuvent ne pas fonctionner hors connexion. Les liens externes restent des liens ; le lecteur n’active jamais discrètement un accès réseau illimité hors connexion.</string>
     <string name="travel_mode_advanced">Commandes hors connexion avancées</string>
+    <string name="secret_configured">Configuré</string>
+    <string name="secret_not_configured">Non configuré</string>
+    <string name="secret_editor_placeholder">Saisir le secret</string>
 </resources>

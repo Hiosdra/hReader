@@ -607,4 +607,7 @@
     <string name="travel_mode_snapshot_title">Le pagine salvate sono istantanee statiche</string>
     <string name="travel_mode_snapshot_description">JavaScript, accessi o cookie, paywall, moduli, aggiornamenti in tempo reale, frame incorporati e contenuti in streaming potrebbero non funzionare offline. I link esterni restano link; il lettore non abilita mai silenziosamente l’accesso illimitato alla rete quando sei offline.</string>
     <string name="travel_mode_advanced">Controlli offline avanzati</string>
+    <string name="secret_configured">Configurato</string>
+    <string name="secret_not_configured">Non configurato</string>
+    <string name="secret_editor_placeholder">Inserisci il segreto</string>
 </resources>

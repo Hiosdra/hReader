@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.components.ErrorReportingPreferenceCard
-import com.hiosdra.hreader.presentation.components.SecureWindowEffect
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.presentation.settings.BackendServerFields
 import com.hiosdra.hreader.presentation.settings.OpenRouterKeyField
@@ -45,7 +44,6 @@ fun ServerSetupScreen(
     settingsViewModel: SettingsViewModel,
     errorReportingManager: ErrorReporter
 ) {
-    SecureWindowEffect()
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
@@ -121,8 +119,7 @@ fun ServerSetupScreen(
                 ) {
                     OpenRouterKeyField(
                         apiKey = openRouterApiKey,
-                        onApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange,
-                        modifier = Modifier.padding(16.dp)
+                        onApiKeyChange = settingsViewModel::onOpenRouterApiKeyChange
                     )
                 }
             }

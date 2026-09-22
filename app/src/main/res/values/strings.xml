@@ -689,6 +689,9 @@
     <string name="openrouter_api_key">OpenRouter API key (optional)</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">Needed only for article summaries and credibility scoring</string>
+    <string name="secret_configured">Configured</string>
+    <string name="secret_not_configured">Not configured</string>
+    <string name="secret_editor_placeholder">Enter secret</string>
     <string name="paywall_bypass">Paywall bypass</string>
 
     <string name="error_reporting_title">Send crash reports and diagnostics</string>

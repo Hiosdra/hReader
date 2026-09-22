@@ -599,4 +599,7 @@
     <string name="travel_mode_snapshot_title">保存ページは静的なスナップショットです</string>
     <string name="travel_mode_snapshot_description">JavaScript、ログインやCookie、ペイウォール、フォーム、ライブ更新、埋め込みフレーム、ストリーミングメディアはオフラインでは動作しない場合があります。外部リンクはリンクのままです。オフライン中にリーダーが無制限のネットワークアクセスを密かに有効にすることはありません。</string>
     <string name="travel_mode_advanced">高度なオフライン設定</string>
+    <string name="secret_configured">設定済み</string>
+    <string name="secret_not_configured">未設定</string>
+    <string name="secret_editor_placeholder">シークレットを入力</string>
 </resources>

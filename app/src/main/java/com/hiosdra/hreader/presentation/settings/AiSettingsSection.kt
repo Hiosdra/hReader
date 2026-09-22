@@ -61,8 +61,7 @@ internal fun AiSettingsSection(
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             OpenRouterKeyField(
                 apiKey = openRouterApiKey,
-                onApiKeyChange = onOpenRouterApiKeyChange,
-                modifier = Modifier.padding(16.dp)
+                onApiKeyChange = onOpenRouterApiKeyChange
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingRow(
