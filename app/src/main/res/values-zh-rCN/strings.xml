@@ -256,6 +256,14 @@
     <string name="backend_not_configured">尚未配置 %1$s 服务器地址或凭据。</string>
     <string name="backend_miniflux_token_missing">尚未配置 Miniflux API 令牌。</string>
     <string name="settings_title">设置</string>
+    <string name="settings_licenses">许可证与声明</string>
+    <string name="settings_licenses_summary">第三方库、运行时和外部模型条款</string>
+    <string name="settings_licenses_description">查看随附运行时、可下载模型和辅助数据的许可证与声明。</string>
+    <string name="settings_view_licenses">查看许可证与声明</string>
+    <string name="licenses_title">许可证与声明</string>
+    <string name="licenses_description">这些文档随 hReader 一起提供，或说明 hReader 下载的模型或辅助软件包的条款。hReader 自有源代码仍采用 AGPL-3.0-only 许可。</string>
+    <string name="licenses_document_summary">打开随附的完整文档。</string>
+    <string name="licenses_load_error">无法加载此声明。</string>
     <string name="settings_rss_server">RSS 服务器</string>
     <string name="settings_sync">同步</string>
     <string name="settings_offline_reading">离线阅读</string>
@@ -498,12 +506,8 @@
     <string name="tts_model_kokoro_v1_0_description">英语和中文神经语音 · 54 个声音 · 下载 350 MB</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS（女声）</string>
     <string name="tts_model_coqui_pl_mai_female_description">波兰语 Coqui 神经语音 · 下载 71 MB</string>
-    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
-    <string name="tts_model_piper_english_high_description">英语 Piper 语音 · 下载 35 MB</string>
     <string name="tts_model_kitten_description">英语 KittenTTS 语音 · 下载 68 MB</string>
-    <string name="tts_model_matcha_description">英语 Matcha 语音 · 下载 131 MB</string>
     <string name="tts_model_android_name">系统语音</string>
     <string name="tts_model_android_description">内置语音 · 始终可用</string>
     <string name="tts_speech_playback_failed">语音播放失败。</string>

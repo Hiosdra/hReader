@@ -15,8 +15,7 @@ internal class SherpaTtsEngine(
         SupertonicTtsModelAdapter,
         KokoroTtsModelAdapter,
         VitsTtsModelAdapter,
-        KittenTtsModelAdapter,
-        MatchaTtsModelAdapter
+        KittenTtsModelAdapter
     ).associateBy(SherpaTtsModelAdapter::family)
     override val supportedModels: Set<TtsModel> = TtsModelCatalog.models
         .filter { it.family in adapters && TtsModelPackageCatalog.packageFor(it) != null }

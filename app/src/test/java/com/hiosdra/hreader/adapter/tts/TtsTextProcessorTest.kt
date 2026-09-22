@@ -150,7 +150,7 @@ class TtsTextProcessorTest {
         assertEquals(
             listOf("Np. w roku 2026."),
             TtsTextProcessor.forModel(
-                TtsModel.PIPER_LESSAC_HIGH,
+                TtsModel.KITTEN_MINI,
                 listOf(TtsChunk("Np. w roku 2026.", TtsChunkBoundary.START))
             ).map(TtsChunk::text)
         )
@@ -244,7 +244,7 @@ class TtsTextProcessorTest {
     @Test
     fun `does not apply Supertonic technical normalization to other English models`() {
         val chunks = TtsTextProcessor.forModel(
-            TtsModel.PIPER_LESSAC_HIGH,
+            TtsModel.KITTEN_MINI,
             listOf(TtsChunk("The ASIC reaches 13.4 PFLOP/s.", TtsChunkBoundary.START)),
             language = "en"
         )

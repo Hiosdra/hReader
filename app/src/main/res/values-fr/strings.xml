@@ -256,6 +256,14 @@
     <string name="backend_not_configured">L’adresse ou les identifiants du serveur %1$s ne sont pas configurés.</string>
     <string name="backend_miniflux_token_missing">Le jeton API Miniflux n’est pas configuré.</string>
     <string name="settings_title">Paramètres</string>
+    <string name="settings_licenses">Licences et mentions</string>
+    <string name="settings_licenses_summary">Bibliothèques, runtimes et conditions des modèles externes</string>
+    <string name="settings_licenses_description">Consultez les licences et mentions des runtimes inclus, des modèles téléchargeables et des données auxiliaires.</string>
+    <string name="settings_view_licenses">Afficher les licences et mentions</string>
+    <string name="licenses_title">Licences et mentions</string>
+    <string name="licenses_description">Ces documents sont inclus dans hReader ou décrivent les conditions d’un modèle ou d’un paquet auxiliaire téléchargé par hReader. Le code source propre à hReader reste sous AGPL-3.0-only.</string>
+    <string name="licenses_document_summary">Ouvrir le document complet inclus.</string>
+    <string name="licenses_load_error">Impossible de charger cette mention.</string>
     <string name="settings_rss_server">Serveur RSS</string>
     <string name="settings_sync">Synchronisation</string>
     <string name="settings_offline_reading">Lecture hors connexion</string>
@@ -506,12 +514,8 @@
     <string name="tts_model_kokoro_v1_0_description">Voix neuronales anglaises et chinoises · 54 voix · téléchargement de 350 Mo</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (féminine)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Voix neuronale polonaise Coqui · téléchargement de 71 Mo</string>
-    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
-    <string name="tts_model_piper_english_high_description">Voix anglaise Piper · téléchargement de 35 Mo</string>
     <string name="tts_model_kitten_description">Voix anglaise KittenTTS · téléchargement de 68 Mo</string>
-    <string name="tts_model_matcha_description">Voix anglaise Matcha · téléchargement de 131 Mo</string>
     <string name="tts_model_android_name">Voix système</string>
     <string name="tts_model_android_description">Voix intégrée · toujours disponible</string>
     <string name="tts_speech_playback_failed">Échec de la lecture vocale.</string>

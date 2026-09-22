@@ -47,9 +47,7 @@ class SupertonicLanguagesTest {
                 TtsModel.SUPERTONIC,
                 TtsModel.KOKORO,
                 TtsModel.KOKORO_V1_0,
-                TtsModel.PIPER_LESSAC_HIGH,
                 TtsModel.KITTEN_MINI,
-                TtsModel.MATCHA_LJSPEECH,
                 TtsModel.ANDROID
             ),
             TtsLanguages.compatibleModels("en")

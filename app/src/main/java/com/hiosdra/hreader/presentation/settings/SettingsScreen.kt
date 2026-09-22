@@ -257,6 +257,21 @@ fun SettingsScreen(
                     onSignOut = { showSignOutDialog = true }
                 )
             }
+
+            settingsGroup(
+                titleRes = R.string.settings_licenses,
+                summaryRes = R.string.settings_licenses_summary
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_licenses_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                TextButton(onClick = { navController?.navigate(Routes.LICENSES) }) {
+                    Text(stringResource(R.string.settings_view_licenses))
+                }
+            }
         }
 
         serverSettings.pendingBackendType?.let { target ->

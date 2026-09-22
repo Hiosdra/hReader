@@ -256,6 +256,14 @@
     <string name="backend_not_configured">%1$sサーバーのアドレスまたは認証情報が設定されていません。</string>
     <string name="backend_miniflux_token_missing">MinifluxのAPIトークンが設定されていません。</string>
     <string name="settings_title">設定</string>
+    <string name="settings_licenses">ライセンスと通知</string>
+    <string name="settings_licenses_summary">外部ライブラリ、ランタイム、モデルの利用条件</string>
+    <string name="settings_licenses_description">同梱ランタイム、ダウンロード可能なモデル、補助データのライセンスと通知を確認できます。</string>
+    <string name="settings_view_licenses">ライセンスと通知を表示</string>
+    <string name="licenses_title">ライセンスと通知</string>
+    <string name="licenses_description">これらの文書は hReader に同梱されているか、hReader がダウンロードするモデルまたは補助パッケージの条件を示します。hReader のソースコードは AGPL-3.0-only で提供されます。</string>
+    <string name="licenses_document_summary">同梱された完全な文書を開く。</string>
+    <string name="licenses_load_error">この通知を読み込めませんでした。</string>
     <string name="settings_rss_server">RSSサーバー</string>
     <string name="settings_sync">同期</string>
     <string name="settings_offline_reading">オフライン閲覧</string>
@@ -498,12 +506,8 @@
     <string name="tts_model_kokoro_v1_0_description">英語と中国語のニューラル音声 · 54音声 · 350 MBのダウンロード</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS（女性）</string>
     <string name="tts_model_coqui_pl_mai_female_description">ポーランド語のCoquiニューラル音声 · 71 MBのダウンロード</string>
-    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
-    <string name="tts_model_piper_english_high_description">英語のPiper音声 · 35 MBのダウンロード</string>
     <string name="tts_model_kitten_description">英語のKittenTTS音声 · 68 MBのダウンロード</string>
-    <string name="tts_model_matcha_description">英語のMatcha音声 · 131 MBのダウンロード</string>
     <string name="tts_model_android_name">システム音声</string>
     <string name="tts_model_android_description">内蔵音声 · 常に利用可能</string>
     <string name="tts_speech_playback_failed">音声を再生できませんでした。</string>

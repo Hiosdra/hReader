@@ -23,6 +23,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val SYNC_HEALTH = "settings/sync-health"
     const val TTS_SETTINGS = "settings/tts"
+    const val LICENSES = "settings/licenses"
 
     fun addFeed(url: String? = null): String =
         if (url.isNullOrBlank()) "add_feed" else "add_feed?url=${Uri.encode(url)}"
