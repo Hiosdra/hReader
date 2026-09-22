@@ -56,6 +56,7 @@ import com.hiosdra.hreader.presentation.main.MainScreen
 import com.hiosdra.hreader.presentation.main.MainViewModel
 import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.presentation.settings.SettingsScreen
+import com.hiosdra.hreader.presentation.settings.LicensesScreen
 import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
 import com.hiosdra.hreader.presentation.sync.SyncHealthScreen
 import com.hiosdra.hreader.presentation.theme.MotionDuration
@@ -283,6 +284,9 @@ fun AppNavigation(
                 ttsModelManager = ttsModelManager,
                 ttsModelDownloadScheduler = ttsModelDownloadScheduler
             )
+        }
+        composable(Routes.LICENSES) {
+            LicensesScreen(navController = navController)
         }
         composable(Routes.SYNC_HEALTH) {
             SyncHealthScreen(

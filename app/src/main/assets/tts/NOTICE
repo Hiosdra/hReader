@@ -1,12 +1,70 @@
-Supertonic 3 model files are downloaded separately.
-Copyright (c) 2025 Supertone Inc.
-Licensed under OpenRAIL-M. The license is included with the model download.
+hReader TTS model and helper-data notice
 
-Coqui vits-coqui-pl-mai_female model files are downloaded separately.
-Licensed under BSD-3-Clause according to the original Coqui TTS model metadata
-for tts_models/pl/mai_female/vits:
-https://github.com/coqui-ai/TTS/blob/dev/TTS/.models.json
+Inventory snapshot: hreader-notices-2026-09-22.3
 
-sherpa-onnx Android runtime
-Copyright (c) 2022-2026 Xiaomi Corporation
-Licensed under the Apache License 2.0.
+These files are downloaded or installed by hReader. They are not part of the
+hReader AGPL-3.0-only code license. Keep each model's own license and helper
+data attribution with the downloaded package.
+
+## Supertonic 3
+
+OpenRAIL-M. hReader downloads the model LICENSE file from the pinned source.
+The model archive is pinned in TtsModelPackageCatalog.kt with SHA-256:
+2b9f11979b0b0f85a2653e63ea567bc819994822e0ff3b7b5ee1b06068fc5c78.
+
+Source: https://huggingface.co/Supertone/supertonic-3
+
+## Coqui vits-coqui-pl-mai_female
+
+BSD-3-Clause according to the pinned Coqui model metadata. Preserve the exact
+metadata and BSD-3-Clause text with the model files.
+
+Source: https://github.com/coqui-ai/TTS/blob/dev/TTS/.models.json
+
+## Kokoro v1.1 and v1.0
+
+The exact archives contain an Apache-2.0 LICENSE. The model cards for Kokoro
+v1.1-zh and v1.0 declare Apache-2.0 for the model weights. The archive also
+contains helper data that has separate notices:
+
+- eSpeak NG data: GPL-3.0-or-later;
+- cppjieba-related dictionary data: MIT attribution;
+- lexicons, FSTs and voice tables: retain the provenance of the exact archive.
+
+v1.1 archive SHA-256:
+a1e94694776049035c4f2c6529f003aaece993c76aae9a78995831c3c4dcafc6
+
+v1.0 archive SHA-256:
+c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298
+
+Sources:
+
+- https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh
+- https://huggingface.co/hexgrad/Kokoro-82M
+- https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
+- https://github.com/espeak-ng/espeak-ng
+- https://github.com/yanyiwu/cppjieba/blob/master/LICENSE
+
+## KittenTTS mini v0.8
+
+The exact archive contains an Apache-2.0 LICENSE and points to KittenML. Its
+bundled eSpeak NG data has a separate GPL-3.0-or-later notice.
+
+Archive SHA-256:
+518f9b130320f690d5b5476df77bde4215fca67773cda16710318e5081234b9d
+
+Sources:
+
+- https://github.com/KittenML/KittenTTS/blob/main/LICENSE
+- https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
+- https://github.com/espeak-ng/espeak-ng
+
+The full model and helper-data texts are bundled under
+`app/src/main/assets/licenses/models/` and exposed by the in-app legal screen.
+
+## Release warning
+
+The final release APK/AAB must still be checked to confirm that every listed
+document is present and readable. This file is a model-focused summary; the
+versioned inventory records the full release gate and exact native/runtime
+notice actions.

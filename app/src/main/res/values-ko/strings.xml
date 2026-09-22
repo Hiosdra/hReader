@@ -256,6 +256,14 @@
     <string name="backend_not_configured">%1$s 서버 주소 또는 인증 정보가 설정되지 않았습니다.</string>
     <string name="backend_miniflux_token_missing">Miniflux API 토큰이 설정되지 않았습니다.</string>
     <string name="settings_title">설정</string>
+    <string name="settings_licenses">라이선스 및 고지</string>
+    <string name="settings_licenses_summary">외부 라이브러리, 런타임 및 모델 조건</string>
+    <string name="settings_licenses_description">포함된 런타임, 다운로드 가능한 모델 및 보조 데이터의 라이선스와 고지를 확인합니다.</string>
+    <string name="settings_view_licenses">라이선스 및 고지 보기</string>
+    <string name="licenses_title">라이선스 및 고지</string>
+    <string name="licenses_description">이 문서는 hReader에 포함되어 있거나 hReader가 다운로드하는 모델 또는 보조 패키지의 조건을 설명합니다. hReader의 자체 소스 코드는 AGPL-3.0-only로 제공됩니다.</string>
+    <string name="licenses_document_summary">포함된 전체 문서를 엽니다.</string>
+    <string name="licenses_load_error">이 고지를 불러올 수 없습니다.</string>
     <string name="settings_rss_server">RSS 서버</string>
     <string name="settings_sync">동기화</string>
     <string name="settings_offline_reading">오프라인 읽기</string>
@@ -498,12 +506,8 @@
     <string name="tts_model_kokoro_v1_0_description">영어 및 중국어 신경망 음성 · 54개 음성 · 350MB 다운로드</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (여성)</string>
     <string name="tts_model_coqui_pl_mai_female_description">폴란드어 Coqui 신경망 음성 · 71MB 다운로드</string>
-    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
-    <string name="tts_model_piper_english_high_description">영어 Piper 음성 · 35MB 다운로드</string>
     <string name="tts_model_kitten_description">영어 KittenTTS 음성 · 68MB 다운로드</string>
-    <string name="tts_model_matcha_description">영어 Matcha 음성 · 131MB 다운로드</string>
     <string name="tts_model_android_name">시스템 음성</string>
     <string name="tts_model_android_description">내장 음성 · 항상 사용 가능</string>
     <string name="tts_speech_playback_failed">음성 재생에 실패했습니다.</string>

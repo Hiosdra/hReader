@@ -113,7 +113,7 @@ optional neural voices downloaded to the device, including:
 - Supertonic 3 — a multilingual voice, including Polish;
 - Coqui M-AILABS — a Polish female voice;
 - Kokoro — English and Chinese voices;
-- Piper, KittenTTS, and Matcha — English voices.
+- KittenTTS — an English voice.
 
 You can adjust reading speed, choose a voice for a specific language, and tune
 advanced parameters. If a downloaded voice cannot start, hReader automatically
@@ -176,6 +176,12 @@ credentials.
 
 The source code, change history, and current project information are available
 in the [hReader repository](https://github.com/Hiosdra/hReader).
+
+The hReader project code is licensed under [GNU AGPL-3.0-only](LICENSE). See
+the [third-party notices](NOTICE.md), the [versioned notices inventory](docs/third-party-notices-inventory-2026-09-22.md),
+the [bundled runtime licenses](app/src/main/assets/licenses/README.md), and the
+[TTS model notice](app/src/main/assets/tts/NOTICE) for the current
+attribution and release-gate status.
 
 For maintainers preparing a Google Play release, see the
 [Google Play release guide](docs/google-play-release.md).

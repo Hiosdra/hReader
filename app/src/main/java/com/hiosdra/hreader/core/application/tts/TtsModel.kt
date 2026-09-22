@@ -5,7 +5,6 @@ enum class TtsEngineFamily {
     KOKORO,
     VITS,
     KITTEN,
-    MATCHA,
     ANDROID
 }
 
@@ -17,9 +16,7 @@ enum class TtsModel(
     KOKORO(false, TtsEngineFamily.KOKORO),
     KOKORO_V1_0(false, TtsEngineFamily.KOKORO),
     COQUI_PL_MAI_FEMALE(false, TtsEngineFamily.VITS),
-    PIPER_LESSAC_HIGH(false, TtsEngineFamily.VITS),
     KITTEN_MINI(false, TtsEngineFamily.KITTEN),
-    MATCHA_LJSPEECH(false, TtsEngineFamily.MATCHA),
     ANDROID(true, TtsEngineFamily.ANDROID);
 
     companion object {

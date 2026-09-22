@@ -377,7 +377,6 @@ private fun AdvancedTtsSettings(
                 }
             )
         }
-        TtsEngineFamily.MATCHA -> Unit
         TtsEngineFamily.ANDROID -> Text(
             text = stringResource(R.string.tts_advanced_not_system),
             style = MaterialTheme.typography.bodySmall,

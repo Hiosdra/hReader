@@ -256,6 +256,14 @@
     <string name="backend_not_configured">%1$s sunucu adresi veya kimlik bilgileri yapılandırılmamış.</string>
     <string name="backend_miniflux_token_missing">Miniflux API belirteci yapılandırılmamış.</string>
     <string name="settings_title">Ayarlar</string>
+    <string name="settings_licenses">Lisanslar ve bildirimler</string>
+    <string name="settings_licenses_summary">Harici kitaplıklar, çalışma zamanları ve model koşulları</string>
+    <string name="settings_licenses_description">Birlikte gelen çalışma zamanlarının, indirilebilir modellerin ve yardımcı verilerin lisanslarını ve bildirimlerini inceleyin.</string>
+    <string name="settings_view_licenses">Lisansları ve bildirimleri görüntüle</string>
+    <string name="licenses_title">Lisanslar ve bildirimler</string>
+    <string name="licenses_description">Bu belgeler hReader ile birlikte gelir veya hReader tarafından indirilen bir modelin ya da yardımcı paketin koşullarını belirtir. hReader’a ait kaynak kodu AGPL-3.0-only kapsamında kalır.</string>
+    <string name="licenses_document_summary">Birlikte gelen belgenin tamamını aç.</string>
+    <string name="licenses_load_error">Bu bildirim yüklenemedi.</string>
     <string name="settings_rss_server">RSS sunucusu</string>
     <string name="settings_sync">Senkronizasyon</string>
     <string name="settings_offline_reading">Çevrimdışı okuma</string>
@@ -502,12 +510,8 @@
     <string name="tts_model_kokoro_v1_0_description">İngilizce ve Çince sinirsel sesler · 54 ses · 350 MB indirme</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (kadın)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Lehçe Coqui sinirsel sesi · 71 MB indirme</string>
-    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
-    <string name="tts_model_piper_english_high_description">İngilizce Piper sesi · 35 MB indirme</string>
     <string name="tts_model_kitten_description">İngilizce KittenTTS sesi · 68 MB indirme</string>
-    <string name="tts_model_matcha_description">İngilizce Matcha sesi · 131 MB indirme</string>
     <string name="tts_model_android_name">Sistem sesi</string>
     <string name="tts_model_android_description">Yerleşik ses · her zaman kullanılabilir</string>
     <string name="tts_speech_playback_failed">Konuşma oynatılamadı.</string>

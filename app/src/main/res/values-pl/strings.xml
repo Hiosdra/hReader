@@ -292,6 +292,14 @@
     <string name="backend_miniflux_token_missing">Token API Miniflux nie jest skonfigurowany.</string>
 
     <string name="settings_title">Ustawienia</string>
+    <string name="settings_licenses">Licencje i notice’y</string>
+    <string name="settings_licenses_summary">Biblioteki, runtime’y i warunki modeli zewnętrznych</string>
+    <string name="settings_licenses_description">Przejrzyj licencje i notice’y dołączonych runtime’ów, pobieranych modeli i danych pomocniczych.</string>
+    <string name="settings_view_licenses">Pokaż licencje i notice’y</string>
+    <string name="licenses_title">Licencje i notice’y</string>
+    <string name="licenses_description">Te dokumenty są dołączone do hReader albo opisują warunki modelu lub pakietu pomocniczego pobieranego przez hReader. Kod należący do hReader pozostaje na licencji AGPL-3.0-only.</string>
+    <string name="licenses_document_summary">Otwórz pełny dokument dołączony do aplikacji.</string>
+    <string name="licenses_load_error">Nie można wczytać tego notice’u.</string>
     <string name="settings_rss_server">Serwer RSS</string>
     <string name="settings_sync">Synchronizacja</string>
     <string name="settings_offline_reading">Czytanie offline</string>
@@ -595,12 +603,8 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="tts_model_kokoro_v1_0_description">Angielskie i chińskie głosy neuronowe · 54 głosy · pobranie 350 MB</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (żeński)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Polski głos neuronowy Coqui · pobranie 71 MB</string>
-    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
-    <string name="tts_model_piper_english_high_description">Angielski głos Piper · pobranie 35 MB</string>
     <string name="tts_model_kitten_description">Angielski głos KittenTTS · pobranie 68 MB</string>
-    <string name="tts_model_matcha_description">Angielski głos Matcha · pobranie 131 MB</string>
     <string name="tts_model_android_name">Głos systemowy</string>
     <string name="tts_model_android_description">Głos wbudowany · zawsze dostępny</string>
     <string name="tts_speech_playback_failed">Odtwarzanie mowy nie powiodło się.</string>

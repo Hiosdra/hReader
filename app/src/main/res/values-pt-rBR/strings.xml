@@ -256,6 +256,14 @@
     <string name="backend_not_configured">O endereço ou as credenciais do servidor %1$s não estão configurados.</string>
     <string name="backend_miniflux_token_missing">O token da API do Miniflux não está configurado.</string>
     <string name="settings_title">Configurações</string>
+    <string name="settings_licenses">Licenças e avisos</string>
+    <string name="settings_licenses_summary">Bibliotecas, runtimes e condições de modelos externos</string>
+    <string name="settings_licenses_description">Consulte as licenças e os avisos dos runtimes incluídos, modelos baixáveis e dados auxiliares.</string>
+    <string name="settings_view_licenses">Ver licenças e avisos</string>
+    <string name="licenses_title">Licenças e avisos</string>
+    <string name="licenses_description">Estes documentos acompanham o hReader ou identificam as condições de um modelo ou pacote auxiliar baixado pelo hReader. O código-fonte próprio do hReader permanece sob AGPL-3.0-only.</string>
+    <string name="licenses_document_summary">Abrir o documento completo incluído.</string>
+    <string name="licenses_load_error">Não foi possível carregar este aviso.</string>
     <string name="settings_rss_server">Servidor RSS</string>
     <string name="settings_sync">Sincronização</string>
     <string name="settings_offline_reading">Leitura offline</string>
@@ -506,12 +514,8 @@
     <string name="tts_model_kokoro_v1_0_description">Vozes neurais em inglês e chinês · 54 vozes · download de 350 MB</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (feminina)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Voz neural polonesa Coqui · download de 71 MB</string>
-    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
-    <string name="tts_model_piper_english_high_description">Voz inglesa do Piper · download de 35 MB</string>
     <string name="tts_model_kitten_description">Voz inglesa do KittenTTS · download de 68 MB</string>
-    <string name="tts_model_matcha_description">Voz inglesa do Matcha · download de 131 MB</string>
     <string name="tts_model_android_name">Voz do sistema</string>
     <string name="tts_model_android_description">Voz integrada · sempre disponível</string>
     <string name="tts_speech_playback_failed">Falha na reprodução da fala.</string>

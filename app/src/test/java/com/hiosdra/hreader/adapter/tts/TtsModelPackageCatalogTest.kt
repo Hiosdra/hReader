@@ -28,9 +28,7 @@ class TtsModelPackageCatalogTest {
             "vits-coqui-pl-mai_female",
             TtsModelPackageCatalog.directoryName(TtsModel.COQUI_PL_MAI_FEMALE)
         )
-        assertEquals("piper-lessac-high", TtsModelPackageCatalog.directoryName(TtsModel.PIPER_LESSAC_HIGH))
         assertEquals("kitten-mini-en-v0_8", TtsModelPackageCatalog.directoryName(TtsModel.KITTEN_MINI))
-        assertEquals("matcha-icefall-en_US-ljspeech", TtsModelPackageCatalog.directoryName(TtsModel.MATCHA_LJSPEECH))
         assertNull(TtsModelPackageCatalog.packageFor(TtsModel.ANDROID))
     }
 
@@ -52,13 +50,6 @@ class TtsModelPackageCatalogTest {
         assertEquals("", (coqui?.engineFiles as SherpaModelFiles.Vits).dataDir)
         assertNull(coqui.archive)
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KITTEN_MINI)?.engineFiles is SherpaModelFiles.Kitten)
-        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)?.engineFiles is SherpaModelFiles.Matcha)
-        assertEquals(
-            listOf("vocos-22khz-univ.onnx"),
-            TtsModelPackageCatalog.packageFor(TtsModel.MATCHA_LJSPEECH)
-                ?.supplementalFiles
-                ?.map(RemoteFile::name)
-        )
         TtsModelCatalog.models
             .filter { it.family == TtsEngineFamily.VITS }
             .forEach { model ->

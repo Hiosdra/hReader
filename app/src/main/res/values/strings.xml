@@ -298,6 +298,14 @@
     <string name="backend_miniflux_token_missing">Miniflux API token is not configured.</string>
 
     <string name="settings_title">Settings</string>
+    <string name="settings_licenses">Licenses &amp; notices</string>
+    <string name="settings_licenses_summary">Third-party libraries, runtimes and model terms</string>
+    <string name="settings_licenses_description">Review the licenses and notices for bundled runtimes, downloadable models and helper data.</string>
+    <string name="settings_view_licenses">View licenses and notices</string>
+    <string name="licenses_title">Licenses and notices</string>
+    <string name="licenses_description">These documents are bundled with hReader or identify the terms of a model or helper package that hReader downloads. hReader-owned source code remains under AGPL-3.0-only.</string>
+    <string name="licenses_document_summary">Open the complete bundled document.</string>
+    <string name="licenses_load_error">Could not load this notice.</string>
     <string name="settings_rss_server">RSS server</string>
     <string name="settings_sync">Sync</string>
     <string name="settings_offline_reading">Offline reading</string>
@@ -650,12 +658,8 @@
     <string name="tts_model_kokoro_v1_0_description">English and Chinese neural voices · 54 voices · 350 MB download</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (female)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Polish Coqui neural voice · 71 MB download</string>
-    <string name="tts_model_piper_lessac_high_name">Piper Lessac (high)</string>
     <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_matcha_ljspeech_name">Matcha LJ Speech</string>
-    <string name="tts_model_piper_english_high_description">English Piper voice · 35 MB download</string>
     <string name="tts_model_kitten_description">English KittenTTS voice · 68 MB download</string>
-    <string name="tts_model_matcha_description">English Matcha voice · 131 MB download</string>
     <string name="tts_model_android_name">System voice</string>
     <string name="tts_model_android_description">Built-in voice · always available</string>
     <string name="tts_speech_playback_failed">Speech playback failed.</string>
