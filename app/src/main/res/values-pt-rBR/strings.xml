@@ -278,8 +278,10 @@
     <string name="settings_rating_meaning">Como ler os sinais:</string>
     <string name="settings_rating_values">• Sinais fortes: com fontes, comprovados, equilibrados\n• Sinais mistos: verifique antes de confiar\n• Sinais fracos: afirmações sensacionalistas ou sem apoio</string>
     <string name="settings_credibility_disclaimer">Esta é uma impressão da IA sobre o texto do artigo, não uma checagem de fatos — o modelo não pode navegar na Web nem verificar afirmações. Modelos locais mantêm o artigo no dispositivo; a OpenRouter o envia ao provedor escolhido e mantém o resultado em cache até uma nova análise.</string>
+    <string name="ai_backend_summary_label">Backend local</string>
     <string name="article_ai_on_device_processing">IA no dispositivo — o texto permanece neste dispositivo e funciona offline quando o modelo está pronto.</string>
     <string name="article_ai_cloud_processing">IA na nuvem — o texto é enviado ao provedor escolhido após sua confirmação.</string>
+    <string name="article_ai_cloud_summary_privacy">O texto do artigo será enviado após sua confirmação.</string>
     <string name="article_ai_cloud_confirmation_title">Enviar o texto do artigo para a IA na nuvem?</string>
     <string name="article_ai_cloud_summary_confirmation">O texto do artigo sairá deste dispositivo e será enviado ao provedor OpenRouter escolhido para gerar um resumo. Continuar?</string>
     <string name="article_ai_cloud_credibility_confirmation">O texto do artigo sairá deste dispositivo e será enviado ao provedor OpenRouter escolhido para gerar sinais de verificação. Continuar?</string>
@@ -363,7 +365,7 @@
     <string name="sync_one_day">1 dia</string>
     <string name="sync_health">Atualidade dos dados</string>
     <string name="sync_health_description">Veja quando seus feeds foram verificados e se os artigos em cache estão atualizados.</string>
-    <string name="sync_health_open">Atualidade dos dados</string>
+    <string name="sync_health_open">Abrir</string>
     <string name="sync_health_title">Atualidade dos dados</string>
     <string name="sync_health_status_never">Ainda não sincronizado</string>
     <string name="sync_health_status_syncing">Sincronizando</string>

@@ -280,8 +280,10 @@
 • Señales mixtas: verifica antes de confiar
 • Señales débiles: afirmaciones sensacionalistas o sin apoyo</string>
     <string name="settings_credibility_disclaimer">Es una impresión de IA del texto, no una verificación de hechos — el modelo no puede navegar por la web ni comprobar afirmaciones. Los modelos locales conservan el artículo en el dispositivo; OpenRouter lo envía al proveedor elegido y guarda el resultado hasta volver a analizarlo.</string>
+    <string name="ai_backend_summary_label">Motor local</string>
     <string name="article_ai_on_device_processing">IA en el dispositivo — el texto permanece aquí y funciona sin conexión cuando el modelo está listo.</string>
     <string name="article_ai_cloud_processing">IA en la nube — el texto se envía al proveedor seleccionado después de tu confirmación.</string>
+    <string name="article_ai_cloud_summary_privacy">El texto del artículo se envía tras tu confirmación.</string>
     <string name="article_ai_cloud_confirmation_title">¿Enviar el texto del artículo a la IA en la nube?</string>
     <string name="article_ai_cloud_summary_confirmation">El texto saldrá de este dispositivo y se enviará al proveedor de OpenRouter seleccionado para generar un resumen. ¿Continuar?</string>
     <string name="article_ai_cloud_credibility_confirmation">El texto saldrá de este dispositivo y se enviará al proveedor de OpenRouter seleccionado para generar señales de verificación. ¿Continuar?</string>
@@ -366,7 +368,7 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="sync_one_day">1 día</string>
     <string name="sync_health">Frescura de los datos</string>
     <string name="sync_health_description">Consulta cuándo se comprobaron tus feeds por última vez y si los artículos almacenados están actualizados.</string>
-    <string name="sync_health_open">Frescura de los datos</string>
+    <string name="sync_health_open">Abrir</string>
     <string name="sync_health_title">Frescura de los datos</string>
     <string name="sync_health_status_never">Aún no se ha sincronizado</string>
     <string name="sync_health_status_syncing">Sincronizando</string>

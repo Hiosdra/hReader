@@ -278,8 +278,10 @@
     <string name="settings_rating_meaning">신호 읽는 방법:</string>
     <string name="settings_rating_values">• 강한 신호: 출처와 근거가 있고 균형 잡힘\n• 혼합 신호: 의존하기 전에 확인\n• 약한 신호: 선정적이거나 근거 없는 주장</string>
     <string name="settings_credibility_disclaimer">이는 기사 텍스트에 대한 AI의 인상이며 사실 확인이 아닙니다. 모델은 웹을 탐색하거나 주장을 검증할 수 없습니다. 로컬 모델은 기사를 기기에 보관하고, OpenRouter는 선택한 제공업체로 보내 다시 분석할 때까지 결과를 캐시합니다.</string>
+    <string name="ai_backend_summary_label">백엔드</string>
     <string name="article_ai_on_device_processing">온디바이스 AI — 모델이 준비되면 기사 텍스트가 기기에 남고 오프라인으로 작동합니다.</string>
     <string name="article_ai_cloud_processing">클라우드 AI — 확인 후 기사 텍스트가 선택한 제공업체로 전송됩니다.</string>
+    <string name="article_ai_cloud_summary_privacy">기사 텍스트는 확인 후 전송됩니다.</string>
     <string name="article_ai_cloud_confirmation_title">기사 텍스트를 클라우드 AI로 보낼까요?</string>
     <string name="article_ai_cloud_summary_confirmation">기사 텍스트가 이 기기를 떠나 요약 생성을 위해 선택한 OpenRouter 제공업체로 전송됩니다. 계속할까요?</string>
     <string name="article_ai_cloud_credibility_confirmation">기사 텍스트가 이 기기를 떠나 검증 신호 생성을 위해 선택한 OpenRouter 제공업체로 전송됩니다. 계속할까요?</string>
@@ -363,7 +365,7 @@
     <string name="sync_one_day">1일</string>
     <string name="sync_health">데이터 최신 상태</string>
     <string name="sync_health_description">피드를 마지막으로 확인한 시간과 캐시된 글이 최신인지 확인합니다.</string>
-    <string name="sync_health_open">데이터 최신 상태</string>
+    <string name="sync_health_open">열기</string>
     <string name="sync_health_title">데이터 최신 상태</string>
     <string name="sync_health_status_never">아직 동기화되지 않음</string>
     <string name="sync_health_status_syncing">동기화 중</string>

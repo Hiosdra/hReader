@@ -318,8 +318,10 @@
 • Mieszane sygnały: zweryfikuj przed użyciem
 • Słabe sygnały: sensacyjne lub niepoparte twierdzenia</string>
     <string name="settings_credibility_disclaimer">To ocena AI tekstu artykułu, a nie fact-checking — model nie może przeglądać internetu ani weryfikować twierdzeń. Lokalny model zachowuje artykuł na urządzeniu; OpenRouter wysyła go do wybranego dostawcy i przechowuje wynik do ponownej analizy.</string>
+    <string name="ai_backend_summary_label">Backend</string>
     <string name="article_ai_on_device_processing">AI na urządzeniu — tekst artykułu pozostaje na tym urządzeniu i działa offline, gdy model jest gotowy.</string>
     <string name="article_ai_cloud_processing">AI w chmurze — po potwierdzeniu tekst artykułu zostanie wysłany do wybranego dostawcy.</string>
+    <string name="article_ai_cloud_summary_privacy">Tekst artykułu wyślemy po potwierdzeniu.</string>
     <string name="article_ai_cloud_confirmation_title">Wysłać tekst artykułu do chmurowego AI?</string>
     <string name="article_ai_cloud_summary_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć podsumowanie. Kontynuować?</string>
     <string name="article_ai_cloud_credibility_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć sygnały do weryfikacji. Kontynuować?</string>
@@ -446,7 +448,7 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="sync_one_day">1 dzień</string>
     <string name="sync_health">Świeżość danych</string>
     <string name="sync_health_description">Sprawdź, kiedy kanały były ostatnio sprawdzane i czy zapisane artykuły są aktualne.</string>
-    <string name="sync_health_open">Świeżość danych</string>
+    <string name="sync_health_open">Otwórz</string>
     <string name="sync_health_title">Świeżość danych</string>
     <string name="sync_health_status_never">Jeszcze nie zsynchronizowano</string>
     <string name="sync_health_status_syncing">Synchronizowanie</string>

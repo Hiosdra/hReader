@@ -278,8 +278,10 @@
     <string name="settings_rating_meaning">Comment lire les signaux :</string>
     <string name="settings_rating_values">• Signaux forts : sourcés, étayés, équilibrés\n• Signaux mitigés : vérifiez avant de vous y fier\n• Signaux faibles : affirmations sensationnelles ou non étayées</string>
     <string name="settings_credibility_disclaimer">Il s’agit d’une impression de l’IA sur le texte de l’article, pas d’une vérification des faits — le modèle ne peut pas parcourir le Web ni vérifier les affirmations. Les modèles locaux gardent l’article sur l’appareil ; OpenRouter l’envoie au fournisseur choisi et met le résultat en cache jusqu’à une nouvelle analyse.</string>
+    <string name="ai_backend_summary_label">Moteur local</string>
     <string name="article_ai_on_device_processing">IA sur l’appareil — le texte reste sur cet appareil et fonctionne hors ligne quand le modèle est prêt.</string>
     <string name="article_ai_cloud_processing">IA cloud — le texte est envoyé au fournisseur choisi après votre confirmation.</string>
+    <string name="article_ai_cloud_summary_privacy">Le texte de l’article est envoyé après confirmation.</string>
     <string name="article_ai_cloud_confirmation_title">Envoyer le texte de l’article à l’IA cloud ?</string>
     <string name="article_ai_cloud_summary_confirmation">Le texte de l’article quittera cet appareil et sera envoyé au fournisseur OpenRouter choisi pour générer un résumé. Continuer ?</string>
     <string name="article_ai_cloud_credibility_confirmation">Le texte de l’article quittera cet appareil et sera envoyé au fournisseur OpenRouter choisi pour produire des signaux à vérifier. Continuer ?</string>
@@ -363,7 +365,7 @@
     <string name="sync_one_day">1 jour</string>
     <string name="sync_health">Fraîcheur des données</string>
     <string name="sync_health_description">Consultez la dernière vérification de vos flux et l’actualité des articles en cache.</string>
-    <string name="sync_health_open">Fraîcheur des données</string>
+    <string name="sync_health_open">Ouvrir</string>
     <string name="sync_health_title">Fraîcheur des données</string>
     <string name="sync_health_status_never">Pas encore synchronisé</string>
     <string name="sync_health_status_syncing">Synchronisation en cours</string>

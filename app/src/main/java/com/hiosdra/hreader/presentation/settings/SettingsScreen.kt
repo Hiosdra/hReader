@@ -117,8 +117,7 @@ fun SettingsScreen(
     }
     val readingSummary = "${stringResource(R.string.settings_bionic_reading)}: " +
         "${stringResource(if (bionicReadingEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)}\n" +
-        "${stringResource(R.string.tts_read_aloud)}: ${stringResource(ttsPreferences.getTtsModel().displayNameRes)} · " +
-        "${stringResource(R.string.settings_bypass_service)}: ${stringResource(selectedBypassMethod.displayNameRes)}"
+        "${stringResource(R.string.tts_read_aloud)}: ${stringResource(ttsPreferences.getTtsModel().displayNameRes)}"
     val storageSummary = storage.snapshot?.let { snapshot ->
         stringResource(
             R.string.storage_app_usage,
@@ -135,17 +134,10 @@ fun SettingsScreen(
             is GemmaModelStatus.Failed -> R.string.ai_model_install_failed
         }
     )
-    val localAiSummary = "$localAiStatusSummary\n${stringResource(R.string.ai_backend)}: " +
-        "${stringResource(gemmaBackend.displayNameRes)} · ${stringResource(R.string.ai_model_wifi_only)}: " +
-        stringResource(
-            if (gemmaDownloadOnUnmeteredOnly) R.string.settings_state_enabled
-            else R.string.settings_state_disabled
-        )
-    val cloudAiSummary = "${stringResource(R.string.article_ai_cloud_processing)}\n" +
-        "${stringResource(if (openRouterApiKey.isBlank()) R.string.secret_not_configured else R.string.secret_configured)} · " +
-        "${stringResource(R.string.settings_model)}: ${aiModels.selectedModelName} · " +
-        "${stringResource(R.string.settings_show_credibility_chip)}: " +
-        stringResource(if (credibilityScoreEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)
+    val localAiSummary = "$localAiStatusSummary\n${stringResource(R.string.ai_backend_summary_label)}: " +
+        stringResource(gemmaBackend.displayNameRes)
+    val cloudAiSummary = "${stringResource(if (openRouterApiKey.isBlank()) R.string.secret_not_configured else R.string.secret_configured)}\n" +
+        stringResource(R.string.article_ai_cloud_summary_privacy)
     val privacySummary = "${stringResource(R.string.error_reporting_title)}: " +
         stringResource(if (sentryReportingEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)
     val serverSummary = "${stringResource(serverSettings.backendType.displayNameRes)} · " +
@@ -585,12 +577,5 @@ private fun offlineSettingsSummary(state: OfflineUiState): String {
     } else {
         "${stringResource(R.string.offline_articles_to_keep)}: ${state.backlogTarget}"
     }
-    val imageState = stringResource(
-        if (state.imageDownloadEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled
-    )
-    val imageBudget = state.imageCacheBudgetMegabytes.takeIf { state.imageDownloadEnabled && it > 0 }
-        ?.let { " · ${stringResource(R.string.offline_image_budget, it)}" }
-        .orEmpty()
-    val imageSummary = "${stringResource(R.string.offline_download_images)}: $imageState$imageBudget"
-    return "$articleSummary\n$targetSummary · $imageSummary"
+    return "$articleSummary\n$targetSummary"
 }

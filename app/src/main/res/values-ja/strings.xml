@@ -278,8 +278,10 @@
     <string name="settings_rating_meaning">兆候の読み方：</string>
     <string name="settings_rating_values">• 強い兆候：出典があり、根拠があり、バランスが取れている\n• 判断が分かれる兆候：利用する前に確認\n• 弱い兆候：扇情的または根拠のない主張</string>
     <string name="settings_credibility_disclaimer">これは記事本文に対するAIの印象であり、ファクトチェックではありません。モデルはウェブを閲覧したり主張を検証したりできません。ローカルモデルは記事を端末内に保持し、OpenRouterは選択したプロバイダーへ送信して再分析まで結果をキャッシュします。</string>
+    <string name="ai_backend_summary_label">バックエンド</string>
     <string name="article_ai_on_device_processing">端末上のAI — モデルの準備ができていれば、記事本文は端末内に留まりオフラインで動作します。</string>
     <string name="article_ai_cloud_processing">クラウドAI — 確認後、記事本文が選択したプロバイダーに送信されます。</string>
+    <string name="article_ai_cloud_summary_privacy">記事本文は確認後に送信されます。</string>
     <string name="article_ai_cloud_confirmation_title">記事本文をクラウドAIに送信しますか？</string>
     <string name="article_ai_cloud_summary_confirmation">記事本文はこの端末から送信され、概要の生成のため選択したOpenRouterプロバイダーに渡されます。続行しますか？</string>
     <string name="article_ai_cloud_credibility_confirmation">記事本文はこの端末から送信され、検証すべき兆候の生成のため選択したOpenRouterプロバイダーに渡されます。続行しますか？</string>
@@ -363,7 +365,7 @@
     <string name="sync_one_day">1日</string>
     <string name="sync_health">データの鮮度</string>
     <string name="sync_health_description">フィードの最終確認時刻と、キャッシュされた記事が最新かどうかを確認します。</string>
-    <string name="sync_health_open">データの鮮度</string>
+    <string name="sync_health_open">開く</string>
     <string name="sync_health_title">データの鮮度</string>
     <string name="sync_health_status_never">未同期</string>
     <string name="sync_health_status_syncing">同期中</string>

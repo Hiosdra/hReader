@@ -322,8 +322,10 @@
     <string name="settings_rating_meaning">How to read the signals:</string>
     <string name="settings_rating_values">• Strong signals: sourced, evidenced, balanced\n• Mixed signals: verify before relying on it\n• Weak signals: sensational or unsupported claims</string>
     <string name="settings_credibility_disclaimer">This is an AI impression of the article text, not a fact check — the model cannot browse the web or verify claims. Local models keep the article on this device; OpenRouter sends it to the selected provider and caches the result until you re-analyze it.</string>
+    <string name="ai_backend_summary_label">Backend</string>
     <string name="article_ai_on_device_processing">On-device AI — article text stays on this device and works offline when the model is ready.</string>
     <string name="article_ai_cloud_processing">Cloud AI — article text is sent to the selected provider after you confirm.</string>
+    <string name="article_ai_cloud_summary_privacy">Article text is sent after you confirm.</string>
     <string name="article_ai_cloud_confirmation_title">Send article text to cloud AI?</string>
     <string name="article_ai_cloud_summary_confirmation">The article text will leave this device and be sent to the selected OpenRouter provider to generate a summary. Continue?</string>
     <string name="article_ai_cloud_credibility_confirmation">The article text will leave this device and be sent to the selected OpenRouter provider to produce verification signals. Continue?</string>
@@ -452,7 +454,7 @@
     <string name="sync_one_day">1 day</string>
     <string name="sync_health">Data freshness</string>
     <string name="sync_health_description">See when your feeds were last checked and whether the cached articles are current.</string>
-    <string name="sync_health_open">Data freshness</string>
+    <string name="sync_health_open">Open</string>
     <string name="sync_health_title">Data freshness</string>
     <string name="sync_health_status_never">Not synced yet</string>
     <string name="sync_health_status_syncing">Syncing</string>
