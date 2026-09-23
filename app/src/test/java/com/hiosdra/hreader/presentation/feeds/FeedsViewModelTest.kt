@@ -32,13 +32,35 @@ class SubscriptionOrderTest {
     }
 
     @Test
-    fun `held positions survive counts that would reorder the rows`() {
-        val settled = sortSubscriptions(feeds, mapOf(1L to 5, 2L to 1, 3L to 9))
+    fun `feeds that started at zero move to the top and existing unread order stays`() {
+        val previousUnreadCounts = mapOf(1L to 5, 3L to 9)
+        val settled = sortSubscriptions(feeds, previousUnreadCounts)
         val rowOrder = settled.withIndex().associate { (position, feed) -> feed.id to position }
 
-        val held = holdRowOrder(feeds, mapOf(1L to 0, 2L to 40, 3L to 0), rowOrder)
+        val updatedUnreadCounts = mapOf(1L to 30, 2L to 40, 3L to 1)
+        val promoted = promoteNewlyUnreadSubscriptions(
+            feeds = feeds,
+            unreadCounts = updatedUnreadCounts,
+            previousUnreadCounts = previousUnreadCounts,
+            rowOrder = rowOrder
+        )
 
-        assertEquals(settled.map { it.title }, held.map { it.title })
+        assertEquals(listOf("alpha times", "Beta Report", "Zed Weekly"), promoted.map { it.title })
+
+        val held = holdRowOrder(
+            promoted,
+            updatedUnreadCounts,
+            promoted.withIndex().associate { (position, feed) -> feed.id to position }
+        )
+        assertEquals(promoted.map { it.title }, held.map { it.title })
+
+        val markedRead = promoteNewlyUnreadSubscriptions(
+            feeds = promoted,
+            unreadCounts = mapOf(1L to 0, 2L to 40, 3L to 1),
+            previousUnreadCounts = updatedUnreadCounts,
+            rowOrder = promoted.withIndex().associate { (position, feed) -> feed.id to position }
+        )
+        assertEquals(promoted.map { it.title }, markedRead.map { it.title })
     }
 
     @Test

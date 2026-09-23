@@ -58,7 +58,22 @@ class FeedsViewModel(
     private fun observeUnreadCounts() {
         viewModelScope.launch {
             feeds.observeUnreadCounts().collect { unreadCounts ->
-                _uiState.value = _uiState.value.copy(unreadCounts = unreadCounts)
+                val current = _uiState.value
+                val ordered = promoteNewlyUnreadSubscriptions(
+                    feeds = current.feeds,
+                    unreadCounts = unreadCounts,
+                    previousUnreadCounts = current.unreadCounts,
+                    rowOrder = rowOrder
+                )
+                rowOrder = ordered.withIndex().associate { (position, feed) -> feed.id to position }
+                _uiState.value = current.copy(
+                    feeds = ordered,
+                    filteredFeeds = ordered,
+                    unreadCounts = unreadCounts
+                )
+                if (current.searchQuery.isNotEmpty()) {
+                    filterFeeds()
+                }
             }
         }
     }
@@ -374,6 +389,21 @@ internal fun holdRowOrder(
     unreadCounts: Map<Long, Int>,
     rowOrder: Map<Long, Int>
 ): List<Feed> = sortSubscriptions(feeds, unreadCounts).sortedBy { rowOrder[it.id] ?: Int.MAX_VALUE }
+
+internal fun promoteNewlyUnreadSubscriptions(
+    feeds: List<Feed>,
+    unreadCounts: Map<Long, Int>,
+    previousUnreadCounts: Map<Long, Int>,
+    rowOrder: Map<Long, Int>
+): List<Feed> = feeds.sortedWith(
+    compareBy<Feed> {
+        val currentCount = unreadCounts[it.id] ?: 0
+        val previousCount = previousUnreadCounts[it.id] ?: 0
+        if (previousCount <= 0 && currentCount > 0) 0 else 1
+    }
+        .thenBy { rowOrder[it.id] ?: Int.MAX_VALUE }
+        .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title }
+)
 
 internal fun nextSubscriptionId(feeds: List<Feed>, currentFeedId: Long): Long? {
     val currentIndex = feeds.indexOfFirst { it.id == currentFeedId }
