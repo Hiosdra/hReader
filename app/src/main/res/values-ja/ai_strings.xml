@@ -1,7 +1,7 @@
 <resources>
     <string name="notification_channel_ai_model_download">AIモデルのダウンロード</string>
     <string name="notification_ai_model_download_title">AIモデルをダウンロード中</string>
-    <string name="settings_local_ai">ローカルAI</string>
+    <string name="settings_local_ai">デバイス上のAI</string>
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">LiteRT-LMを使って端末上で実行します。記事本文はクラウドプロバイダーに送信されません。</string>
     <string name="ai_model_size">ダウンロードサイズ: %.1f GB</string>

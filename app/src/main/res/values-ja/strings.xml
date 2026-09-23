@@ -269,8 +269,10 @@
     <string name="settings_offline_reading">オフライン閲覧</string>
     <string name="settings_reading_experience">読書体験</string>
     <string name="settings_bionic_reading">バイオニックリーディング</string>
+    <string name="settings_state_enabled">オン</string>
+    <string name="settings_state_disabled">オフ</string>
     <string name="settings_bionic_reading_description">単語の一部を強調して、より速く読めるようにします</string>
-    <string name="settings_ai_features">AI機能</string>
+    <string name="settings_ai_features">クラウドAI</string>
     <string name="settings_show_credibility_chip">検証すべき兆候を表示</string>
     <string name="settings_credibility_description">各記事に、出典・語調・バランスに関するAIの兆候を表示するチップを追加します</string>
     <string name="settings_rating_meaning">兆候の読み方：</string>
@@ -575,7 +577,9 @@
     <string name="main_travel_mode">旅行モード</string>
     <string name="offline_download_partial">%1$d 個のオフライン項目がまだ未完了です。不足分を補うには再試行してください。</string>
     <string name="travel_mode_title">旅行モード</string>
-    <string name="travel_mode_intro">出発前に読んでいるコンテンツのローカルコピーを準備します。設定で使われているオフラインキャッシュと保存ページのワーカーが、ここで進捗を報告します。</string>
+    <string name="travel_mode_intro">オフラインで読むものを選び、出発前にダウンロードします。</string>
+    <string name="travel_mode_download_options">ダウンロード設定</string>
+    <string name="travel_mode_download_details">ダウンロードの詳細</string>
     <string name="travel_mode_presets">保存する内容を選択</string>
     <string name="travel_mode_presets_description">これらのプリセットは既存のオフライン対象を使用します。未読の記事を優先し、選択した合計数になるまで最近読んだ記事を追加します。</string>
     <string name="travel_mode_preset_unread">未読のみ</string>

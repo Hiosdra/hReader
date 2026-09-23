@@ -278,8 +278,10 @@
     <string name="settings_offline_reading">Offline-Lesen</string>
     <string name="settings_reading_experience">Leseerlebnis</string>
     <string name="settings_bionic_reading">Bionisches Lesen</string>
+    <string name="settings_state_enabled">Ein</string>
+    <string name="settings_state_disabled">Aus</string>
     <string name="settings_bionic_reading_description">Wortteile hervorheben, um schneller zu lesen</string>
-    <string name="settings_ai_features">KI-Funktionen</string>
+    <string name="settings_ai_features">Cloud-KI</string>
     <string name="settings_show_credibility_chip">Verifizierungssignale anzeigen</string>
     <string name="settings_credibility_description">Fügt jedem Artikel eine Markierung mit KI-Signalen zu Quellen, Ton und Ausgewogenheit hinzu</string>
     <string name="settings_rating_meaning">So sind die Signale zu lesen:</string>
@@ -591,7 +593,9 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="main_travel_mode">Reisemodus</string>
     <string name="offline_download_partial">%1$d Offline-Elemente sind noch unvollständig. Wiederholen, um die Lücken zu füllen.</string>
     <string name="travel_mode_title">Reisemodus</string>
-    <string name="travel_mode_intro">Bereite vor deiner Abreise eine lokale Kopie deiner Lektüre vor. Die gleichen Offline-Cache- und Seiten-Speicher-Worker wie in den Einstellungen melden hier den Fortschritt.</string>
+    <string name="travel_mode_intro">Wähle aus, was offline verfügbar sein soll, und lade es vor der Abreise herunter.</string>
+    <string name="travel_mode_download_options">Downloadoptionen</string>
+    <string name="travel_mode_download_details">Download-Details</string>
     <string name="travel_mode_presets">Auswahl des Inhalts</string>
     <string name="travel_mode_presets_description">Diese Voreinstellungen verwenden das vorhandene Offline-Ziel: zuerst ungelesene Artikel, dann aktuelle gelesene Artikel bis zur gewählten Gesamtzahl.</string>
     <string name="travel_mode_preset_unread">Nur ungelesene</string>

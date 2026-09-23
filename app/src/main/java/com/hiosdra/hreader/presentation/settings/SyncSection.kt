@@ -40,6 +40,29 @@ private val CHOICE_LIST_MAX_HEIGHT = 320.dp
 private val SYNC_INTERVAL_CHOICES = listOf(15, 30, 60, 180, 360, 720, 1440)
 
 @Composable
+internal fun syncSettingsSummary(state: SyncUiState): String {
+    val wifiState = stringResource(
+        if (state.unmeteredOnly) R.string.settings_state_enabled else R.string.settings_state_disabled
+    )
+    val roamingState = stringResource(
+        if (state.syncWhileRoaming) R.string.settings_state_enabled else R.string.settings_state_disabled
+    )
+    val quietHoursState = stringResource(
+        if (state.quietHoursEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled
+    )
+    val quietHoursRange = if (state.quietHoursEnabled) {
+        " (${formatHour(state.quietHoursStart)}–${formatHour(state.quietHoursEnd)})"
+    } else {
+        ""
+    }
+    return "${stringResource(R.string.sync_automatic)}: ${formatInterval(state.intervalMinutes)} · " +
+        "${stringResource(syncModeLabel(state.syncMode))}\n" +
+        "${stringResource(R.string.sync_wifi_only)}: $wifiState · " +
+        "${stringResource(R.string.sync_roaming)}: $roamingState · " +
+        "${stringResource(R.string.sync_quiet_hours)}: $quietHoursState$quietHoursRange"
+}
+
+@Composable
 fun SyncSection(
     state: SyncUiState,
     onIntervalChange: (Int) -> Unit,

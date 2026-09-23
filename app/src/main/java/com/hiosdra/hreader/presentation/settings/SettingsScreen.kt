@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.presentation.settings
 
+import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
@@ -14,7 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -39,8 +40,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
+import com.hiosdra.hreader.core.application.ai.GemmaModelStatus
+import com.hiosdra.hreader.core.application.ai.GemmaBackend
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
@@ -54,7 +58,6 @@ import com.hiosdra.hreader.presentation.components.rememberNotificationPermissio
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
 import com.hiosdra.hreader.presentation.navigation.Routes
-import com.hiosdra.hreader.presentation.theme.sectionCardColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,12 +82,19 @@ fun SettingsScreen(
     val sync by settingsViewModel.sync.collectAsStateWithLifecycle()
     val storage by settingsViewModel.storage.collectAsStateWithLifecycle()
     val isOnline by networkStatus.isOnline.collectAsStateWithLifecycle()
+    val localAiStatus by gemmaModelManager.status.collectAsStateWithLifecycle()
+    val currentRoute = navController?.currentBackStackEntryAsState()?.value?.destination?.route
+    val context = LocalContext.current
     val actions = remember(settingsViewModel) { settingsViewModel.actions }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
     var selectedBypassMethod by remember { mutableStateOf(readerPreferences.getPaywallBypassMethod()) }
     var bionicReadingEnabled by remember { mutableStateOf(readerPreferences.getBionicReadingEnabled()) }
     var credibilityScoreEnabled by remember { mutableStateOf(readerPreferences.getCredibilityScoreEnabled()) }
     var sentryReportingEnabled by remember { mutableStateOf(errorReportingManager.isEnabled()) }
+    var gemmaBackend by remember { mutableStateOf(aiPreferences.getGemmaBackend()) }
+    var gemmaDownloadOnUnmeteredOnly by remember {
+        mutableStateOf(aiPreferences.getGemmaDownloadOnUnmeteredOnly())
+    }
     var showPerformanceDialog by remember { mutableStateOf(false) }
     var showBypassDialog by remember { mutableStateOf(false) }
     var showModelSheet by remember { mutableStateOf(false) }
@@ -102,6 +112,50 @@ fun SettingsScreen(
         sentryReportingEnabled = enabled
         errorReportingManager.setEnabled(enabled)
     }
+    LaunchedEffect(currentRoute) {
+        selectedBypassMethod = readerPreferences.getPaywallBypassMethod()
+    }
+    val readingSummary = "${stringResource(R.string.settings_bionic_reading)}: " +
+        "${stringResource(if (bionicReadingEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)}\n" +
+        "${stringResource(R.string.tts_read_aloud)}: ${stringResource(ttsPreferences.getTtsModel().displayNameRes)} · " +
+        "${stringResource(R.string.settings_bypass_service)}: ${stringResource(selectedBypassMethod.displayNameRes)}"
+    val storageSummary = storage.snapshot?.let { snapshot ->
+        stringResource(
+            R.string.storage_app_usage,
+            Formatter.formatShortFileSize(context, snapshot.appBytes)
+        )
+    } ?: stringResource(
+        if (storage.isLoading) R.string.storage_refreshing else R.string.settings_group_storage_summary
+    )
+    val localAiStatusSummary = stringResource(
+        when (localAiStatus) {
+            GemmaModelStatus.Available -> R.string.ai_model_ready
+            GemmaModelStatus.NotInstalled -> R.string.ai_model_not_downloaded
+            is GemmaModelStatus.Downloading -> R.string.ai_model_downloading
+            is GemmaModelStatus.Failed -> R.string.ai_model_install_failed
+        }
+    )
+    val localAiSummary = "$localAiStatusSummary\n${stringResource(R.string.ai_backend)}: " +
+        "${stringResource(gemmaBackend.displayNameRes)} · ${stringResource(R.string.ai_model_wifi_only)}: " +
+        stringResource(
+            if (gemmaDownloadOnUnmeteredOnly) R.string.settings_state_enabled
+            else R.string.settings_state_disabled
+        )
+    val cloudAiSummary = "${stringResource(R.string.article_ai_cloud_processing)}\n" +
+        "${stringResource(if (openRouterApiKey.isBlank()) R.string.secret_not_configured else R.string.secret_configured)} · " +
+        "${stringResource(R.string.settings_model)}: ${aiModels.selectedModelName} · " +
+        "${stringResource(R.string.settings_show_credibility_chip)}: " +
+        stringResource(if (credibilityScoreEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)
+    val privacySummary = "${stringResource(R.string.error_reporting_title)}: " +
+        stringResource(if (sentryReportingEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)
+    val serverSummary = "${stringResource(serverSettings.backendType.displayNameRes)} · " +
+        stringResource(
+            if (serverSettings.hasAllFields) R.string.secret_configured
+            else R.string.secret_not_configured
+        )
+    val syncSummary = syncSettingsSummary(sync)
+    val offlineSummary = offlineSettingsSummary(offline)
+    val licensesSummary = stringResource(R.string.settings_licenses_summary)
 
     LaunchedEffect(serverSettings.signOutCompleted) {
         if (serverSettings.signOutCompleted) onSignedOut()
@@ -139,40 +193,44 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            settingsSection(R.string.settings_rss_server) {
-                    BackendServerFields(
-                        state = serverSettings,
-                        onBackendTypeChange = { backendType ->
-                            requestNotificationPermission {
-                                actions.server.onBackendTypeRequested(backendType)
-                            }
-                        },
-                        onServerUrlChange = actions.server.onServerUrlChange,
-                        onUsernameChange = actions.server.onUsernameChange,
-                        onSecretChange = actions.server.onSecretChange,
-                        onTestConnection = actions.server.onTestConnection,
-                        onApplySettings = actions.server.onApplySettings,
-                        modifier = Modifier.padding(16.dp)
-                    )
+            settingsGroup(
+                titleRes = R.string.settings_rss_server,
+                summary = serverSummary
+            ) {
+                BackendServerFields(
+                    state = serverSettings,
+                    onBackendTypeChange = { backendType ->
+                        requestNotificationPermission {
+                            actions.server.onBackendTypeRequested(backendType)
+                        }
+                    },
+                    onServerUrlChange = actions.server.onServerUrlChange,
+                    onUsernameChange = actions.server.onUsernameChange,
+                    onSecretChange = actions.server.onSecretChange,
+                    onTestConnection = actions.server.onTestConnection,
+                    onApplySettings = actions.server.onApplySettings
+                )
             }
 
-            settingsSection(R.string.settings_sync) {
-                    SyncSection(
-                        state = sync,
-                        onIntervalChange = actions.sync.onIntervalChange,
-                        onSyncModeChange = actions.sync.onSyncModeChange,
-                        onUnmeteredOnlyChange = actions.sync.onUnmeteredOnlyChange,
-                        onSyncWhileRoamingChange = actions.sync.onSyncWhileRoamingChange,
-                        onQuietHoursEnabledChange = actions.sync.onQuietHoursEnabledChange,
-                        onQuietHoursChange = actions.sync.onQuietHoursChange,
-                        onOpenFreshness = { navController?.navigate(Routes.SYNC_HEALTH) },
-                        modifier = Modifier.padding(16.dp)
-                    )
+            settingsGroup(
+                titleRes = R.string.settings_sync,
+                summary = syncSummary
+            ) {
+                SyncSection(
+                    state = sync,
+                    onIntervalChange = actions.sync.onIntervalChange,
+                    onSyncModeChange = actions.sync.onSyncModeChange,
+                    onUnmeteredOnlyChange = actions.sync.onUnmeteredOnlyChange,
+                    onSyncWhileRoamingChange = actions.sync.onSyncWhileRoamingChange,
+                    onQuietHoursEnabledChange = actions.sync.onQuietHoursEnabledChange,
+                    onQuietHoursChange = actions.sync.onQuietHoursChange,
+                    onOpenFreshness = { navController?.navigate(Routes.SYNC_HEALTH) }
+                )
             }
 
             settingsGroup(
                 titleRes = R.string.travel_mode_title,
-                summaryRes = R.string.settings_offline_reading
+                summary = offlineSummary
             ) {
                 TravelModeSettingsSection(
                     offline = offline,
@@ -185,7 +243,7 @@ fun SettingsScreen(
 
             settingsGroup(
                 titleRes = R.string.settings_storage,
-                summaryRes = R.string.settings_group_storage_summary
+                summary = storageSummary
             ) {
                 StorageSettingsSection(
                     state = storage,
@@ -196,7 +254,7 @@ fun SettingsScreen(
 
             settingsGroup(
                 titleRes = R.string.settings_reading_experience,
-                summaryRes = R.string.settings_group_reading_summary
+                summary = readingSummary
             ) {
                 ReadingSettingsSection(
                     bionicReadingEnabled = bionicReadingEnabled,
@@ -210,10 +268,19 @@ fun SettingsScreen(
 
             settingsGroup(
                 titleRes = R.string.settings_local_ai,
-                summaryRes = R.string.settings_group_local_ai_summary
+                summary = localAiSummary
             ) {
                 GemmaSettingsSection(
-                    preferences = aiPreferences,
+                    backend = gemmaBackend,
+                    onBackendChange = { backend ->
+                        gemmaBackend = backend
+                        aiPreferences.setGemmaBackend(backend)
+                    },
+                    unmeteredOnly = gemmaDownloadOnUnmeteredOnly,
+                    onUnmeteredOnlyChange = { enabled ->
+                        gemmaDownloadOnUnmeteredOnly = enabled
+                        aiPreferences.setGemmaDownloadOnUnmeteredOnly(enabled)
+                    },
                     modelManager = gemmaModelManager,
                     downloadScheduler = gemmaModelDownloadScheduler,
                     modelLifecycle = gemmaModelLifecycle,
@@ -223,7 +290,7 @@ fun SettingsScreen(
 
             settingsGroup(
                 titleRes = R.string.settings_ai_features,
-                summaryRes = R.string.settings_group_ai_summary
+                summary = cloudAiSummary
             ) {
                 AiSettingsSection(
                     credibilityScoreEnabled = credibilityScoreEnabled,
@@ -237,7 +304,7 @@ fun SettingsScreen(
 
             settingsGroup(
                 titleRes = R.string.settings_privacy_diagnostics,
-                summaryRes = R.string.settings_group_privacy_summary
+                summary = privacySummary
             ) {
                 DiagnosticsSettingsSection(
                     errorReportingEnabled = sentryReportingEnabled,
@@ -258,7 +325,7 @@ fun SettingsScreen(
 
             settingsGroup(
                 titleRes = R.string.settings_licenses,
-                summaryRes = R.string.settings_licenses_summary
+                summary = licensesSummary
             ) {
                 Text(
                     text = stringResource(R.string.settings_licenses_description),
@@ -484,35 +551,46 @@ private fun SyncPerformanceRecord.operationLabelRes(): Int = when (operationName
 
 private fun LazyListScope.settingsGroup(
     titleRes: Int,
-    summaryRes: Int,
+    summary: String,
     content: @Composable () -> Unit
 ) {
     item {
         SettingsGroup(
             title = stringResource(titleRes),
-            summary = stringResource(summaryRes),
+            summary = summary,
             content = content
         )
     }
 }
 
-private fun LazyListScope.settingsSection(
-    titleRes: Int,
-    content: @Composable () -> Unit
-) {
-    item {
-        Text(
-            text = stringResource(titleRes),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
+@Composable
+private fun offlineSettingsSummary(state: OfflineUiState): String {
+    val readiness = state.readiness
+    val articleSummary = when {
+        readiness.offlineTargetCount == 0 -> stringResource(R.string.offline_nothing_available)
+        readiness.missingContentCount == 0 -> pluralStringResource(
+            R.plurals.offline_ready,
+            readiness.offlineTargetCount,
+            readiness.offlineTargetCount
         )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
-            colors = sectionCardColors()
-        ) {
-            content()
-        }
+        else -> pluralStringResource(
+            R.plurals.offline_available,
+            readiness.storedContentCount,
+            readiness.storedContentCount,
+            readiness.offlineTargetCount
+        )
     }
+    val targetSummary = if (state.backlogTarget == 0) {
+        stringResource(R.string.offline_unread_only)
+    } else {
+        "${stringResource(R.string.offline_articles_to_keep)}: ${state.backlogTarget}"
+    }
+    val imageState = stringResource(
+        if (state.imageDownloadEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled
+    )
+    val imageBudget = state.imageCacheBudgetMegabytes.takeIf { state.imageDownloadEnabled && it > 0 }
+        ?.let { " · ${stringResource(R.string.offline_image_budget, it)}" }
+        .orEmpty()
+    val imageSummary = "${stringResource(R.string.offline_download_images)}: $imageState$imageBudget"
+    return "$articleSummary\n$targetSummary · $imageSummary"
 }

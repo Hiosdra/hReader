@@ -269,8 +269,10 @@
     <string name="settings_offline_reading">Lecture hors connexion</string>
     <string name="settings_reading_experience">Expérience de lecture</string>
     <string name="settings_bionic_reading">Lecture bionique</string>
+    <string name="settings_state_enabled">Oui</string>
+    <string name="settings_state_disabled">Non</string>
     <string name="settings_bionic_reading_description">Mettre en évidence certaines parties des mots pour lire plus vite</string>
-    <string name="settings_ai_features">Fonctionnalités d’IA</string>
+    <string name="settings_ai_features">IA cloud</string>
     <string name="settings_show_credibility_chip">Afficher les signaux à vérifier</string>
     <string name="settings_credibility_description">Ajoute à chaque article un indicateur avec des signaux IA sur les sources, le ton et l’équilibre</string>
     <string name="settings_rating_meaning">Comment lire les signaux :</string>
@@ -583,7 +585,9 @@
     <string name="main_travel_mode">Mode voyage</string>
     <string name="offline_download_partial">%1$d éléments hors connexion sont encore incomplets. Réessayez pour combler les manques.</string>
     <string name="travel_mode_title">Mode voyage</string>
-    <string name="travel_mode_intro">Préparez une copie locale de vos lectures avant votre départ. Les mêmes tâches de cache hors connexion et d’enregistrement des pages que dans les paramètres indiquent ici la progression.</string>
+    <string name="travel_mode_intro">Choisissez ce qui doit rester disponible hors connexion et téléchargez-le avant de partir.</string>
+    <string name="travel_mode_download_options">Options de téléchargement</string>
+    <string name="travel_mode_download_details">Détails du téléchargement</string>
     <string name="travel_mode_presets">Choisissez ce qui doit être conservé</string>
     <string name="travel_mode_presets_description">Ces préréglages utilisent la cible hors connexion existante : d’abord les articles non lus, puis les articles lus les plus récents jusqu’au total choisi.</string>
     <string name="travel_mode_preset_unread">Non lus uniquement</string>

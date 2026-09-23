@@ -2,7 +2,8 @@ package com.hiosdra.hreader.presentation.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,6 +15,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,7 +45,10 @@ fun OfflineReadinessSection(
     onImageCacheBudgetChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
     canPrepare: Boolean = true,
-    onRetry: (() -> Unit)? = null
+    onRetry: (() -> Unit)? = null,
+    estimateSummary: String? = null,
+    fullPagesEstimateSummary: String? = null,
+    showDownloadOptions: Boolean = true
 ) {
     val readiness = state.readiness
     Column(modifier = modifier.fillMaxWidth()) {
@@ -71,6 +76,21 @@ fun OfflineReadinessSection(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        estimateSummary?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (!canPrepare) {
+            Text(
+                text = stringResource(R.string.travel_mode_offline_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
         Button(
@@ -84,12 +104,20 @@ fun OfflineReadinessSection(
                 Text(stringResource(R.string.offline_download_reading))
             }
         }
-        Button(
+        fullPagesEstimateSummary?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        }
+        OutlinedButton(
             onClick = onFullOfflineSync,
             enabled = !state.isPreparing && canPrepare,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = if (fullPagesEstimateSummary == null) 8.dp else 4.dp)
         ) {
             if (state.isPreparing && state.isFullOfflinePreparation) {
                 PreparationProgressContent(state)
@@ -159,55 +187,78 @@ fun OfflineReadinessSection(
             SyncOperationState.RUNNING -> Unit
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
+        if (showDownloadOptions) {
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+            OfflineDownloadOptionsSection(
+                state = state,
+                onBacklogTargetChange = onBacklogTargetChange,
+                onImageDownloadEnabledChange = onImageDownloadEnabledChange,
+                onImageCacheBudgetChange = onImageCacheBudgetChange
+            )
+        }
+    }
+}
 
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+internal fun OfflineDownloadOptionsSection(
+    state: OfflineUiState,
+    onBacklogTargetChange: (Int) -> Unit,
+    onImageDownloadEnabledChange: (Boolean) -> Unit,
+    onImageCacheBudgetChange: (Int) -> Unit
+) {
+    Text(
+        text = stringResource(R.string.offline_articles_to_keep),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Medium
+    )
+    Text(
+        text = stringResource(R.string.offline_articles_description),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        BACKLOG_TARGETS.forEach { target ->
+            FilterChip(
+                selected = state.backlogTarget == target,
+                onClick = { onBacklogTargetChange(target) },
+                label = { Text(if (target == 0) stringResource(R.string.offline_unread_only) else target.toString()) }
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+    ToggleSettingRow(
+        title = stringResource(R.string.offline_download_images),
+        description = stringResource(R.string.offline_images_description),
+        checked = state.imageDownloadEnabled,
+        onCheckedChange = onImageDownloadEnabledChange
+    )
+
+    if (state.imageDownloadEnabled) {
         Text(
-            text = stringResource(R.string.offline_articles_to_keep),
+            text = stringResource(R.string.offline_image_limit),
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium
-        )
-        Text(
-            text = stringResource(R.string.offline_articles_description),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(top = 8.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BACKLOG_TARGETS.forEach { target ->
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CACHE_BUDGETS_MB.forEach { budget ->
                 FilterChip(
-                    selected = state.backlogTarget == target,
-                    onClick = { onBacklogTargetChange(target) },
-                    label = { Text(if (target == 0) stringResource(R.string.offline_unread_only) else target.toString()) }
+                    selected = state.imageCacheBudgetMegabytes == budget,
+                    onClick = { onImageCacheBudgetChange(budget) },
+                    label = { Text(stringResource(R.string.offline_image_budget, budget)) }
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        ToggleSettingRow(
-            title = stringResource(R.string.offline_download_images),
-            description = stringResource(R.string.offline_images_description),
-            checked = state.imageDownloadEnabled,
-            onCheckedChange = onImageDownloadEnabledChange
-        )
-
-        if (state.imageDownloadEnabled) {
-            Text(
-                text = stringResource(R.string.offline_image_limit),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CACHE_BUDGETS_MB.forEach { budget ->
-                    FilterChip(
-                        selected = state.imageCacheBudgetMegabytes == budget,
-                        onClick = { onImageCacheBudgetChange(budget) },
-                        label = { Text(stringResource(R.string.offline_image_budget, budget)) }
-                    )
-                }
             }
         }
     }

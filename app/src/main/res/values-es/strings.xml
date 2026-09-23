@@ -269,8 +269,10 @@
     <string name="settings_offline_reading">Lectura sin conexión</string>
     <string name="settings_reading_experience">Experiencia de lectura</string>
     <string name="settings_bionic_reading">Lectura biónica</string>
+    <string name="settings_state_enabled">Sí</string>
+    <string name="settings_state_disabled">No</string>
     <string name="settings_bionic_reading_description">Resalta partes de las palabras para leer más rápido</string>
-    <string name="settings_ai_features">Funciones de IA</string>
+    <string name="settings_ai_features">IA en la nube</string>
     <string name="settings_show_credibility_chip">Mostrar señales de verificación</string>
     <string name="settings_credibility_description">Añade a cada artículo un indicador con señales de IA sobre fuentes, tono y equilibrio</string>
     <string name="settings_rating_meaning">Cómo leer las señales:</string>
@@ -586,7 +588,9 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="main_travel_mode">Modo viaje</string>
     <string name="offline_download_partial">Aún faltan %1$d elementos sin conexión. Reintenta para completar los faltantes.</string>
     <string name="travel_mode_title">Modo viaje</string>
-    <string name="travel_mode_intro">Prepara una copia local de tus lecturas antes de salir. Los mismos procesos de caché sin conexión y de páginas guardadas de Ajustes muestran aquí el progreso.</string>
+    <string name="travel_mode_intro">Elige qué guardar sin conexión y descárgalo antes de salir.</string>
+    <string name="travel_mode_download_options">Opciones de descarga</string>
+    <string name="travel_mode_download_details">Detalles de descarga</string>
     <string name="travel_mode_presets">Elige qué conservar</string>
     <string name="travel_mode_presets_description">Estos ajustes usan el objetivo sin conexión existente: primero los artículos no leídos y después los leídos más recientes hasta alcanzar el total elegido.</string>
     <string name="travel_mode_preset_unread">Solo no leídos</string>

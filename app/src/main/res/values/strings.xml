@@ -312,8 +312,10 @@
     <string name="settings_reading_experience">Reading experience</string>
     <string name="settings_group_reading_summary">Text display, voice and link options</string>
     <string name="settings_bionic_reading">Bionic Reading</string>
+    <string name="settings_state_enabled">On</string>
+    <string name="settings_state_disabled">Off</string>
     <string name="settings_bionic_reading_description">Highlight portions of words for faster reading</string>
-    <string name="settings_ai_features">AI features</string>
+    <string name="settings_ai_features">Cloud AI</string>
     <string name="settings_group_ai_summary">Cloud summaries and credibility signals</string>
     <string name="settings_show_credibility_chip">Show verification signals</string>
     <string name="settings_credibility_description">Adds a chip to every article with AI signals about sourcing, tone and balance</string>
@@ -326,7 +328,7 @@
     <string name="article_ai_cloud_summary_confirmation">The article text will leave this device and be sent to the selected OpenRouter provider to generate a summary. Continue?</string>
     <string name="article_ai_cloud_credibility_confirmation">The article text will leave this device and be sent to the selected OpenRouter provider to produce verification signals. Continue?</string>
     <string name="article_ai_cloud_confirm">Send and continue</string>
-    <string name="settings_local_ai">Local AI</string>
+    <string name="settings_local_ai">On-device AI</string>
     <string name="settings_group_local_ai_summary">Optional on-device model and download controls</string>
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">Runs on this device through LiteRT-LM. The article text is not sent to a cloud provider.</string>
@@ -591,7 +593,9 @@
     <string name="offline_image_budget">%1$d MB</string>
 
     <string name="travel_mode_title">Travel mode</string>
-    <string name="travel_mode_intro">Prepare a local copy of your reading before you leave. The same offline cache and saved-page workers used in Settings report progress here.</string>
+    <string name="travel_mode_intro">Choose what to keep offline, then download it before you go.</string>
+    <string name="travel_mode_download_options">Download options</string>
+    <string name="travel_mode_download_details">Download details</string>
     <string name="travel_mode_presets">Choose what to keep</string>
     <string name="travel_mode_presets_description">These presets use the existing offline target: unread articles first, then recent read articles until the chosen total.</string>
     <string name="travel_mode_preset_unread">Unread only</string>

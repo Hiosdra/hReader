@@ -1,7 +1,7 @@
 <resources>
     <string name="notification_channel_ai_model_download">AI 模型下载</string>
     <string name="notification_ai_model_download_title">正在下载 AI 模型</string>
-    <string name="settings_local_ai">本地 AI</string>
+    <string name="settings_local_ai">设备端 AI</string>
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">通过 LiteRT-LM 在此设备上运行。文章内容不会发送给云服务提供商。</string>
     <string name="ai_model_size">下载大小：%.1f GB</string>

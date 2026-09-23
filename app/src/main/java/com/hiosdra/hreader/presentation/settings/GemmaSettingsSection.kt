@@ -30,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.GemmaBackend
 import com.hiosdra.hreader.core.application.ai.GemmaModelStatus
-import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
 import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
@@ -39,7 +38,10 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun GemmaSettingsSection(
-    preferences: AiPreferences,
+    backend: GemmaBackend,
+    onBackendChange: (GemmaBackend) -> Unit,
+    unmeteredOnly: Boolean,
+    onUnmeteredOnlyChange: (Boolean) -> Unit,
     modelManager: GemmaModelGateway,
     downloadScheduler: GemmaModelDownloadRequester,
     modelLifecycle: GemmaModelLifecycle,
@@ -47,10 +49,6 @@ internal fun GemmaSettingsSection(
 ) {
     val status by modelManager.status.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var backend by remember { mutableStateOf(preferences.getGemmaBackend()) }
-    var unmeteredOnly by remember {
-        mutableStateOf(preferences.getGemmaDownloadOnUnmeteredOnly())
-    }
     var preflight by remember { mutableStateOf(modelManager.downloadPreflight()) }
     var backendMenuExpanded by remember { mutableStateOf(false) }
 
@@ -109,8 +107,7 @@ internal fun GemmaSettingsSection(
                 },
                 checked = unmeteredOnly,
                 onCheckedChange = { enabled ->
-                    unmeteredOnly = enabled
-                    preferences.setGemmaDownloadOnUnmeteredOnly(enabled)
+                    onUnmeteredOnlyChange(enabled)
                 }
             )
             if (status !is GemmaModelStatus.Available) {
@@ -249,8 +246,7 @@ internal fun GemmaSettingsSection(
                         DropdownMenuItem(
                             text = { Text(stringResource(option.displayNameRes)) },
                             onClick = {
-                                backend = option
-                                preferences.setGemmaBackend(option)
+                                onBackendChange(option)
                                 backendMenuExpanded = false
                             }
                         )
@@ -266,7 +262,7 @@ internal fun GemmaSettingsSection(
     }
 }
 
-private val GemmaBackend.displayNameRes: Int
+internal val GemmaBackend.displayNameRes: Int
     get() = when (this) {
         GemmaBackend.AUTO -> R.string.ai_backend_auto
         GemmaBackend.CPU -> R.string.ai_backend_cpu

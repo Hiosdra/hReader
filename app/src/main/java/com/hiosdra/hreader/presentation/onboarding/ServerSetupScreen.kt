@@ -26,8 +26,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.presentation.components.ErrorReportingPreferenceCard
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
+import com.hiosdra.hreader.presentation.components.ErrorReportingPreferenceCard
 import com.hiosdra.hreader.presentation.settings.BackendServerFields
 import com.hiosdra.hreader.presentation.settings.OpenRouterKeyField
 import com.hiosdra.hreader.presentation.settings.SettingsViewModel
@@ -124,11 +124,7 @@ fun ServerSetupScreen(
                 }
             }
             TextButton(
-                onClick = {
-                    requestNotificationPermission {
-                        settingsViewModel.onSetupFinished(onSetupFinished)
-                    }
-                },
+                onClick = { settingsViewModel.onSetupFinished(onSetupFinished) },
                 enabled = serverSettings.hasAllFields,
                 modifier = Modifier.fillMaxWidth()
             ) {

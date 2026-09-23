@@ -306,8 +306,10 @@
     <string name="settings_reading_experience">Czytanie</string>
     <string name="settings_group_reading_summary">Wygląd tekstu, głos i opcje linków</string>
     <string name="settings_bionic_reading">Czytanie bioniczne</string>
+    <string name="settings_state_enabled">Włączone</string>
+    <string name="settings_state_disabled">Wyłączone</string>
     <string name="settings_bionic_reading_description">Wyróżniaj fragmenty słów, aby czytać szybciej</string>
-    <string name="settings_ai_features">Funkcje AI</string>
+    <string name="settings_ai_features">AI w chmurze</string>
     <string name="settings_group_ai_summary">Podsumowania chmurowe i sygnały wiarygodności</string>
     <string name="settings_show_credibility_chip">Pokazuj sygnały do weryfikacji</string>
     <string name="settings_credibility_description">Dodaje do każdego artykułu oznaczenie z sygnałami AI dotyczącymi źródeł, tonu i równowagi tekstu</string>
@@ -322,7 +324,7 @@
     <string name="article_ai_cloud_summary_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć podsumowanie. Kontynuować?</string>
     <string name="article_ai_cloud_credibility_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć sygnały do weryfikacji. Kontynuować?</string>
     <string name="article_ai_cloud_confirm">Wyślij i kontynuuj</string>
-    <string name="settings_local_ai">Lokalne AI</string>
+    <string name="settings_local_ai">AI na urządzeniu</string>
     <string name="settings_group_local_ai_summary">Opcjonalny model na urządzeniu i pobieranie</string>
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">Działa na urządzeniu przez LiteRT-LM. Treść artykułu nie jest wysyłana do dostawcy chmurowego.</string>
@@ -652,7 +654,9 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="main_travel_mode">Tryb podróży</string>
     <string name="offline_download_partial">%1$d elementów offline jest nadal niekompletnych. Ponów próbę, aby uzupełnić braki.</string>
     <string name="travel_mode_title">Tryb podróży</string>
-    <string name="travel_mode_intro">Przygotuj lokalną kopię czytanych treści przed wyjazdem. Te same zadania pamięci offline i zapisywania stron co w Ustawieniach pokazują tutaj postęp.</string>
+    <string name="travel_mode_intro">Wybierz, co ma być dostępne offline, i pobierz to przed wyjazdem.</string>
+    <string name="travel_mode_download_options">Opcje pobierania</string>
+    <string name="travel_mode_download_details">Szczegóły pobierania</string>
     <string name="travel_mode_presets">Wybierz, co zachować</string>
     <string name="travel_mode_presets_description">Te ustawienia korzystają z istniejącego celu offline: najpierw pobierają nieprzeczytane artykuły, a potem ostatnio przeczytane, aż do wybranej łącznej liczby.</string>
     <string name="travel_mode_preset_unread">Tylko nieprzeczytane</string>

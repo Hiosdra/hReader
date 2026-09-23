@@ -1,7 +1,7 @@
 <resources>
     <string name="notification_channel_ai_model_download">Descargas de modelos de IA</string>
     <string name="notification_ai_model_download_title">Descargando modelo de IA</string>
-    <string name="settings_local_ai">IA local</string>
+    <string name="settings_local_ai">IA en el dispositivo</string>
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">Se ejecuta en este dispositivo mediante LiteRT-LM. El texto del artículo no se envía a un proveedor en la nube.</string>
     <string name="ai_model_size">Tamaño de descarga: %.1f GB</string>
