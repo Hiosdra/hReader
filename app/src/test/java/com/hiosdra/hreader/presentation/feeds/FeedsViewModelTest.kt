@@ -32,46 +32,47 @@ class SubscriptionOrderTest {
     }
 
     @Test
-    fun `feeds that started at zero move to the top and existing unread order stays`() {
-        val previousUnreadCounts = mapOf(1L to 5, 3L to 9)
-        val settled = sortSubscriptions(feeds, previousUnreadCounts)
+    fun `sync order keeps existing unread before fresh unread and read feeds`() {
+        val syncBaselineUnreadCounts = mapOf(1L to 5, 3L to 9)
+        val settled = sortSubscriptions(feeds, syncBaselineUnreadCounts)
         val rowOrder = settled.withIndex().associate { (position, feed) -> feed.id to position }
 
         val updatedUnreadCounts = mapOf(1L to 30, 2L to 40, 3L to 1)
-        val promoted = promoteNewlyUnreadSubscriptions(
+        val ordered = orderSubscriptionsBySyncGroup(
             feeds = feeds,
             unreadCounts = updatedUnreadCounts,
-            previousUnreadCounts = previousUnreadCounts,
+            syncBaselineUnreadCounts = syncBaselineUnreadCounts,
             rowOrder = rowOrder
         )
 
-        assertEquals(listOf("alpha times", "Beta Report", "Zed Weekly"), promoted.map { it.title })
+        assertEquals(listOf("Beta Report", "Zed Weekly", "alpha times"), ordered.map { it.title })
 
         val held = holdRowOrder(
-            promoted,
+            ordered,
             updatedUnreadCounts,
-            promoted.withIndex().associate { (position, feed) -> feed.id to position }
+            ordered.withIndex().associate { (position, feed) -> feed.id to position },
+            syncBaselineUnreadCounts
         )
-        assertEquals(promoted.map { it.title }, held.map { it.title })
+        assertEquals(ordered.map { it.title }, held.map { it.title })
 
-        val markedRead = promoteNewlyUnreadSubscriptions(
-            feeds = promoted,
+        val markedRead = orderSubscriptionsBySyncGroup(
+            feeds = ordered,
             unreadCounts = mapOf(1L to 0, 2L to 40, 3L to 1),
-            previousUnreadCounts = updatedUnreadCounts,
-            rowOrder = promoted.withIndex().associate { (position, feed) -> feed.id to position }
+            syncBaselineUnreadCounts = syncBaselineUnreadCounts,
+            rowOrder = ordered.withIndex().associate { (position, feed) -> feed.id to position }
         )
-        assertEquals(promoted.map { it.title }, markedRead.map { it.title })
+        assertEquals(listOf("Beta Report", "alpha times", "Zed Weekly"), markedRead.map { it.title })
     }
 
     @Test
-    fun `feeds nobody has placed yet go last`() {
+    fun `new unread feed stays ahead of read feeds`() {
         val added = Feed(id = 4, title = "Added Later", siteUrl = null, feedUrl = "https://added.example.com/feed")
         val rowOrder = mapOf(1L to 0, 2L to 1, 3L to 2)
 
         val held = holdRowOrder(feeds + added, mapOf(4L to 99), rowOrder)
 
         assertEquals(
-            listOf("Zed Weekly", "alpha times", "Beta Report", "Added Later"),
+            listOf("Added Later", "Zed Weekly", "alpha times", "Beta Report"),
             held.map { it.title }
         )
     }

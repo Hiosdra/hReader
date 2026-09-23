@@ -409,7 +409,7 @@ val appModule = module {
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get(), get()) }
-    viewModel { FeedsViewModel(get()) }
+    viewModel { FeedsViewModel(get(), get<SyncHealthUseCase>().observeSyncActivity()) }
     viewModel { ArticleViewModel(get()) }
     viewModel { AddFeedViewModel(get()) }
     viewModel { SettingsViewModel(get(), get()) }
