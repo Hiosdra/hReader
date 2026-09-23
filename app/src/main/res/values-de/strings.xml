@@ -289,8 +289,10 @@
 • Gemischte Signale: vor der Nutzung prüfen
 • Schwache Signale: sensationelle oder unbelegte Behauptungen</string>
     <string name="settings_credibility_disclaimer">Dies ist ein KI-Eindruck des Artikeltexts, kein Faktencheck — das Modell kann nicht im Web suchen oder Behauptungen prüfen. Lokale Modelle behalten den Artikel auf dem Gerät; OpenRouter sendet ihn an den ausgewählten Anbieter und speichert das Ergebnis bis zur erneuten Analyse.</string>
+    <string name="ai_backend_summary_label">Backend</string>
     <string name="article_ai_on_device_processing">KI auf dem Gerät — der Artikeltext bleibt auf diesem Gerät und funktioniert offline, sobald das Modell bereit ist.</string>
     <string name="article_ai_cloud_processing">Cloud-KI — der Artikeltext wird nach deiner Bestätigung an den ausgewählten Anbieter gesendet.</string>
+    <string name="article_ai_cloud_summary_privacy">Artikeltext senden wir erst nach Bestätigung.</string>
     <string name="article_ai_cloud_confirmation_title">Artikeltext an Cloud-KI senden?</string>
     <string name="article_ai_cloud_summary_confirmation">Der Artikeltext verlässt dieses Gerät und wird zur Erstellung einer Zusammenfassung an den ausgewählten OpenRouter-Anbieter gesendet. Fortfahren?</string>
     <string name="article_ai_cloud_credibility_confirmation">Der Artikeltext verlässt dieses Gerät und wird zur Erstellung von Verifizierungssignalen an den ausgewählten OpenRouter-Anbieter gesendet. Fortfahren?</string>
@@ -375,7 +377,7 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="sync_one_day">1 Tag</string>
     <string name="sync_health">Datenaktualität</string>
     <string name="sync_health_description">Sieh, wann deine Feeds zuletzt geprüft wurden und ob die zwischengespeicherten Artikel aktuell sind.</string>
-    <string name="sync_health_open">Datenaktualität</string>
+    <string name="sync_health_open">Öffnen</string>
     <string name="sync_health_title">Datenaktualität</string>
     <string name="sync_health_status_never">Noch nicht synchronisiert</string>
     <string name="sync_health_status_syncing">Synchronisierung läuft</string>

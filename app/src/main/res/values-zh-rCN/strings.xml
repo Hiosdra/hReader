@@ -278,8 +278,10 @@
     <string name="settings_rating_meaning">如何理解这些信号：</string>
     <string name="settings_rating_values">• 强信号：有来源、有证据、平衡\n• 混合信号：依赖前请先核实\n• 弱信号：耸人听闻或缺乏依据的说法</string>
     <string name="settings_credibility_disclaimer">这是 AI 对文章文本的印象，不是事实核查；模型无法浏览网页或验证声明。本地模型会将文章保留在设备上；OpenRouter 会将文章发送给所选提供商，并缓存结果直到再次分析。</string>
+    <string name="ai_backend_summary_label">本地后端</string>
     <string name="article_ai_on_device_processing">设备端 AI — 模型准备就绪后，文章文本会留在设备上并可离线运行。</string>
     <string name="article_ai_cloud_processing">云端 AI — 确认后，文章文本会发送给所选提供商。</string>
+    <string name="article_ai_cloud_summary_privacy">文章文本会在确认后发送。</string>
     <string name="article_ai_cloud_confirmation_title">要将文章文本发送给云端 AI 吗？</string>
     <string name="article_ai_cloud_summary_confirmation">文章文本将离开此设备，并发送给所选 OpenRouter 提供商以生成摘要。继续吗？</string>
     <string name="article_ai_cloud_credibility_confirmation">文章文本将离开此设备，并发送给所选 OpenRouter 提供商以生成待核实信号。继续吗？</string>
@@ -363,7 +365,7 @@
     <string name="sync_one_day">1 天</string>
     <string name="sync_health">数据新鲜度</string>
     <string name="sync_health_description">查看信息流上次检查时间以及缓存文章是否为最新。</string>
-    <string name="sync_health_open">数据新鲜度</string>
+    <string name="sync_health_open">打开</string>
     <string name="sync_health_title">数据新鲜度</string>
     <string name="sync_health_status_never">尚未同步</string>
     <string name="sync_health_status_syncing">正在同步</string>

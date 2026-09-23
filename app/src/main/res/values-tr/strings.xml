@@ -278,8 +278,10 @@
     <string name="settings_rating_meaning">İşaretleri okuma:</string>
     <string name="settings_rating_values">• Güçlü işaretler: kaynaklı, kanıtlı, dengeli\n• Karışık işaretler: güvenmeden önce doğrula\n• Zayıf işaretler: sansasyonel veya desteksiz iddialar</string>
     <string name="settings_credibility_disclaimer">Bu, makale metnine dair yapay zekâ izlenimidir; doğrulama değildir. Model web’de gezemez veya iddiaları doğrulayamaz. Yerel modeller makaleyi cihazda tutar; OpenRouter seçilen sağlayıcıya gönderir ve sonucu yeniden analize kadar önbelleğe alır.</string>
+    <string name="ai_backend_summary_label">Yerel arka uç</string>
     <string name="article_ai_on_device_processing">Cihaz içi AI — model hazır olduğunda makale metni bu cihazda kalır ve çevrimdışı çalışır.</string>
     <string name="article_ai_cloud_processing">Bulut AI — onayınızdan sonra makale metni seçilen sağlayıcıya gönderilir.</string>
+    <string name="article_ai_cloud_summary_privacy">Makale metni onayınızdan sonra gönderilir.</string>
     <string name="article_ai_cloud_confirmation_title">Makale metni bulut AI’ya gönderilsin mi?</string>
     <string name="article_ai_cloud_summary_confirmation">Makale metni bu cihazdan ayrılıp özet oluşturmak için seçilen OpenRouter sağlayıcısına gönderilecek. Devam edilsin mi?</string>
     <string name="article_ai_cloud_credibility_confirmation">Makale metni bu cihazdan ayrılıp doğrulama işaretleri oluşturmak için seçilen OpenRouter sağlayıcısına gönderilecek. Devam edilsin mi?</string>
@@ -363,7 +365,7 @@
     <string name="sync_one_day">1 gün</string>
     <string name="sync_health">Veri güncelliği</string>
     <string name="sync_health_description">Akışlarınızın ne zaman kontrol edildiğini ve önbellekteki makalelerin güncel olup olmadığını görün.</string>
-    <string name="sync_health_open">Veri güncelliği</string>
+    <string name="sync_health_open">Aç</string>
     <string name="sync_health_title">Veri güncelliği</string>
     <string name="sync_health_status_never">Henüz senkronize edilmedi</string>
     <string name="sync_health_status_syncing">Senkronize ediliyor</string>

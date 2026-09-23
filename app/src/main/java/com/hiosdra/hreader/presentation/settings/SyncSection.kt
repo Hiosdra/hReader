@@ -44,22 +44,8 @@ internal fun syncSettingsSummary(state: SyncUiState): String {
     val wifiState = stringResource(
         if (state.unmeteredOnly) R.string.settings_state_enabled else R.string.settings_state_disabled
     )
-    val roamingState = stringResource(
-        if (state.syncWhileRoaming) R.string.settings_state_enabled else R.string.settings_state_disabled
-    )
-    val quietHoursState = stringResource(
-        if (state.quietHoursEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled
-    )
-    val quietHoursRange = if (state.quietHoursEnabled) {
-        " (${formatHour(state.quietHoursStart)}–${formatHour(state.quietHoursEnd)})"
-    } else {
-        ""
-    }
-    return "${stringResource(R.string.sync_automatic)}: ${formatInterval(state.intervalMinutes)} · " +
-        "${stringResource(syncModeLabel(state.syncMode))}\n" +
-        "${stringResource(R.string.sync_wifi_only)}: $wifiState · " +
-        "${stringResource(R.string.sync_roaming)}: $roamingState · " +
-        "${stringResource(R.string.sync_quiet_hours)}: $quietHoursState$quietHoursRange"
+    return "${stringResource(R.string.sync_automatic)}: ${formatInterval(state.intervalMinutes)}\n" +
+        "${stringResource(R.string.sync_wifi_only)}: $wifiState"
 }
 
 @Composable
