@@ -1,7 +1,7 @@
 <resources>
     <string name="notification_channel_ai_model_download">KI-Modell-Downloads</string>
     <string name="notification_ai_model_download_title">KI-Modell wird heruntergeladen</string>
-    <string name="settings_local_ai">Lokale KI</string>
+    <string name="settings_local_ai">KI auf dem Gerät</string>
     <string name="ai_gemma_model_name">Gemma 4 E2B</string>
     <string name="ai_gemma_model_description">Wird auf diesem Gerät über LiteRT-LM ausgeführt. Der Artikeltext wird nicht an einen Cloud-Anbieter gesendet.</string>
     <string name="ai_model_size">Downloadgröße: %.1f GB</string>

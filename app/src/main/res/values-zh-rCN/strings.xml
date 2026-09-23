@@ -269,8 +269,10 @@
     <string name="settings_offline_reading">离线阅读</string>
     <string name="settings_reading_experience">阅读体验</string>
     <string name="settings_bionic_reading">仿生阅读</string>
+    <string name="settings_state_enabled">已开启</string>
+    <string name="settings_state_disabled">已关闭</string>
     <string name="settings_bionic_reading_description">突出显示单词的一部分，以便更快阅读</string>
-    <string name="settings_ai_features">AI 功能</string>
+    <string name="settings_ai_features">云端 AI</string>
     <string name="settings_show_credibility_chip">显示待核实信号</string>
     <string name="settings_credibility_description">为每篇文章添加标签，显示关于来源、语气和平衡性的 AI 信号</string>
     <string name="settings_rating_meaning">如何理解这些信号：</string>
@@ -575,7 +577,9 @@
     <string name="main_travel_mode">旅行模式</string>
     <string name="offline_download_partial">仍有 %1$d 个离线项目未完成。重试以补齐缺失内容。</string>
     <string name="travel_mode_title">旅行模式</string>
-    <string name="travel_mode_intro">出发前准备阅读内容的本地副本。设置中使用的离线缓存和保存页面任务会在此报告进度。</string>
+    <string name="travel_mode_intro">选择要离线保留的内容，并在出发前下载。</string>
+    <string name="travel_mode_download_options">下载选项</string>
+    <string name="travel_mode_download_details">下载详情</string>
     <string name="travel_mode_presets">选择要保留的内容</string>
     <string name="travel_mode_presets_description">这些预设使用现有的离线目标：优先未读文章，然后添加最近读过的文章，直到达到所选总数。</string>
     <string name="travel_mode_preset_unread">仅未读</string>

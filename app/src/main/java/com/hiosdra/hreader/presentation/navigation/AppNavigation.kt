@@ -56,6 +56,7 @@ import com.hiosdra.hreader.presentation.main.MainScreen
 import com.hiosdra.hreader.presentation.main.MainViewModel
 import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
 import com.hiosdra.hreader.presentation.settings.SettingsScreen
+import com.hiosdra.hreader.presentation.settings.TravelModeSettingsScreen
 import com.hiosdra.hreader.presentation.settings.LicensesScreen
 import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
 import com.hiosdra.hreader.presentation.sync.SyncHealthScreen
@@ -268,13 +269,19 @@ fun AppNavigation(
                 gemmaModelManager = gemmaModelManager,
                 gemmaModelDownloadScheduler = gemmaModelDownloadScheduler,
                 gemmaModelLifecycle = gemmaModelLifecycle,
-                networkStatus = networkStatus,
                 settingsViewModel = koinViewModel(),
                 onSignedOut = {
                     navController.navigate(Routes.SERVER_SETUP) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }
                 }
+            )
+        }
+        composable(Routes.OFFLINE_SETTINGS) {
+            TravelModeSettingsScreen(
+                navController = navController,
+                networkStatus = networkStatus,
+                settingsViewModel = koinViewModel()
             )
         }
         composable(Routes.TTS_SETTINGS) {

@@ -269,8 +269,10 @@
     <string name="settings_offline_reading">Lettura offline</string>
     <string name="settings_reading_experience">Esperienza di lettura</string>
     <string name="settings_bionic_reading">Lettura bionica</string>
+    <string name="settings_state_enabled">Sì</string>
+    <string name="settings_state_disabled">No</string>
     <string name="settings_bionic_reading_description">Evidenzia parti delle parole per leggere più velocemente</string>
-    <string name="settings_ai_features">Funzioni IA</string>
+    <string name="settings_ai_features">IA nel cloud</string>
     <string name="settings_show_credibility_chip">Mostra i segnali da verificare</string>
     <string name="settings_credibility_description">Aggiunge a ogni articolo un indicatore con segnali IA su fonti, tono ed equilibrio</string>
     <string name="settings_rating_meaning">Come leggere i segnali:</string>
@@ -583,7 +585,9 @@
     <string name="main_travel_mode">Modalità viaggio</string>
     <string name="offline_download_partial">%1$d elementi offline sono ancora incompleti. Riprova per colmare le lacune.</string>
     <string name="travel_mode_title">Modalità viaggio</string>
-    <string name="travel_mode_intro">Prepara una copia locale delle tue letture prima di partire. Gli stessi processi di cache offline e di salvataggio delle pagine usati nelle Impostazioni mostrano qui l’avanzamento.</string>
+    <string name="travel_mode_intro">Scegli cosa tenere offline e scaricalo prima di partire.</string>
+    <string name="travel_mode_download_options">Opzioni di download</string>
+    <string name="travel_mode_download_details">Dettagli del download</string>
     <string name="travel_mode_presets">Scegli cosa conservare</string>
     <string name="travel_mode_presets_description">Queste preimpostazioni usano l’obiettivo offline esistente: prima gli articoli non letti, poi quelli letti più di recente fino al totale scelto.</string>
     <string name="travel_mode_preset_unread">Solo non letti</string>

@@ -21,6 +21,7 @@ object Routes {
     const val ARTICLE = "article?feedId={feedId}&startId={startId}" +
         "&includeRead={includeRead}&session={session}"
     const val SETTINGS = "settings"
+    const val OFFLINE_SETTINGS = "settings/offline"
     const val SYNC_HEALTH = "settings/sync-health"
     const val TTS_SETTINGS = "settings/tts"
     const val LICENSES = "settings/licenses"

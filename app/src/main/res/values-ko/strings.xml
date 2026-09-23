@@ -269,8 +269,10 @@
     <string name="settings_offline_reading">오프라인 읽기</string>
     <string name="settings_reading_experience">읽기 환경</string>
     <string name="settings_bionic_reading">바이오닉 리딩</string>
+    <string name="settings_state_enabled">켜짐</string>
+    <string name="settings_state_disabled">꺼짐</string>
     <string name="settings_bionic_reading_description">더 빠르게 읽을 수 있도록 단어 일부를 강조 표시합니다</string>
-    <string name="settings_ai_features">AI 기능</string>
+    <string name="settings_ai_features">클라우드 AI</string>
     <string name="settings_show_credibility_chip">검증 신호 표시</string>
     <string name="settings_credibility_description">각 기사에 출처, 어조 및 균형에 관한 AI 신호를 표시하는 표시기를 추가합니다</string>
     <string name="settings_rating_meaning">신호 읽는 방법:</string>
@@ -575,7 +577,9 @@
     <string name="main_travel_mode">여행 모드</string>
     <string name="offline_download_partial">오프라인 항목 %1$d개가 아직 완전하지 않습니다. 누락된 항목을 채우려면 다시 시도하세요.</string>
     <string name="travel_mode_title">여행 모드</string>
-    <string name="travel_mode_intro">떠나기 전에 읽을 콘텐츠의 로컬 사본을 준비하세요. 설정에서 사용하는 것과 같은 오프라인 캐시 및 저장된 페이지 작업이 여기에서 진행률을 보고합니다.</string>
+    <string name="travel_mode_intro">오프라인으로 보관할 항목을 선택하고 떠나기 전에 다운로드하세요.</string>
+    <string name="travel_mode_download_options">다운로드 옵션</string>
+    <string name="travel_mode_download_details">다운로드 세부정보</string>
     <string name="travel_mode_presets">보관할 항목 선택</string>
     <string name="travel_mode_presets_description">이 프리셋은 기존 오프라인 대상을 사용합니다. 읽지 않은 글을 먼저 받고, 선택한 총 개수에 도달할 때까지 최근에 읽은 글을 추가합니다.</string>
     <string name="travel_mode_preset_unread">읽지 않은 항목만</string>
