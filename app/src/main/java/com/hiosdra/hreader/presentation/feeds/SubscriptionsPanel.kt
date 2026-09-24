@@ -98,6 +98,7 @@ fun SubscriptionsPanel(
     }
 
     LaunchedEffect(visible) {
+        viewModel.setDrawerVisible(visible)
         if (visible) viewModel.reload()
     }
 

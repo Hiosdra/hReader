@@ -34,6 +34,7 @@ fun SubscriptionsDrawer(
     val closeThen: (() -> Unit) -> Unit = { action ->
         scope.launch {
             drawerState.close()
+            viewModel.setDrawerVisible(false)
             action()
         }
     }
