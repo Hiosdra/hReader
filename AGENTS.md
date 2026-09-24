@@ -37,6 +37,20 @@ resolves the active implementation per call from `ServerConfig`.
 - The AI model list is fetched from OpenRouter rather than hardcoded, and the selected model is
   validated against it on startup.
 
+## Emulator smoke testing
+
+- `tools/mock_miniflux_server.py` is a standard-library-only Miniflux fixture for manual Android
+  emulator reviews. It serves three feeds, twelve fictional articles, generated images, and the
+  Miniflux endpoints used by hReader; state changes live in memory and reset when the process stops.
+- Run `python3 tools/mock_miniflux_server.py`, then `adb reverse tcp:8765 tcp:8765`. Configure
+  Miniflux in hReader with `http://127.0.0.1:8765` and the fixture token `hreader-demo-token`.
+  Save the server settings before testing the connection so `RemoteResourcePolicyAdapter` trusts
+  the configured local host.
+- Keep the fixture bound to loopback by default. The address in `--emulator-host` must match the
+  configured server host so article HTML and image URLs pass the same resource policy.
+- Use only fictional fixture content and the demo token. Do not add real credentials or bind the
+  mock to a public interface for routine emulator testing.
+
 ## Configuration
 
 Server address, credentials and the optional OpenRouter key live in `PreferencesManager`, edited
