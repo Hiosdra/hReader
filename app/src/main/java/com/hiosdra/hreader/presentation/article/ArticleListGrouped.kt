@@ -35,6 +35,7 @@ import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.isRead
+import com.hiosdra.hreader.presentation.theme.HReaderSpacing
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -263,20 +264,24 @@ private fun itemContentType(item: ArticleListItem): String = when (item) {
 private fun DayHeader(date: LocalDate) {
     val locale = LocalLocale.current.platformLocale
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
+                .padding(
+                    start = HReaderSpacing.space4,
+                    end = HReaderSpacing.space4,
+                    top = HReaderSpacing.space3,
+                    bottom = HReaderSpacing.space2
+                )
         ) {
             Text(
                 text = date.format(
                     DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(locale)
                 ),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterStart)
             )
@@ -284,8 +289,8 @@ private fun DayHeader(date: LocalDate) {
     }
     HorizontalDivider(
         thickness = 1.dp,
-        color = MaterialTheme.colorScheme.outlineVariant,
-        modifier = Modifier.padding(horizontal = 12.dp)
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        modifier = Modifier.padding(horizontal = HReaderSpacing.space3)
     )
 }
 

@@ -46,6 +46,7 @@ import com.hiosdra.hreader.core.application.ai.ArticleAiPhase
 import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.ai.AiProvider
 import com.hiosdra.hreader.core.domain.model.CredibilityReport
+import com.hiosdra.hreader.presentation.theme.HReaderSpacing
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 
 private enum class CloudAiAction {
@@ -100,13 +101,13 @@ internal fun ArticleMetadata(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         if (aiOverviewClick != null || analyzeCredibility != null) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(HReaderSpacing.space2))
         }
         @OptIn(ExperimentalLayoutApi::class)
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(HReaderSpacing.space2),
+            verticalArrangement = Arrangement.spacedBy(HReaderSpacing.space2)
         ) {
             if (aiOverviewClick != null) {
                 androidx.compose.material3.AssistChip(
@@ -145,7 +146,7 @@ internal fun ArticleMetadata(
                         containerColor = if (aiOverview != null || isGeneratingOverview) {
                             MaterialTheme.colorScheme.primaryContainer
                         } else {
-                            MaterialTheme.colorScheme.surfaceVariant
+                            MaterialTheme.colorScheme.surfaceContainerLow
                         }
                     )
                 )
@@ -176,13 +177,13 @@ internal fun ArticleMetadata(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp),
+                        .padding(top = HReaderSpacing.space2),
                     colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     )
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(HReaderSpacing.space4)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -202,7 +203,7 @@ internal fun ArticleMetadata(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(HReaderSpacing.space2))
                         AnimatedContent(
                             targetState = isGeneratingOverview,
                             transitionSpec = { aiContentTransition() },
@@ -266,9 +267,9 @@ internal fun ArticleMetadata(
                         R.string.article_ai_cloud_processing
                     }
                 ),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp)
+                modifier = Modifier.padding(top = HReaderSpacing.space1)
             )
         }
 

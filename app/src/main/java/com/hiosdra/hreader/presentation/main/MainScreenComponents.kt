@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
+import com.hiosdra.hreader.presentation.theme.HReaderSpacing
 
 internal data class EmptyStateModel(
     val error: String? = null,
@@ -250,9 +251,12 @@ internal fun ArticleScopeBar(
         modifier = Modifier.fillMaxWidth()
     ) {
         FlowRow(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.padding(
+                horizontal = HReaderSpacing.space4,
+                vertical = HReaderSpacing.space1
+            ),
+            horizontalArrangement = Arrangement.spacedBy(HReaderSpacing.space2),
+            verticalArrangement = Arrangement.spacedBy(HReaderSpacing.space1)
         ) {
             FilterChip(
                 selected = !showReadArticles,

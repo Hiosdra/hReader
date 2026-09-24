@@ -81,6 +81,9 @@ internal fun ArticleContent(
     val feedTitle = entry.feed.title.ifBlank { stringResource(R.string.article_unknown_feed) }
     val dateText = remember(entry.publishedAt, locale) { formatArticleDate(entry.publishedAt, locale) }
     val readableArticleContent = articleContent
+    val leadImageUrl = content.leadImages[entry.id]?.takeUnless { imageUrl ->
+        readableArticleContent.contains(imageUrl)
+    }
     val contentFingerprint = readableArticleContent.hashCode()
     val articleScrollState = rememberSaveable(entry.id, saver = ScrollState.Saver) { ScrollState(0) }
     var webContentHeightPx by rememberSaveable(entry.id, contentFingerprint, contentState) {
@@ -315,7 +318,7 @@ internal fun ArticleContent(
                     dateText = dateText,
                     contentProvenance = contentProvenance,
                     contentState = contentState,
-                    mainImageUrl = content.leadImages[entry.id],
+                    mainImageUrl = leadImageUrl,
                     onRetryContent = onRetryContent,
                     onZoomImage = { zoomImageUrl = it },
                     bindings = bindings,
@@ -350,7 +353,7 @@ internal fun ArticleContent(
                         dateText = dateText,
                         contentProvenance = contentProvenance,
                         contentState = contentState,
-                        mainImageUrl = content.leadImages[entry.id],
+                        mainImageUrl = leadImageUrl,
                         onRetryContent = onRetryContent,
                         onZoomImage = { zoomImageUrl = it },
                         bindings = bindings,
