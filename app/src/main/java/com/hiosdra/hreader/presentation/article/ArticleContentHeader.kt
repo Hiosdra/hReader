@@ -15,13 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
+import com.hiosdra.hreader.presentation.theme.HReaderSpacing
 
 @Composable
 internal fun ArticleContentHeader(
@@ -51,7 +50,7 @@ internal fun ArticleContentHeader(
         modifier = modifier
             .fillMaxWidth()
             .widthIn(max = 760.dp)
-            .padding(top = 12.dp)
+            .padding(top = HReaderSpacing.space3)
     ) {
         Text(
             text = feedTitle,
@@ -59,18 +58,14 @@ internal fun ArticleContentHeader(
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = HReaderSpacing.space2)
         )
         Text(
             text = entry.title,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontSize = 28.sp,
-                lineHeight = 34.sp
-            ),
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(HReaderSpacing.space3))
         ArticleMetadata(
             author = entry.author,
             dateText = dateText,
@@ -86,27 +81,18 @@ internal fun ArticleContentHeader(
             isAnalyzingCredibility = entry.id in ai.analyzingCredibilityIds,
             onAnalyzeCredibility = onAnalyzeCredibility
         )
-        if (entry.url.isNotBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            ArticleSourceActions(
-                defaultPaywallBypassMethod = bindings.defaultPaywallBypassMethod,
-                isOnline = isOnline,
-                canUsePaywallBypass = bindings.canUsePaywallBypass(entry.url),
-                onOpenInChrome = { bindings.onOpenInChrome(entry.url) },
-                onBypassPaywall = { method -> bindings.onBypassPaywall(entry.url, method) }
-            )
-        }
+        Spacer(modifier = Modifier.height(HReaderSpacing.space2))
         ArticleContentProvenanceStatus(
             provenance = contentProvenance,
             contentState = contentState,
             onRetry = onRetryContent,
             onOpenOriginal = onOpenOriginal
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider()
+        Spacer(modifier = Modifier.height(HReaderSpacing.space3))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
 
         mainImageUrl?.let { imageUrl ->
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(HReaderSpacing.space5))
             OfflineAwareImage(
                 entryId = entry.id,
                 imageUrl = imageUrl,
@@ -123,6 +109,6 @@ internal fun ArticleContentHeader(
                 contentScale = ContentScale.Crop
             )
         }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(HReaderSpacing.space6))
     }
 }
