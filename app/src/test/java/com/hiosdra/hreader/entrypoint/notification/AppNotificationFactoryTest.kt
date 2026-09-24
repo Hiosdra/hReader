@@ -91,4 +91,4 @@ class AppNotificationFactoryTest {
     }
 }
 
-private class AppNotificationFactoryTestApplication : Application()
+internal class AppNotificationFactoryTestApplication : Application()

@@ -229,4 +229,4 @@ class MainScreenTest {
     }
 }
 
-private class MainScreenTestApplication : Application()
+internal class MainScreenTestApplication : Application()

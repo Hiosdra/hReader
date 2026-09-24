@@ -102,4 +102,4 @@ class ServerSetupScreenTest {
     }
 }
 
-private class ServerSetupScreenTestApplication : Application()
+internal class ServerSetupScreenTestApplication : Application()

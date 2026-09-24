@@ -183,4 +183,4 @@ class CacheDataCleanerIntegrationTest {
     }
 }
 
-private class CacheDataCleanerIntegrationTestApplication : Application()
+internal class CacheDataCleanerIntegrationTestApplication : Application()

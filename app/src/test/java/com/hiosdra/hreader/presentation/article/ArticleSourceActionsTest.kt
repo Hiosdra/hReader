@@ -117,4 +117,4 @@ class ArticleSourceActionsTest {
     }
 }
 
-private class ArticleSourceActionsTestApplication : Application()
+internal class ArticleSourceActionsTestApplication : Application()

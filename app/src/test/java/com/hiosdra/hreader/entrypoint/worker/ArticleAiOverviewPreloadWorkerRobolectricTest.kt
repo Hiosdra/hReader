@@ -181,4 +181,4 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
     }
 }
 
-private class ArticleAiOverviewPreloadWorkerRobolectricTestApplication : Application()
+internal class ArticleAiOverviewPreloadWorkerRobolectricTestApplication : Application()

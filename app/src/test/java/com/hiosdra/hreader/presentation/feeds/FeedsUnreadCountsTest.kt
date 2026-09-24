@@ -123,4 +123,4 @@ class FeedsUnreadCountsTest {
     }
 }
 
-private class FeedsUnreadCountsTestApplication : Application()
+internal class FeedsUnreadCountsTestApplication : Application()

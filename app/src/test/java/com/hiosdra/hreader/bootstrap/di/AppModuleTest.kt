@@ -29,4 +29,4 @@ class AppModuleTest {
     }
 }
 
-private class AppModuleTestApplication : Application()
+internal class AppModuleTestApplication : Application()

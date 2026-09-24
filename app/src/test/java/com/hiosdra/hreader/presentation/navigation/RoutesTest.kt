@@ -91,4 +91,4 @@ class RoutesTest {
     }
 }
 
-private class RoutesTestApplication : Application()
+internal class RoutesTestApplication : Application()

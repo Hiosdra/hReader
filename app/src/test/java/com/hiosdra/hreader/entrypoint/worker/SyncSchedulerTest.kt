@@ -420,4 +420,4 @@ class SyncSchedulerTest {
         }
 }
 
-private class SyncSchedulerTestApplication : Application()
+internal class SyncSchedulerTestApplication : Application()

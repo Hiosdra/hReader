@@ -261,4 +261,4 @@ private class FullPagePerformanceTracker : SyncPerformanceTracker {
     override fun logSyncMode(isIncremental: Boolean, lastSyncTime: Long?) = Unit
 }
 
-private class FullPageSyncWorkerRobolectricTestApplication : Application()
+internal class FullPageSyncWorkerRobolectricTestApplication : Application()

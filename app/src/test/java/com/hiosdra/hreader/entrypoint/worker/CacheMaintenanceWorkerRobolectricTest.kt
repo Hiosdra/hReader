@@ -137,4 +137,4 @@ private class CacheMaintenancePerformanceTracker : SyncPerformanceTracker {
     override fun logSyncMode(isIncremental: Boolean, lastSyncTime: Long?) = Unit
 }
 
-private class CacheMaintenanceWorkerRobolectricTestApplication : Application()
+internal class CacheMaintenanceWorkerRobolectricTestApplication : Application()

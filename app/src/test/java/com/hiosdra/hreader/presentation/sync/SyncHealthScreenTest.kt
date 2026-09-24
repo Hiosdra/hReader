@@ -105,4 +105,4 @@ class SyncHealthScreenTest {
     }
 }
 
-private class SyncHealthScreenTestApplication : Application()
+internal class SyncHealthScreenTestApplication : Application()

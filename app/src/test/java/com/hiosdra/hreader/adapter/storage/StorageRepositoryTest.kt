@@ -73,4 +73,4 @@ class StorageRepositoryTest {
     }
 }
 
-private class StorageRepositoryTestApplication : Application()
+internal class StorageRepositoryTestApplication : Application()

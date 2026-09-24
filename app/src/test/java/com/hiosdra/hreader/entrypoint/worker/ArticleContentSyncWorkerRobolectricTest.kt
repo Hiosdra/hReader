@@ -401,4 +401,4 @@ private class ArticleContentPerformanceTracker : SyncPerformanceTracker {
     override fun logSyncMode(isIncremental: Boolean, lastSyncTime: Long?) = Unit
 }
 
-private class ArticleContentSyncWorkerRobolectricTestApplication : Application()
+internal class ArticleContentSyncWorkerRobolectricTestApplication : Application()

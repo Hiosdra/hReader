@@ -197,4 +197,4 @@ class ArticleTopBarTest {
     }
 }
 
-private class ArticleTopBarTestApplication : Application()
+internal class ArticleTopBarTestApplication : Application()

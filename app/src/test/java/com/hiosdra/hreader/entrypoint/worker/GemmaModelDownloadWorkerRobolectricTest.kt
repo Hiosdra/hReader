@@ -193,4 +193,4 @@ private class RecordingGemmaModelGateway(
     override suspend fun remove() = Unit
 }
 
-private class GemmaModelDownloadWorkerRobolectricTestApplication : Application()
+internal class GemmaModelDownloadWorkerRobolectricTestApplication : Application()

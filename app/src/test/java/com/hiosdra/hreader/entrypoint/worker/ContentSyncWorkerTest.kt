@@ -285,4 +285,4 @@ private class ContentSyncWorkerFactory(
     }
 }
 
-private class ContentSyncWorkerTestApplication : Application()
+internal class ContentSyncWorkerTestApplication : Application()

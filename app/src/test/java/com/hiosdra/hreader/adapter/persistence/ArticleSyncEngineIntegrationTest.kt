@@ -326,4 +326,4 @@ private fun Feed.toArticleFeedEntity() = FeedEntity(
     autoMarkRead = autoMarkRead
 )
 
-private class ArticleSyncEngineIntegrationTestApplication : Application()
+internal class ArticleSyncEngineIntegrationTestApplication : Application()

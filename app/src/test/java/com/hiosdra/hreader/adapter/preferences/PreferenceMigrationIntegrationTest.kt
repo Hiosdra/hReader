@@ -75,4 +75,4 @@ class PreferenceMigrationIntegrationTest {
     }
 }
 
-private class PreferenceMigrationIntegrationTestApplication : Application()
+internal class PreferenceMigrationIntegrationTestApplication : Application()

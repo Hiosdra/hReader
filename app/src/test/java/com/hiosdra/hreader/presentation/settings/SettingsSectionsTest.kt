@@ -272,4 +272,4 @@ class SettingsSectionsTest {
     }
 }
 
-private class SettingsSectionsTestApplication : Application()
+internal class SettingsSectionsTestApplication : Application()

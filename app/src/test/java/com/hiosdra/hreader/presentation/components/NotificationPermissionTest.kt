@@ -36,4 +36,4 @@ class NotificationPermissionTest {
     }
 }
 
-private class NotificationPermissionTestApplication : Application()
+internal class NotificationPermissionTestApplication : Application()

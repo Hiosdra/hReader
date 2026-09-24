@@ -146,4 +146,4 @@ class PreferenceStoresPersistenceTest {
     }
 }
 
-private class PreferenceStoresPersistenceTestApplication : Application()
+internal class PreferenceStoresPersistenceTestApplication : Application()
