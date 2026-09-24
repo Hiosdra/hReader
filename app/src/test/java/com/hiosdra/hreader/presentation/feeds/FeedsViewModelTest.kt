@@ -32,24 +32,47 @@ class SubscriptionOrderTest {
     }
 
     @Test
-    fun `held positions survive counts that would reorder the rows`() {
-        val settled = sortSubscriptions(feeds, mapOf(1L to 5, 2L to 1, 3L to 9))
+    fun `sync order keeps existing unread before fresh unread and read feeds`() {
+        val syncBaselineUnreadCounts = mapOf(1L to 5, 3L to 9)
+        val settled = sortSubscriptions(feeds, syncBaselineUnreadCounts)
         val rowOrder = settled.withIndex().associate { (position, feed) -> feed.id to position }
 
-        val held = holdRowOrder(feeds, mapOf(1L to 0, 2L to 40, 3L to 0), rowOrder)
+        val updatedUnreadCounts = mapOf(1L to 30, 2L to 40, 3L to 1)
+        val ordered = orderSubscriptionsBySyncGroup(
+            feeds = feeds,
+            unreadCounts = updatedUnreadCounts,
+            syncBaselineUnreadCounts = syncBaselineUnreadCounts,
+            rowOrder = rowOrder
+        )
 
-        assertEquals(settled.map { it.title }, held.map { it.title })
+        assertEquals(listOf("Beta Report", "Zed Weekly", "alpha times"), ordered.map { it.title })
+
+        val held = holdRowOrder(
+            ordered,
+            updatedUnreadCounts,
+            ordered.withIndex().associate { (position, feed) -> feed.id to position },
+            syncBaselineUnreadCounts
+        )
+        assertEquals(ordered.map { it.title }, held.map { it.title })
+
+        val markedRead = orderSubscriptionsBySyncGroup(
+            feeds = ordered,
+            unreadCounts = mapOf(1L to 0, 2L to 40, 3L to 1),
+            syncBaselineUnreadCounts = syncBaselineUnreadCounts,
+            rowOrder = ordered.withIndex().associate { (position, feed) -> feed.id to position }
+        )
+        assertEquals(listOf("Beta Report", "alpha times", "Zed Weekly"), markedRead.map { it.title })
     }
 
     @Test
-    fun `feeds nobody has placed yet go last`() {
+    fun `new unread feed stays ahead of read feeds`() {
         val added = Feed(id = 4, title = "Added Later", siteUrl = null, feedUrl = "https://added.example.com/feed")
         val rowOrder = mapOf(1L to 0, 2L to 1, 3L to 2)
 
         val held = holdRowOrder(feeds + added, mapOf(4L to 99), rowOrder)
 
         assertEquals(
-            listOf("Zed Weekly", "alpha times", "Beta Report", "Added Later"),
+            listOf("Added Later", "Zed Weekly", "alpha times", "Beta Report"),
             held.map { it.title }
         )
     }

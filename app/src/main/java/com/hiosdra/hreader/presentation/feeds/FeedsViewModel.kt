@@ -8,6 +8,7 @@ import com.hiosdra.hreader.core.domain.model.Feed
 import com.hiosdra.hreader.core.application.usecase.feeds.FeedUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.presentation.text.UiText
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +30,8 @@ data class FeedsUiState(
 )
 
 class FeedsViewModel(
-    private val feeds: FeedUseCase
+    private val feeds: FeedUseCase,
+    private val syncActivity: Flow<Boolean>
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -40,8 +42,14 @@ class FeedsViewModel(
     private var rowOrder: Map<Long, Int> = emptyMap()
     private var resettleRows = true
     private var retryAction: (() -> Unit)? = null
+    private var syncBaselineUnreadCounts: Map<Long, Int>? = null
+    private var latestUnreadCounts = emptyMap<Long, Int>()
+    private var hasObservedUnreadCounts = false
+    private var syncBaselinePending = false
+    private var isSyncActive = false
 
     init {
+        observeSyncActivity()
         observeUnreadCounts()
         loadFeeds()
         viewModelScope.launch {
@@ -58,8 +66,58 @@ class FeedsViewModel(
     private fun observeUnreadCounts() {
         viewModelScope.launch {
             feeds.observeUnreadCounts().collect { unreadCounts ->
-                _uiState.value = _uiState.value.copy(unreadCounts = unreadCounts)
+                rememberUnreadCounts(unreadCounts)
+                updateFeedOrder(unreadCounts)
             }
+        }
+    }
+
+    private fun observeSyncActivity() {
+        viewModelScope.launch {
+            syncActivity.collect { isActive ->
+                val startsSync = isActive && !isSyncActive
+                isSyncActive = isActive
+                if (startsSync) {
+                    if (hasObservedUnreadCounts) {
+                        syncBaselineUnreadCounts = latestUnreadCounts
+                        syncBaselinePending = false
+                    } else {
+                        syncBaselineUnreadCounts = null
+                        syncBaselinePending = true
+                    }
+                }
+                if (hasObservedUnreadCounts) {
+                    updateFeedOrder(_uiState.value.unreadCounts)
+                }
+            }
+        }
+    }
+
+    private fun rememberUnreadCounts(unreadCounts: Map<Long, Int>) {
+        if (syncBaselinePending) {
+            syncBaselineUnreadCounts = unreadCounts
+            syncBaselinePending = false
+        }
+        latestUnreadCounts = unreadCounts
+        hasObservedUnreadCounts = true
+    }
+
+    private fun updateFeedOrder(unreadCounts: Map<Long, Int>) {
+        val current = _uiState.value
+        val ordered = orderSubscriptionsBySyncGroup(
+            feeds = current.feeds,
+            unreadCounts = unreadCounts,
+            syncBaselineUnreadCounts = syncBaselineUnreadCounts,
+            rowOrder = rowOrder
+        )
+        rowOrder = ordered.withIndex().associate { (position, feed) -> feed.id to position }
+        _uiState.value = current.copy(
+            feeds = ordered,
+            filteredFeeds = ordered,
+            unreadCounts = unreadCounts
+        )
+        if (current.searchQuery.isNotEmpty()) {
+            filterFeeds()
         }
     }
 
@@ -279,10 +337,11 @@ class FeedsViewModel(
     }
 
     private fun placeRows(feeds: List<Feed>, unreadCounts: Map<Long, Int>): List<Feed> {
-        val placed = if (resettleRows) {
+        rememberUnreadCounts(unreadCounts)
+        val placed = if (resettleRows && syncBaselineUnreadCounts == null) {
             sortSubscriptions(feeds, unreadCounts)
         } else {
-            holdRowOrder(feeds, unreadCounts, rowOrder)
+            holdRowOrder(feeds, unreadCounts, rowOrder, syncBaselineUnreadCounts)
         }
         rowOrder = placed.withIndex().associate { (position, feed) -> feed.id to position }
         resettleRows = false
@@ -372,8 +431,32 @@ internal fun sortSubscriptions(feeds: List<Feed>, unreadCounts: Map<Long, Int>):
 internal fun holdRowOrder(
     feeds: List<Feed>,
     unreadCounts: Map<Long, Int>,
+    rowOrder: Map<Long, Int>,
+    syncBaselineUnreadCounts: Map<Long, Int>? = null
+): List<Feed> = orderSubscriptionsBySyncGroup(
+    feeds = feeds,
+    unreadCounts = unreadCounts,
+    syncBaselineUnreadCounts = syncBaselineUnreadCounts,
+    rowOrder = rowOrder
+)
+
+internal fun orderSubscriptionsBySyncGroup(
+    feeds: List<Feed>,
+    unreadCounts: Map<Long, Int>,
+    syncBaselineUnreadCounts: Map<Long, Int>?,
     rowOrder: Map<Long, Int>
-): List<Feed> = sortSubscriptions(feeds, unreadCounts).sortedBy { rowOrder[it.id] ?: Int.MAX_VALUE }
+): List<Feed> = feeds.sortedWith(
+    compareBy<Feed> {
+        val currentCount = unreadCounts[it.id] ?: 0
+        when {
+            currentCount <= 0 -> 2
+            syncBaselineUnreadCounts == null || (syncBaselineUnreadCounts[it.id] ?: 0) > 0 -> 0
+            else -> 1
+        }
+    }
+        .thenBy { rowOrder[it.id] ?: Int.MAX_VALUE }
+        .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title }
+)
 
 internal fun nextSubscriptionId(feeds: List<Feed>, currentFeedId: Long): Long? {
     val currentIndex = feeds.indexOfFirst { it.id == currentFeedId }
