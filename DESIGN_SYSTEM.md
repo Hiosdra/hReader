@@ -1,81 +1,81 @@
-# System wizualny hReader
+# hReader Visual Design System
 
-Wersja robocza 1.3 · zakres: motyw ciemny
+Draft 1.3 · dark theme only
 
-## Zasady
+## Principles
 
-- Spokojny, edytorialny wygląd: ciepły grafit, piaskowy akcent i stonowane kolory stanów.
-- Treść artykułu jest ważniejsza niż chrom aplikacji; ekran ma jedną główną akcję.
-- Kolory są semantyczne. Stan jest czytelny także bez koloru.
-- Lista artykułów pozostaje płaska. Karty grupują ustawienia lub powiązane stany.
-- Odstępy, typografia i kształty pochodzą ze wspólnego zestawu tokenów Material 3.
+- A calm editorial look: warm graphite, a sand accent, and muted status colors.
+- Article content takes priority over app chrome; each screen has one prominent action.
+- Colors have semantic roles. Do not communicate state through color alone.
+- Keep the article list flat. Use cards to group settings or related states.
+- Use shared Material 3 tokens for spacing, typography, and shapes.
 
-## Kolory
+## Colors
 
-Wartości odpowiadają `DarkColorScheme` w `presentation/theme/Color.kt`.
+Values match `DarkColorScheme` in `presentation/theme/Color.kt`.
 
-| Rola | Kolor |
+| Role | Color |
 | --- | --- |
-| Tło | `#181611` |
-| Powierzchnia niska | `#221F19` |
-| Powierzchnia grupy | `#2C2722` |
-| Powierzchnia podbita | `#35312A` |
-| Tekst główny | `#E7E4DE` |
-| Tekst pomocniczy | `#CBC5BB` |
-| Akcent | `#E0C295` |
-| Akcent pomocniczy | `#D4C2AE` |
-| Sukces / ostrzeżenie / błąd | `#A4D388` / `#E7C358` / `#FFB3A3` |
-| Obrys subtelny | `#4B4640` |
+| Background | `#181611` |
+| Low surface | `#221F19` |
+| Group surface | `#2C2722` |
+| Raised surface | `#35312A` |
+| Primary text | `#E7E4DE` |
+| Secondary text | `#CBC5BB` |
+| Primary accent | `#E0C295` |
+| Secondary accent | `#D4C2AE` |
+| Success / warning / error | `#A4D388` / `#E7C358` / `#FFB3A3` |
+| Subtle outline | `#4B4640` |
 
-Tekst na kolorowej powierzchni używa pasującej roli `on*`. Sukces, ostrzeżenie i błąd oznaczamy również tekstem lub ikoną; `error` rezerwujemy dla rzeczywistych błędów.
+Use the matching `on*` role for text on tinted surfaces. Pair success, warning, and error colors with text or an icon; reserve `error` for actual errors.
 
-## Typografia
+## Typography
 
-Domyślny krój systemowy i skala Material 3. Używamy `Bold` oszczędnie; tytuły opierają się na `Medium` lub `SemiBold`.
+Use the system font and Material 3 scale. Use `Bold` sparingly; titles use `Medium` or `SemiBold`.
 
-| Rola | Styl |
+| Role | Style |
 | --- | --- |
-| Tytuł artykułu | `headlineSmall`, 24/32 sp, SemiBold |
-| Tytuł widoku | `titleLarge`, 22/28 sp, SemiBold |
-| Tytuł wiersza lub grupy | `titleMedium`, 16/24 sp, Medium |
-| Mały nagłówek | `titleSmall`, 14/20 sp, SemiBold |
-| Treść artykułu | `bodyLarge`, 16/24 sp |
-| Podgląd i opis | `bodyMedium`, 14/20 sp |
-| Tekst pomocniczy | `bodySmall`, 13/18 sp |
-| Metadane / etykieta | `labelMedium`, 12/16 sp / `labelSmall`, 11/16 sp |
+| Article title | `headlineSmall`, 24/32 sp, SemiBold |
+| View title | `titleLarge`, 22/28 sp, SemiBold |
+| Row or group title | `titleMedium`, 16/24 sp, Medium |
+| Small heading | `titleSmall`, 14/20 sp, SemiBold |
+| Article body | `bodyLarge`, 16/24 sp |
+| Preview and description | `bodyMedium`, 14/20 sp |
+| Supporting text | `bodySmall`, 13/18 sp |
+| Metadata / secondary label | `labelMedium`, 12/16 sp / `labelSmall`, 11/16 sp |
 
-Ustawienia czytania artykułu pozostają pod kontrolą preferencji użytkownika.
+Article reading preferences remain under the reader's control.
 
-## Odstępy i kształty
+## Spacing and shapes
 
-`HReaderSpacing` udostępnia siatkę 4 dp: `space1`–`space6` oraz `space8` = 4, 8, 12, 16, 20, 24 i 32 dp. Margines ekranu wynosi 16 dp; niezależne sekcje rozdziela 24 dp.
+`HReaderSpacing` provides a 4 dp grid: `space1`–`space6` and `space8` map to 4, 8, 12, 16, 20, 24, and 32 dp. Use 16 dp screen margins and 24 dp between independent sections.
 
-Kształty Material 3: 4, 8, 12, 16 i 28 dp; pełne zaokrąglenie dla filtrów i krótkich statusów. Cień nie jest domyślnym separatorem. Nie zagnieżdżamy kart.
+Material 3 corner sizes are 4, 8, 12, 16, and 28 dp. Use full rounding for filters and short status chips. Do not use shadows as default separators or nest cards.
 
-## Komponenty
+## Components
 
-- **Lista:** filtry „Nieprzeczytane” i „Wszystkie” tworzą jedną grupę. Zachowujemy nagłówki dat i lekkie separatory.
-- **Wiersz artykułu:** źródło i czas, tytuł do dwóch linii, podgląd do dwóch linii. Miniatura ma 80 dp i kadrowanie `Crop`.
-- **Stan odczytu:** nieprzeczytany tytuł jest SemiBold i ma znacznik akcentu; przeczytany pozostaje czytelny. Kontrolka stanu ma osobny cel 48 dp.
-- **Czytnik:** tytuł, źródło i metadane tworzą zwarty nagłówek. Oryginał, udostępnianie i narzędzia zewnętrzne są w menu paska.
-- **AI:** podsumowanie pozostaje zwinięte, dopóki nie ma wyniku. Informacja o wysłaniu treści i potwierdzenie są widoczne przed wysłaniem.
-- **Grafiki:** gdy URL grafiki nagłówkowej występuje już w HTML artykułu, nie pokazujemy drugiej kopii. Style aplikacji nie nadpisują HTML źródła.
-- **Ustawienia:** karty grupują temat; zwinięta grupa pokazuje tytuł i podsumowanie do dwóch linii. Kontrolki pozostają na tym samym tle.
-- **Stany i akcje:** pusty wynik, brak subskrypcji i błąd mają odrębny tekst i właściwą następną akcję. Akcent wypełniony oznacza akcję główną, tonalny — pomocniczą, tekstowy — trzecią. Destrukcyjne akcje wymagają potwierdzenia, jeśli skutek jest trudny do odwrócenia.
+- **List:** Keep unread/all filters in one selection group. Retain date headings and subtle dividers.
+- **Article row:** Show source and time, a title up to two lines, and a preview up to two lines. Use an 80 dp `Crop` thumbnail.
+- **Read state:** Use SemiBold and an accent marker for unread titles; keep read titles legible. Give the read-state control a separate 48 dp touch target.
+- **Reader:** Keep the title, source, and metadata in a compact header. Put original-page, share, and external-tool actions in the app-bar menu.
+- **AI:** Keep summaries collapsed until a result is available. Explain cloud processing and request confirmation before sending article text.
+- **Images:** If the lead-image URL already occurs in the article HTML, omit the duplicate header image. App styling must not override source HTML.
+- **Settings:** Group related settings in cards. A collapsed group shows a title and a summary of up to two lines; controls share the same surface.
+- **States and actions:** Distinguish empty results, missing subscriptions, and errors, and provide the relevant next action. Use filled, tonal, and text buttons for primary, secondary, and tertiary actions. Confirm destructive actions when their effects are hard to reverse.
 
-## Dostępność i ruch
+## Accessibility and motion
 
-- Cele dotykowe mają co najmniej 48 × 48 dp; stan nie zależy wyłącznie od koloru.
-- Tekst podstawowy ma kontrast co najmniej 4,5:1. Nazwy akcji i statusy zachowują czytelność przy powiększeniu tekstu.
-- Lista i czytnik sprawdzone na emulatorze API 37 przy skali tekstu 130%.
-- `MotionDuration`: 120 ms dla wyjścia, 140 ms dla szybkiej zmiany, 180 ms dla standardowej. Respektujemy wyłączone animacje systemowe.
+- Touch targets are at least 48 × 48 dp. State is not communicated through color alone.
+- Primary text has at least 4.5:1 contrast. Action names and status text remain readable with system text scaling.
+- The list and reader were checked on API 37 at 130% system font scale.
+- `MotionDuration`: 120 ms for exit, 140 ms for quick changes, and 180 ms for standard changes. Respect the system's reduced-animation setting.
 
-## Trzy perspektywy przeglądu
+## Product, UX, and engineering review
 
-- **Produkt:** lista pokazuje temat, źródło i stan; filtr, otwarcie artykułu i zmiana stanu pozostają czytelne.
-- **UX:** krótsze podglądy i płaskie wiersze ułatwiają skanowanie, a zwarty nagłówek szybciej odsłania treść.
-- **Inżynieria:** korzystamy z Material 3 i Paging 3 bez nowych zależności; nie zmieniamy modeli ani synchronizacji, a HTML serwera zostaje odrębny.
+- **Product:** Make topic, source, and read state easy to scan; keep filtering, opening an article, and changing its read state distinct.
+- **UX:** Short previews and flat rows improve scanning; a compact reader header brings the article into view sooner.
+- **Engineering:** Reuse Material 3 and Paging 3 without new dependencies. Keep models and sync unchanged, and keep server HTML separate from app chrome.
 
-## Zakres i walidacja
+## Scope and validation
 
-Wersja 1.4 obejmuje tokeny oraz główne wzorce listy i czytnika. Następny krok to zastosowanie ich do ustawień, pustych stanów, błędów i trybu offline. Przepływ z przykładowymi artykułami sprawdzono na emulatorze API 37 z lokalnym [Miniflux mockiem](docs/local-testing.md).
+Draft 1.3 covers shared tokens and the main list and reader patterns. Next, apply them to settings, empty and error states, and offline flows. The populated article flow was checked on an API 37 emulator with the local [Miniflux mock](docs/local-testing.md).
