@@ -1,0 +1,146 @@
+name: Dependabot verification metadata
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - reopened
+      - synchronize
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: Open Dependabot Gradle PR number
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: dependabot-verification-${{ github.event.pull_request.number || inputs.pull_request_number }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    if: >-
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      startsWith(github.event.pull_request.head.ref, 'dependabot/gradle/')) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate Dependabot Gradle pull request
+        id: target
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const pullRequestNumber = context.eventName === 'pull_request'
+              ? context.payload.pull_request.number
+              : Number(context.payload.inputs.pull_request_number);
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullRequestNumber,
+            });
+
+            if (
+              pullRequest.state !== 'open' ||
+              pullRequest.user.login !== 'dependabot[bot]' ||
+              pullRequest.base.ref !== 'master' ||
+              !pullRequest.head.ref.startsWith('dependabot/gradle/') ||
+              pullRequest.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}`
+            ) {
+              core.setFailed('The target must be an open Dependabot Gradle pull request targeting master in this repository.');
+              return;
+            }
+
+            core.setOutput('number', String(pullRequest.number));
+            core.setOutput('head_sha', pullRequest.head.sha);
+            core.setOutput('base_sha', pullRequest.base.sha);
+
+      - name: Check out pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: refs/pull/${{ steps.target.outputs.number }}/merge
+          lfs: true
+          persist-credentials: false
+
+      - name: Confirm checked out pull request revision
+        env:
+          EXPECTED_BASE_SHA: ${{ steps.target.outputs.base_sha }}
+          EXPECTED_HEAD_SHA: ${{ steps.target.outputs.head_sha }}
+        run: |
+          read -r base_sha head_sha <<< "$(git show -s --format=%P HEAD)"
+          if [[ "$base_sha" != "$EXPECTED_BASE_SHA" || "$head_sha" != "$EXPECTED_HEAD_SHA" ]]; then
+            echo "The Dependabot pull request changed while this workflow was starting. Re-run it for the latest revision."
+            exit 1
+          fi
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          cache-read-only: true
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          packages: platform-tools
+
+      - name: Generate dependency verification metadata
+        id: metadata
+        shell: bash
+        run: |
+          ./gradlew --write-verification-metadata sha256 lint test assembleDebug --no-daemon --console=plain
+
+          if git diff --quiet -- gradle/verification-metadata.xml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify generated metadata and dependency update
+        run: ./gradlew lint test assembleDebug --no-daemon --console=plain
+
+      - name: Prepare metadata proposal artifact
+        if: steps.metadata.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git diff --check -- gradle/verification-metadata.xml
+          mkdir -p verification-metadata-proposal
+          cp gradle/verification-metadata.xml verification-metadata-proposal/verification-metadata.xml
+          git diff --binary -- gradle/verification-metadata.xml > verification-metadata-proposal/verification-metadata.patch
+          cat > verification-metadata-proposal/manifest.txt <<EOF
+          pull_request=${{ steps.target.outputs.number }}
+          head_sha=${{ steps.target.outputs.head_sha }}
+          base_sha=${{ steps.target.outputs.base_sha }}
+          EOF
+          {
+            echo "## Dependency verification metadata proposal"
+            echo
+            echo "Gradle generated new verification entries and the updated dependency set passed lint, tests, and Debug APK assembly."
+            echo
+            echo "Download the `verification-metadata-proposal` artifact, review the XML and patch, then apply the reviewed XML to this Dependabot PR. The generated checksums still need review against the official artifact source."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report unchanged verification metadata
+        if: steps.metadata.outputs.changed == 'false'
+        run: echo "No dependency verification metadata changes were needed." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verification metadata proposal
+        if: steps.metadata.outputs.changed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: verification-metadata-proposal-pr-${{ steps.target.outputs.number }}-${{ steps.target.outputs.head_sha }}
+          path: verification-metadata-proposal/
+          if-no-files-found: error
+          retention-days: 7
