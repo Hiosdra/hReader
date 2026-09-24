@@ -17,6 +17,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,7 +65,7 @@ class FeedsUnreadCountsTest {
     }
 
     @Test
-    fun `sync order is existing unread then fresh unread then read and resets next sync`() {
+    fun `sync priority is temporary to the open drawer and closing restores unread count order`() {
         val localCounts = MutableStateFlow(mapOf(1L to 5, 2L to 2))
         val syncActivity = MutableStateFlow(false)
         val subscriptions = listOf(
@@ -95,11 +96,15 @@ class FeedsUnreadCountsTest {
         composeTestRule.waitForIdle()
         localCounts.value = mapOf(1L to 1, 2L to 50, 3L to 80)
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("1,2,3,5,4").assertIsDisplayed()
+        composeTestRule.onNodeWithText("3,2,1,5,4").assertIsDisplayed()
 
         syncActivity.value = false
         composeTestRule.waitForIdle()
         localCounts.value = mapOf(1L to 1, 2L to 60, 3L to 100)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("3,2,1,5,4").assertIsDisplayed()
+
+        viewModel.setDrawerVisible(true)
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("1,2,3,5,4").assertIsDisplayed()
 
@@ -108,6 +113,13 @@ class FeedsUnreadCountsTest {
         localCounts.value = mapOf(1L to 1, 2L to 60, 3L to 100, 4L to 7)
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("1,2,3,4,5").assertIsDisplayed()
+
+        syncActivity.value = false
+        composeTestRule.waitForIdle()
+        viewModel.setDrawerVisible(false)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("3,2,4,1,5").assertIsDisplayed()
+        assertEquals(2L, viewModel.nextFeedId(3L))
     }
 }
 

@@ -40,13 +40,14 @@ class FeedsViewModel(
     val uiState: StateFlow<FeedsUiState> = _uiState.asStateFlow()
 
     private var rowOrder: Map<Long, Int> = emptyMap()
-    private var resettleRows = true
     private var retryAction: (() -> Unit)? = null
     private var syncBaselineUnreadCounts: Map<Long, Int>? = null
+    private var syncBaselineRowOrder: Map<Long, Int> = emptyMap()
     private var latestUnreadCounts = emptyMap<Long, Int>()
     private var hasObservedUnreadCounts = false
     private var syncBaselinePending = false
     private var isSyncActive = false
+    private var isDrawerVisible = false
 
     init {
         observeSyncActivity()
@@ -56,7 +57,6 @@ class FeedsViewModel(
             feeds.isOnline.drop(1).collect { online ->
                 _uiState.value = _uiState.value.copy(isOnline = online)
                 if (online) {
-                    resettleRows = true
                     loadFeeds()
                 }
             }
@@ -66,8 +66,7 @@ class FeedsViewModel(
     private fun observeUnreadCounts() {
         viewModelScope.launch {
             feeds.observeUnreadCounts().collect { unreadCounts ->
-                rememberUnreadCounts(unreadCounts)
-                updateFeedOrder(unreadCounts)
+                updateFeedOrder(unreadCounts, rememberCounts = true)
             }
         }
     }
@@ -78,6 +77,7 @@ class FeedsViewModel(
                 val startsSync = isActive && !isSyncActive
                 isSyncActive = isActive
                 if (startsSync) {
+                    syncBaselineRowOrder = currentRowOrder()
                     if (hasObservedUnreadCounts) {
                         syncBaselineUnreadCounts = latestUnreadCounts
                         syncBaselinePending = false
@@ -87,7 +87,7 @@ class FeedsViewModel(
                     }
                 }
                 if (hasObservedUnreadCounts) {
-                    updateFeedOrder(_uiState.value.unreadCounts)
+                    updateFeedOrder(_uiState.value.unreadCounts, rememberCounts = false)
                 }
             }
         }
@@ -96,21 +96,27 @@ class FeedsViewModel(
     private fun rememberUnreadCounts(unreadCounts: Map<Long, Int>) {
         if (syncBaselinePending) {
             syncBaselineUnreadCounts = unreadCounts
+            if (syncBaselineRowOrder.isEmpty()) {
+                syncBaselineRowOrder = currentRowOrder()
+            }
             syncBaselinePending = false
         }
         latestUnreadCounts = unreadCounts
         hasObservedUnreadCounts = true
     }
 
-    private fun updateFeedOrder(unreadCounts: Map<Long, Int>) {
+    private fun currentRowOrder(): Map<Long, Int> {
+        val currentFeeds = _uiState.value.feeds
+        return if (currentFeeds.isNotEmpty()) {
+            currentFeeds.withIndex().associate { (position, feed) -> feed.id to position }
+        } else {
+            rowOrder
+        }
+    }
+
+    private fun updateFeedOrder(unreadCounts: Map<Long, Int>, rememberCounts: Boolean) {
         val current = _uiState.value
-        val ordered = orderSubscriptionsBySyncGroup(
-            feeds = current.feeds,
-            unreadCounts = unreadCounts,
-            syncBaselineUnreadCounts = syncBaselineUnreadCounts,
-            rowOrder = rowOrder
-        )
-        rowOrder = ordered.withIndex().associate { (position, feed) -> feed.id to position }
+        val ordered = placeRows(current.feeds, unreadCounts, rememberCounts)
         _uiState.value = current.copy(
             feeds = ordered,
             filteredFeeds = ordered,
@@ -121,8 +127,27 @@ class FeedsViewModel(
         }
     }
 
+    fun setDrawerVisible(visible: Boolean) {
+        if (isDrawerVisible == visible) return
+
+        if (visible) {
+            if (syncBaselineUnreadCounts != null && syncBaselineRowOrder.isNotEmpty()) {
+                rowOrder = syncBaselineRowOrder
+            }
+            isDrawerVisible = true
+        } else {
+            isDrawerVisible = false
+            if (!isSyncActive) {
+                syncBaselineUnreadCounts = null
+                syncBaselineRowOrder = emptyMap()
+                syncBaselinePending = false
+            }
+        }
+
+        updateFeedOrder(_uiState.value.unreadCounts, rememberCounts = false)
+    }
+
     fun reload() {
-        resettleRows = true
         loadFeeds()
     }
 
@@ -336,15 +361,21 @@ class FeedsViewModel(
         }
     }
 
-    private fun placeRows(feeds: List<Feed>, unreadCounts: Map<Long, Int>): List<Feed> {
-        rememberUnreadCounts(unreadCounts)
-        val placed = if (resettleRows && syncBaselineUnreadCounts == null) {
-            sortSubscriptions(feeds, unreadCounts)
-        } else {
+    private fun placeRows(
+        feeds: List<Feed>,
+        unreadCounts: Map<Long, Int>,
+        rememberCounts: Boolean = true
+    ): List<Feed> {
+        if (rememberCounts) rememberUnreadCounts(unreadCounts)
+        val placed = if (isDrawerVisible && syncBaselineUnreadCounts != null) {
             holdRowOrder(feeds, unreadCounts, rowOrder, syncBaselineUnreadCounts)
+        } else {
+            sortSubscriptions(feeds, unreadCounts)
         }
         rowOrder = placed.withIndex().associate { (position, feed) -> feed.id to position }
-        resettleRows = false
+        if (syncBaselineUnreadCounts != null && syncBaselineRowOrder.isEmpty()) {
+            syncBaselineRowOrder = rowOrder
+        }
         return placed
     }
 
