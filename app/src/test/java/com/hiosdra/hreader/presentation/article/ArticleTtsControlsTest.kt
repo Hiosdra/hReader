@@ -168,4 +168,4 @@ class ArticleTtsControlsTest {
     }
 }
 
-private class ArticleTtsControlsTestApplication : Application()
+internal class ArticleTtsControlsTestApplication : Application()

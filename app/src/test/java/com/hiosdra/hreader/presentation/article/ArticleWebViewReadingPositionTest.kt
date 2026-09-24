@@ -55,4 +55,4 @@ class ArticleWebViewReadingPositionTest {
     }
 }
 
-private class ArticleWebViewReadingPositionTestApplication : Application()
+internal class ArticleWebViewReadingPositionTestApplication : Application()

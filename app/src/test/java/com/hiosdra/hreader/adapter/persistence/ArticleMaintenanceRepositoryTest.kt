@@ -46,4 +46,4 @@ class ArticleMaintenanceRepositoryTest {
     }
 }
 
-private class ArticleMaintenanceRepositoryTestApplication : Application()
+internal class ArticleMaintenanceRepositoryTestApplication : Application()

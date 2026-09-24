@@ -91,4 +91,4 @@ class AddFeedScreenTest {
     }
 }
 
-private class AddFeedScreenTestApplication : Application()
+internal class AddFeedScreenTestApplication : Application()

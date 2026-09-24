@@ -147,4 +147,4 @@ class ArticleContentProvenanceStatusTest {
     }
 }
 
-private class ArticleContentProvenanceStatusTestApplication : Application()
+internal class ArticleContentProvenanceStatusTestApplication : Application()

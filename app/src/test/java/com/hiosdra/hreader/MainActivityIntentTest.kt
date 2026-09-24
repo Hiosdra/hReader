@@ -48,4 +48,4 @@ class MainActivityIntentTest {
     }
 }
 
-private class MainActivityIntentTestApplication : Application()
+internal class MainActivityIntentTestApplication : Application()

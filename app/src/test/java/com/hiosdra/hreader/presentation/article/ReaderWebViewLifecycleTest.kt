@@ -120,4 +120,4 @@ private class RecordingParent(context: Context) : FrameLayout(context) {
     }
 }
 
-private class ReaderWebViewLifecycleTestApplication : Application()
+internal class ReaderWebViewLifecycleTestApplication : Application()

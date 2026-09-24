@@ -300,4 +300,4 @@ private class SchemaContext(base: Context, schemaArchive: File) : ContextWrapper
     override fun getAssets(): AssetManager = schemaAssets
 }
 
-private class MigrationsTestApplication : Application()
+internal class MigrationsTestApplication : Application()

@@ -56,4 +56,4 @@ class ReaderWebViewScrollTest {
 
 }
 
-private class ReaderWebViewTestApplication : Application()
+internal class ReaderWebViewTestApplication : Application()

@@ -231,4 +231,4 @@ private class RecordingTtsModelGateway(
     override suspend fun remove(model: TtsModel) = Unit
 }
 
-private class TtsModelDownloadWorkerRobolectricTestApplication : Application()
+internal class TtsModelDownloadWorkerRobolectricTestApplication : Application()

@@ -46,4 +46,4 @@ class ErrorReportingPreferenceContentTest {
     }
 }
 
-private class ErrorReportingPreferenceContentTestApplication : Application()
+internal class ErrorReportingPreferenceContentTestApplication : Application()

@@ -45,4 +45,4 @@ class NotificationChannelsTest {
     }
 }
 
-private class NotificationChannelsTestApplication : Application()
+internal class NotificationChannelsTestApplication : Application()
