@@ -8,7 +8,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.domain.model.BackendType
 import com.hiosdra.hreader.presentation.settings.ServerSettingsUiState
 import com.hiosdra.hreader.presentation.settings.SettingsViewModel
@@ -94,8 +93,7 @@ class ServerSetupScreenTest {
             HReaderTheme {
                 ServerSetupScreen(
                     onSetupFinished = onSetupFinished,
-                    settingsViewModel = settingsViewModel,
-                    errorReportingManager = mockk<ErrorReporter>(relaxed = true)
+                    settingsViewModel = settingsViewModel
                 )
             }
         }

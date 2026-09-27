@@ -143,7 +143,7 @@ class ArticleTopBarTest {
             .performClick()
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
             .performClick()
-        composeTestRule.onNodeWithText(
+        composeTestRule.onNodeWithContentDescription(
             context.getString(
                 R.string.article_open_through_paywall_service,
                 context.getString(R.string.paywall_wayback_machine)

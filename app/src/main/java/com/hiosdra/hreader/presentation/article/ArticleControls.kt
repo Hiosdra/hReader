@@ -169,14 +169,13 @@ internal fun ArticleTopBar(
                             val defaultMethodName = stringResource(
                                 paywallBypassMethodNameRes(defaultPaywallBypassMethod)
                             )
+                            val defaultActionDescription = stringResource(
+                                R.string.article_open_through_paywall_service,
+                                defaultMethodName
+                            )
                             DropdownMenuItem(
                                 text = {
-                                    Text(
-                                        stringResource(
-                                            R.string.article_open_through_paywall_service,
-                                            defaultMethodName
-                                        )
-                                    )
+                                    Text(stringResource(R.string.article_open_through_paywall_bypass))
                                 },
                                 onClick = {
                                     overflowExpanded.value = false
@@ -184,6 +183,7 @@ internal fun ArticleTopBar(
                                 },
                                 enabled = isOnline,
                                 modifier = Modifier.semantics {
+                                    contentDescription = defaultActionDescription
                                     if (!isOnline) stateDescription = externalActionOfflineDescription
                                 },
                                 leadingIcon = {

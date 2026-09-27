@@ -147,10 +147,10 @@
     <string name="article_tts_model_use_settings">Use settings (%1$s)</string>
     <string name="article_open_original_in_chrome">Open original page in Chrome</string>
     <string name="article_open_embedded_media">Open embedded media</string>
-    <string name="article_open_through_paywall_bypass">Open through paywall bypass</string>
+    <string name="article_open_through_paywall_bypass">Open via an external service</string>
     <string name="article_original_short">Original</string>
-    <string name="article_open_through_paywall_service">Open through %1$s</string>
-    <string name="article_choose_paywall_service">Choose a paywall bypass service</string>
+    <string name="article_open_through_paywall_service">Open via an external service: %1$s</string>
+    <string name="article_choose_paywall_service">Choose an external service</string>
     <string name="article_external_actions_requires_connection">Connect to the internet to open external pages.</string>
     <string name="article_preparing_voice">Preparing voice…</string>
     <string name="article_resume">Resume</string>
@@ -287,7 +287,7 @@
     <string name="onboarding_start_reading">Start reading</string>
     <string name="onboarding_continue_without_testing">Continue without testing</string>
     <string name="onboarding_optional_settings">Optional settings</string>
-    <string name="onboarding_optional_settings_summary">Diagnostics and AI summaries can be configured later</string>
+    <string name="onboarding_optional_settings_summary">AI summaries can be configured later</string>
     <string name="backend_freshrss">FreshRSS (experimental)</string>
     <string name="backend_miniflux">Miniflux</string>
     <string name="backend_freshrss_secret_label">API password</string>
@@ -698,11 +698,17 @@
     <string name="secret_configured">Configured</string>
     <string name="secret_not_configured">Not configured</string>
     <string name="secret_editor_placeholder">Enter secret</string>
-    <string name="paywall_bypass">Paywall bypass</string>
+    <string name="paywall_bypass">External article service</string>
 
     <string name="error_reporting_title">Send crash reports and diagnostics</string>
-    <string name="error_reporting_description">Share crash reports, including native (NDK) crash data, and technical diagnostics with Sentry. You can change this later in Settings.</string>
+    <string name="error_reporting_description">Send crash reports and technical diagnostics to Sentry. Article and feed content is not intentionally attached. You can change this in Settings.</string>
     <string name="error_reporting_privacy">View privacy policy</string>
+    <string name="sentry_consent_title">Help improve hReader</string>
+    <string name="sentry_consent_encouragement">Sending crash reports helps me find bugs and make hReader more stable. Your reports make it easier to diagnose failures and improve future releases.</string>
+    <string name="sentry_consent_data_details">Reports may include error messages and stack traces, the app and Android versions, device model, and native crash details. hReader does not intentionally attach article or feed content, passwords, API tokens, screenshots, or view data. Sentry may receive connection metadata such as your IP address, and error text can contain unexpected information from the operation that failed. Reporting is optional; hReader works without it, and you can change your choice later in Settings.</string>
+    <string name="sentry_consent_send">Send crash reports to Sentry</string>
+    <string name="sentry_consent_dont_send">Don’t send crash reports</string>
+    <string name="sentry_consent_continue">Save choice and continue</string>
     <string name="privacy_policy_title">View hReader privacy policy</string>
     <string name="privacy_policy_url" translatable="false">https://github.com/Hiosdra/hReader/blob/master/PRIVACY_POLICY.md</string>
     <string name="loading_articles">Loading articles</string>

@@ -55,6 +55,7 @@ import com.hiosdra.hreader.presentation.feeds.add.AddFeedScreen
 import com.hiosdra.hreader.presentation.main.MainScreen
 import com.hiosdra.hreader.presentation.main.MainViewModel
 import com.hiosdra.hreader.presentation.onboarding.ServerSetupScreen
+import com.hiosdra.hreader.presentation.onboarding.SentryConsentScreen
 import com.hiosdra.hreader.presentation.settings.SettingsScreen
 import com.hiosdra.hreader.presentation.settings.LicensesScreen
 import com.hiosdra.hreader.presentation.settings.TtsSettingsScreen
@@ -112,9 +113,14 @@ fun AppNavigation(
     }
 
     val configured = remember { backendPreferences.hasBackendCredentials() }
-    val startDestination = remember(entryPoint) {
+    val hasSentryChoice = remember { errorReporter.hasExplicitChoice() }
+    val destinationAfterConsent = remember(entryPoint) {
+        if (entryPoint is EntryPoint.AddFeed) Routes.addFeed(entryPoint.url) else Routes.MAIN
+    }
+    val startDestination = remember(entryPoint, configured, hasSentryChoice) {
         when {
             !configured -> Routes.SERVER_SETUP
+            !hasSentryChoice -> Routes.SENTRY_CONSENT
             entryPoint is EntryPoint.AddFeed -> Routes.addFeed(entryPoint.url)
             else -> Routes.MAIN
         }
@@ -165,10 +171,24 @@ fun AppNavigation(
         composable(Routes.SERVER_SETUP) {
             ServerSetupScreen(
                 settingsViewModel = koinViewModel(),
-                errorReportingManager = errorReporter,
                 onSetupFinished = {
-                    navController.navigate(Routes.MAIN) {
+                    val nextDestination = if (errorReporter.hasExplicitChoice()) {
+                        destinationAfterConsent
+                    } else {
+                        Routes.SENTRY_CONSENT
+                    }
+                    navController.navigate(nextDestination) {
                         popUpTo(Routes.SERVER_SETUP) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.SENTRY_CONSENT) {
+            SentryConsentScreen(
+                errorReporter = errorReporter,
+                onChoiceSaved = {
+                    navController.navigate(destinationAfterConsent) {
+                        popUpTo(Routes.SENTRY_CONSENT) { inclusive = true }
                     }
                 }
             )

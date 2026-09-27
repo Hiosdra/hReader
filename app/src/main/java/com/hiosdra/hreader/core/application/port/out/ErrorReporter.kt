@@ -7,6 +7,7 @@ interface ErrorReporter {
 
     fun initialize()
     fun isEnabled(): Boolean
+    fun hasExplicitChoice(): Boolean
     fun setEnabled(enabled: Boolean)
     fun captureException(throwable: Throwable, component: String)
     fun captureMessage(message: String, component: String)

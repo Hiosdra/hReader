@@ -18,16 +18,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
-import com.hiosdra.hreader.presentation.components.ErrorReportingPreferenceCard
 import com.hiosdra.hreader.presentation.settings.BackendServerFields
 import com.hiosdra.hreader.presentation.settings.OpenRouterKeyField
 import com.hiosdra.hreader.presentation.settings.SettingsViewModel
@@ -35,21 +31,16 @@ import com.hiosdra.hreader.presentation.settings.SettingsGroup
 import com.hiosdra.hreader.presentation.settings.secretHintRes
 import com.hiosdra.hreader.presentation.settings.secretLabelRes
 import com.hiosdra.hreader.presentation.theme.sectionCardColors
-import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerSetupScreen(
     onSetupFinished: () -> Unit,
-    settingsViewModel: SettingsViewModel,
-    errorReportingManager: ErrorReporter
+    settingsViewModel: SettingsViewModel
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val openRouterApiKey by settingsViewModel.openRouterApiKey.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
-    var sentryReportingEnabled by remember {
-        mutableStateOf(errorReportingManager.isEnabled())
-    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -102,14 +93,6 @@ fun ServerSetupScreen(
                 title = stringResource(R.string.onboarding_optional_settings),
                 summary = stringResource(R.string.onboarding_optional_settings_summary)
             ) {
-                ErrorReportingPreferenceCard(
-                    enabled = sentryReportingEnabled,
-                    onEnabledChange = { enabled ->
-                        sentryReportingEnabled = enabled
-                        errorReportingManager.setEnabled(enabled)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

@@ -14,6 +14,7 @@ object Routes {
     const val FEED_ID_NONE: Long = -1L
 
     const val SERVER_SETUP = "server_setup"
+    const val SENTRY_CONSENT = "sentry_consent"
     const val MAIN = "main"
     const val FEED = "feed/{feedId}"
     const val ADD_FEED = "add_feed?url={url}"
