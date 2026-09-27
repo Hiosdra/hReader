@@ -40,8 +40,10 @@ jobs:
         with:
           packages: platform-tools
 
-      - name: Run lint and tests
-        run: ./gradlew lint test
+      - name: Run lint, tests and release notice snapshot check
+        run: |
+          ./gradlew lint test :app:writeReleaseRuntimeDependencyReport
+          python3 tools/verify_release_notices.py --check
 
   debug_apk:
     name: Debug APK
@@ -233,7 +235,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-        run: ./gradlew --no-build-cache assembleRelease bundleRelease
+        run: ./gradlew --no-build-cache assembleRelease bundleRelease :app:writeReleaseRuntimeDependencyReport
 
       - name: Verify the release APK is signed
         run: |
@@ -242,6 +244,9 @@ jobs:
 
       - name: Verify the App Bundle is signed
         run: jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
+
+      - name: Verify the release notice snapshot and bundled license assets
+        run: python3 tools/verify_release_notices.py --check --aab app/build/outputs/bundle/release/app-release.aab
 
       - name: Name the release artifacts
         run: |
