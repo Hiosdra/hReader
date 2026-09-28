@@ -19,23 +19,27 @@ private const val LIST_COLUMNS =
 
 private const val FROM_ARTICLES_WITH_FEED = "FROM articles a LEFT JOIN feeds f ON f.id = a.feedId"
 private const val FROM_ARTICLES = "FROM articles a"
-private const val VISIBILITY_FILTER =
-    "(:feedId IS NULL OR a.feedId = :feedId) " +
-        "AND (:includeRead = 1 OR (a.status IS NULL OR a.status != :readStatus) " +
+private const val SESSION_VISIBILITY_FILTER =
+    "(:includeRead = 1 OR (a.status IS NULL OR a.status != :readStatus) " +
         "OR (a.readAt IS NOT NULL AND a.readAt >= :sessionStart))"
+private const val VISIBILITY_FILTER = "(:feedId IS NULL OR a.feedId = :feedId) AND $SESSION_VISIBILITY_FILTER"
+private const val FEED_VISIBILITY_FILTER = "a.feedId = :feedId AND $SESSION_VISIBILITY_FILTER"
 private const val LIST_ORDER = "ORDER BY a.publishedAt ASC, a.id ASC"
 private const val MATCHES_SEARCH =
-    "(a.rowid IN (SELECT rowid FROM articles_fts WHERE articles_fts MATCH :ftsQuery) " +
-        "OR LOWER(f.title) LIKE :titleQuery)"
+    "a.rowid IN (SELECT rowid FROM articles_fts WHERE articles_fts MATCH :ftsQuery " +
+        "UNION SELECT matchedArticles.rowid FROM articles matchedArticles " +
+        "WHERE matchedArticles.feedId IN (SELECT matchedFeeds.id FROM feeds matchedFeeds " +
+        "WHERE LOWER(matchedFeeds.title) LIKE :titleQuery))"
+
+data class ArticleCountsRow(
+    val unreadCount: Int,
+    val readCount: Int
+)
 
 @Dao
 interface ArticleQueryDao {
-    @Query(
-        "SELECT $LIST_COLUMNS $FROM_ARTICLES_WITH_FEED " +
-            "WHERE $VISIBILITY_FILTER $LIST_ORDER"
-    )
-    fun pageArticles(
-        feedId: Long?,
+    @Query("SELECT $LIST_COLUMNS $FROM_ARTICLES_WITH_FEED WHERE $SESSION_VISIBILITY_FILTER $LIST_ORDER")
+    fun pageAllArticles(
         includeRead: Boolean,
         sessionStart: Instant,
         readStatus: ArticleStatus = ArticleStatus.READ
@@ -43,10 +47,33 @@ interface ArticleQueryDao {
 
     @Query(
         "SELECT $LIST_COLUMNS $FROM_ARTICLES_WITH_FEED " +
-            "WHERE $VISIBILITY_FILTER AND $MATCHES_SEARCH $LIST_ORDER"
+            "WHERE $FEED_VISIBILITY_FILTER $LIST_ORDER"
     )
-    fun pageSearchResults(
-        feedId: Long?,
+    fun pageFeedArticles(
+        feedId: Long,
+        includeRead: Boolean,
+        sessionStart: Instant,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): PagingSource<Int, ArticleListItem>
+
+    @Query(
+        "SELECT $LIST_COLUMNS $FROM_ARTICLES_WITH_FEED " +
+            "WHERE $SESSION_VISIBILITY_FILTER AND $MATCHES_SEARCH $LIST_ORDER"
+    )
+    fun pageSearchResultsAcrossFeeds(
+        includeRead: Boolean,
+        sessionStart: Instant,
+        ftsQuery: String,
+        titleQuery: String,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): PagingSource<Int, ArticleListItem>
+
+    @Query(
+        "SELECT $LIST_COLUMNS $FROM_ARTICLES_WITH_FEED " +
+            "WHERE $FEED_VISIBILITY_FILTER AND $MATCHES_SEARCH $LIST_ORDER"
+    )
+    fun pageSearchResultsInFeed(
+        feedId: Long,
         includeRead: Boolean,
         sessionStart: Instant,
         ftsQuery: String,
@@ -137,34 +164,27 @@ interface ArticleQueryDao {
     ): List<String>
 
     @Query(
-        "SELECT a.id $FROM_ARTICLES " +
-            "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND (a.status IS NULL OR a.status != :readStatus)"
+        "SELECT " +
+            "COALESCE(SUM(CASE WHEN a.status IS NULL OR a.status != :readStatus THEN 1 ELSE 0 END), 0) " +
+            "AS unreadCount, " +
+            "COALESCE(SUM(CASE WHEN a.status = :readStatus THEN 1 ELSE 0 END), 0) AS readCount " +
+            "FROM articles a"
     )
-    suspend fun getUnreadIds(
-        feedId: Long?,
+    fun observeCountsAcrossFeeds(
         readStatus: ArticleStatus = ArticleStatus.READ
-    ): List<String>
+    ): Flow<ArticleCountsRow>
 
     @Query(
-        "SELECT COUNT(*) FROM articles a " +
-            "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND (a.status IS NULL OR a.status != :readStatus)"
+        "SELECT " +
+            "COALESCE(SUM(CASE WHEN a.status IS NULL OR a.status != :readStatus THEN 1 ELSE 0 END), 0) " +
+            "AS unreadCount, " +
+            "COALESCE(SUM(CASE WHEN a.status = :readStatus THEN 1 ELSE 0 END), 0) AS readCount " +
+            "FROM articles a WHERE a.feedId = :feedId"
     )
-    fun observeUnreadCountFor(
-        feedId: Long?,
+    fun observeCountsInFeed(
+        feedId: Long,
         readStatus: ArticleStatus = ArticleStatus.READ
-    ): Flow<Int>
-
-    @Query(
-        "SELECT COUNT(*) FROM articles a " +
-            "WHERE (:feedId IS NULL OR a.feedId = :feedId) " +
-            "AND a.status = :readStatus"
-    )
-    fun observeReadCountFor(
-        feedId: Long?,
-        readStatus: ArticleStatus = ArticleStatus.READ
-    ): Flow<Int>
+    ): Flow<ArticleCountsRow>
 
     @Query(
         "SELECT a.id AS id, a.title AS title, a.author AS author, a.url AS url, " +

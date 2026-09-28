@@ -1,6 +1,7 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMutationDao
+import com.hiosdra.hreader.core.application.port.out.BulkReadMarker
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -28,15 +29,40 @@ class ArticleMutationRepositoryTest {
     }
 
     @Test
-    fun `returns only articles still read before the undo cutoff`() = runBlocking {
-        val before = Instant.parse("2026-09-01T00:00:00Z")
+    fun `marks unread articles in one database operation and returns a compact undo marker`() = runBlocking {
         coEvery {
-            articleMutationDao.getIdsReadNoLaterThan(listOf("1", "2"), before, ArticleStatus.READ)
-        } returns listOf("2", "1")
+            articleMutationDao.markUnreadAsRead(7L, any(), ArticleStatus.READ)
+        } returns 3
 
-        assertEquals(
-            listOf(2L, 1L),
-            repository.idsStillReadSince(listOf(1L, 2L), before)
-        )
+        val marker = repository.markUnreadAsRead(7L)
+
+        assertEquals(7L, marker.feedId)
+        assertEquals(3, marker.count)
+        coVerify(exactly = 1) {
+            articleMutationDao.markUnreadAsRead(7L, marker.markedAt, ArticleStatus.READ)
+        }
+    }
+
+    @Test
+    fun `undoes a bulk read through its marker`() = runBlocking {
+        val marker = BulkReadMarker(7L, Instant.parse("2026-09-01T00:00:00Z"), 3)
+        coEvery {
+            articleMutationDao.undoBulkRead(
+                7L,
+                marker.markedAt,
+                ArticleStatus.READ,
+                ArticleStatus.UNREAD
+            )
+        } returns marker.count
+
+        assertEquals(marker.count, repository.undoBulkRead(marker))
+        coVerify(exactly = 1) {
+            articleMutationDao.undoBulkRead(
+                7L,
+                marker.markedAt,
+                ArticleStatus.READ,
+                ArticleStatus.UNREAD
+            )
+        }
     }
 }

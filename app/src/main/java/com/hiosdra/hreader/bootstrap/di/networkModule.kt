@@ -167,7 +167,7 @@ val networkModule = module {
             errorReporter = get()
         )
     }
-    single { AiModelRepository(get(), get()) }
+    single { AiModelRepository(get(), get(), get()) }
     single<AiModelCatalog> {
         CompositeAiModelCatalog(androidApplication(), get<AiModelRepository>(), get(), get())
     }

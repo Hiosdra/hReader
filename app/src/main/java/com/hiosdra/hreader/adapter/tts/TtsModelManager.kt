@@ -126,6 +126,7 @@ class TtsModelManager(
                     "Model download is incomplete"
                 }
                 replaceInstallation(model, content)
+                writeIntegrityMarker(model, artifact)
                 _statuses.value = _statuses.value + (model to TtsModelStatus.Available)
             } catch (e: CancellationException) {
                 throw e
@@ -321,7 +322,7 @@ class TtsModelManager(
         TtsModelCatalog.models.filterNot(TtsModel::bundled).forEach { model ->
             modelLocks.getValue(model).withLock {
                 if (_statuses.value[model] is TtsModelStatus.Downloading) return@withLock
-                val status = if (hasValidIntegrity(model)) {
+                val status = if (hasTrustedIntegrityMarker(model)) {
                     TtsModelStatus.Available
                 } else {
                     TtsModelStatus.NotInstalled
@@ -329,6 +330,43 @@ class TtsModelManager(
                 _statuses.value = _statuses.value + (model to status)
             }
         }
+    }
+
+    private fun hasTrustedIntegrityMarker(model: TtsModel): Boolean {
+        val artifact = TtsModelPackageCatalog.packageFor(model) ?: return false
+        val content = directory(model)
+        if (!artifact.isComplete(content)) return false
+        val marker = integrityMarker(model)
+        val expected = integrityManifest(artifact)
+        if (marker.isFile && marker.length() == expected.length.toLong() && marker.readText() == expected) {
+            return true
+        }
+        if (!hasValidIntegrity(model)) return false
+        marker.writeText(expected)
+        return true
+    }
+
+    private fun writeIntegrityMarker(model: TtsModel, artifact: TtsModelPackage) {
+        val marker = integrityMarker(model)
+        val temporary = File(marker.parentFile, "${marker.name}.tmp")
+        temporary.writeText(integrityManifest(artifact))
+        check(temporary.renameTo(marker) || temporary.copyTo(marker, overwrite = true).let {
+            temporary.delete()
+            marker.isFile
+        }) { "Could not record model integrity" }
+    }
+
+    private fun integrityMarker(model: TtsModel): File = File(directory(model), INTEGRITY_MARKER)
+
+    private fun integrityManifest(artifact: TtsModelPackage): String = buildString {
+        append(INTEGRITY_MARKER_VERSION).append('\n')
+        append(artifact.directoryName).append('\n')
+        artifact.requiredFiles.sorted().forEach { append("file:").append(it).append('\n') }
+        artifact.requiredDirectories.sorted().forEach { append("dir:").append(it).append('\n') }
+        (artifact.files + artifact.supplementalFiles).sortedBy(RemoteFile::name).forEach { file ->
+            append(file.name).append(':').append(file.size).append(':').append(file.sha256).append('\n')
+        }
+        artifact.archive?.let { append("archive:").append(it.size).append(':').append(it.sha256).append('\n') }
     }
 
     private fun File.singleFileOrSelf(): File = listFiles()?.singleOrNull()?.takeIf { it.isDirectory } ?: this
@@ -347,4 +385,9 @@ class TtsModelManager(
     }
 
     private class ModelIntegrityException(message: String) : IOException(message)
+
+    private companion object {
+        const val INTEGRITY_MARKER = ".hreader-integrity-v1"
+        const val INTEGRITY_MARKER_VERSION = "hreader-tts-model-v1"
+    }
 }

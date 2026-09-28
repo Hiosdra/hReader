@@ -541,7 +541,9 @@
     <string name="ai_context_length">  •  contexto de %1$dk</string>
     <string name="ai_model_missing">O modelo selecionado %1$s não é mais oferecido pela OpenRouter. Escolha outro.</string>
     <string name="ai_model_load_error">Não foi possível carregar a lista de modelos da OpenRouter.</string>
-    <string name="openrouter_api_key">Chave de API da OpenRouter (opcional)</string>
+    <string name="openrouter_api_key">Chave de API da OpenRouter (opcional · experimental)</string>
+    <string name="openrouter_experimental_label">OpenRouter (experimental)</string>
+    <string name="openrouter_experimental_description">O catálogo de modelos hospedados e o serviço podem mudar.</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">Necessária somente para resumos e avaliações de credibilidade</string>
     <string name="paywall_bypass">Serviço externo de artigos</string>

@@ -73,7 +73,7 @@ internal fun ArticleContent(
     val articleImageLoader = bindings.articleImageLoader
     val coilImageLoader = bindings.coilImageLoader
     val remoteResourcePolicy = bindings.remoteResourcePolicy
-    val readerPreferences = bindings.readerPreferences
+    val bionicReadingEnabled = bindings.bionicReadingEnabled
     val onReadingProgressChanged = bindings.onReadingProgressChanged
     val onReadingCompleted = bindings.onReadingCompleted
     val onRetryContent = { bindings.onRetryContent(entry.id) }
@@ -308,7 +308,7 @@ internal fun ArticleContent(
                         onContentLoadStarted = { webContentHeightSettled = false },
                         onLinkClick = onArticleLinkClick,
                         onImageLongClick = { url -> imageActionsUrl = url },
-                        readerPreferences = readerPreferences,
+                        bionicReadingEnabled = bionicReadingEnabled,
                         remoteResourcePolicy = remoteResourcePolicy
                     )
                 }
@@ -391,7 +391,7 @@ internal fun ArticleContent(
                             onContentLoadStarted = { webContentHeightSettled = false },
                             onLinkClick = onArticleLinkClick,
                             onImageLongClick = { url -> imageActionsUrl = url },
-                            readerPreferences = readerPreferences,
+                            bionicReadingEnabled = bionicReadingEnabled,
                             remoteResourcePolicy = remoteResourcePolicy
                         )
                     }

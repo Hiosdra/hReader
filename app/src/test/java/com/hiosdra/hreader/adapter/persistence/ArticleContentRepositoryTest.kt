@@ -136,7 +136,12 @@ class ArticleContentRepositoryTest {
             coEvery { backend.fetchFullContent(entryId, articleUrl) } returns """<img src="/media/photo.jpg">"""
             coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
 
-            repository.getArticleContent(entryId, articleUrl)
+            contentService.getArticleContent(
+                entryId,
+                articleUrl,
+                allowNetwork = true,
+                downloadAllImages = true
+            )
 
             coVerify {
                 articleImageStore.downloadAndStoreImage(
@@ -219,7 +224,12 @@ class ArticleContentRepositoryTest {
             releaseDownload.await()
         }
 
-        val text = repository.getArticleContent(entryId, articleUrl)
+        val text = contentService.getArticleContent(
+            entryId,
+            articleUrl,
+            allowNetwork = true,
+            downloadAllImages = true
+        )
 
         assertTrue(downloadStarted.isCompleted)
         assertFalse(releaseDownload.isCompleted)
@@ -236,7 +246,12 @@ class ArticleContentRepositoryTest {
             coEvery { articleDao.getArticlesImmediate(any()) } returns listOf(article())
             val written = slot<ArticleContent>()
 
-            val text = repository.getArticleContent(entryId, articleUrl)
+            val text = contentService.getArticleContent(
+                entryId,
+                articleUrl,
+                allowNetwork = true,
+                downloadAllImages = true
+            )
 
             coVerify { articleContentDao.insertArticleContent(capture(written)) }
             assertTrue(written.captured.isPrepared)

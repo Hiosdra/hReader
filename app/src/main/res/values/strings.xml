@@ -692,7 +692,9 @@
     <string name="ai_model_missing">The selected model %1$s is no longer offered by OpenRouter. Pick another one.</string>
     <string name="ai_model_load_error">Could not load the model list from OpenRouter.</string>
 
-    <string name="openrouter_api_key">OpenRouter API key (optional)</string>
+    <string name="openrouter_api_key">OpenRouter API key (optional · experimental)</string>
+    <string name="openrouter_experimental_label">OpenRouter (experimental)</string>
+    <string name="openrouter_experimental_description">The hosted model catalog and service may change.</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">Needed only for article summaries and credibility scoring</string>
     <string name="secret_configured">Configured</string>

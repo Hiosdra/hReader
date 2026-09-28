@@ -12,8 +12,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +37,7 @@ internal fun ArticleWebView(
     onScrollProgress: ((Float) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
-    readerPreferences: ReaderPreferences,
+    bionicReadingEnabled: Boolean,
     remoteResourcePolicy: RemoteResourcePolicy
 ) {
     val colors = ArticleHtmlColors(
@@ -48,8 +46,6 @@ internal fun ArticleWebView(
         code = MaterialTheme.colorScheme.surfaceVariant.toArgb(),
         rule = MaterialTheme.colorScheme.outlineVariant.toArgb()
     )
-    val bionicReadingEnabled by readerPreferences.observeBionicReadingEnabled()
-        .collectAsStateWithLifecycle(initialValue = readerPreferences.getBionicReadingEnabled())
     var processedContent by remember(articleContent) { mutableStateOf(articleContent) }
     LaunchedEffect(articleContent, bionicReadingEnabled) {
         processedContent = if (bionicReadingEnabled) {

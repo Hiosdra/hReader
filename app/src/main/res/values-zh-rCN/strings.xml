@@ -533,7 +533,9 @@
     <string name="ai_context_length">  •  %1$dk 上下文</string>
     <string name="ai_model_missing">所选模型 %1$s 已不再由 OpenRouter 提供。请选择其他模型。</string>
     <string name="ai_model_load_error">无法从 OpenRouter 加载模型列表。</string>
-    <string name="openrouter_api_key">OpenRouter API 密钥（可选）</string>
+    <string name="openrouter_api_key">OpenRouter API 密钥（可选・实验性）</string>
+    <string name="openrouter_experimental_label">OpenRouter（实验性）</string>
+    <string name="openrouter_experimental_description">托管模型目录和服务可能会变化。</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">仅用于文章摘要和可信度评估</string>
     <string name="paywall_bypass">文章外部服务</string>

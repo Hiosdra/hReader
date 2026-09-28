@@ -27,6 +27,18 @@ import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 
+private suspend fun <T, R> List<T>.mapAsyncBounded(
+    concurrency: Int,
+    transform: suspend (T) -> R
+): List<R> = coroutineScope {
+    val results = ArrayList<R>(size)
+    val batchSize = concurrency.coerceAtLeast(1)
+    asSequence().chunked(batchSize).forEach { batch ->
+        results += batch.map { item -> async { transform(item) } }.awaitAll()
+    }
+    results
+}
+
 internal data class ArchivedArticlePage(
     val finalUrl: String,
     val directoryPath: String,
@@ -90,7 +102,7 @@ internal class ArticlePageArchiver(
                 initialBytes = main.bytes.size.toLong(),
                 maxConcurrentResources = maxConcurrentResources
             )
-            rewriteDocument(document, main.finalUrl, store)
+            rewriteDocument(document, main.finalUrl, store, maxConcurrentResources.coerceAtLeast(1))
 
             val htmlBytes = document.outerHtml().toByteArray(UTF_8)
             if (store.storedBytes + htmlBytes.size - main.bytes.size > ArticlePageFiles.MAX_PAGE_BYTES) {
@@ -110,55 +122,58 @@ internal class ArticlePageArchiver(
         }
     }
 
-    private suspend fun rewriteDocument(document: Document, baseUrl: String, store: ResourceStore) =
+    private suspend fun rewriteDocument(
+        document: Document,
+        baseUrl: String,
+        store: ResourceStore,
+        concurrency: Int
+    ) =
         coroutineScope {
             val stylesheetElements = document.select("link[href]").toList()
             val stylesheetTasks = stylesheetElements.mapNotNull { element ->
                 val rel = element.attr("rel").split(Regex("\\s+"))
                 if (rel.any { it.equals("stylesheet", ignoreCase = true) }) {
-                    element to async {
-                        store.cache(resolveUrl(baseUrl, element.attr("href")), cssHint = true)
-                    }
+                    element
                 } else {
                     element.remove()
                     null
                 }
             }
-            stylesheetTasks.forEach { (element, task) ->
-                val localUrl = task.await()
+            val stylesheetUrls = stylesheetTasks.mapAsyncBounded(concurrency) { element ->
+                store.cache(resolveUrl(baseUrl, element.attr("href")), cssHint = true)
+            }
+            stylesheetTasks.zip(stylesheetUrls).forEach { (element, localUrl) ->
                 if (localUrl == null) element.remove() else element.attr("href", localUrl)
             }
 
             val imageElements = document.select("img[src], source[src]").toList()
-            val imageUrls = imageElements.map { element ->
-                async {
-                    val source = element.attr("src")
-                    if (isEmbeddedReference(source)) source.trim()
-                    else store.cache(resolveUrl(baseUrl, source))
-                }
-            }.awaitAll()
+            val imageUrls = imageElements.mapAsyncBounded(concurrency) { element ->
+                val source = element.attr("src")
+                if (isEmbeddedReference(source)) source.trim()
+                else store.cache(resolveUrl(baseUrl, source))
+            }
             imageElements.zip(imageUrls).forEach { (element, localUrl) ->
                 if (localUrl == null) element.removeAttr("src") else element.attr("src", localUrl)
             }
 
             val srcSetElements = document.select("img[srcset], source[srcset]").toList()
-            val srcSets = srcSetElements.map { element ->
-                async { rewriteSrcSet(element.attr("srcset"), baseUrl, store) }
-            }.awaitAll()
+            val srcSets = srcSetElements.mapAsyncBounded(concurrency) { element ->
+                rewriteSrcSet(element.attr("srcset"), baseUrl, store, concurrency)
+            }
             srcSetElements.zip(srcSets).forEach { (element, rewritten) ->
                 if (rewritten.isBlank()) element.removeAttr("srcset") else element.attr("srcset", rewritten)
             }
 
             val styledElements = document.select("[style]").toList()
-            val inlineStyles = styledElements.map { element ->
-                async { store.rewriteCss(element.attr("style"), baseUrl, 0) }
-            }.awaitAll()
+            val inlineStyles = styledElements.mapAsyncBounded(concurrency) { element ->
+                store.rewriteCss(element.attr("style"), baseUrl, 0)
+            }
             styledElements.zip(inlineStyles).forEach { (element, style) -> element.attr("style", style) }
 
             val styleElements = document.select("style").toList()
-            val styleContents = styleElements.map { element ->
-                async { store.rewriteCss(element.html(), baseUrl, 0) }
-            }.awaitAll()
+            val styleContents = styleElements.mapAsyncBounded(concurrency) { element ->
+                store.rewriteCss(element.html(), baseUrl, 0)
+            }
             styleElements.zip(styleContents).forEach { (element, style) -> element.html(style) }
 
             document.select("a[href]").toList().forEach { element ->
@@ -167,17 +182,19 @@ internal class ArticlePageArchiver(
             }
         }
 
-    private suspend fun rewriteSrcSet(value: String, baseUrl: String, store: ResourceStore): String =
+    private suspend fun rewriteSrcSet(
+        value: String,
+        baseUrl: String,
+        store: ResourceStore,
+        concurrency: Int
+    ): String =
         coroutineScope {
             value.split(',')
                 .map { candidate -> candidate.trim().split(Regex("\\s+"), limit = 2) }
-                .map { parts ->
-                    async {
-                        val localUrl = store.cache(resolveUrl(baseUrl, parts.firstOrNull().orEmpty()))
-                        localUrl?.let { if (parts.size == 1) it else "$it ${parts[1]}" }
-                    }
+                .mapAsyncBounded(concurrency) { parts ->
+                    val localUrl = store.cache(resolveUrl(baseUrl, parts.firstOrNull().orEmpty()))
+                    localUrl?.let { if (parts.size == 1) it else "$it ${parts[1]}" }
                 }
-                .awaitAll()
                 .filterNotNull()
                 .joinToString(", ")
         }
@@ -208,10 +225,11 @@ internal class ArticlePageArchiver(
         initialBytes: Long,
         maxConcurrentResources: Int
     ) {
+        private val resourceConcurrency = maxConcurrentResources.coerceAtLeast(1)
         private val resources = mutableMapOf<String, CachedResource>()
         private val inFlight = mutableMapOf<String, CompletableDeferred<CachedResource?>>()
         private val stateMutex = Mutex()
-        private val resourceLimiter = Semaphore(maxConcurrentResources)
+        private val resourceLimiter = Semaphore(resourceConcurrency)
         var storedBytes = initialBytes
             private set
         var isComplete: Boolean = true
@@ -281,23 +299,21 @@ internal class ArticlePageArchiver(
             val matches = pattern.findAll(value).toList()
             if (matches.isEmpty()) return@coroutineScope value
 
-            val replacements = matches.map { match ->
-                async {
-                    val original = match.groupValues[1]
-                    val localUrl = if (isEmbeddedReference(original)) {
-                        original.trim()
-                    } else {
-                        cache(
-                            resolveUrl(baseUrl, original),
-                            cssHint = importRule,
-                            depth = depth,
-                            ancestors = ancestors
-                        )
-                    }
-                    if (localUrl == null) markIncomplete()
-                    localUrl
+            val replacements = matches.mapAsyncBounded(resourceConcurrency) { match ->
+                val original = match.groupValues[1]
+                val localUrl = if (isEmbeddedReference(original)) {
+                    original.trim()
+                } else {
+                    cache(
+                        resolveUrl(baseUrl, original),
+                        cssHint = importRule,
+                        depth = depth,
+                        ancestors = ancestors
+                    )
                 }
-            }.awaitAll()
+                if (localUrl == null) markIncomplete()
+                localUrl
+            }
 
             val builder = StringBuilder(value.length)
             var cursor = 0

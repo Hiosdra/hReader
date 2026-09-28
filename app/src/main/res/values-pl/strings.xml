@@ -631,7 +631,9 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="ai_context_length">  •  kontekst %1$dk</string>
     <string name="ai_model_missing">Wybrany model %1$s nie jest już oferowany przez OpenRouter. Wybierz inny.</string>
     <string name="ai_model_load_error">Nie można wczytać listy modeli z OpenRouter.</string>
-    <string name="openrouter_api_key">Klucz API OpenRouter (opcjonalny)</string>
+    <string name="openrouter_api_key">Klucz API OpenRouter (opcjonalny · eksperymentalny)</string>
+    <string name="openrouter_experimental_label">OpenRouter (eksperymentalny)</string>
+    <string name="openrouter_experimental_description">Katalog modeli zdalnych i usługa mogą się zmieniać.</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">Potrzebny tylko do podsumowań artykułów i oceny wiarygodności</string>
     <string name="paywall_bypass">Zewnętrzny serwis artykułów</string>

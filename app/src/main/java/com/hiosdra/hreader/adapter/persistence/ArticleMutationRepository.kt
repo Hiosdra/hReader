@@ -3,8 +3,10 @@ package com.hiosdra.hreader.adapter.persistence
 import android.util.Log
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMutationDao
 import com.hiosdra.hreader.core.application.port.out.ArticleMutationStore
+import com.hiosdra.hreader.core.application.port.out.BulkReadMarker
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicLong
 
 private const val TAG = "ArticleMutationRepository"
 private const val LOCAL_UPDATE_CHUNK = 400
@@ -12,6 +14,8 @@ private const val LOCAL_UPDATE_CHUNK = 400
 internal class ArticleMutationRepository(
     private val articleMutationDao: ArticleMutationDao
 ) : ArticleMutationStore {
+    private val lastBulkReadTimestampMillis = AtomicLong(0L)
+
     override suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus) {
         if (articleIds.isEmpty()) return
         val readAt = Instant.now().takeIf { newStatus == ArticleStatus.READ }
@@ -24,11 +28,17 @@ internal class ArticleMutationRepository(
         updateReadStatus(listOf(articleId), newStatus)
     }
 
-    override suspend fun idsStillReadSince(articleIds: List<Long>, readBefore: Instant): List<Long> =
-        articleIds.map { it.toString() }
-            .chunked(LOCAL_UPDATE_CHUNK)
-            .flatMap { articleMutationDao.getIdsReadNoLaterThan(it, readBefore) }
-            .toArticleIds("an undo")
+    override suspend fun markUnreadAsRead(feedId: Long?): BulkReadMarker {
+        val nowMillis = System.currentTimeMillis()
+        val markedAt = Instant.ofEpochMilli(
+            lastBulkReadTimestampMillis.updateAndGet { previous -> maxOf(nowMillis, previous + 1) }
+        )
+        val count = articleMutationDao.markUnreadAsRead(feedId, markedAt)
+        return BulkReadMarker(feedId, markedAt, count)
+    }
+
+    override suspend fun undoBulkRead(marker: BulkReadMarker): Int =
+        articleMutationDao.undoBulkRead(marker.feedId, marker.markedAt)
 }
 
 internal fun List<String>.toArticleIds(what: String): List<Long> {

@@ -4,9 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.AiModel
+import com.hiosdra.hreader.core.application.ai.GemmaBackend
+import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.settings.BackendConfiguration
 import com.hiosdra.hreader.core.application.storage.StorageCleanupAction
 import com.hiosdra.hreader.core.application.sync.SyncMode
+import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
+import com.hiosdra.hreader.core.application.usecase.settings.GemmaSettingsSnapshot
+import com.hiosdra.hreader.core.application.usecase.settings.GemmaSettingsUseCase
+import com.hiosdra.hreader.core.application.usecase.settings.NetworkStatusUseCase
+import com.hiosdra.hreader.core.application.usecase.settings.SettingsPreferenceSnapshot
+import com.hiosdra.hreader.core.application.usecase.settings.SettingsPreferenceUseCase
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
 import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.BackendType
@@ -15,11 +23,15 @@ import com.hiosdra.hreader.core.application.usecase.settings.StorageUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settings: SettingsUseCase,
-    private val storageUseCase: StorageUseCase
+    private val storageUseCase: StorageUseCase,
+    private val preferencesUseCase: SettingsPreferenceUseCase,
+    private val gemmaUseCase: GemmaSettingsUseCase,
+    private val networkStatus: NetworkStatusUseCase
 ) : ViewModel() {
     val actions = SettingsActions(
         server = ServerSettingsActions(
@@ -59,6 +71,22 @@ class SettingsViewModel(
             onReloadModels = { loadAiModels(forceRefresh = true) },
             onModelSelected = ::onModelSelected
         ),
+        preferences = PreferenceSettingsActions(
+            onPaywallBypassMethodChange = ::onPaywallBypassMethodChange,
+            onBionicReadingChange = ::onBionicReadingChange,
+            onCredibilityScoreChange = ::onCredibilityScoreChange,
+            onErrorReportingChange = ::onErrorReportingChange,
+            onGemmaBackendChange = ::onGemmaBackendChange,
+            onGemmaDownloadOnUnmeteredOnlyChange = ::onGemmaDownloadOnUnmeteredOnlyChange,
+            onLoadPerformanceRecords = ::loadPerformanceRecords,
+            onClearPerformanceRecords = ::clearPerformanceRecords
+        ),
+        gemma = GemmaRuntimeSettingsActions(
+            onRefreshPreflight = ::refreshGemmaPreflight,
+            onEnqueueDownload = gemmaUseCase::enqueueDownload,
+            onCancelDownload = gemmaUseCase::cancelDownload,
+            onRemoveModel = ::removeGemmaModel
+        ),
         localData = LocalDataSettingsActions(
             onResyncFromScratch = ::resyncFromScratch,
             onSignOut = ::signOut
@@ -68,6 +96,17 @@ class SettingsViewModel(
     private var serverDraft = settings.getBackendConfiguration()
     private val _uiState = MutableStateFlow(currentSettings(serverDraft))
     val uiState: StateFlow<ServerSettingsUiState> = _uiState.asStateFlow()
+
+    private val _preferences = MutableStateFlow(preferencesUseCase.current())
+    val preferences: StateFlow<SettingsPreferenceSnapshot> = _preferences.asStateFlow()
+
+    val isOnline: StateFlow<Boolean> = networkStatus.isOnline
+
+    private val _gemma = MutableStateFlow(gemmaUseCase.current())
+    val gemma: StateFlow<GemmaSettingsSnapshot> = _gemma.asStateFlow()
+
+    private val _performanceRecords = MutableStateFlow<List<SyncPerformanceRecord>>(emptyList())
+    val performanceRecords: StateFlow<List<SyncPerformanceRecord>> = _performanceRecords.asStateFlow()
 
     private val _openRouterApiKey = MutableStateFlow(settings.getOpenRouterApiKey())
     val openRouterApiKey: StateFlow<String> = _openRouterApiKey.asStateFlow()
@@ -82,6 +121,65 @@ class SettingsViewModel(
 
     init {
         loadAiModels()
+        viewModelScope.launch {
+            gemmaUseCase.status.collect { status ->
+                _gemma.value = gemmaUseCase.current().copy(status = status)
+            }
+        }
+    }
+
+    fun refreshPreferences() {
+        _preferences.value = preferencesUseCase.current()
+    }
+
+    private fun onPaywallBypassMethodChange(method: PaywallBypassMethod) {
+        preferencesUseCase.setPaywallBypassMethod(method)
+        _preferences.value = _preferences.value.copy(paywallBypassMethod = method)
+    }
+
+    private fun onBionicReadingChange(enabled: Boolean) {
+        preferencesUseCase.setBionicReadingEnabled(enabled)
+        _preferences.value = _preferences.value.copy(bionicReadingEnabled = enabled)
+    }
+
+    private fun onCredibilityScoreChange(enabled: Boolean) {
+        preferencesUseCase.setCredibilityScoreEnabled(enabled)
+        _preferences.value = _preferences.value.copy(credibilityScoreEnabled = enabled)
+    }
+
+    private fun onErrorReportingChange(enabled: Boolean) {
+        preferencesUseCase.setErrorReportingEnabled(enabled)
+        _preferences.value = _preferences.value.copy(errorReportingEnabled = enabled)
+    }
+
+    private fun onGemmaBackendChange(backend: GemmaBackend) {
+        preferencesUseCase.setGemmaBackend(backend)
+        _preferences.value = _preferences.value.copy(gemmaBackend = backend)
+    }
+
+    private fun onGemmaDownloadOnUnmeteredOnlyChange(enabled: Boolean) {
+        preferencesUseCase.setGemmaDownloadOnUnmeteredOnly(enabled)
+        _preferences.value = _preferences.value.copy(gemmaDownloadOnUnmeteredOnly = enabled)
+    }
+
+    private fun loadPerformanceRecords() {
+        _performanceRecords.value = preferencesUseCase.performanceRecords()
+    }
+
+    private fun clearPerformanceRecords() {
+        preferencesUseCase.clearPerformanceRecords()
+        _performanceRecords.value = emptyList()
+    }
+
+    private fun refreshGemmaPreflight() {
+        _gemma.value = gemmaUseCase.current()
+    }
+
+    private fun removeGemmaModel() {
+        viewModelScope.launch {
+            runCatchingCancellable { gemmaUseCase.removeModel() }
+            refreshGemmaPreflight()
+        }
     }
 
     fun prepareForOffline() = operations.prepareForOffline()

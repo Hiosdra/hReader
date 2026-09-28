@@ -30,12 +30,17 @@ import com.hiosdra.hreader.adapter.persistence.CacheMaintenanceRepository
 import com.hiosdra.hreader.adapter.persistence.RemoteResourcePolicyAdapter
 import com.hiosdra.hreader.adapter.persistence.ArticleReadingPositionRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleSyncEngine
+import com.hiosdra.hreader.adapter.persistence.ArticleSyncPersistence
+import com.hiosdra.hreader.adapter.persistence.PendingArticleStatusUploader
+import com.hiosdra.hreader.adapter.persistence.OfflineBacklogTopUp
+import com.hiosdra.hreader.adapter.persistence.ArticleRetentionCoordinator
 import com.hiosdra.hreader.adapter.persistence.PendingChangeRepository
 import com.hiosdra.hreader.adapter.persistence.RoomStorageDatabaseStatsStore
 import com.hiosdra.hreader.adapter.persistence.CredibilityRepository
 import com.hiosdra.hreader.adapter.persistence.OfflineReadinessRepository
 import com.hiosdra.hreader.adapter.paywall.PaywallBypassService
 import com.hiosdra.hreader.adapter.preferences.AiPreferencesStore
+import com.hiosdra.hreader.adapter.preferences.AiModelCatalogCacheStore
 import com.hiosdra.hreader.adapter.preferences.BackendPreferencesStore
 import com.hiosdra.hreader.adapter.preferences.PerformancePreferencesStore
 import com.hiosdra.hreader.adapter.preferences.PreferenceStorage
@@ -68,6 +73,7 @@ import com.hiosdra.hreader.adapter.image.ImageLoader
 import com.hiosdra.hreader.adapter.system.NetworkMonitor
 import com.hiosdra.hreader.adapter.observability.SyncPerformanceLogger
 import com.hiosdra.hreader.core.application.port.out.AiModelCatalog
+import com.hiosdra.hreader.core.application.port.out.AiModelCatalogCache
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
@@ -96,6 +102,7 @@ import com.hiosdra.hreader.core.application.port.out.ErrorReporter
 import com.hiosdra.hreader.core.application.port.out.FeedStore
 import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
 import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
+import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
 import com.hiosdra.hreader.core.application.port.out.NetworkStatus
 import com.hiosdra.hreader.core.application.port.out.OfflineReadinessStore
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
@@ -115,9 +122,13 @@ import com.hiosdra.hreader.core.application.port.out.SyncPerformanceTracker
 import com.hiosdra.hreader.core.application.port.out.StorageDatabaseStatsStore
 import com.hiosdra.hreader.core.application.port.out.StorageStore
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
+import com.hiosdra.hreader.core.application.usecase.article.ArticleDisplayPreferencesUseCase
 import com.hiosdra.hreader.core.application.usecase.feeds.FeedUseCase
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.settings.SettingsUseCase
+import com.hiosdra.hreader.core.application.usecase.settings.SettingsPreferenceUseCase
+import com.hiosdra.hreader.core.application.usecase.settings.GemmaSettingsUseCase
+import com.hiosdra.hreader.core.application.usecase.settings.NetworkStatusUseCase
 import com.hiosdra.hreader.core.application.usecase.settings.StorageUseCase
 import com.hiosdra.hreader.core.application.usecase.sync.SyncHealthUseCase
 import com.hiosdra.hreader.entrypoint.worker.ArticleContentSyncWorker
@@ -171,21 +182,39 @@ val appModule = module {
     single<RemoteResourcePolicy> { get<RemoteResourcePolicyAdapter>() }
     single { get<AppDatabase>().articleReadingPositionDao() }
     single {
-        ArticleSyncEngine(
+        ArticleSyncPersistence(
             articleRecordDao = get(),
-            articleStatsDao = get(),
             articleContentDao = get(),
             feedDao = get(),
             fullSyncSeenDao = get(),
-            api = get(),
             db = get(),
+            imageStore = get(),
+            credibilityStore = get()
+        )
+    }
+    single { PendingArticleStatusUploader(api = get(), backendIdentity = get(), pendingChanges = get()) }
+    single {
+        OfflineBacklogTopUp(
+            articleStats = get(),
+            articleRecordDao = get(),
+            api = get(),
+            persistence = get(),
             preferences = get(),
             performance = get(),
-            imageStore = get(),
-            credibilityStore = get(),
-            backendIdentity = get(),
-            pendingChangeStore = get(),
-            articleRetentionStore = get()
+            backendIdentity = get()
+        )
+    }
+    single { ArticleRetentionCoordinator(get<ArticleRetentionStore>()) }
+    single {
+        ArticleSyncEngine(
+            persistence = get(),
+            pendingStatusUploader = get(),
+            offlineBacklogTopUp = get(),
+            retentionCoordinator = get(),
+            api = get(),
+            preferences = get(),
+            performance = get(),
+            backendIdentity = get()
         )
     }
     single { ArticleQueryRepository(get(), get()) }
@@ -285,6 +314,7 @@ val appModule = module {
     single { PreferenceStorage(androidApplication()) }
     single { SecretPreferences(get()) }
     single<PreferenceWriteBarrier> { get<PreferenceStorage>() }
+    single<AiModelCatalogCache> { AiModelCatalogCacheStore(get()) }
     single<BackendPreferences> { BackendPreferencesStore(get(), get()) }
     single<AiPreferences> { AiPreferencesStore(get(), get()) }
     single<ReaderPreferences> { ReaderPreferencesStore(get()) }
@@ -376,6 +406,12 @@ val appModule = module {
         )
     }
     single {
+        ArticleDisplayPreferencesUseCase(
+            reader = get<ReaderPreferences>(),
+            tts = get<TtsPreferences>()
+        )
+    }
+    single {
         MainReaderUseCase(
             articles = get<ArticleQueryStore>(),
             articleMutations = get<ArticleMutationStore>(),
@@ -400,6 +436,23 @@ val appModule = module {
             preferenceWrites = get()
         )
     }
+    single {
+        SettingsPreferenceUseCase(
+            reader = get<ReaderPreferences>(),
+            tts = get<TtsPreferences>(),
+            ai = get<AiPreferences>(),
+            errors = get<ErrorReporter>(),
+            performance = get<PerformancePreferences>()
+        )
+    }
+    single {
+        GemmaSettingsUseCase(
+            model = get<GemmaModelGateway>(),
+            downloads = get<GemmaModelDownloadRequester>(),
+            lifecycle = get<GemmaModelLifecycle>()
+        )
+    }
+    single { NetworkStatusUseCase(get<NetworkStatus>()) }
     single { StorageUseCase(get<StorageStore>(), get<SyncRequester>()) }
     worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
@@ -410,9 +463,9 @@ val appModule = module {
     worker { GemmaModelDownloadWorker(get(), get(), get(), get()) }
     viewModel { MainViewModel(get(), get(), get()) }
     viewModel { FeedsViewModel(get(), get<SyncHealthUseCase>().observeSyncActivity()) }
-    viewModel { ArticleViewModel(get()) }
+    viewModel { ArticleViewModel(get(), get()) }
     viewModel { AddFeedViewModel(get()) }
-    viewModel { SettingsViewModel(get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
     single { SyncHealthUseCase(get(), get(), get(), get(), get()) }
     viewModel { SyncHealthViewModel(get(), get()) }
 }

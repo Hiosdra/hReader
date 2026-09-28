@@ -8,11 +8,13 @@ import androidx.paging.map
 import com.hiosdra.hreader.adapter.persistence.room.buildFtsMatchQuery
 import com.hiosdra.hreader.adapter.persistence.room.buildLikePattern
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleQueryDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleCountsRow
 import com.hiosdra.hreader.adapter.persistence.room.dao.FeedDao
 import com.hiosdra.hreader.core.application.port.out.ArticleListWindow
 import com.hiosdra.hreader.core.application.port.out.ArticleQueryStore
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
+import com.hiosdra.hreader.core.domain.model.ArticleStatusCounts
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.Feed
 import kotlinx.coroutines.flow.Flow
@@ -33,14 +35,23 @@ internal class ArticleQueryRepository(
     fun pageArticles(query: ArticleListQuery): Flow<PagingData<ArticleListItem>> {
         val match = buildFtsMatchQuery(query.searchQuery.trim())
         return Pager(PAGING_CONFIG) {
-            if (match == null) {
-                articleQueryDao.pageArticles(
-                    feedId = query.feedId,
+            when {
+                match == null && query.feedId == null -> articleQueryDao.pageAllArticles(
                     includeRead = query.includeRead,
                     sessionStart = query.sessionStart
                 )
-            } else {
-                articleQueryDao.pageSearchResults(
+                match == null -> articleQueryDao.pageFeedArticles(
+                    feedId = checkNotNull(query.feedId),
+                    includeRead = query.includeRead,
+                    sessionStart = query.sessionStart
+                )
+                query.feedId == null -> articleQueryDao.pageSearchResultsAcrossFeeds(
+                    includeRead = query.includeRead,
+                    sessionStart = query.sessionStart,
+                    ftsQuery = match,
+                    titleQuery = buildLikePattern(query.searchQuery)
+                )
+                else -> articleQueryDao.pageSearchResultsInFeed(
                     feedId = query.feedId,
                     includeRead = query.includeRead,
                     sessionStart = query.sessionStart,
@@ -140,14 +151,10 @@ internal class ArticleQueryRepository(
         )
     }
 
-    override suspend fun unreadIds(feedId: Long?): List<Long> =
-        articleQueryDao.getUnreadIds(feedId).toArticleIds("the unread set")
-
-    override fun observeUnreadCount(feedId: Long?): Flow<Int> =
-        articleQueryDao.observeUnreadCountFor(feedId)
-
-    override fun observeReadCount(feedId: Long?): Flow<Int> =
-        articleQueryDao.observeReadCountFor(feedId)
+    override fun observeStatusCounts(feedId: Long?): Flow<ArticleStatusCounts> =
+        (feedId?.let(articleQueryDao::observeCountsInFeed)
+            ?: articleQueryDao.observeCountsAcrossFeeds())
+            .map(ArticleCountsRow::toDomain)
 
     override fun getArticlesByIds(ids: List<Long>): Flow<List<Entry>> =
         articleQueryDao.getArticlesWithFeedByIds(ids.map { it.toString() }).map { rows ->
@@ -156,3 +163,8 @@ internal class ArticleQueryRepository(
 
     override suspend fun getFeed(feedId: Long): Feed? = feedDao.getFeedById(feedId)?.toArticleFeed()
 }
+
+private fun ArticleCountsRow.toDomain() = ArticleStatusCounts(
+    unread = unreadCount,
+    read = readCount
+)

@@ -549,7 +549,9 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="ai_context_length">  •  %1$dk Kontext</string>
     <string name="ai_model_missing">Das ausgewählte Modell %1$s wird von OpenRouter nicht mehr angeboten. Anderes auswählen.</string>
     <string name="ai_model_load_error">Modellliste von OpenRouter konnte nicht geladen werden.</string>
-    <string name="openrouter_api_key">OpenRouter-API-Schlüssel (optional)</string>
+    <string name="openrouter_api_key">OpenRouter-API-Schlüssel (optional · experimentell)</string>
+    <string name="openrouter_experimental_label">OpenRouter (experimentell)</string>
+    <string name="openrouter_experimental_description">Der gehostete Modellkatalog und der Dienst können sich ändern.</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">Nur für Artikelzusammenfassungen und Glaubwürdigkeitsbewertungen erforderlich</string>
     <string name="paywall_bypass">Externer Artikeldienst</string>

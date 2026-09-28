@@ -533,7 +533,9 @@
     <string name="ai_context_length">  •  %1$dk 컨텍스트</string>
     <string name="ai_model_missing">선택한 모델 %1$s은(는) OpenRouter에서 더 이상 제공되지 않습니다. 다른 모델을 선택하세요.</string>
     <string name="ai_model_load_error">OpenRouter에서 모델 목록을 불러올 수 없습니다.</string>
-    <string name="openrouter_api_key">OpenRouter API 키(선택사항)</string>
+    <string name="openrouter_api_key">OpenRouter API 키(선택사항 · 실험적)</string>
+    <string name="openrouter_experimental_label">OpenRouter (실험적)</string>
+    <string name="openrouter_experimental_description">호스팅 모델 카탈로그와 서비스는 변경될 수 있습니다.</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">기사 요약 및 신뢰도 평가에만 필요합니다</string>
     <string name="paywall_bypass">외부 기사 서비스</string>

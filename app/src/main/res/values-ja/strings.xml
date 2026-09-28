@@ -533,7 +533,9 @@
     <string name="ai_context_length">  •  %1$dkコンテキスト</string>
     <string name="ai_model_missing">選択したモデル %1$s はOpenRouterで提供されなくなりました。別のモデルを選んでください。</string>
     <string name="ai_model_load_error">OpenRouterからモデル一覧を読み込めませんでした。</string>
-    <string name="openrouter_api_key">OpenRouter APIキー（任意）</string>
+    <string name="openrouter_api_key">OpenRouter APIキー（任意・実験的）</string>
+    <string name="openrouter_experimental_label">OpenRouter（実験的）</string>
+    <string name="openrouter_experimental_description">ホストされたモデルカタログとサービスの内容は変更される場合があります。</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">記事の要約と信頼性評価にのみ必要です</string>
     <string name="paywall_bypass">記事用の外部サービス</string>

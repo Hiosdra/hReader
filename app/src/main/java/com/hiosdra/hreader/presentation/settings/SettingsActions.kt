@@ -1,6 +1,8 @@
 package com.hiosdra.hreader.presentation.settings
 
 import com.hiosdra.hreader.core.application.ai.AiModel
+import com.hiosdra.hreader.core.application.ai.GemmaBackend
+import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.storage.StorageCleanupAction
 import com.hiosdra.hreader.core.application.sync.SyncMode
 import com.hiosdra.hreader.core.domain.model.BackendType
@@ -47,6 +49,24 @@ data class AiSettingsActions(
     val onModelSelected: (AiModel) -> Unit
 )
 
+data class PreferenceSettingsActions(
+    val onPaywallBypassMethodChange: (PaywallBypassMethod) -> Unit,
+    val onBionicReadingChange: (Boolean) -> Unit,
+    val onCredibilityScoreChange: (Boolean) -> Unit,
+    val onErrorReportingChange: (Boolean) -> Unit,
+    val onGemmaBackendChange: (GemmaBackend) -> Unit,
+    val onGemmaDownloadOnUnmeteredOnlyChange: (Boolean) -> Unit,
+    val onLoadPerformanceRecords: () -> Unit,
+    val onClearPerformanceRecords: () -> Unit
+)
+
+data class GemmaRuntimeSettingsActions(
+    val onRefreshPreflight: () -> Unit,
+    val onEnqueueDownload: () -> Unit,
+    val onCancelDownload: () -> Unit,
+    val onRemoveModel: () -> Unit
+)
+
 data class LocalDataSettingsActions(
     val onResyncFromScratch: () -> Unit,
     val onSignOut: () -> Unit
@@ -58,5 +78,7 @@ data class SettingsActions(
     val offline: OfflineSettingsActions,
     val storage: StorageSettingsActions,
     val ai: AiSettingsActions,
+    val preferences: PreferenceSettingsActions,
+    val gemma: GemmaRuntimeSettingsActions,
     val localData: LocalDataSettingsActions
 )

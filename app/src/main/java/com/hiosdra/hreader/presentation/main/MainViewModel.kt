@@ -6,13 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationStage
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
-import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.R
@@ -23,7 +21,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -31,11 +28,9 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Duration
 import java.time.Instant
 
 private const val TAG = "MainViewModel"
@@ -44,8 +39,6 @@ private const val SEARCH_DEBOUNCE_MILLIS = 250L
 
 private const val KEY_SHOW_READ = "show_read_articles"
 private const val KEY_SEARCH_QUERY = "search_query"
-
-private val UNDO_GRACE: Duration = Duration.ofSeconds(2)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(
@@ -61,6 +54,7 @@ class MainViewModel(
         )
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val readActions = MainArticleReadActions(reader, viewModelScope, _uiState)
 
     private val query = MutableStateFlow(
         ArticleListQuery(
@@ -84,29 +78,7 @@ class MainViewModel(
     init {
         ensureCacheOwner()
         observeSearchInput()
-        observeCounts()
-        observeFeedTitle()
-        checkSelectedAiModel()
-        viewModelScope.launch {
-            reader.isOnline.collect { online ->
-                _uiState.update { it.copy(isOnline = online) }
-            }
-        }
-        viewModelScope.launch {
-            reader.observeSync().collect { status ->
-                _uiState.update { it.copy(syncState = status.state) }
-            }
-        }
-        viewModelScope.launch {
-            reader.observeHasCompletedSync().collect { hasCompleted ->
-                _uiState.update { it.copy(hasCompletedSync = hasCompleted) }
-            }
-        }
-        viewModelScope.launch {
-            reader.observeOfflinePreparation().collect { progress ->
-                _uiState.update { it.copy(offlinePreparation = progress) }
-            }
-        }
+        MainUiObservers(reader, viewModelScope, readyQuery, _uiState).start()
     }
 
     private fun ensureCacheOwner() {
@@ -133,33 +105,6 @@ class MainViewModel(
             .launchIn(viewModelScope)
     }
 
-    private fun observeCounts() {
-        readyQuery
-            .map { it.feedId }
-            .distinctUntilChanged()
-            .flatMapLatest { feedId ->
-                combine(
-                    reader.observeUnreadCount(feedId),
-                    reader.observeReadCount(feedId)
-                ) { unread, read -> unread to read }
-            }
-            .onEach { (unread, read) ->
-                _uiState.update { it.copy(unreadCount = unread, readCount = read) }
-            }
-            .launchIn(viewModelScope)
-    }
-
-    private fun observeFeedTitle() {
-        readyQuery
-            .map { it.feedId }
-            .distinctUntilChanged()
-            .onEach { feedId ->
-                val title = feedId?.let { runCatchingCancellable { reader.getFeed(it)?.title }.getOrNull() }
-                _uiState.update { it.copy(feedTitle = title) }
-            }
-            .launchIn(viewModelScope)
-    }
-
     fun setShowReadArticles(show: Boolean) {
         if (_uiState.value.showReadArticles == show) return
         savedStateHandle[KEY_SHOW_READ] = show
@@ -169,15 +114,6 @@ class MainViewModel(
 
     fun dismissAiModelWarning() {
         _uiState.update { it.copy(unavailableAiModelId = null) }
-    }
-
-    private fun checkSelectedAiModel() {
-        viewModelScope.launch {
-            val status = runCatchingCancellable { reader.checkSelectedAiModel() }.getOrNull()
-            if (status is SelectedModelStatus.Unavailable) {
-                _uiState.update { it.copy(unavailableAiModelId = status.modelId) }
-            }
-        }
     }
 
     internal fun setFeed(feedId: Long?) {
@@ -267,86 +203,13 @@ class MainViewModel(
     }
 
     fun updateEntryReadStatus(entryId: Long, checked: Boolean) {
-        applyReadStatus(listOf(entryId), read = checked)
+        readActions.updateEntryReadStatus(entryId, checked)
     }
 
-    fun markAllAsRead(onMarkedAsRead: (Long) -> Unit = {}) {
-        if (_uiState.value.isBulkReadStateUpdating) return
-        _uiState.update { it.copy(isBulkReadStateUpdating = true) }
-        val current = query.value
-        viewModelScope.launch {
-            try {
-                val ids = runCatchingCancellable { reader.unreadIds(current.feedId) }
-                    .getOrElse {
-                        Log.w(TAG, "Could not read the unread set", it)
-                        return@launch
-                    }
-                if (ids.isEmpty()) return@launch
+    fun markAllAsRead(onMarkedAsRead: (Long) -> Unit = {}) =
+        readActions.markAllAsRead(query.value.feedId, onMarkedAsRead)
 
-                persistReadStatus(
-                    entryIds = ids,
-                    read = true,
-                    onSuccess = {
-                        _uiState.update {
-                            it.copy(
-                                undo = UndoableAction(
-                                    id = System.currentTimeMillis(),
-                                    message = UiText.Plural(
-                                        id = R.plurals.main_marked_articles_read,
-                                        count = ids.size,
-                                        args = listOf(ids.size)
-                                    ),
-                                    articleIds = ids,
-                                    markedAt = Instant.now()
-                                )
-                            )
-                        }
-                        current.feedId?.let(onMarkedAsRead)
-                    }
-                )
-            } finally {
-                _uiState.update { it.copy(isBulkReadStateUpdating = false) }
-            }
-        }
-    }
+    fun undoLastAction() = readActions.undoLastAction()
 
-    fun undoLastAction() {
-        val action = _uiState.value.undo ?: return
-        _uiState.update { it.copy(undo = null) }
-        viewModelScope.launch {
-            val revertible = runCatchingCancellable {
-                reader.idsStillReadSince(action.articleIds, action.markedAt.plus(UNDO_GRACE))
-            }.getOrElse {
-                Log.w(TAG, "Could not work out what the undo covers", it)
-                return@launch
-            }
-            if (revertible.isNotEmpty()) applyReadStatus(revertible, read = false)
-        }
-    }
-
-    fun dismissUndo(actionId: Long? = null) {
-        _uiState.update { state ->
-            if (actionId == null || state.undo?.id == actionId) {
-                state.copy(undo = null)
-            } else {
-                state
-            }
-        }
-    }
-
-    private fun applyReadStatus(entryIds: List<Long>, read: Boolean, onSuccess: () -> Unit = {}) {
-        viewModelScope.launch {
-            persistReadStatus(entryIds, read, onSuccess)
-        }
-    }
-
-    private suspend fun persistReadStatus(
-        entryIds: List<Long>,
-        read: Boolean,
-        onSuccess: () -> Unit = {}
-    ) {
-        runCatchingCancellable { reader.updateReadStatus(entryIds, read) }
-            .onFailure { Log.w(TAG, "Could not store read state for ${entryIds.size} articles", it) }
-            .onSuccess { onSuccess() }
-    }
+    fun dismissUndo(actionId: Long? = null) = readActions.dismissUndo(actionId)
 }
