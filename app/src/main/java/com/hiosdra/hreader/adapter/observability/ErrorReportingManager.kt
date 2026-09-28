@@ -17,14 +17,18 @@ class ErrorReportingManager(
     private var initialized = false
 
     override fun initialize() = synchronized(lock) {
-        if (preferencesManager.getSentryReportingEnabled()) {
+        if (hasExplicitChoice() && preferencesManager.getSentryReportingEnabled()) {
             initializeLocked()
         } else {
             closeLocked()
         }
     }
 
-    override fun isEnabled(): Boolean = preferencesManager.getSentryReportingEnabled()
+    override fun isEnabled(): Boolean =
+        hasExplicitChoice() && preferencesManager.getSentryReportingEnabled()
+
+    override fun hasExplicitChoice(): Boolean =
+        preferencesManager.hasExplicitSentryReportingChoice()
 
     override fun setEnabled(enabled: Boolean) {
         preferencesManager.setSentryReportingEnabled(enabled)

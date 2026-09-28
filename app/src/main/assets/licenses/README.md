@@ -6,13 +6,13 @@ corresponding binary or downloaded runtime.
 The active model and helper-data notices are under `models/`. The in-app legal
 screen lists those documents together with the native/runtime notices below.
 
-## LiteRT-LM 0.17.0
+## LiteRT-LM 0.17.1
 
 `litert/LICENSE` and `litert/THIRD_PARTY_NOTICE.txt` are copied verbatim from
-the resolved `com.google.ai.edge.litertlm:litertlm-android:0.17.0` AAR.
+the resolved `com.google.ai.edge.litertlm:litertlm-android:0.17.1` AAR.
 
 The AAR SHA-256 is
-`28aa6bc43efcee35b31795f9e5ca633c3dec06d9f3fb85ecb6a753fa360e2134`.
+`a8aeaa6b128e9b0f1c7fe5e620932a7030cfff1ac9c0dc133d8c79711de5cf4d`.
 The embedded notice SHA-256 is
 `67d807a83a6e4f9457365ca61ff3fa1db95b135a17feeefadeff8e9f02123243`.
 

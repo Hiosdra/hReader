@@ -124,6 +124,7 @@ private fun PaywallBypassSplitButton(
         R.string.article_open_through_paywall_service,
         defaultMethodName
     )
+    val defaultActionText = stringResource(R.string.article_open_through_paywall_bypass)
     val chooseServiceDescription = stringResource(R.string.article_choose_paywall_service)
     val externalActionOfflineDescription = stringResource(
         R.string.article_external_actions_requires_connection
@@ -156,7 +157,7 @@ private fun PaywallBypassSplitButton(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = defaultActionLabel,
+                    text = defaultActionText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

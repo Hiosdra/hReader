@@ -36,7 +36,7 @@ class ArticleSourceActionsTest {
             onBypassPaywall = { selected.set(it) }
         )
 
-        composeTestRule.onNodeWithText(
+        composeTestRule.onNodeWithContentDescription(
             context.getString(
                 R.string.article_open_through_paywall_service,
                 context.getString(R.string.paywall_smry_ai)

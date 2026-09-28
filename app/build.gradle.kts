@@ -1,6 +1,7 @@
 import java.util.Properties
 import java.security.MessageDigest
 import org.gradle.api.DefaultTask
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
@@ -335,4 +336,26 @@ dependencies {
     // Debug Tools
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+val releaseRuntimeDependencyReport = layout.buildDirectory.file(
+    "reports/release-runtime-dependencies.txt"
+)
+
+tasks.register("writeReleaseRuntimeDependencyReport") {
+    val report = releaseRuntimeDependencyReport
+    val runtimeClasspath = configurations.named("releaseRuntimeClasspath")
+    outputs.file(report)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val dependencies = runtimeClasspath.get().incoming.resolutionResult.allComponents
+            .mapNotNull { component -> component.id as? ModuleComponentIdentifier }
+            .map { component -> "${component.group}:${component.module}:${component.version}" }
+            .toSortedSet()
+        report.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(dependencies.joinToString(separator = "\n", postfix = "\n"))
+        }
+    }
 }

@@ -56,8 +56,10 @@ internal object ReaderPreferenceKeys {
 
 internal object SentryPreferenceKeys {
     const val SENTRY_REPORTING_ENABLED = "sentry_reporting_enabled"
+    const val SENTRY_REPORTING_CHOICE_MADE = "sentry_reporting_choice_made"
 
     val reportingEnabled = booleanPreferencesKey(SENTRY_REPORTING_ENABLED)
+    val reportingChoiceMade = booleanPreferencesKey(SENTRY_REPORTING_CHOICE_MADE)
 }
 
 internal object PerformancePreferenceKeys {

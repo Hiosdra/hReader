@@ -1,6 +1,6 @@
 # hReader Privacy Policy
 
-Last updated: 21 September 2026
+Last updated: 28 September 2026
 
 ## Publisher and contact
 
@@ -75,9 +75,9 @@ the model file, not article content.
 
 ## Sentry crash reports and diagnostics
 
-Sentry crash and diagnostic reporting is enabled by default when the app has a Sentry server
-configured. The user can disable it at any time in the privacy and diagnostics settings. After it
-is disabled, hReader does not send new reports.
+Crash and diagnostic reporting is disabled until the user makes an explicit choice during
+onboarding. The user can enable or decline reporting and can change this choice at any time in
+Settings. If no choice has been made, hReader does not send reports.
 
 When enabled, reporting may include technical information needed for diagnosis, such as:
 
@@ -138,8 +138,7 @@ We do not sell data or share it for advertising purposes. Data is transferred on
 2. to OpenRouter when the user uses an AI feature;
 3. to Sentry when diagnostic reporting is enabled;
 4. to source servers when needed to fetch requested content or a model;
-5. to the selected external service when the user opens an article through the paywall-bypass
-   feature.
+5. to the selected external article service when the user chooses to open an article through it.
 
 ## Retention and deletion
 
