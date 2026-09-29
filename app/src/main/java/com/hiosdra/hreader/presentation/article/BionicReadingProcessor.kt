@@ -3,19 +3,20 @@ package com.hiosdra.hreader.presentation.article
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
+import com.hiosdra.hreader.core.application.content.WeightedStringLruCache
+import com.hiosdra.hreader.core.application.content.contentFingerprint
 
 object BionicReadingProcessor {
     private val WORD_REGEX = Regex("([\\p{L}\\p{M}]+)")
     private val SKIPPED_TAGS = setOf("pre", "code", "script", "style", "svg", "strong", "b")
-    private val cachedResults = object : LinkedHashMap<String, String>(8, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
-            size > 8
-    }
+    private val cachedResults = WeightedStringLruCache<String>(1_000_000L)
 
-    @Synchronized
     fun processTextToBionicCached(html: String): String {
-        cachedResults[html]?.let { return it }
-        return processTextToBionic(html).also { cachedResults[html] = it }
+        val key = html.contentFingerprint()
+        cachedResults.get(key)?.let { return it }
+        val processed = processTextToBionic(html)
+        cachedResults.put(key, processed)
+        return processed
     }
 
     fun processTextToBionic(html: String): String {

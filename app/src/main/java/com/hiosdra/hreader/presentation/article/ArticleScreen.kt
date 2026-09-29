@@ -1,25 +1,9 @@
 package com.hiosdra.hreader.presentation.article
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -31,17 +15,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.ImageLoader as CoilImageLoader
 import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
@@ -50,20 +28,16 @@ import com.hiosdra.hreader.core.application.port.out.ArticleImageSharer
 import com.hiosdra.hreader.core.application.port.out.ArticleTtsPlayer
 import com.hiosdra.hreader.core.application.port.out.PaywallBypass
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
-import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.port.out.TtsModelGateway
-import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
-import com.hiosdra.hreader.presentation.feedback.FeedbackKind
 import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
 import com.hiosdra.hreader.presentation.feedback.showFeedback
 import com.hiosdra.hreader.presentation.navigation.ArticleRouteArguments
 import com.hiosdra.hreader.presentation.text.resolve
-import com.hiosdra.hreader.R
 import kotlin.math.roundToInt
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -101,8 +75,6 @@ internal fun initialArticlePagerPage(currentIndex: Int, entryCount: Int): Int? =
 fun ArticleScreen(
     navController: NavHostController,
     routeArguments: ArticleRouteArguments,
-    readerPreferences: ReaderPreferences,
-    ttsPreferences: TtsPreferences,
     paywallBypassService: PaywallBypass,
     ttsModelManager: TtsModelGateway,
     ttsController: ArticleTtsPlayer,
@@ -117,6 +89,8 @@ fun ArticleScreen(
     val navigation = uiState.navigation
     val content = uiState.content
     val ai = uiState.ai
+    val displayPreferences by viewModel.displayPreferences.collectAsStateWithLifecycle()
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val pagerState = rememberPagerState(initialPage = 0) { navigation.entries.size }
     val effectChannel = remember { Channel<ArticleRouteEffect>(Channel.BUFFERED) }
     val effects = remember(effectChannel) { effectChannel.receiveAsFlow() }
@@ -150,8 +124,8 @@ fun ArticleScreen(
 
     val ttsState by ttsController.state.collectAsStateWithLifecycle()
     val ttsModelStatuses by ttsModelManager.statuses.collectAsStateWithLifecycle()
-    val configuredTtsModel = ttsPreferences.getTtsModel()
-    val configuredPaywallBypassMethod = readerPreferences.getPaywallBypassMethod()
+    val configuredTtsModel = displayPreferences.ttsModel
+    val configuredPaywallBypassMethod = displayPreferences.defaultPaywallBypassMethod
     var temporaryTtsModel by remember { mutableStateOf<TtsModel?>(null) }
     var ttsPlayerSheetVisible by rememberSaveable { mutableStateOf(false) }
     var paywallMethodPickerVisible by rememberSaveable { mutableStateOf(false) }
@@ -160,6 +134,9 @@ fun ArticleScreen(
 
     LaunchedEffect(routeArguments) {
         reloadArticleList()
+    }
+    LaunchedEffect(currentRoute) {
+        viewModel.refreshDisplayPreferences()
     }
 
     val currentOfflinePageAvailable = navigation.entries
@@ -289,295 +266,134 @@ fun ArticleScreen(
         url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
     } == true
 
-    Scaffold(
-        snackbarHost = {
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.padding(bottom = articleBottomContentPadding)
-            )
+    val topBarState = ArticleScreenTopBarState(
+        entryUrl = currentEntry?.url,
+        feedTitle = currentEntry?.feed?.title,
+        listPosition = navigation.currentListPosition,
+        listSize = navigation.listSize,
+        isWebViewMode = currentWebViewActive,
+        canUseWebView = currentWebViewAvailable,
+        isRead = currentEntry?.isRead == true,
+        textScale = textScale,
+        ttsContentState = ttsContentState,
+        isTtsActive = ttsState.articleId != null,
+        isOnline = content.isOnline,
+        defaultPaywallBypassMethod = configuredPaywallBypassMethod,
+        canUsePaywallBypass = canUsePaywallBypass,
+        displayedProvenance = currentDisplayedProvenance
+    )
+    val topBarActions = ArticleScreenTopBarActions(
+        onDecreaseTextScale = {
+            textScale = (textScale - ARTICLE_TEXT_SCALE_STEP).coerceAtLeast(MIN_ARTICLE_TEXT_SCALE)
         },
-        topBar = {
-            ArticleScreenTopBar(
-                state = ArticleScreenTopBarState(
-                    entryUrl = currentEntry?.url,
-                    feedTitle = currentEntry?.feed?.title,
-                    listPosition = navigation.currentListPosition,
-                    listSize = navigation.listSize,
-                    isWebViewMode = currentWebViewActive,
-                    canUseWebView = currentWebViewAvailable,
-                    isRead = currentEntry?.isRead == true,
-                    textScale = textScale,
-                    ttsContentState = ttsContentState,
-                    isTtsActive = ttsState.articleId != null,
-                    isOnline = content.isOnline,
-                    defaultPaywallBypassMethod = configuredPaywallBypassMethod,
-                    canUsePaywallBypass = canUsePaywallBypass,
-                    displayedProvenance = currentDisplayedProvenance
-                ),
-                actions = ArticleScreenTopBarActions(
-                    onDecreaseTextScale = {
-                        textScale = (textScale - ARTICLE_TEXT_SCALE_STEP)
-                            .coerceAtLeast(MIN_ARTICLE_TEXT_SCALE)
-                    },
-                    onResetTextScale = { textScale = 1f },
-                    onIncreaseTextScale = {
-                        textScale = (textScale + ARTICLE_TEXT_SCALE_STEP)
-                            .coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
-                    },
-                    onToggleRead = {
-                        currentEntry?.let { entry ->
-                            viewModel.updateReadStatus(
-                                index = navigation.currentIndex,
-                                isRead = !entry.isRead
-                            )
-                        }
-                    },
-                    onBack = { navController.popBackStack() },
-                    onToggleWebView = { isWebViewMode = !isWebViewMode },
-                    onShare = {
-                        currentEntry?.let { entry ->
-                            dispatchEffect(ArticleRouteEffect.ShareArticle(entry.title, entry.url))
-                        }
-                    },
-                    onInvokeTts = {
-                        if (ttsState.articleId != null) {
-                            ttsPlayerSheetVisible = true
-                        } else {
-                            currentEntry?.takeIf {
-                                ttsContentState == ArticleTtsContentState.AVAILABLE
-                            }?.let { playArticleTts(it) }
-                        }
-                    },
-                    onOpenInChrome = { currentEntry?.url?.let(openArticleInChrome) },
-                    onBypassPaywall = { method ->
-                        currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
-                    },
-                    onOpenPaywallMethodPicker = { paywallMethodPickerVisible = true },
-                    onSwitchToFeed = { isWebViewMode = false }
-                )
-            )
-        }
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                navigation.isLoading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .padding(bottom = articleBottomContentPadding),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                navigation.error != null -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .padding(bottom = articleBottomContentPadding)
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = navigation.error.resolve(),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error,
-                                textAlign = TextAlign.Center
-                            )
-                            TextButton(
-                                onClick = {
-                                    reloadArticleList()
-                                },
-                                modifier = Modifier.padding(top = 8.dp)
-                            ) {
-                                Text(stringResource(R.string.action_retry))
-                            }
-                        }
-                    }
-                }
-                navigation.entries.isNotEmpty() -> {
-                    ArticlePager(
-                        entries = navigation.entries,
-                        pagerState = pagerState,
-                        isWebViewMode = currentWebViewActive,
-                        textScale = textScale,
-                        paddingValues = paddingValues,
-                        bottomContentPadding = articleBottomContentPadding,
-                        bindings = ArticlePagerBindings(
-                            state = uiState,
-                            readerPreferences = readerPreferences,
-                            articleImageLoader = articleImageLoader,
-                            coilImageLoader = coilImageLoader,
-                            remoteResourcePolicy = remoteResourcePolicy,
-                            onReadingProgressChanged = viewModel::saveReadingProgress,
-                            onReadingCompleted = viewModel::clearReadingProgress,
-                            onRetryContent = viewModel::retryContent,
-                            onEffect = dispatchEffect,
-                            onAiOverview = viewModel::generateAiOverview,
-                            onAnalyzeCredibility = viewModel::analyzeCredibility,
-                            defaultPaywallBypassMethod = configuredPaywallBypassMethod,
-                            canUsePaywallBypass = { url ->
-                                url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
-                            },
-                            onOpenInChrome = openArticleInChrome,
-                            onBypassPaywall = openArticleThroughPaywall
-                        )
-                    )
-                }
-            }
-
-            val currentEntryId = navigation.entries.getOrNull(navigation.currentIndex)?.id
-
-            ai.overviewError?.let { error ->
-                RetryableSnackbar(
-                    hostState = snackbarHostState,
-                    message = error.resolve(),
-                    actionLabel = stringResource(R.string.action_retry).takeIf {
-                        currentEntryId != null
-                    },
-                    onAction = { currentEntryId?.let { viewModel.generateAiOverview(it) } },
-                    onDismissed = viewModel::clearOverviewError
+        onResetTextScale = { textScale = 1f },
+        onIncreaseTextScale = {
+            textScale = (textScale + ARTICLE_TEXT_SCALE_STEP).coerceAtMost(MAX_ARTICLE_TEXT_SCALE)
+        },
+        onToggleRead = {
+            currentEntry?.let { entry ->
+                viewModel.updateReadStatus(
+                    index = navigation.currentIndex,
+                    isRead = !entry.isRead
                 )
             }
-
-            content.contentError?.let { message ->
-                if (currentEntryId != null) {
-                    ArticleContentErrorBanner(
-                        message = message.resolve(),
-                        onRetry = { viewModel.retryContent(currentEntryId) },
-                        onDismiss = viewModel::clearContentError,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = articleBottomContentPadding + 8.dp)
-                            .navigationBarsPadding()
-                    )
-                }
+        },
+        onBack = { navController.popBackStack() },
+        onToggleWebView = { isWebViewMode = !isWebViewMode },
+        onShare = {
+            currentEntry?.let { entry ->
+                dispatchEffect(ArticleRouteEffect.ShareArticle(entry.title, entry.url))
             }
-
-            ai.scoreError?.let { error ->
-                RetryableSnackbar(
-                    hostState = snackbarHostState,
-                    message = error.resolve(),
-                    actionLabel = stringResource(R.string.action_retry).takeIf {
-                        currentEntryId != null
-                    },
-                    onAction = { currentEntryId?.let { viewModel.analyzeCredibility(it, forceRefresh = true) } },
-                    onDismissed = viewModel::clearScoreError
-                )
-            }
-
+        },
+        onInvokeTts = {
             if (ttsState.articleId != null) {
-                ArticleTtsMiniPlayer(
-                    state = ttsState,
-                    onOpen = { ttsPlayerSheetVisible = true },
-                    onPause = ttsController::pause,
-                    onResume = ttsController::resume,
-                    onStop = ttsController::stop,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 8.dp)
-                        .navigationBarsPadding(),
-                    onSizeChanged = { height ->
-                        if (ttsMiniPlayerHeightPx != height) ttsMiniPlayerHeightPx = height
-                    }
-                )
+                ttsPlayerSheetVisible = true
+            } else {
+                currentEntry?.takeIf {
+                    ttsContentState == ArticleTtsContentState.AVAILABLE
+                }?.let { playArticleTts(it) }
             }
-
-            if (ttsPlayerSheetVisible && ttsState.articleId != null) {
-                ArticleTtsPlayerSheet(
-                    state = ttsState,
-                    temporaryModel = temporaryTtsModel,
-                    configuredModel = configuredTtsModel,
-                    modelStatuses = ttsModelStatuses,
-                    contentState = ttsPlayerContentState,
-                    onTemporaryModelChange = { model ->
-                        ttsController.stop()
-                        temporaryTtsModel = model
-                    },
-                    onPause = ttsController::pause,
-                    onResume = ttsController::resume,
-                    onStop = {
-                        ttsPlayerSheetVisible = false
-                        ttsController.stop()
-                    },
-                    onRetry = retryTts,
-                    onDismiss = { ttsPlayerSheetVisible = false }
-                )
-            }
-
-            if (paywallMethodPickerVisible && currentEntry != null) {
-                PaywallBypassMethodPicker(
-                    defaultPaywallBypassMethod = configuredPaywallBypassMethod,
-                    onSelect = { method ->
-                        paywallMethodPickerVisible = false
-                        currentEntry.url.let { url -> openArticleThroughPaywall(url, method) }
-                    },
-                    onDismiss = { paywallMethodPickerVisible = false }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArticleContentErrorBanner(
-    message: String,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.errorContainer,
-        tonalElevation = 3.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = message,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
-            TextButton(onClick = onRetry) {
-                Text(stringResource(R.string.action_retry), color = MaterialTheme.colorScheme.onErrorContainer)
-            }
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    imageVector = Icons.Filled.Close,
-                    contentDescription = stringResource(R.string.action_dismiss),
-                    tint = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RetryableSnackbar(
-    hostState: SnackbarHostState,
-    message: String,
-    actionLabel: String?,
-    onAction: () -> Unit,
-    onDismissed: () -> Unit
-) {
-    LaunchedEffect(message) {
-        hostState.showFeedback(
-            FeedbackRequest(
-                message = message,
-                kind = FeedbackKind.RECOVERABLE_ERROR,
-                actionLabel = actionLabel,
-                onAction = onAction
-            )
+        },
+        onOpenInChrome = { currentEntry?.url?.let(openArticleInChrome) },
+        onBypassPaywall = { method ->
+            currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
+        },
+        onOpenPaywallMethodPicker = { paywallMethodPickerVisible = true },
+        onSwitchToFeed = { isWebViewMode = false }
+    )
+    val pagerBindings = ArticlePagerBindings(
+        state = uiState,
+        bionicReadingEnabled = displayPreferences.bionicReadingEnabled,
+        articleImageLoader = articleImageLoader,
+        coilImageLoader = coilImageLoader,
+        remoteResourcePolicy = remoteResourcePolicy,
+        onReadingProgressChanged = viewModel::saveReadingProgress,
+        onReadingCompleted = viewModel::clearReadingProgress,
+        onRetryContent = viewModel::retryContent,
+        onEffect = dispatchEffect,
+        onAiOverview = viewModel::generateAiOverview,
+        onAnalyzeCredibility = viewModel::analyzeCredibility,
+        defaultPaywallBypassMethod = configuredPaywallBypassMethod,
+        canUsePaywallBypass = { url ->
+            url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
+        },
+        onOpenInChrome = openArticleInChrome,
+        onBypassPaywall = openArticleThroughPaywall
+    )
+    ArticleScreenPresentation(
+        state = ArticleScreenPresentationState(
+            navigation = navigation,
+            content = content,
+            ai = ai,
+            currentEntry = currentEntry,
+            currentWebViewActive = currentWebViewActive,
+            textScale = textScale,
+            topBar = topBarState,
+            topBarActions = topBarActions,
+            pagerState = pagerState,
+            pagerBindings = pagerBindings,
+            bottomContentPadding = articleBottomContentPadding,
+            snackbarHostState = snackbarHostState,
+            ttsState = ttsState,
+            ttsPlayerContentState = ttsPlayerContentState,
+            ttsPlayerSheetVisible = ttsPlayerSheetVisible,
+            temporaryTtsModel = temporaryTtsModel,
+            configuredTtsModel = configuredTtsModel,
+            ttsModelStatuses = ttsModelStatuses,
+            paywallMethodPickerVisible = paywallMethodPickerVisible,
+            defaultPaywallBypassMethod = configuredPaywallBypassMethod
+        ),
+        actions = ArticleScreenPresentationActions(
+            onRetryNavigation = { reloadArticleList() },
+            onGenerateAiOverview = viewModel::generateAiOverview,
+            onClearOverviewError = viewModel::clearOverviewError,
+            onRetryContent = viewModel::retryContent,
+            onClearContentError = viewModel::clearContentError,
+            onAnalyzeCredibility = { id ->
+                viewModel.analyzeCredibility(id, forceRefresh = true)
+            },
+            onClearScoreError = viewModel::clearScoreError,
+            onOpenTtsPlayer = { ttsPlayerSheetVisible = true },
+            onPauseTts = ttsController::pause,
+            onResumeTts = ttsController::resume,
+            onStopTts = {
+                ttsPlayerSheetVisible = false
+                ttsController.stop()
+            },
+            onTtsMiniPlayerSizeChanged = { height ->
+                if (ttsMiniPlayerHeightPx != height) ttsMiniPlayerHeightPx = height
+            },
+            onTemporaryTtsModelChanged = { model ->
+                ttsController.stop()
+                temporaryTtsModel = model
+            },
+            onRetryTts = retryTts,
+            onDismissTtsPlayer = { ttsPlayerSheetVisible = false },
+            onSelectPaywallMethod = { method ->
+                paywallMethodPickerVisible = false
+                currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
+            },
+            onDismissPaywallPicker = { paywallMethodPickerVisible = false }
         )
-        onDismissed()
-    }
+    )
 }

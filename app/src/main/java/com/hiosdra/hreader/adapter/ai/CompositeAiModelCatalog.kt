@@ -36,4 +36,6 @@ class CompositeAiModelCatalog(
         }
         return openRouter.checkSelectedModel()
     }
+
+    override suspend fun refreshCatalogIfStale(): Boolean = openRouter.refreshCatalogIfStale()
 }

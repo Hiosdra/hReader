@@ -24,7 +24,7 @@ internal class ArticleContentService(
         entryId: Long,
         url: String,
         allowNetwork: Boolean,
-        downloadAllImages: Boolean = true,
+        downloadAllImages: Boolean = false,
         imageLimiter: Semaphore? = null
     ): ArticleText = when (val selection = reader.read(entryId, url, allowNetwork)) {
         is ArticleContentSelection.Stored -> prepareStoredContent(

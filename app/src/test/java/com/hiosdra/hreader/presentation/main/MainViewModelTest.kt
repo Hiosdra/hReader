@@ -8,6 +8,7 @@ import com.hiosdra.hreader.core.application.sync.SyncOperationId
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.core.application.sync.SyncOperationStatus
 import com.hiosdra.hreader.core.application.usecase.main.MainReaderUseCase
+import com.hiosdra.hreader.core.domain.model.ArticleStatusCounts
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -53,8 +54,7 @@ class MainViewModelTest {
         every { reader.observeOperation(operationId) } returns primary
         every { reader.observeHasCompletedSync() } returns flowOf(true)
         every { reader.observeOfflinePreparation() } returns flowOf(OfflinePreparationProgress())
-        every { reader.observeUnreadCount(any()) } returns flowOf(0)
-        every { reader.observeReadCount(any()) } returns flowOf(0)
+        every { reader.observeStatusCounts(any()) } returns flowOf(ArticleStatusCounts(0, 0))
         every { reader.requestRefresh() } returns operationId
         coEvery { reader.ensureCacheOwner() } returns true
         coEvery { reader.getFeed(any()) } returns null

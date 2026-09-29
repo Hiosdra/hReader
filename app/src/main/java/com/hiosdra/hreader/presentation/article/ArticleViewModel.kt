@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.content.articlePreviewHtml
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
+import com.hiosdra.hreader.core.application.usecase.article.ArticleDisplayPreferencesUseCase
+import com.hiosdra.hreader.core.application.usecase.article.ArticleDisplayPreferences
 import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
@@ -37,7 +39,8 @@ internal fun readerFallbackContent(entry: Entry): String? =
     entry.content?.takeIf { it.isNotBlank() } ?: articlePreviewHtml(entry.preview)
 
 class ArticleViewModel(
-    private val reader: ArticleReaderUseCase
+    private val reader: ArticleReaderUseCase,
+    private val displayPreferencesUseCase: ArticleDisplayPreferencesUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         ArticleUiState(
@@ -46,6 +49,8 @@ class ArticleViewModel(
         )
     )
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
+    private val _displayPreferences = MutableStateFlow(displayPreferencesUseCase.current())
+    val displayPreferences: StateFlow<ArticleDisplayPreferences> = _displayPreferences.asStateFlow()
     private val aiCoordinator = ArticleAiCoordinator(reader, _uiState, viewModelScope)
     private val contentCoordinator = ArticleContentCoordinator(
         reader = reader,
@@ -61,6 +66,11 @@ class ArticleViewModel(
 
     init {
         viewModelScope.launch {
+            displayPreferencesUseCase.observeBionicReadingEnabled().collect { enabled ->
+                _displayPreferences.update { it.copy(bionicReadingEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
             reader.isOnline.collect { online ->
                 val wasOnline = _uiState.value.content.isOnline
                 _uiState.update { it.copy(content = it.content.copy(isOnline = online)) }
@@ -68,6 +78,10 @@ class ArticleViewModel(
             }
         }
         aiCoordinator.start()
+    }
+
+    fun refreshDisplayPreferences() {
+        _displayPreferences.value = displayPreferencesUseCase.current()
     }
 
     fun setCurrentIndex(index: Int) {

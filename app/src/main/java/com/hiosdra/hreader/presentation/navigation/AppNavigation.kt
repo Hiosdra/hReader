@@ -246,8 +246,6 @@ fun AppNavigation(
                 ArticleScreen(
                     navController = navController,
                     routeArguments = routeArguments,
-                    readerPreferences = readerPreferences,
-                    ttsPreferences = ttsPreferences,
                     paywallBypassService = paywallBypass,
                     ttsModelManager = ttsModelManager,
                     ttsController = articleTtsPlayer,
@@ -280,15 +278,6 @@ fun AppNavigation(
         composable(Routes.SETTINGS) { _ ->
             SettingsScreen(
                 navController = navController,
-                readerPreferences = readerPreferences,
-                ttsPreferences = ttsPreferences,
-                aiPreferences = aiPreferences,
-                performancePreferences = performancePreferences,
-                errorReportingManager = errorReporter,
-                gemmaModelManager = gemmaModelManager,
-                gemmaModelDownloadScheduler = gemmaModelDownloadScheduler,
-                gemmaModelLifecycle = gemmaModelLifecycle,
-                networkStatus = networkStatus,
                 settingsViewModel = koinViewModel(),
                 onSignedOut = {
                     navController.navigate(Routes.SERVER_SETUP) {

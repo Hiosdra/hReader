@@ -537,7 +537,9 @@
     <string name="ai_context_length">  •  %1$dk bağlam</string>
     <string name="ai_model_missing">Seçilen %1$s modeli artık OpenRouter tarafından sunulmuyor. Başka bir model seçin.</string>
     <string name="ai_model_load_error">Model listesi OpenRouter’dan yüklenemedi.</string>
-    <string name="openrouter_api_key">OpenRouter API anahtarı (isteğe bağlı)</string>
+    <string name="openrouter_api_key">OpenRouter API anahtarı (isteğe bağlı · deneysel)</string>
+    <string name="openrouter_experimental_label">OpenRouter (deneysel)</string>
+    <string name="openrouter_experimental_description">Barındırılan model kataloğu ve hizmet değişebilir.</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">Yalnızca makale özetleri ve güvenilirlik değerlendirmeleri için gereklidir</string>
     <string name="paywall_bypass">Harici makale hizmeti</string>

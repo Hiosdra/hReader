@@ -2,14 +2,13 @@ package com.hiosdra.hreader.presentation.main
 
 import com.hiosdra.hreader.core.application.sync.OfflinePreparationProgress
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
+import com.hiosdra.hreader.core.application.port.out.BulkReadMarker
 import com.hiosdra.hreader.presentation.text.UiText
-import java.time.Instant
 
 data class UndoableAction(
     val id: Long,
     val message: UiText,
-    val articleIds: List<Long>,
-    val markedAt: Instant
+    val marker: BulkReadMarker
 )
 
 data class MainUiState(

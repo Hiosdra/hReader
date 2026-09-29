@@ -42,6 +42,7 @@ internal object AiPreferenceKeys {
     val aiModel = stringPreferencesKey(AI_MODEL)
     val gemmaBackend = stringPreferencesKey(GEMMA_BACKEND)
     val gemmaDownloadUnmeteredOnly = booleanPreferencesKey(GEMMA_DOWNLOAD_UNMETERED_ONLY)
+    val openRouterModelCatalogCache = stringPreferencesKey("openrouter_model_catalog_cache")
 }
 
 internal object ReaderPreferenceKeys {

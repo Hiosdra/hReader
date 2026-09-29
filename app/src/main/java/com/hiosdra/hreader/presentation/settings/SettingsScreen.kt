@@ -42,18 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.application.ai.GemmaModelStatus
-import com.hiosdra.hreader.core.application.ai.GemmaBackend
-import com.hiosdra.hreader.core.application.port.out.AiPreferences
-import com.hiosdra.hreader.core.application.port.out.ErrorReporter
-import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
-import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
-import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
-import com.hiosdra.hreader.core.application.port.out.NetworkStatus
-import com.hiosdra.hreader.core.application.port.out.PerformancePreferences
-import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
-import com.hiosdra.hreader.core.application.port.out.TtsPreferences
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceOperation
 import com.hiosdra.hreader.core.application.observability.SyncPerformanceRecord
@@ -64,15 +53,6 @@ import com.hiosdra.hreader.presentation.navigation.Routes
 fun SettingsScreen(
     navController: NavController? = null,
     onSignedOut: () -> Unit = {},
-    readerPreferences: ReaderPreferences,
-    ttsPreferences: TtsPreferences,
-    aiPreferences: AiPreferences,
-    performancePreferences: PerformancePreferences,
-    errorReportingManager: ErrorReporter,
-    gemmaModelManager: GemmaModelGateway,
-    gemmaModelDownloadScheduler: GemmaModelDownloadRequester,
-    gemmaModelLifecycle: GemmaModelLifecycle,
-    networkStatus: NetworkStatus,
     settingsViewModel: SettingsViewModel
 ) {
     val serverSettings by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -81,43 +61,26 @@ fun SettingsScreen(
     val offline by settingsViewModel.offline.collectAsStateWithLifecycle()
     val sync by settingsViewModel.sync.collectAsStateWithLifecycle()
     val storage by settingsViewModel.storage.collectAsStateWithLifecycle()
-    val isOnline by networkStatus.isOnline.collectAsStateWithLifecycle()
-    val localAiStatus by gemmaModelManager.status.collectAsStateWithLifecycle()
+    val preferences by settingsViewModel.preferences.collectAsStateWithLifecycle()
+    val isOnline by settingsViewModel.isOnline.collectAsStateWithLifecycle()
+    val gemma by settingsViewModel.gemma.collectAsStateWithLifecycle()
+    val performanceRecords by settingsViewModel.performanceRecords.collectAsStateWithLifecycle()
     val currentRoute = navController?.currentBackStackEntryAsState()?.value?.destination?.route
     val context = LocalContext.current
     val actions = remember(settingsViewModel) { settingsViewModel.actions }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
-    var selectedBypassMethod by remember { mutableStateOf(readerPreferences.getPaywallBypassMethod()) }
-    var bionicReadingEnabled by remember { mutableStateOf(readerPreferences.getBionicReadingEnabled()) }
-    var credibilityScoreEnabled by remember { mutableStateOf(readerPreferences.getCredibilityScoreEnabled()) }
-    var sentryReportingEnabled by remember { mutableStateOf(errorReportingManager.isEnabled()) }
-    var gemmaBackend by remember { mutableStateOf(aiPreferences.getGemmaBackend()) }
-    var gemmaDownloadOnUnmeteredOnly by remember {
-        mutableStateOf(aiPreferences.getGemmaDownloadOnUnmeteredOnly())
-    }
     var showPerformanceDialog by remember { mutableStateOf(false) }
     var showBypassDialog by remember { mutableStateOf(false) }
     var showModelSheet by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
-    val onToggleBionicReading: (Boolean) -> Unit = { enabled ->
-        bionicReadingEnabled = enabled
-        readerPreferences.setBionicReadingEnabled(enabled)
-    }
-    val onToggleCredibilityScore: (Boolean) -> Unit = { enabled ->
-        credibilityScoreEnabled = enabled
-        readerPreferences.setCredibilityScoreEnabled(enabled)
-    }
-    val onToggleSentryReporting: (Boolean) -> Unit = { enabled ->
-        sentryReportingEnabled = enabled
-        errorReportingManager.setEnabled(enabled)
-    }
     LaunchedEffect(currentRoute) {
-        selectedBypassMethod = readerPreferences.getPaywallBypassMethod()
+        settingsViewModel.refreshPreferences()
+        actions.gemma.onRefreshPreflight()
     }
     val readingSummary = "${stringResource(R.string.settings_bionic_reading)}: " +
-        "${stringResource(if (bionicReadingEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)}\n" +
-        "${stringResource(R.string.tts_read_aloud)}: ${stringResource(ttsPreferences.getTtsModel().displayNameRes)}"
+        "${stringResource(if (preferences.bionicReadingEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)}\n" +
+        "${stringResource(R.string.tts_read_aloud)}: ${stringResource(preferences.ttsModel.displayNameRes)}"
     val storageSummary = storage.snapshot?.let { snapshot ->
         stringResource(
             R.string.storage_app_usage,
@@ -127,7 +90,7 @@ fun SettingsScreen(
         if (storage.isLoading) R.string.storage_refreshing else R.string.settings_group_storage_summary
     )
     val localAiStatusSummary = stringResource(
-        when (localAiStatus) {
+        when (gemma.status) {
             GemmaModelStatus.Available -> R.string.ai_model_ready
             GemmaModelStatus.NotInstalled -> R.string.ai_model_not_downloaded
             is GemmaModelStatus.Downloading -> R.string.ai_model_downloading
@@ -135,11 +98,11 @@ fun SettingsScreen(
         }
     )
     val localAiSummary = "$localAiStatusSummary\n${stringResource(R.string.ai_backend_summary_label)}: " +
-        stringResource(gemmaBackend.displayNameRes)
+        stringResource(preferences.gemmaBackend.displayNameRes)
     val cloudAiSummary = "${stringResource(if (openRouterApiKey.isBlank()) R.string.secret_not_configured else R.string.secret_configured)}\n" +
         stringResource(R.string.article_ai_cloud_summary_privacy)
     val privacySummary = "${stringResource(R.string.error_reporting_title)}: " +
-        stringResource(if (sentryReportingEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)
+        stringResource(if (preferences.errorReportingEnabled) R.string.settings_state_enabled else R.string.settings_state_disabled)
     val serverSummary = "${stringResource(serverSettings.backendType.displayNameRes)} · " +
         stringResource(
             if (serverSettings.hasAllFields) R.string.secret_configured
@@ -249,10 +212,10 @@ fun SettingsScreen(
                 summary = readingSummary
             ) {
                 ReadingSettingsSection(
-                    bionicReadingEnabled = bionicReadingEnabled,
-                    onBionicReadingChange = onToggleBionicReading,
-                    selectedTtsModel = ttsPreferences.getTtsModel(),
-                    selectedBypassMethod = selectedBypassMethod,
+                    bionicReadingEnabled = preferences.bionicReadingEnabled,
+                    onBionicReadingChange = actions.preferences.onBionicReadingChange,
+                    selectedTtsModel = preferences.ttsModel,
+                    selectedBypassMethod = preferences.paywallBypassMethod,
                     onOpenTts = { navController?.navigate(Routes.TTS_SETTINGS) },
                     onOpenBypass = { showBypassDialog = true }
                 )
@@ -263,19 +226,12 @@ fun SettingsScreen(
                 summary = localAiSummary
             ) {
                 GemmaSettingsSection(
-                    backend = gemmaBackend,
-                    onBackendChange = { backend ->
-                        gemmaBackend = backend
-                        aiPreferences.setGemmaBackend(backend)
-                    },
-                    unmeteredOnly = gemmaDownloadOnUnmeteredOnly,
-                    onUnmeteredOnlyChange = { enabled ->
-                        gemmaDownloadOnUnmeteredOnly = enabled
-                        aiPreferences.setGemmaDownloadOnUnmeteredOnly(enabled)
-                    },
-                    modelManager = gemmaModelManager,
-                    downloadScheduler = gemmaModelDownloadScheduler,
-                    modelLifecycle = gemmaModelLifecycle,
+                    state = gemma,
+                    backend = preferences.gemmaBackend,
+                    onBackendChange = actions.preferences.onGemmaBackendChange,
+                    unmeteredOnly = preferences.gemmaDownloadOnUnmeteredOnly,
+                    onUnmeteredOnlyChange = actions.preferences.onGemmaDownloadOnUnmeteredOnlyChange,
+                    actions = actions.gemma,
                     onRequestNotifications = requestNotificationPermission
                 )
             }
@@ -285,8 +241,8 @@ fun SettingsScreen(
                 summary = cloudAiSummary
             ) {
                 AiSettingsSection(
-                    credibilityScoreEnabled = credibilityScoreEnabled,
-                    onCredibilityScoreChange = onToggleCredibilityScore,
+                    credibilityScoreEnabled = preferences.credibilityScoreEnabled,
+                    onCredibilityScoreChange = actions.preferences.onCredibilityScoreChange,
                     openRouterApiKey = openRouterApiKey,
                     onOpenRouterApiKeyChange = actions.ai.onOpenRouterApiKeyChange,
                     aiModels = aiModels,
@@ -299,9 +255,12 @@ fun SettingsScreen(
                 summary = privacySummary
             ) {
                 DiagnosticsSettingsSection(
-                    errorReportingEnabled = sentryReportingEnabled,
-                    onErrorReportingChange = onToggleSentryReporting,
-                    onShowPerformance = { showPerformanceDialog = true }
+                    errorReportingEnabled = preferences.errorReportingEnabled,
+                    onErrorReportingChange = actions.preferences.onErrorReportingChange,
+                    onShowPerformance = {
+                        actions.preferences.onLoadPerformanceRecords()
+                        showPerformanceDialog = true
+                    }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 LocalDataSection(
@@ -341,10 +300,9 @@ fun SettingsScreen(
         }
         if (showBypassDialog) {
             PaywallBypassDialog(
-                selected = selectedBypassMethod,
+                selected = preferences.paywallBypassMethod,
                 onSelect = { method ->
-                    selectedBypassMethod = method
-                    readerPreferences.setPaywallBypassMethod(method)
+                    actions.preferences.onPaywallBypassMethodChange(method)
                     showBypassDialog = false
                 },
                 onDismiss = { showBypassDialog = false }
@@ -365,9 +323,9 @@ fun SettingsScreen(
         }
         if (showPerformanceDialog) {
             PerformanceInfoDialog(
-                performanceRecords = performancePreferences.getSyncPerformanceRecords(),
+                performanceRecords = performanceRecords,
                 onDismiss = { showPerformanceDialog = false },
-                onClearRecords = { performancePreferences.clearSyncPerformanceRecords() }
+                onClearRecords = actions.preferences.onClearPerformanceRecords
             )
         }
         if (showSignOutDialog) {

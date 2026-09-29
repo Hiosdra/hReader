@@ -291,6 +291,10 @@ internal class ReaderWebView(context: Context) : WebView(context) {
                 val height = (contentHeight * resources.displayMetrics.density).roundToInt()
                 stabilityTracker.update(height)?.let { update ->
                     onHeightChanged(update.heightPx, update.settled)
+                    if (update.settled) {
+                        contentHeightUpdateRunnable = null
+                        return
+                    }
                 }
                 if (attempts < CONTENT_HEIGHT_UPDATE_ATTEMPTS) {
                     attempts += 1

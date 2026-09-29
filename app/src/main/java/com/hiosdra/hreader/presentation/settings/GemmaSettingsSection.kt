@@ -15,53 +15,36 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.ai.GemmaBackend
 import com.hiosdra.hreader.core.application.ai.GemmaModelStatus
-import com.hiosdra.hreader.core.application.port.out.GemmaModelDownloadRequester
-import com.hiosdra.hreader.core.application.port.out.GemmaModelGateway
-import com.hiosdra.hreader.core.application.port.out.GemmaModelLifecycle
+import com.hiosdra.hreader.core.application.usecase.settings.GemmaSettingsSnapshot
 import com.hiosdra.hreader.presentation.theme.sectionCardColors
-import kotlinx.coroutines.launch
 
 @Composable
 internal fun GemmaSettingsSection(
+    state: GemmaSettingsSnapshot,
     backend: GemmaBackend,
     onBackendChange: (GemmaBackend) -> Unit,
     unmeteredOnly: Boolean,
     onUnmeteredOnlyChange: (Boolean) -> Unit,
-    modelManager: GemmaModelGateway,
-    downloadScheduler: GemmaModelDownloadRequester,
-    modelLifecycle: GemmaModelLifecycle,
+    actions: GemmaRuntimeSettingsActions,
     onRequestNotifications: (() -> Unit) -> Unit
 ) {
-    val status by modelManager.status.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    var preflight by remember { mutableStateOf(modelManager.downloadPreflight()) }
     var backendMenuExpanded by remember { mutableStateOf(false) }
-
-    LaunchedEffect(status::class) {
-        preflight = modelManager.downloadPreflight()
-    }
-
-    val requestDownload: () -> Unit = {
-        val latestPreflight = modelManager.downloadPreflight()
-        preflight = latestPreflight
-        if (latestPreflight.hasEnoughStorage) {
-            onRequestNotifications(downloadScheduler::enqueueDownload)
-        }
+    val preflight = state.preflight
+    val status = state.status
+    val requestDownload = {
+        if (preflight.hasEnoughStorage) onRequestNotifications(actions.onEnqueueDownload)
     }
 
     Card(
@@ -81,7 +64,7 @@ internal fun GemmaSettingsSection(
                 modifier = Modifier.padding(top = 4.dp)
             )
             Text(
-                text = stringResource(R.string.ai_model_size, modelManager.modelSizeBytes / 1_000_000_000f),
+                text = stringResource(R.string.ai_model_size, state.modelSizeBytes / 1_000_000_000f),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
@@ -89,7 +72,7 @@ internal fun GemmaSettingsSection(
             Text(
                 text = stringResource(
                     R.string.ai_model_download_details,
-                    modelManager.modelSizeBytes / 1_000_000_000f
+                    state.modelSizeBytes / 1_000_000_000f
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -102,7 +85,7 @@ internal fun GemmaSettingsSection(
                 } else {
                     stringResource(
                         R.string.ai_model_mobile_data_warning,
-                        modelManager.modelSizeBytes / 1_000_000_000f
+                        state.modelSizeBytes / 1_000_000_000f
                     )
                 },
                 checked = unmeteredOnly,
@@ -141,7 +124,7 @@ internal fun GemmaSettingsSection(
                         modifier = Modifier.padding(top = 4.dp)
                     )
                     TextButton(
-                        onClick = { preflight = modelManager.downloadPreflight() },
+                        onClick = actions.onRefreshPreflight,
                         modifier = Modifier.padding(top = 2.dp)
                     ) {
                         Text(stringResource(R.string.action_refresh))
@@ -183,13 +166,7 @@ internal fun GemmaSettingsSection(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        TextButton(onClick = {
-                            downloadScheduler.cancelDownload()
-                            scope.launch {
-                                modelLifecycle.close()
-                                modelManager.remove()
-                            }
-                        }) {
+                        TextButton(onClick = actions.onRemoveModel) {
                             Text(stringResource(R.string.ai_remove_model))
                         }
                     }
@@ -209,7 +186,7 @@ internal fun GemmaSettingsSection(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        TextButton(onClick = downloadScheduler::cancelDownload) {
+                        TextButton(onClick = actions.onCancelDownload) {
                             Text(stringResource(R.string.action_cancel))
                         }
                     }

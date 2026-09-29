@@ -15,7 +15,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
-import com.hiosdra.hreader.core.application.port.out.ReaderPreferences
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.core.domain.model.Entry
@@ -25,7 +24,7 @@ import coil3.ImageLoader as CoilImageLoader
 
 internal data class ArticlePagerBindings(
     val state: ArticleUiState,
-    val readerPreferences: ReaderPreferences,
+    val bionicReadingEnabled: Boolean,
     val articleImageLoader: ArticleImageLoader,
     val coilImageLoader: CoilImageLoader,
     val remoteResourcePolicy: RemoteResourcePolicy,

@@ -209,21 +209,38 @@ private class EngineFixture(context: Context) {
     private val identity = FixedBackendIdentity()
     private val images = mockk<ArticleImageStore>(relaxed = true)
     private val credibility = mockk<CredibilityStore>(relaxed = true)
-    val engine = ArticleSyncEngine(
+    private val persistence = ArticleSyncPersistence(
         articleRecordDao = database.articleRecordDao(),
-        articleStatsDao = database.articleStatsDao(),
         articleContentDao = database.articleContentDao(),
         feedDao = database.feedDao(),
         fullSyncSeenDao = database.fullSyncSeenDao(),
-        api = backend,
         db = database,
+        imageStore = images,
+        credibilityStore = credibility
+    )
+    val engine = ArticleSyncEngine(
+        persistence = persistence,
+        pendingStatusUploader = PendingArticleStatusUploader(
+            api = backend,
+            backendIdentity = identity,
+            pendingChanges = PendingChangeRepository(database.pendingChangeDao())
+        ),
+        offlineBacklogTopUp = OfflineBacklogTopUp(
+            articleStats = database.articleStatsDao(),
+            articleRecordDao = database.articleRecordDao(),
+            api = backend,
+            persistence = persistence,
+            preferences = preferences,
+            performance = NoOpSyncPerformance,
+            backendIdentity = identity
+        ),
+        retentionCoordinator = ArticleRetentionCoordinator(
+            ArticleRetentionRepository(database.articleRetentionDao())
+        ),
+        api = backend,
         preferences = preferences,
         performance = NoOpSyncPerformance,
-        imageStore = images,
-        credibilityStore = credibility,
-        backendIdentity = identity,
-        pendingChangeStore = PendingChangeRepository(database.pendingChangeDao()),
-        articleRetentionStore = ArticleRetentionRepository(database.articleRetentionDao())
+        backendIdentity = identity
     )
 }
 

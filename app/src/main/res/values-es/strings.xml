@@ -544,7 +544,9 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="ai_context_length">  •  contexto de %1$dk</string>
     <string name="ai_model_missing">OpenRouter ya no ofrece el modelo seleccionado %1$s. Elige otro.</string>
     <string name="ai_model_load_error">No se pudo cargar la lista de modelos de OpenRouter.</string>
-    <string name="openrouter_api_key">Clave API de OpenRouter (opcional)</string>
+    <string name="openrouter_api_key">Clave API de OpenRouter (opcional · experimental)</string>
+    <string name="openrouter_experimental_label">OpenRouter (experimental)</string>
+    <string name="openrouter_experimental_description">El catálogo de modelos alojados y el servicio pueden cambiar.</string>
     <string name="openrouter_api_key_placeholder">sk-or-v1-…</string>
     <string name="openrouter_api_key_description">Solo se necesita para resúmenes y puntuaciones de credibilidad</string>
     <string name="paywall_bypass">Servicio externo para artículos</string>

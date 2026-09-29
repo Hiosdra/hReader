@@ -6,4 +6,5 @@ import com.hiosdra.hreader.core.application.ai.SelectedModelStatus
 interface AiModelCatalog {
     suspend fun getModels(forceRefresh: Boolean = false): List<AiModel>
     suspend fun checkSelectedModel(): SelectedModelStatus
+    suspend fun refreshCatalogIfStale(): Boolean = false
 }
