@@ -2,7 +2,7 @@
 agp = "9.4.1"
 kotlin = "2.4.20"
 ksp = "2.3.12"
-sentry-plugin = "6.22.0"
+sentry-plugin = "6.23.0"
 room = "2.8.5"
 baseline-profile = "1.5.0"
 compose-bom = "2026.09.00"
