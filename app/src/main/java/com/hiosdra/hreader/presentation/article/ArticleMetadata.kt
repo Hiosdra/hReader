@@ -258,15 +258,9 @@ internal fun ArticleMetadata(
             }
         }
 
-        if (aiOverviewClick != null || analyzeCredibility != null) {
+        if (!isLocalAi && (aiOverviewClick != null || analyzeCredibility != null)) {
             Text(
-                text = stringResource(
-                    if (isLocalAi) {
-                        R.string.article_ai_on_device_processing
-                    } else {
-                        R.string.article_ai_cloud_processing
-                    }
-                ),
+                text = stringResource(R.string.article_ai_cloud_processing),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = HReaderSpacing.space1)

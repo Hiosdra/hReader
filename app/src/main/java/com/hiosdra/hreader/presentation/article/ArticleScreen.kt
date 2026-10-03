@@ -314,7 +314,6 @@ fun ArticleScreen(
                 }?.let { playArticleTts(it) }
             }
         },
-        onOpenInChrome = { currentEntry?.url?.let(openArticleInChrome) },
         onBypassPaywall = { method ->
             currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
         },

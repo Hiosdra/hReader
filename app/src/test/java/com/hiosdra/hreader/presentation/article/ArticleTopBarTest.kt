@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -125,13 +126,11 @@ class ArticleTopBarTest {
     }
 
     @Test
-    fun `overflow menu keeps external actions available`() {
-        val opens = AtomicInteger()
+    fun `overflow menu keeps paywall actions without Chrome shortcut`() {
         val selected = AtomicReference<PaywallBypassMethod>()
         val context = RuntimeEnvironment.getApplication()
         val defaultMethod = PaywallBypassMethod.WAYBACK_MACHINE
         setContent(
-            onOpenInChrome = { opens.incrementAndGet() },
             defaultPaywallBypassMethod = defaultMethod,
             canUsePaywallBypass = true,
             onBypassPaywall = { selected.set(it) }
@@ -139,10 +138,10 @@ class ArticleTopBarTest {
 
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
             .performClick()
-        composeTestRule.onNodeWithText(context.getString(R.string.article_open_original_in_chrome))
-            .performClick()
-        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
-            .performClick()
+        val chromeActions = composeTestRule
+            .onAllNodesWithText(context.getString(R.string.article_open_original_in_chrome))
+            .fetchSemanticsNodes()
+        assertEquals(0, chromeActions.size)
         composeTestRule.onNodeWithContentDescription(
             context.getString(
                 R.string.article_open_through_paywall_service,
@@ -150,7 +149,6 @@ class ArticleTopBarTest {
             )
         ).performClick()
 
-        assertEquals(1, opens.get())
         assertEquals(defaultMethod, selected.get())
     }
 
@@ -161,7 +159,6 @@ class ArticleTopBarTest {
         ttsContentState: ArticleTtsContentState? = null,
         isTtsActive: Boolean = false,
         onInvokeTts: () -> Unit = {},
-        onOpenInChrome: () -> Unit = {},
         defaultPaywallBypassMethod: PaywallBypassMethod? = null,
         canUsePaywallBypass: Boolean = false,
         onBypassPaywall: (PaywallBypassMethod) -> Unit = {}
@@ -187,7 +184,6 @@ class ArticleTopBarTest {
                     ttsContentState = ttsContentState,
                     isTtsActive = isTtsActive,
                     onInvokeTts = onInvokeTts,
-                    onOpenInChrome = onOpenInChrome,
                     defaultPaywallBypassMethod = defaultPaywallBypassMethod,
                     canUsePaywallBypass = canUsePaywallBypass,
                     onBypassPaywall = onBypassPaywall
