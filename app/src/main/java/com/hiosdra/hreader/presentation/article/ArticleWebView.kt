@@ -71,7 +71,6 @@ internal fun ArticleWebView(
     val currentLocalImagePaths = rememberUpdatedState(localImagePaths)
     val currentRemoteResourcePolicy = rememberUpdatedState(remoteResourcePolicy)
     val currentAllowNetworkLoads = rememberUpdatedState(allowNetworkLoads)
-    val currentBaseUrl = rememberUpdatedState(baseUrl)
     val currentScrollEnabled = rememberUpdatedState(scrollEnabled)
     val currentRestoreScrollY = rememberUpdatedState(restoreScrollY)
     val currentTextScale = rememberUpdatedState(textScale)
@@ -117,20 +116,13 @@ internal fun ArticleWebView(
                 serveLocalArticleImage(localPath, view?.context?.filesDir)
                     ?.let { return@ArticleReadingWebView it }
             }
-            val documentUrl = currentBaseUrl.value
             if (
-                !isHttpResource(url) ||
-                (
-                    currentAllowNetworkLoads.value &&
-                        documentUrl != null &&
-                        isSameWebOrigin(url, documentUrl) &&
-                        currentRemoteResourcePolicy.value.allows(url)
-                    )
-            ) {
-                null
-            } else {
-                blockedResourceResponse()
-            }
+                isRemoteResourceBlocked(
+                    url = url,
+                    allowNetworkLoads = currentAllowNetworkLoads.value,
+                    remoteResourcePolicy = currentRemoteResourcePolicy.value
+                )
+            ) blockedResourceResponse() else null
         },
         handleUrlLoading = { _, request ->
             val url = request?.url?.toString() ?: return@ArticleReadingWebView false

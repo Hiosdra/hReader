@@ -2,6 +2,7 @@ package com.hiosdra.hreader.presentation.article
 
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -64,6 +65,12 @@ internal fun blockedResourceResponse(): WebResourceResponse = WebResourceRespons
 internal fun isHttpResource(url: String): Boolean = runCatching {
     URI(url).scheme?.lowercase() in setOf("http", "https")
 }.getOrDefault(false)
+
+internal fun isRemoteResourceBlocked(
+    url: String,
+    allowNetworkLoads: Boolean,
+    remoteResourcePolicy: RemoteResourcePolicy
+): Boolean = isHttpResource(url) && (!allowNetworkLoads || !remoteResourcePolicy.allows(url))
 
 private fun URI.effectivePort(): Int = port.takeIf { it >= 0 } ?: when (scheme?.lowercase()) {
     "http" -> 80

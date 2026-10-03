@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.presentation.article
 
+import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.assertFalse
@@ -44,4 +45,62 @@ class ArticleWebViewSecurityTest {
         assertFalse(isSameWebOrigin("http://offline.hreader/article/42/assets/image.jpg", baseUrl))
         assertFalse(isSameWebOrigin("https://user:password@offline.hreader/article/42/assets/image.jpg", baseUrl))
     }
+
+    @Test
+    fun `allows a cross-origin resource when the remote policy allows it`() {
+        val imageUrl = "https://static.simonwillison.net/image.webp"
+        val policy = TestRemoteResourcePolicy(setOf(imageUrl))
+
+        assertFalse(
+            isRemoteResourceBlocked(
+                imageUrl,
+                allowNetworkLoads = true,
+                remoteResourcePolicy = policy
+            )
+        )
+    }
+
+    @Test
+    fun `blocks web resources while offline`() {
+        val imageUrl = "https://static.simonwillison.net/image.webp"
+        val policy = TestRemoteResourcePolicy(setOf(imageUrl))
+
+        assertTrue(
+            isRemoteResourceBlocked(
+                imageUrl,
+                allowNetworkLoads = false,
+                remoteResourcePolicy = policy
+            )
+        )
+    }
+
+    @Test
+    fun `blocks web resources rejected by the remote policy`() {
+        val imageUrl = "https://private.example/image.webp"
+
+        assertTrue(
+            isRemoteResourceBlocked(
+                imageUrl,
+                allowNetworkLoads = true,
+                remoteResourcePolicy = TestRemoteResourcePolicy(emptySet())
+            )
+        )
+    }
+
+    @Test
+    fun `does not block embedded non-web resources`() {
+        assertFalse(
+            isRemoteResourceBlocked(
+                "data:image/png;base64,AAAA",
+                allowNetworkLoads = false,
+                remoteResourcePolicy = TestRemoteResourcePolicy(emptySet())
+            )
+        )
+    }
+}
+
+private class TestRemoteResourcePolicy(
+    private val allowedUrls: Set<String>
+) : RemoteResourcePolicy {
+    override fun allows(url: String): Boolean = url in allowedUrls
 }
