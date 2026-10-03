@@ -32,12 +32,17 @@ class ArticleScreenTopBarTest {
         val opens = AtomicInteger()
         setContent(onOpenInChrome = { opens.incrementAndGet() })
 
-        composeTestRule.onNodeWithContentDescription(
+        val provenanceChip = composeTestRule.onNodeWithContentDescription(
             context.getString(R.string.article_content_show_details)
-        ).assertIsDisplayed()
+        ).assertIsDisplayed().fetchSemanticsNode()
+        val chromeChip = composeTestRule.onNodeWithContentDescription(
+            context.getString(R.string.article_open_original_in_chrome)
+        ).assertIsDisplayed().fetchSemanticsNode()
+
+        assertEquals(provenanceChip.boundsInRoot.height, chromeChip.boundsInRoot.height, 1f)
         composeTestRule.onNodeWithContentDescription(
             context.getString(R.string.article_open_original_in_chrome)
-        ).assertIsDisplayed().performClick()
+        ).performClick()
 
         assertEquals(1, opens.get())
     }
