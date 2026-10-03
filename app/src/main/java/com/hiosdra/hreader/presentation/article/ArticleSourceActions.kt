@@ -109,6 +109,7 @@ internal fun ArticleOpenInChromeButton(
     OutlinedButton(
         onClick = onOpenInChrome,
         enabled = isOnline,
+        shape = MaterialTheme.shapes.small,
         contentPadding = PaddingValues(horizontal = 12.dp),
         modifier = modifier.semantics {
             contentDescription = openOriginalDescription
@@ -143,7 +144,8 @@ internal fun ArticleOpenInChromeChip(
         leadingIcon = {
             Icon(
                 painter = painterResource(R.drawable.ic_chrome_logo),
-                contentDescription = null
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
             )
         },
         modifier = modifier.semantics {
