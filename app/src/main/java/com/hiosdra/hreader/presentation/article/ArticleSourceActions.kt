@@ -31,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -73,7 +72,7 @@ internal fun ArticleSourceActions(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ArticleOpenInChromeButton(
+            ArticleOpenInChromeChip(
                 isOnline = isOnline,
                 onOpenInChrome = onOpenInChrome
             )
@@ -93,37 +92,6 @@ internal fun ArticleSourceActions(
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
         }
-    }
-}
-
-@Composable
-internal fun ArticleOpenInChromeButton(
-    isOnline: Boolean,
-    onOpenInChrome: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val openOriginalDescription = stringResource(R.string.article_open_original_in_chrome)
-    val externalActionOfflineDescription = stringResource(
-        R.string.article_external_actions_requires_connection
-    )
-    OutlinedButton(
-        onClick = onOpenInChrome,
-        enabled = isOnline,
-        shape = MaterialTheme.shapes.small,
-        contentPadding = PaddingValues(horizontal = 12.dp),
-        modifier = modifier.semantics {
-            contentDescription = openOriginalDescription
-            if (!isOnline) stateDescription = externalActionOfflineDescription
-        }
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_chrome_logo),
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(stringResource(R.string.article_original_short))
     }
 }
 
