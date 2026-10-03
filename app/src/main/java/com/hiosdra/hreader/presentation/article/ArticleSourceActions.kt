@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -123,6 +124,33 @@ internal fun ArticleOpenInChromeButton(
         Spacer(modifier = Modifier.width(8.dp))
         Text(stringResource(R.string.article_original_short))
     }
+}
+
+@Composable
+internal fun ArticleOpenInChromeChip(
+    isOnline: Boolean,
+    onOpenInChrome: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val openOriginalDescription = stringResource(R.string.article_open_original_in_chrome)
+    val externalActionOfflineDescription = stringResource(
+        R.string.article_external_actions_requires_connection
+    )
+    AssistChip(
+        onClick = onOpenInChrome,
+        enabled = isOnline,
+        label = { Text(stringResource(R.string.article_original_short)) },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(R.drawable.ic_chrome_logo),
+                contentDescription = null
+            )
+        },
+        modifier = modifier.semantics {
+            contentDescription = openOriginalDescription
+            if (!isOnline) stateDescription = externalActionOfflineDescription
+        }
+    )
 }
 
 @Composable

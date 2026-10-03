@@ -88,7 +88,7 @@ internal fun ArticleScreenTopBar(
                     onSwitchToFeed = actions.onSwitchToFeed
                 )
                 if (!state.entryUrl.isNullOrBlank()) {
-                    ArticleOpenInChromeButton(
+                    ArticleOpenInChromeChip(
                         isOnline = state.isOnline,
                         onOpenInChrome = actions.onOpenInChrome,
                         modifier = Modifier.padding(start = 8.dp)
