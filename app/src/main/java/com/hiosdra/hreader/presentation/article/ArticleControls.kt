@@ -74,7 +74,6 @@ internal fun ArticleTopBar(
     onBack: () -> Unit,
     onToggleWebView: () -> Unit,
     onShare: () -> Unit,
-    onOpenInChrome: () -> Unit = {},
     ttsContentState: ArticleTtsContentState? = null,
     isTtsActive: Boolean = false,
     onInvokeTts: () -> Unit = {},
@@ -147,31 +146,6 @@ internal fun ArticleTopBar(
                         val externalActionOfflineDescription = stringResource(
                             R.string.article_external_actions_requires_connection
                         )
-                        if (isWebViewMode) {
-                            val openOriginalDescription = stringResource(
-                                R.string.article_open_original_in_chrome
-                            )
-                            DropdownMenuItem(
-                                text = { Text(openOriginalDescription) },
-                                onClick = {
-                                    overflowExpanded.value = false
-                                    onOpenInChrome()
-                                },
-                                enabled = isOnline,
-                                modifier = Modifier.semantics {
-                                    contentDescription = openOriginalDescription
-                                    if (!isOnline) {
-                                        stateDescription = externalActionOfflineDescription
-                                    }
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chrome_logo),
-                                        contentDescription = null
-                                    )
-                                }
-                            )
-                        }
                         if (canUsePaywallBypass && defaultPaywallBypassMethod != null) {
                             val defaultMethodName = stringResource(
                                 paywallBypassMethodNameRes(defaultPaywallBypassMethod)

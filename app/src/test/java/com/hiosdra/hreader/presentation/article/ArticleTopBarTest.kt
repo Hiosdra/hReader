@@ -126,31 +126,16 @@ class ArticleTopBarTest {
     }
 
     @Test
-    fun `overflow menu exposes Chrome shortcut in web mode`() {
-        val opens = AtomicInteger()
+    fun `overflow menu does not expose Chrome shortcut in web mode`() {
         val context = RuntimeEnvironment.getApplication()
-        setContent(
-            isWebViewMode = true,
-            onOpenInChrome = { opens.incrementAndGet() }
-        )
+        setContent(isWebViewMode = true)
 
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
             .performClick()
-        composeTestRule.onNodeWithText(context.getString(R.string.article_open_original_in_chrome))
-            .performClick()
-
-        assertEquals(1, opens.get())
-    }
-
-    @Test
-    fun `Chrome shortcut is disabled offline in web mode`() {
-        val context = RuntimeEnvironment.getApplication()
-        setContent(isWebViewMode = true, isOnline = false)
-
-        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
-            .performClick()
-        composeTestRule.onNodeWithText(context.getString(R.string.article_open_original_in_chrome))
-            .assertIsNotEnabled()
+        val chromeActions = composeTestRule
+            .onAllNodesWithText(context.getString(R.string.article_open_original_in_chrome))
+            .fetchSemanticsNodes()
+        assertEquals(0, chromeActions.size)
     }
 
     @Test
@@ -184,7 +169,6 @@ class ArticleTopBarTest {
         isWebViewMode: Boolean = false,
         canUseWebView: Boolean = false,
         onToggleWebView: () -> Unit = {},
-        onOpenInChrome: () -> Unit = {},
         onIncreaseTextScale: () -> Unit = {},
         ttsContentState: ArticleTtsContentState? = null,
         isTtsActive: Boolean = false,
@@ -212,7 +196,6 @@ class ArticleTopBarTest {
                     onBack = {},
                     onToggleWebView = onToggleWebView,
                     onShare = {},
-                    onOpenInChrome = onOpenInChrome,
                     ttsContentState = ttsContentState,
                     isTtsActive = isTtsActive,
                     onInvokeTts = onInvokeTts,

@@ -67,7 +67,6 @@ internal fun ArticleScreenTopBar(
             onBack = actions.onBack,
             onToggleWebView = actions.onToggleWebView,
             onShare = actions.onShare,
-            onOpenInChrome = actions.onOpenInChrome,
             ttsContentState = state.ttsContentState,
             isTtsActive = state.isTtsActive,
             onInvokeTts = actions.onInvokeTts,
@@ -88,6 +87,13 @@ internal fun ArticleScreenTopBar(
                     provenance = state.displayedProvenance,
                     onSwitchToFeed = actions.onSwitchToFeed
                 )
+                if (!state.entryUrl.isNullOrBlank()) {
+                    ArticleOpenInChromeButton(
+                        isOnline = state.isOnline,
+                        onOpenInChrome = actions.onOpenInChrome,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
         }
     }
