@@ -305,6 +305,9 @@ fun ArticleScreen(
                 dispatchEffect(ArticleRouteEffect.ShareArticle(entry.title, entry.url))
             }
         },
+        onOpenInChrome = {
+            currentEntry?.url?.let(openArticleInChrome)
+        },
         onInvokeTts = {
             if (ttsState.articleId != null) {
                 ttsPlayerSheetVisible = true

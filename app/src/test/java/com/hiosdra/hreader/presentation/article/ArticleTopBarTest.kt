@@ -126,7 +126,35 @@ class ArticleTopBarTest {
     }
 
     @Test
-    fun `overflow menu keeps paywall actions without Chrome shortcut`() {
+    fun `overflow menu exposes Chrome shortcut in web mode`() {
+        val opens = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        setContent(
+            isWebViewMode = true,
+            onOpenInChrome = { opens.incrementAndGet() }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.article_open_original_in_chrome))
+            .performClick()
+
+        assertEquals(1, opens.get())
+    }
+
+    @Test
+    fun `Chrome shortcut is disabled offline in web mode`() {
+        val context = RuntimeEnvironment.getApplication()
+        setContent(isWebViewMode = true, isOnline = false)
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.article_open_original_in_chrome))
+            .assertIsNotEnabled()
+    }
+
+    @Test
+    fun `feed mode overflow menu keeps paywall actions without Chrome shortcut`() {
         val selected = AtomicReference<PaywallBypassMethod>()
         val context = RuntimeEnvironment.getApplication()
         val defaultMethod = PaywallBypassMethod.WAYBACK_MACHINE
@@ -153,12 +181,15 @@ class ArticleTopBarTest {
     }
 
     private fun setContent(
+        isWebViewMode: Boolean = false,
         canUseWebView: Boolean = false,
         onToggleWebView: () -> Unit = {},
+        onOpenInChrome: () -> Unit = {},
         onIncreaseTextScale: () -> Unit = {},
         ttsContentState: ArticleTtsContentState? = null,
         isTtsActive: Boolean = false,
         onInvokeTts: () -> Unit = {},
+        isOnline: Boolean = true,
         defaultPaywallBypassMethod: PaywallBypassMethod? = null,
         canUsePaywallBypass: Boolean = false,
         onBypassPaywall: (PaywallBypassMethod) -> Unit = {}
@@ -170,7 +201,7 @@ class ArticleTopBarTest {
                     feedTitle = "Inbox",
                     listPosition = 2,
                     listSize = 10,
-                    isWebViewMode = false,
+                    isWebViewMode = isWebViewMode,
                     canUseWebView = canUseWebView,
                     isRead = false,
                     textScale = 1f,
@@ -181,9 +212,11 @@ class ArticleTopBarTest {
                     onBack = {},
                     onToggleWebView = onToggleWebView,
                     onShare = {},
+                    onOpenInChrome = onOpenInChrome,
                     ttsContentState = ttsContentState,
                     isTtsActive = isTtsActive,
                     onInvokeTts = onInvokeTts,
+                    isOnline = isOnline,
                     defaultPaywallBypassMethod = defaultPaywallBypassMethod,
                     canUsePaywallBypass = canUsePaywallBypass,
                     onBypassPaywall = onBypassPaywall
