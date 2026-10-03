@@ -38,7 +38,6 @@ internal data class ArticleScreenTopBarActions(
     val onToggleWebView: () -> Unit,
     val onShare: () -> Unit,
     val onInvokeTts: () -> Unit,
-    val onOpenInChrome: () -> Unit,
     val onBypassPaywall: (PaywallBypassMethod) -> Unit,
     val onOpenPaywallMethodPicker: () -> Unit,
     val onSwitchToFeed: () -> Unit
@@ -73,7 +72,6 @@ internal fun ArticleScreenTopBar(
             isOnline = state.isOnline,
             defaultPaywallBypassMethod = state.defaultPaywallBypassMethod,
             canUsePaywallBypass = state.canUsePaywallBypass,
-            onOpenInChrome = actions.onOpenInChrome,
             onBypassPaywall = actions.onBypassPaywall,
             onOpenPaywallMethodPicker = actions.onOpenPaywallMethodPicker
         )

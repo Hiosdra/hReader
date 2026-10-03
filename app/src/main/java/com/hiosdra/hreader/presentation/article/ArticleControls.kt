@@ -80,7 +80,6 @@ internal fun ArticleTopBar(
     isOnline: Boolean = true,
     defaultPaywallBypassMethod: PaywallBypassMethod? = null,
     canUsePaywallBypass: Boolean = false,
-    onOpenInChrome: () -> Unit = {},
     onBypassPaywall: (PaywallBypassMethod) -> Unit = {},
     onOpenPaywallMethodPicker: () -> Unit = {}
 ) {
@@ -146,24 +145,6 @@ internal fun ArticleTopBar(
                     if (!entryUrl.isNullOrBlank()) {
                         val externalActionOfflineDescription = stringResource(
                             R.string.article_external_actions_requires_connection
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.article_open_original_in_chrome)) },
-                            onClick = {
-                                overflowExpanded.value = false
-                                onOpenInChrome()
-                            },
-                            enabled = isOnline,
-                            modifier = Modifier.semantics {
-                                if (!isOnline) stateDescription = externalActionOfflineDescription
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_chrome_logo),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
                         )
                         if (canUsePaywallBypass && defaultPaywallBypassMethod != null) {
                             val defaultMethodName = stringResource(

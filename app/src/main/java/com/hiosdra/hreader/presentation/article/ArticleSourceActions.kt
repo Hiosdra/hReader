@@ -63,7 +63,6 @@ internal fun ArticleSourceActions(
     onBypassPaywall: (PaywallBypassMethod) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val openOriginalDescription = stringResource(R.string.article_open_original_in_chrome)
     val externalActionOfflineDescription = stringResource(
         R.string.article_external_actions_requires_connection
     )
@@ -73,24 +72,10 @@ internal fun ArticleSourceActions(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
-                onClick = onOpenInChrome,
-                enabled = isOnline,
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                modifier = Modifier.semantics {
-                    contentDescription = openOriginalDescription
-                    if (!isOnline) stateDescription = externalActionOfflineDescription
-                }
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_chrome_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.article_original_short))
-            }
+            ArticleOpenInChromeButton(
+                isOnline = isOnline,
+                onOpenInChrome = onOpenInChrome
+            )
             if (canUsePaywallBypass) {
                 PaywallBypassSplitButton(
                     defaultPaywallBypassMethod = defaultPaywallBypassMethod,
@@ -107,6 +92,36 @@ internal fun ArticleSourceActions(
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
         }
+    }
+}
+
+@Composable
+internal fun ArticleOpenInChromeButton(
+    isOnline: Boolean,
+    onOpenInChrome: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val openOriginalDescription = stringResource(R.string.article_open_original_in_chrome)
+    val externalActionOfflineDescription = stringResource(
+        R.string.article_external_actions_requires_connection
+    )
+    OutlinedButton(
+        onClick = onOpenInChrome,
+        enabled = isOnline,
+        contentPadding = PaddingValues(horizontal = 12.dp),
+        modifier = modifier.semantics {
+            contentDescription = openOriginalDescription
+            if (!isOnline) stateDescription = externalActionOfflineDescription
+        }
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_chrome_logo),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(stringResource(R.string.article_original_short))
     }
 }
 
