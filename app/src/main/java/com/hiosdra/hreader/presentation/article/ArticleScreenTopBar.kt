@@ -37,6 +37,7 @@ internal data class ArticleScreenTopBarActions(
     val onBack: () -> Unit,
     val onToggleWebView: () -> Unit,
     val onShare: () -> Unit,
+    val onOpenInChrome: () -> Unit,
     val onInvokeTts: () -> Unit,
     val onBypassPaywall: (PaywallBypassMethod) -> Unit,
     val onOpenPaywallMethodPicker: () -> Unit,
@@ -86,6 +87,13 @@ internal fun ArticleScreenTopBar(
                     provenance = state.displayedProvenance,
                     onSwitchToFeed = actions.onSwitchToFeed
                 )
+                if (!state.entryUrl.isNullOrBlank()) {
+                    ArticleOpenInChromeButton(
+                        isOnline = state.isOnline,
+                        onOpenInChrome = actions.onOpenInChrome,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
         }
     }
