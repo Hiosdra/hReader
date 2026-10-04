@@ -98,7 +98,7 @@ internal fun ArticleContentHeader(
                 onOpenOriginal = onOpenOriginal
             )
             if (entry.url.isNotBlank()) {
-                ArticleOpenInChromeButton(
+                ArticleOpenInChromeChip(
                     isOnline = isOnline,
                     onOpenInChrome = { bindings.onOpenInChrome(entry.url) }
                 )
