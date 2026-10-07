@@ -16,11 +16,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.ImageLoader as CoilImageLoader
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.content.hasReadableArticleText
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
@@ -34,6 +36,7 @@ import com.hiosdra.hreader.core.application.tts.TtsModel
 import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.isRead
 import com.hiosdra.hreader.presentation.components.rememberNotificationPermissionRequest
+import com.hiosdra.hreader.presentation.feedback.FeedbackKind
 import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
 import com.hiosdra.hreader.presentation.feedback.showFeedback
 import com.hiosdra.hreader.presentation.navigation.ArticleRouteArguments
@@ -265,6 +268,19 @@ fun ArticleScreen(
     val canUsePaywallBypass = currentEntry?.url?.let { url ->
         url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
     } == true
+    val markUnreadAsReadUpToLabel = if (currentEntry != null && navigation.listSize > 0) {
+        stringResource(
+            if (routeArguments.feedId == null) {
+                R.string.article_mark_all_feeds_read_up_to_here
+            } else {
+                R.string.article_mark_feed_read_up_to_here
+            }
+        )
+    } else {
+        null
+    }
+    val undoLabel = stringResource(R.string.action_undo)
+    val context = navController.context
 
     val topBarState = ArticleScreenTopBarState(
         entryUrl = currentEntry?.url,
@@ -280,7 +296,8 @@ fun ArticleScreen(
         isOnline = content.isOnline,
         defaultPaywallBypassMethod = configuredPaywallBypassMethod,
         canUsePaywallBypass = canUsePaywallBypass,
-        displayedProvenance = currentDisplayedProvenance
+        displayedProvenance = currentDisplayedProvenance,
+        markUnreadAsReadUpToLabel = markUnreadAsReadUpToLabel
     )
     val topBarActions = ArticleScreenTopBarActions(
         onDecreaseTextScale = {
@@ -321,7 +338,27 @@ fun ArticleScreen(
             currentEntry?.url?.let { url -> openArticleThroughPaywall(url, method) }
         },
         onOpenPaywallMethodPicker = { paywallMethodPickerVisible = true },
-        onSwitchToFeed = { isWebViewMode = false }
+        onSwitchToFeed = { isWebViewMode = false },
+        onMarkUnreadAsReadUpTo = {
+            currentEntry?.let { entry ->
+                viewModel.markUnreadAsReadUpTo(routeArguments.feedId, entry) { count, undo ->
+                    feedbackScope.launch {
+                        snackbarHostState.showFeedback(
+                            FeedbackRequest(
+                                message = context.resources.getQuantityString(
+                                    R.plurals.main_marked_articles_read,
+                                    count,
+                                    count
+                                ),
+                                kind = FeedbackKind.UNDO,
+                                actionLabel = undoLabel,
+                                onAction = undo
+                            )
+                        )
+                    }
+                }
+            }
+        }
     )
     val pagerBindings = ArticlePagerBindings(
         state = uiState,

@@ -72,6 +72,8 @@
     <string name="error_refresh_articles">기사를 새로고침할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
     <plurals name="main_marked_articles_read"><item quantity="other">기사 %1$d개를 읽음으로 표시했습니다</item></plurals>
     <string name="article_position">기사 %1$d/%2$d</string>
+    <string name="article_mark_feed_read_up_to_here">이 피드의 여기까지 읽음으로 표시</string>
+    <string name="article_mark_all_feeds_read_up_to_here">모든 피드의 여기까지 읽음으로 표시</string>
     <string name="article_no_content">사용할 수 있는 콘텐츠가 없습니다</string>
     <string name="article_decrease_text_size">텍스트 크기 줄이기</string>
     <string name="article_reset_text_size">텍스트 크기 재설정(%1$d%%)</string>

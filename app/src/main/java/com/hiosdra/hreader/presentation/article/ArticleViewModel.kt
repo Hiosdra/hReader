@@ -1,5 +1,6 @@
 package com.hiosdra.hreader.presentation.article
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hiosdra.hreader.R
@@ -7,6 +8,7 @@ import com.hiosdra.hreader.core.application.content.articlePreviewHtml
 import com.hiosdra.hreader.core.application.usecase.article.ArticleReaderUseCase
 import com.hiosdra.hreader.core.application.usecase.article.ArticleDisplayPreferencesUseCase
 import com.hiosdra.hreader.core.application.usecase.article.ArticleDisplayPreferences
+import com.hiosdra.hreader.core.application.util.runCatchingCancellable
 import com.hiosdra.hreader.core.domain.model.ArticleContentProvenance
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.ArticleStatus
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 
 private const val PAGER_WINDOW_RADIUS = 50
+private const val BULK_READ_TAG = "ArticleViewModel"
 
 internal fun mergeReaderEntries(
     ids: List<Long>,
@@ -111,6 +114,29 @@ class ArticleViewModel(
         }
         viewModelScope.launch {
             reader.updateReadStatus(entry.id, newStatus)
+        }
+    }
+
+    fun markUnreadAsReadUpTo(
+        feedId: Long?,
+        entry: Entry,
+        onMarkedAsRead: (Int, () -> Unit) -> Unit
+    ) {
+        viewModelScope.launch {
+            runCatchingCancellable {
+                reader.markUnreadAsReadUpTo(feedId, entry.id, entry.publishedAt)
+            }.onSuccess { action ->
+                if (action.count > 0) {
+                    onMarkedAsRead(action.count) {
+                        viewModelScope.launch {
+                            runCatchingCancellable { action.undo() }
+                                .onFailure { Log.w(BULK_READ_TAG, "Could not undo bulk read state", it) }
+                        }
+                    }
+                }
+            }.onFailure {
+                Log.w(BULK_READ_TAG, "Could not mark unread articles as read", it)
+            }
         }
     }
 

@@ -78,6 +78,34 @@ class ArticleTopBarTest {
     }
 
     @Test
+    fun `overflow menu marks articles read through the current article`() {
+        val marked = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        val label = context.getString(R.string.article_mark_feed_read_up_to_here)
+        setContent(
+            markUnreadAsReadUpToLabel = label,
+            onMarkUnreadAsReadUpTo = { marked.incrementAndGet() }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(label).performClick()
+
+        assertEquals(1, marked.get())
+    }
+
+    @Test
+    fun `global overflow menu identifies all feeds in the mark read action`() {
+        val context = RuntimeEnvironment.getApplication()
+        val label = context.getString(R.string.article_mark_all_feeds_read_up_to_here)
+        setContent(markUnreadAsReadUpToLabel = label)
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(label).assertIsDisplayed()
+    }
+
+    @Test
     fun `overflow menu exposes read aloud action`() {
         val starts = AtomicInteger()
         val context = RuntimeEnvironment.getApplication()
@@ -176,7 +204,9 @@ class ArticleTopBarTest {
         isOnline: Boolean = true,
         defaultPaywallBypassMethod: PaywallBypassMethod? = null,
         canUsePaywallBypass: Boolean = false,
-        onBypassPaywall: (PaywallBypassMethod) -> Unit = {}
+        onBypassPaywall: (PaywallBypassMethod) -> Unit = {},
+        markUnreadAsReadUpToLabel: String? = null,
+        onMarkUnreadAsReadUpTo: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             HReaderTheme {
@@ -202,7 +232,9 @@ class ArticleTopBarTest {
                     isOnline = isOnline,
                     defaultPaywallBypassMethod = defaultPaywallBypassMethod,
                     canUsePaywallBypass = canUsePaywallBypass,
-                    onBypassPaywall = onBypassPaywall
+                    onBypassPaywall = onBypassPaywall,
+                    markUnreadAsReadUpToLabel = markUnreadAsReadUpToLabel,
+                    onMarkUnreadAsReadUpTo = onMarkUnreadAsReadUpTo
                 )
             }
         }

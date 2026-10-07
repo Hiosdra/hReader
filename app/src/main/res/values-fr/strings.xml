@@ -72,6 +72,8 @@
     <string name="error_refresh_articles">Impossible d’actualiser les articles. Vérifiez votre connexion et réessayez.</string>
     <plurals name="main_marked_articles_read"><item quantity="one">%1$d article marqué comme lu</item><item quantity="many">%1$d articles marqués comme lus</item><item quantity="other">%1$d articles marqués comme lus</item></plurals>
     <string name="article_position">Article %1$d sur %2$d</string>
+    <string name="article_mark_feed_read_up_to_here">Marquer ce flux comme lu jusqu’ici</string>
+    <string name="article_mark_all_feeds_read_up_to_here">Marquer tous les flux comme lus jusqu’ici</string>
     <string name="article_no_content">Aucun contenu disponible</string>
     <string name="article_decrease_text_size">Réduire la taille du texte</string>
     <string name="article_reset_text_size">Réinitialiser la taille du texte (%1$d%%)</string>

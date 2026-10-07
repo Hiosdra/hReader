@@ -78,6 +78,8 @@
         <item quantity="other">%1$d Artikel als gelesen markiert</item>
     </plurals>
     <string name="article_position">Artikel %1$d von %2$d</string>
+    <string name="article_mark_feed_read_up_to_here">Diesen Feed bis hier als gelesen markieren</string>
+    <string name="article_mark_all_feeds_read_up_to_here">Alle Feeds bis hier als gelesen markieren</string>
     <string name="article_no_content">Kein Inhalt verfügbar</string>
     <string name="article_decrease_text_size">Text verkleinern</string>
     <string name="article_reset_text_size">Textgröße zurücksetzen (%1$d%%)</string>

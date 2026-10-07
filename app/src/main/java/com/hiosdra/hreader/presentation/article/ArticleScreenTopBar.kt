@@ -26,7 +26,8 @@ internal data class ArticleScreenTopBarState(
     val isOnline: Boolean,
     val defaultPaywallBypassMethod: PaywallBypassMethod?,
     val canUsePaywallBypass: Boolean,
-    val displayedProvenance: ArticleContentProvenance?
+    val displayedProvenance: ArticleContentProvenance?,
+    val markUnreadAsReadUpToLabel: String? = null
 )
 
 internal data class ArticleScreenTopBarActions(
@@ -41,7 +42,8 @@ internal data class ArticleScreenTopBarActions(
     val onInvokeTts: () -> Unit,
     val onBypassPaywall: (PaywallBypassMethod) -> Unit,
     val onOpenPaywallMethodPicker: () -> Unit,
-    val onSwitchToFeed: () -> Unit
+    val onSwitchToFeed: () -> Unit,
+    val onMarkUnreadAsReadUpTo: () -> Unit = {}
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,7 +76,9 @@ internal fun ArticleScreenTopBar(
             defaultPaywallBypassMethod = state.defaultPaywallBypassMethod,
             canUsePaywallBypass = state.canUsePaywallBypass,
             onBypassPaywall = actions.onBypassPaywall,
-            onOpenPaywallMethodPicker = actions.onOpenPaywallMethodPicker
+            onOpenPaywallMethodPicker = actions.onOpenPaywallMethodPicker,
+            markUnreadAsReadUpToLabel = state.markUnreadAsReadUpToLabel,
+            onMarkUnreadAsReadUpTo = actions.onMarkUnreadAsReadUpTo
         )
         if (state.isWebViewMode && state.displayedProvenance != null) {
             Row(

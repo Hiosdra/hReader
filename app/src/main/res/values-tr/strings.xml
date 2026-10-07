@@ -72,6 +72,8 @@
     <string name="error_refresh_articles">Makaleler yenilenemedi. Bağlantınızı kontrol edip tekrar deneyin.</string>
     <plurals name="main_marked_articles_read"><item quantity="one">%1$d makale okundu olarak işaretlendi</item><item quantity="other">%1$d makale okundu olarak işaretlendi</item></plurals>
     <string name="article_position">%2$d makaleden %1$d.</string>
+    <string name="article_mark_feed_read_up_to_here">Bu feedi buraya kadar okundu olarak işaretle</string>
+    <string name="article_mark_all_feeds_read_up_to_here">Tüm feedleri buraya kadar okundu olarak işaretle</string>
     <string name="article_no_content">Kullanılabilir içerik yok</string>
     <string name="article_decrease_text_size">Metin boyutunu küçült</string>
     <string name="article_reset_text_size">Metin boyutunu sıfırla (%1$d%%)</string>

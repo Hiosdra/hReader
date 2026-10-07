@@ -81,7 +81,9 @@ internal fun ArticleTopBar(
     defaultPaywallBypassMethod: PaywallBypassMethod? = null,
     canUsePaywallBypass: Boolean = false,
     onBypassPaywall: (PaywallBypassMethod) -> Unit = {},
-    onOpenPaywallMethodPicker: () -> Unit = {}
+    onOpenPaywallMethodPicker: () -> Unit = {},
+    markUnreadAsReadUpToLabel: String? = null,
+    onMarkUnreadAsReadUpTo: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -201,6 +203,18 @@ internal fun ArticleTopBar(
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary
                                 )
+                            }
+                        )
+                    }
+                    markUnreadAsReadUpToLabel?.let { label ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onMarkUnreadAsReadUpTo()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Done, contentDescription = null)
                             }
                         )
                     }
