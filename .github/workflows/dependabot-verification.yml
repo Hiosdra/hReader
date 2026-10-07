@@ -70,6 +70,7 @@ jobs:
           persist-credentials: false
 
       - name: Confirm checked out pull request revision
+        id: revision
         env:
           EXPECTED_HEAD_SHA: ${{ steps.target.outputs.head_sha }}
         run: |
@@ -78,6 +79,7 @@ jobs:
             echo "The Dependabot pull request changed while this workflow was starting. Re-run it for the latest revision."
             exit 1
           fi
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 21
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
@@ -121,7 +123,7 @@ jobs:
           cat > verification-metadata-proposal/manifest.txt <<EOF
           pull_request=${{ steps.target.outputs.number }}
           head_sha=${{ steps.target.outputs.head_sha }}
-          base_sha=${{ steps.target.outputs.base_sha }}
+          base_sha=${{ steps.revision.outputs.base_sha }}
           EOF
           {
             echo "## Dependency verification metadata proposal"
