@@ -1,7 +1,10 @@
 package com.hiosdra.hreader.presentation.article
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +25,7 @@ import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.presentation.components.OfflineAwareImage
 import com.hiosdra.hreader.presentation.theme.HReaderSpacing
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ArticleContentHeader(
     entry: Entry,
@@ -82,12 +86,24 @@ internal fun ArticleContentHeader(
             onAnalyzeCredibility = onAnalyzeCredibility
         )
         Spacer(modifier = Modifier.height(HReaderSpacing.space2))
-        ArticleContentProvenanceStatus(
-            provenance = contentProvenance,
-            contentState = contentState,
-            onRetry = onRetryContent,
-            onOpenOriginal = onOpenOriginal
-        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(HReaderSpacing.space2),
+            verticalArrangement = Arrangement.spacedBy(HReaderSpacing.space2)
+        ) {
+            ArticleContentProvenanceStatus(
+                provenance = contentProvenance,
+                contentState = contentState,
+                onRetry = onRetryContent,
+                onOpenOriginal = onOpenOriginal
+            )
+            if (entry.url.isNotBlank()) {
+                ArticleOpenInChromeChip(
+                    isOnline = isOnline,
+                    onOpenInChrome = { bindings.onOpenInChrome(entry.url) }
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(HReaderSpacing.space3))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
 

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.paywall.PaywallBypassMethod
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -26,6 +27,19 @@ class ArticleSourceActionsTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    @Test
+    fun `Chrome action invokes its callback`() {
+        val opens = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        setContent(onOpenInChrome = { opens.incrementAndGet() })
+
+        composeTestRule.onNodeWithContentDescription(
+            context.getString(R.string.article_open_original_in_chrome)
+        ).performClick()
+
+        assertEquals(1, opens.get())
+    }
 
     @Test
     fun `main action opens through configured service`() {
@@ -101,6 +115,7 @@ class ArticleSourceActionsTest {
         isOnline: Boolean = true,
         defaultMethod: PaywallBypassMethod = PaywallBypassMethod.SMRY_AI,
         canUsePaywallBypass: Boolean = true,
+        onOpenInChrome: () -> Unit = {},
         onBypassPaywall: (PaywallBypassMethod) -> Unit = {}
     ) {
         composeTestRule.setContent {
@@ -109,7 +124,7 @@ class ArticleSourceActionsTest {
                     defaultPaywallBypassMethod = defaultMethod,
                     isOnline = isOnline,
                     canUsePaywallBypass = canUsePaywallBypass,
-                    onOpenInChrome = {},
+                    onOpenInChrome = onOpenInChrome,
                     onBypassPaywall = onBypassPaywall
                 )
             }

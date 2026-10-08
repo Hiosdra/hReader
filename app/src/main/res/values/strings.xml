@@ -96,6 +96,8 @@
     </plurals>
 
     <string name="article_position">Article %1$d of %2$d</string>
+    <string name="article_mark_feed_read_up_to_here">Mark this feed as read up to here</string>
+    <string name="article_mark_all_feeds_read_up_to_here">Mark all feeds as read up to here</string>
     <string name="article_no_content">No content available</string>
     <string name="article_decrease_text_size">Decrease text size</string>
     <string name="article_reset_text_size">Reset text size (%1$d%%)</string>

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -77,6 +78,34 @@ class ArticleTopBarTest {
     }
 
     @Test
+    fun `overflow menu marks articles read through the current article`() {
+        val marked = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        val label = context.getString(R.string.article_mark_feed_read_up_to_here)
+        setContent(
+            markUnreadAsReadUpToLabel = label,
+            onMarkUnreadAsReadUpTo = { marked.incrementAndGet() }
+        )
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(label).performClick()
+
+        assertEquals(1, marked.get())
+    }
+
+    @Test
+    fun `global overflow menu identifies all feeds in the mark read action`() {
+        val context = RuntimeEnvironment.getApplication()
+        val label = context.getString(R.string.article_mark_all_feeds_read_up_to_here)
+        setContent(markUnreadAsReadUpToLabel = label)
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        composeTestRule.onNodeWithText(label).assertIsDisplayed()
+    }
+
+    @Test
     fun `overflow menu exposes read aloud action`() {
         val starts = AtomicInteger()
         val context = RuntimeEnvironment.getApplication()
@@ -125,13 +154,24 @@ class ArticleTopBarTest {
     }
 
     @Test
-    fun `overflow menu keeps external actions available`() {
-        val opens = AtomicInteger()
+    fun `overflow menu does not expose Chrome shortcut in web mode`() {
+        val context = RuntimeEnvironment.getApplication()
+        setContent(isWebViewMode = true)
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
+            .performClick()
+        val chromeActions = composeTestRule
+            .onAllNodesWithText(context.getString(R.string.article_open_original_in_chrome))
+            .fetchSemanticsNodes()
+        assertEquals(0, chromeActions.size)
+    }
+
+    @Test
+    fun `feed mode overflow menu keeps paywall actions without Chrome shortcut`() {
         val selected = AtomicReference<PaywallBypassMethod>()
         val context = RuntimeEnvironment.getApplication()
         val defaultMethod = PaywallBypassMethod.WAYBACK_MACHINE
         setContent(
-            onOpenInChrome = { opens.incrementAndGet() },
             defaultPaywallBypassMethod = defaultMethod,
             canUsePaywallBypass = true,
             onBypassPaywall = { selected.set(it) }
@@ -139,10 +179,10 @@ class ArticleTopBarTest {
 
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
             .performClick()
-        composeTestRule.onNodeWithText(context.getString(R.string.article_open_original_in_chrome))
-            .performClick()
-        composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_more))
-            .performClick()
+        val chromeActions = composeTestRule
+            .onAllNodesWithText(context.getString(R.string.article_open_original_in_chrome))
+            .fetchSemanticsNodes()
+        assertEquals(0, chromeActions.size)
         composeTestRule.onNodeWithContentDescription(
             context.getString(
                 R.string.article_open_through_paywall_service,
@@ -150,21 +190,23 @@ class ArticleTopBarTest {
             )
         ).performClick()
 
-        assertEquals(1, opens.get())
         assertEquals(defaultMethod, selected.get())
     }
 
     private fun setContent(
+        isWebViewMode: Boolean = false,
         canUseWebView: Boolean = false,
         onToggleWebView: () -> Unit = {},
         onIncreaseTextScale: () -> Unit = {},
         ttsContentState: ArticleTtsContentState? = null,
         isTtsActive: Boolean = false,
         onInvokeTts: () -> Unit = {},
-        onOpenInChrome: () -> Unit = {},
+        isOnline: Boolean = true,
         defaultPaywallBypassMethod: PaywallBypassMethod? = null,
         canUsePaywallBypass: Boolean = false,
-        onBypassPaywall: (PaywallBypassMethod) -> Unit = {}
+        onBypassPaywall: (PaywallBypassMethod) -> Unit = {},
+        markUnreadAsReadUpToLabel: String? = null,
+        onMarkUnreadAsReadUpTo: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             HReaderTheme {
@@ -173,7 +215,7 @@ class ArticleTopBarTest {
                     feedTitle = "Inbox",
                     listPosition = 2,
                     listSize = 10,
-                    isWebViewMode = false,
+                    isWebViewMode = isWebViewMode,
                     canUseWebView = canUseWebView,
                     isRead = false,
                     textScale = 1f,
@@ -187,10 +229,12 @@ class ArticleTopBarTest {
                     ttsContentState = ttsContentState,
                     isTtsActive = isTtsActive,
                     onInvokeTts = onInvokeTts,
-                    onOpenInChrome = onOpenInChrome,
+                    isOnline = isOnline,
                     defaultPaywallBypassMethod = defaultPaywallBypassMethod,
                     canUsePaywallBypass = canUsePaywallBypass,
-                    onBypassPaywall = onBypassPaywall
+                    onBypassPaywall = onBypassPaywall,
+                    markUnreadAsReadUpToLabel = markUnreadAsReadUpToLabel,
+                    onMarkUnreadAsReadUpTo = onMarkUnreadAsReadUpTo
                 )
             }
         }

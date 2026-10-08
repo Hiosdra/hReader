@@ -72,6 +72,8 @@
     <string name="error_refresh_articles">无法刷新文章。请检查网络连接后重试。</string>
     <plurals name="main_marked_articles_read"><item quantity="other">已将 %1$d 篇文章标记为已读</item></plurals>
     <string name="article_position">第 %1$d 篇文章，共 %2$d 篇</string>
+    <string name="article_mark_feed_read_up_to_here">将此 Feed 截止到这里的文章标记为已读</string>
+    <string name="article_mark_all_feeds_read_up_to_here">将所有 Feed 截止到这里的文章标记为已读</string>
     <string name="article_no_content">没有可用内容</string>
     <string name="article_decrease_text_size">减小文字大小</string>
     <string name="article_reset_text_size">重置文字大小（%1$d%%）</string>

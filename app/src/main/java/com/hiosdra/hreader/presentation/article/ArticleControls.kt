@@ -80,9 +80,10 @@ internal fun ArticleTopBar(
     isOnline: Boolean = true,
     defaultPaywallBypassMethod: PaywallBypassMethod? = null,
     canUsePaywallBypass: Boolean = false,
-    onOpenInChrome: () -> Unit = {},
     onBypassPaywall: (PaywallBypassMethod) -> Unit = {},
-    onOpenPaywallMethodPicker: () -> Unit = {}
+    onOpenPaywallMethodPicker: () -> Unit = {},
+    markUnreadAsReadUpToLabel: String? = null,
+    onMarkUnreadAsReadUpTo: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -147,24 +148,6 @@ internal fun ArticleTopBar(
                         val externalActionOfflineDescription = stringResource(
                             R.string.article_external_actions_requires_connection
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.article_open_original_in_chrome)) },
-                            onClick = {
-                                overflowExpanded.value = false
-                                onOpenInChrome()
-                            },
-                            enabled = isOnline,
-                            modifier = Modifier.semantics {
-                                if (!isOnline) stateDescription = externalActionOfflineDescription
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_chrome_logo),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        )
                         if (canUsePaywallBypass && defaultPaywallBypassMethod != null) {
                             val defaultMethodName = stringResource(
                                 paywallBypassMethodNameRes(defaultPaywallBypassMethod)
@@ -220,6 +203,18 @@ internal fun ArticleTopBar(
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary
                                 )
+                            }
+                        )
+                    }
+                    markUnreadAsReadUpToLabel?.let { label ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                overflowExpanded.value = false
+                                onMarkUnreadAsReadUpTo()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Done, contentDescription = null)
                             }
                         )
                     }

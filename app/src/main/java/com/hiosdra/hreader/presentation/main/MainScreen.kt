@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -158,7 +158,8 @@ internal fun MainScreen(
         modifier = Modifier
             .background(MaterialTheme.colorScheme.background)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {},
+        bottomBar = { SnackbarHost(snackbarHostState) },
         topBar = {
             MainTopBar(
                 MainTopBarBindings(
@@ -195,25 +196,24 @@ internal fun MainScreen(
                     animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
                 )
             ) {
-                ExtendedFloatingActionButton(
+                FloatingActionButton(
                     onClick = {
                         if (!uiState.isBulkReadStateUpdating) {
                             viewModel.markAllAsRead(onFeedMarkedRead)
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    icon = { Icon(Icons.Filled.Done, contentDescription = null) },
-                    text = {
-                        Text(
-                            text = pluralStringResource(
-                                R.plurals.main_mark_articles_read,
-                                unreadCount,
-                                unreadCount
-                            )
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(
+                        Icons.Filled.Done,
+                        contentDescription = pluralStringResource(
+                            R.plurals.main_mark_articles_read,
+                            unreadCount,
+                            unreadCount
                         )
-                    }
-                )
+                    )
+                }
             }
         }
     ) { paddingValues ->

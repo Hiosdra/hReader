@@ -22,6 +22,12 @@ import com.hiosdra.hreader.core.domain.model.Entry
 import com.hiosdra.hreader.core.domain.model.OfflinePage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import java.time.Instant
+
+data class UndoableArticleReadAction(
+    val count: Int,
+    val undo: suspend () -> Int
+)
 
 class ArticleReaderUseCase(
     private val articles: ArticleQueryStore,
@@ -100,6 +106,15 @@ class ArticleReaderUseCase(
 
     suspend fun updateReadStatus(entryId: Long, status: ArticleStatus) {
         articleMutations.updateReadStatus(entryId.toString(), status)
+    }
+
+    suspend fun markUnreadAsReadUpTo(
+        feedId: Long?,
+        articleId: Long,
+        publishedAt: Instant
+    ): UndoableArticleReadAction {
+        val marker = articleMutations.markUnreadAsReadUpTo(feedId, articleId.toString(), publishedAt)
+        return UndoableArticleReadAction(marker.count) { articleMutations.undoBulkRead(marker) }
     }
 
     suspend fun saveReadingProgress(entryId: Long, progress: Float) = positions.saveProgress(entryId, progress)

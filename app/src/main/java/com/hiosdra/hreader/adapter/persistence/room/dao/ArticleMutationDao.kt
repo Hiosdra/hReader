@@ -19,6 +19,20 @@ interface ArticleMutationDao {
     ): Int
 
     @Query(
+        "UPDATE articles SET status = :readStatus, pendingSync = 1, readAt = :markedAt " +
+            "WHERE (status IS NULL OR status != :readStatus) " +
+            "AND (:feedId IS NULL OR feedId = :feedId) " +
+            "AND (publishedAt < :publishedAt OR (publishedAt = :publishedAt AND id <= :articleId))"
+    )
+    suspend fun markUnreadAsReadUpTo(
+        feedId: Long?,
+        articleId: String,
+        publishedAt: Instant,
+        markedAt: Instant,
+        readStatus: ArticleStatus = ArticleStatus.READ
+    ): Int
+
+    @Query(
         "UPDATE articles SET status = :unreadStatus, pendingSync = 1, readAt = NULL " +
             "WHERE status = :readStatus AND readAt = :markedAt " +
             "AND (:feedId IS NULL OR feedId = :feedId)"

@@ -26,7 +26,8 @@ internal data class ArticleScreenTopBarState(
     val isOnline: Boolean,
     val defaultPaywallBypassMethod: PaywallBypassMethod?,
     val canUsePaywallBypass: Boolean,
-    val displayedProvenance: ArticleContentProvenance?
+    val displayedProvenance: ArticleContentProvenance?,
+    val markUnreadAsReadUpToLabel: String? = null
 )
 
 internal data class ArticleScreenTopBarActions(
@@ -37,11 +38,12 @@ internal data class ArticleScreenTopBarActions(
     val onBack: () -> Unit,
     val onToggleWebView: () -> Unit,
     val onShare: () -> Unit,
-    val onInvokeTts: () -> Unit,
     val onOpenInChrome: () -> Unit,
+    val onInvokeTts: () -> Unit,
     val onBypassPaywall: (PaywallBypassMethod) -> Unit,
     val onOpenPaywallMethodPicker: () -> Unit,
-    val onSwitchToFeed: () -> Unit
+    val onSwitchToFeed: () -> Unit,
+    val onMarkUnreadAsReadUpTo: () -> Unit = {}
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,9 +75,10 @@ internal fun ArticleScreenTopBar(
             isOnline = state.isOnline,
             defaultPaywallBypassMethod = state.defaultPaywallBypassMethod,
             canUsePaywallBypass = state.canUsePaywallBypass,
-            onOpenInChrome = actions.onOpenInChrome,
             onBypassPaywall = actions.onBypassPaywall,
-            onOpenPaywallMethodPicker = actions.onOpenPaywallMethodPicker
+            onOpenPaywallMethodPicker = actions.onOpenPaywallMethodPicker,
+            markUnreadAsReadUpToLabel = state.markUnreadAsReadUpToLabel,
+            onMarkUnreadAsReadUpTo = actions.onMarkUnreadAsReadUpTo
         )
         if (state.isWebViewMode && state.displayedProvenance != null) {
             Row(
@@ -88,6 +91,13 @@ internal fun ArticleScreenTopBar(
                     provenance = state.displayedProvenance,
                     onSwitchToFeed = actions.onSwitchToFeed
                 )
+                if (!state.entryUrl.isNullOrBlank()) {
+                    ArticleOpenInChromeChip(
+                        isOnline = state.isOnline,
+                        onOpenInChrome = actions.onOpenInChrome,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
         }
     }

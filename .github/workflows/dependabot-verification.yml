@@ -60,7 +60,6 @@ jobs:
 
             core.setOutput('number', String(pullRequest.number));
             core.setOutput('head_sha', pullRequest.head.sha);
-            core.setOutput('base_sha', pullRequest.base.sha);
 
       - name: Check out pull request
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -71,15 +70,16 @@ jobs:
           persist-credentials: false
 
       - name: Confirm checked out pull request revision
+        id: revision
         env:
-          EXPECTED_BASE_SHA: ${{ steps.target.outputs.base_sha }}
           EXPECTED_HEAD_SHA: ${{ steps.target.outputs.head_sha }}
         run: |
-          read -r base_sha head_sha <<< "$(git show -s --format=%P HEAD)"
-          if [[ "$base_sha" != "$EXPECTED_BASE_SHA" || "$head_sha" != "$EXPECTED_HEAD_SHA" ]]; then
+          read -r base_sha head_sha extra_parents <<< "$(git show -s --format=%P HEAD)"
+          if [[ -z "$base_sha" || -z "$head_sha" || -n "$extra_parents" || "$head_sha" != "$EXPECTED_HEAD_SHA" ]]; then
             echo "The Dependabot pull request changed while this workflow was starting. Re-run it for the latest revision."
             exit 1
           fi
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 21
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
@@ -88,7 +88,7 @@ jobs:
           java-version: 21
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           cache-read-only: true
 
@@ -123,7 +123,7 @@ jobs:
           cat > verification-metadata-proposal/manifest.txt <<EOF
           pull_request=${{ steps.target.outputs.number }}
           head_sha=${{ steps.target.outputs.head_sha }}
-          base_sha=${{ steps.target.outputs.base_sha }}
+          base_sha=${{ steps.revision.outputs.base_sha }}
           EOF
           {
             echo "## Dependency verification metadata proposal"
