@@ -29,16 +29,30 @@ internal class ArticleMutationRepository(
     }
 
     override suspend fun markUnreadAsRead(feedId: Long?): BulkReadMarker {
-        val nowMillis = System.currentTimeMillis()
-        val markedAt = Instant.ofEpochMilli(
-            lastBulkReadTimestampMillis.updateAndGet { previous -> maxOf(nowMillis, previous + 1) }
-        )
+        val markedAt = nextBulkReadTimestamp()
         val count = articleMutationDao.markUnreadAsRead(feedId, markedAt)
+        return BulkReadMarker(feedId, markedAt, count)
+    }
+
+    override suspend fun markUnreadAsReadUpTo(
+        feedId: Long?,
+        articleId: String,
+        publishedAt: Instant
+    ): BulkReadMarker {
+        val markedAt = nextBulkReadTimestamp()
+        val count = articleMutationDao.markUnreadAsReadUpTo(feedId, articleId, publishedAt, markedAt)
         return BulkReadMarker(feedId, markedAt, count)
     }
 
     override suspend fun undoBulkRead(marker: BulkReadMarker): Int =
         articleMutationDao.undoBulkRead(marker.feedId, marker.markedAt)
+
+    private fun nextBulkReadTimestamp(): Instant {
+        val nowMillis = System.currentTimeMillis()
+        return Instant.ofEpochMilli(
+            lastBulkReadTimestampMillis.updateAndGet { previous -> maxOf(nowMillis, previous + 1) }
+        )
+    }
 }
 
 internal fun List<String>.toArticleIds(what: String): List<Long> {

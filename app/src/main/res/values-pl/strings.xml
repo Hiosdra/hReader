@@ -97,6 +97,8 @@
     </plurals>
 
     <string name="article_position">Artykuł %1$d z %2$d</string>
+    <string name="article_mark_feed_read_up_to_here">Oznacz wpisy z tego kanału do tego miejsca jako przeczytane</string>
+    <string name="article_mark_all_feeds_read_up_to_here">Oznacz wpisy ze wszystkich kanałów do tego miejsca jako przeczytane</string>
     <string name="article_no_content">Brak dostępnej treści</string>
     <string name="article_decrease_text_size">Zmniejsz rozmiar tekstu</string>
     <string name="article_reset_text_size">Przywróć rozmiar tekstu (%1$d%%)</string>

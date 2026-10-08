@@ -13,5 +13,6 @@ interface ArticleMutationStore {
     suspend fun updateReadStatus(articleIds: List<String>, newStatus: ArticleStatus)
     suspend fun updateReadStatus(articleId: String, newStatus: ArticleStatus)
     suspend fun markUnreadAsRead(feedId: Long?): BulkReadMarker
+    suspend fun markUnreadAsReadUpTo(feedId: Long?, articleId: String, publishedAt: Instant): BulkReadMarker
     suspend fun undoBulkRead(marker: BulkReadMarker): Int
 }

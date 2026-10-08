@@ -44,6 +44,22 @@ class ArticleMutationRepositoryTest {
     }
 
     @Test
+    fun `marks unread articles through the current article in one database operation`() = runBlocking {
+        val publishedAt = Instant.parse("2026-09-01T00:00:00Z")
+        coEvery {
+            articleMutationDao.markUnreadAsReadUpTo(7L, "42", publishedAt, any(), ArticleStatus.READ)
+        } returns 2
+
+        val marker = repository.markUnreadAsReadUpTo(7L, "42", publishedAt)
+
+        assertEquals(7L, marker.feedId)
+        assertEquals(2, marker.count)
+        coVerify(exactly = 1) {
+            articleMutationDao.markUnreadAsReadUpTo(7L, "42", publishedAt, marker.markedAt, ArticleStatus.READ)
+        }
+    }
+
+    @Test
     fun `undoes a bulk read through its marker`() = runBlocking {
         val marker = BulkReadMarker(7L, Instant.parse("2026-09-01T00:00:00Z"), 3)
         coEvery {

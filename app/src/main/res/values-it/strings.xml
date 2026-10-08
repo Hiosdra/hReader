@@ -72,6 +72,8 @@
     <string name="error_refresh_articles">Impossibile aggiornare gli articoli. Controlla la connessione e riprova.</string>
     <plurals name="main_marked_articles_read"><item quantity="one">%1$d articolo segnato come letto</item><item quantity="many">%1$d articoli segnati come letti</item><item quantity="other">%1$d articoli segnati come letti</item></plurals>
     <string name="article_position">Articolo %1$d di %2$d</string>
+    <string name="article_mark_feed_read_up_to_here">Segna questo feed come letto fino a qui</string>
+    <string name="article_mark_all_feeds_read_up_to_here">Segna tutti i feed come letti fino a qui</string>
     <string name="article_no_content">Nessun contenuto disponibile</string>
     <string name="article_decrease_text_size">Riduci dimensione testo</string>
     <string name="article_reset_text_size">Reimposta dimensione testo (%1$d%%)</string>

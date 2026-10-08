@@ -72,6 +72,8 @@
     <string name="error_refresh_articles">No se pudieron actualizar los artículos. Comprueba la conexión e inténtalo de nuevo.</string>
     <plurals name="main_marked_articles_read"><item quantity="one">%1$d artículo marcado como leído</item><item quantity="many">%1$d artículos marcados como leídos</item><item quantity="other">%1$d artículos marcados como leídos</item></plurals>
     <string name="article_position">Artículo %1$d de %2$d</string>
+    <string name="article_mark_feed_read_up_to_here">Marcar este feed como leído hasta aquí</string>
+    <string name="article_mark_all_feeds_read_up_to_here">Marcar todos los feeds como leídos hasta aquí</string>
     <string name="article_no_content">No hay contenido disponible</string>
     <string name="article_decrease_text_size">Reducir tamaño del texto</string>
     <string name="article_reset_text_size">Restablecer tamaño del texto (%1$d%%)</string>
