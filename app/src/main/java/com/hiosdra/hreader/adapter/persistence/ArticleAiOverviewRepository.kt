@@ -15,7 +15,7 @@ class ArticleAiOverviewRepository(
     companion object {
         private const val TAG = "ArticleAiOverviewRepo"
         private const val DELETE_CHUNK = 500
-        private const val PROMPT_REVISION = "quick-overview-v2"
+        private const val PROMPT_REVISION = "quick-overview-v3"
     }
 
     override suspend fun get(entryId: Long, content: String, modelId: String): String? = try {

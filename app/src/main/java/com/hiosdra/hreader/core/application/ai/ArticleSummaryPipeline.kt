@@ -3,7 +3,7 @@ package com.hiosdra.hreader.core.application.ai
 import java.security.MessageDigest
 import java.util.LinkedHashMap
 
-private const val SUMMARY_PIPELINE_VERSION = 4
+private const val SUMMARY_PIPELINE_VERSION = 5
 private const val MAX_COMPACTION_CACHE_ENTRIES = 8
 
 data class ArticleSummaryPromptPolicy(
@@ -26,7 +26,7 @@ data class ArticleSummaryPromptPolicy(
                 Keep the summary in the same language as the article and do not mention this process.
             """.trimIndent(),
             intermediateInstructions = "Update a compact factual working overview in at most 80 words. Preserve only the central subject and takeaway from earlier parts, then add the most important point from this part. Do not add a heading or preamble.",
-            finalInstructions = "Return only a quick overview in one concise sentence, no more than 25 words. State the central subject and main takeaway only; omit supporting details, examples, and secondary points. Do not add a heading or preamble.",
+            finalInstructions = "Return a brief overview in 3-4 very short sentences, with no more than 45 words total. State the central subject and main takeaway, adding only a few high-level facts. Do not explain every argument, piece of evidence, or example. Do not add a heading or preamble.",
             articleSummaryIntermediateInstructions = "Update a cumulative, detailed digest of all article parts seen so far in at most 240 words. Preserve the main points in their original order, along with important names, numbers, evidence, examples, caveats, and conclusions. Keep enough detail to support a comprehensive final summary; do not collapse it into a quick overview. Do not add a heading or preamble."
         )
 
@@ -43,7 +43,7 @@ data class ArticleSummaryPromptPolicy(
                 Update a compact factual working overview in at most 80 words. Preserve only the central subject and takeaway from earlier parts, then add the most important point from this part. Ignore navigation, advertising, related-content lists, newsletter or e-book offers, and video or podcast promotions, including Polish "CZYTAJ WIĘCEJ", "CZYTAJ TEŻ" and "ZAPISZ SIĘ" sections. Never replace an established topic with incidental text from the end of the article. Do not add a heading or preamble.
             """.trimIndent(),
             finalInstructions = """
-                Using the working summary and this article part, return only a quick overview in one concise sentence, no more than 25 words. State the central subject and main takeaway only; omit supporting details, examples, and secondary points. If this part is mostly a footer, advertisement, related-content list, newsletter, e-book, video, or podcast promotion, including Polish "CZYTAJ WIĘCEJ", "CZYTAJ TEŻ" or "ZAPISZ SIĘ" sections, ignore it and keep the earlier article topic. Do not say that information was missing, do not summarize the promotion, and do not add a heading or preamble.
+                Using the working summary and this article part, return a brief overview in 3-4 very short sentences, with no more than 45 words total. State the central subject and main takeaway, adding only a few high-level facts. Do not explain every argument, piece of evidence, or example. If this part is mostly a footer, advertisement, related-content list, newsletter, e-book, video, or podcast promotion, including Polish "CZYTAJ WIĘCEJ", "CZYTAJ TEŻ" or "ZAPISZ SIĘ" sections, ignore it and keep the earlier article topic. Do not say that information was missing, do not summarize the promotion, and do not add a heading or preamble.
             """.trimIndent(),
             articleSummaryIntermediateInstructions = """
                 Update a cumulative, detailed digest of the main article from all parts seen so far in at most 240 words. Preserve the article's progression and each major point, important names, dates, numbers, evidence, examples, causes, caveats, and conclusions. Keep enough detail to support a comprehensive final summary; do not collapse it into a quick overview. Ignore navigation, advertising, related-content lists, newsletter or e-book offers, and video or podcast promotions, including Polish "CZYTAJ WIĘCEJ", "CZYTAJ TEŻ" and "ZAPISZ SIĘ" sections. Never replace an established topic with incidental footer content. Do not add a heading or preamble.

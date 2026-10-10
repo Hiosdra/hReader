@@ -144,8 +144,9 @@ class ArticleSummaryPipelineTest {
             Result.success("A detailed summary of all major article points.")
         }.getOrThrow()
 
-        assertTrue(overviewPrompt.contains("one concise sentence, no more than 25 words"))
-        assertTrue(overviewPrompt.contains("omit supporting details"))
+        assertTrue(overviewPrompt.contains("3-4 very short sentences"))
+        assertTrue(overviewPrompt.contains("no more than 45 words total"))
+        assertTrue(overviewPrompt.contains("Do not explain every argument"))
         assertTrue(!overviewPrompt.contains("without reading the original"))
         assertTrue(articleSummaryPrompt.contains("without reading the original"))
         assertTrue(articleSummaryPrompt.contains("cover every major point or section"))
