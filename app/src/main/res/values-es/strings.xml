@@ -629,4 +629,13 @@ Sincroniza artículos para ver las métricas.</string>
     <string name="secret_configured">Configurado</string>
     <string name="secret_not_configured">Sin configurar</string>
     <string name="secret_editor_placeholder">Introduce el secreto</string>
+    <string name="article_ai_article_summary">Resumen del artículo</string>
+    <string name="article_generating_article_summary">Generando resumen del artículo…</string>
+    <string name="article_ai_working_article_summary">Resumen provisional del artículo — aún no es definitivo</string>
+    <string name="article_show_article_summary">Mostrar resumen del artículo</string>
+    <string name="article_hide_article_summary">Ocultar resumen del artículo</string>
+    <string name="article_ai_cloud_article_summary_confirmation">El texto del artículo se enviará al proveedor de OpenRouter seleccionado para crear un resumen. ¿Continuar?</string>
+    <string name="feeds_preload_ai_article_summary">Generar resúmenes de artículos por adelantado</string>
+    <string name="feeds_preload_ai_article_summary_description">Después de sincronizar, genera resúmenes de hasta una décima parte del original para los artículos sin leer de esta fuente. Gemma funciona en el dispositivo; los modelos en la nube envían el texto al proveedor seleccionado y necesitan conexión.</string>
+    <string name="feeds_preload_ai_article_summary_error">No se pudo guardar la configuración para generar resúmenes de artículos por adelantado.</string>
 </resources>

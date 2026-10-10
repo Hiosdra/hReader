@@ -618,4 +618,13 @@
     <string name="secret_configured">구성됨</string>
     <string name="secret_not_configured">구성되지 않음</string>
     <string name="secret_editor_placeholder">비밀 값 입력</string>
+    <string name="article_ai_article_summary">기사 요약</string>
+    <string name="article_generating_article_summary">기사 요약 생성 중…</string>
+    <string name="article_ai_working_article_summary">임시 기사 요약 — 아직 최종본이 아닙니다</string>
+    <string name="article_show_article_summary">기사 요약 표시</string>
+    <string name="article_hide_article_summary">기사 요약 숨기기</string>
+    <string name="article_ai_cloud_article_summary_confirmation">기사 요약을 만들기 위해 기사 본문을 선택한 OpenRouter 제공업체로 전송합니다. 계속할까요?</string>
+    <string name="feeds_preload_ai_article_summary">기사 요약 미리 생성</string>
+    <string name="feeds_preload_ai_article_summary_description">동기화 후 이 소스의 읽지 않은 기사에 대해 원문의 최대 10분의 1 길이로 요약을 생성합니다. Gemma는 기기에서 실행되고, 클라우드 모델은 기사 본문을 선택한 제공업체로 전송하며 네트워크가 필요합니다.</string>
+    <string name="feeds_preload_ai_article_summary_error">기사 요약 미리 생성 설정을 저장할 수 없습니다.</string>
 </resources>

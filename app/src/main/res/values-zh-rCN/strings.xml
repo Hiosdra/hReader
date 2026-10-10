@@ -618,4 +618,13 @@
     <string name="secret_configured">已配置</string>
     <string name="secret_not_configured">未配置</string>
     <string name="secret_editor_placeholder">输入密钥</string>
+    <string name="article_ai_article_summary">文章摘要</string>
+    <string name="article_generating_article_summary">正在生成文章摘要…</string>
+    <string name="article_ai_working_article_summary">文章摘要草稿 — 尚未完成</string>
+    <string name="article_show_article_summary">显示文章摘要</string>
+    <string name="article_hide_article_summary">隐藏文章摘要</string>
+    <string name="article_ai_cloud_article_summary_confirmation">文章内容将发送到所选 OpenRouter 提供商以生成摘要。继续吗？</string>
+    <string name="feeds_preload_ai_article_summary">预生成文章摘要</string>
+    <string name="feeds_preload_ai_article_summary_description">同步后，为此来源的未读文章生成长度最多为原文十分之一的摘要。Gemma 在设备上运行；云端模型会将文章文本发送给所选提供商，并需要网络连接。</string>
+    <string name="feeds_preload_ai_article_summary_error">无法保存文章摘要预生成设置。</string>
 </resources>

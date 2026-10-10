@@ -626,4 +626,13 @@
     <string name="secret_configured">Configurato</string>
     <string name="secret_not_configured">Non configurato</string>
     <string name="secret_editor_placeholder">Inserisci il segreto</string>
+    <string name="article_ai_article_summary">Riepilogo dell’articolo</string>
+    <string name="article_generating_article_summary">Generazione del riepilogo dell’articolo…</string>
+    <string name="article_ai_working_article_summary">Riepilogo provvisorio — non è ancora definitivo</string>
+    <string name="article_show_article_summary">Mostra riepilogo dell’articolo</string>
+    <string name="article_hide_article_summary">Nascondi riepilogo dell’articolo</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Il testo dell’articolo sarà inviato al provider OpenRouter selezionato per creare un riepilogo. Continuare?</string>
+    <string name="feeds_preload_ai_article_summary">Pre-genera i riepiloghi degli articoli</string>
+    <string name="feeds_preload_ai_article_summary_description">Dopo la sincronizzazione, genera riepiloghi lunghi al massimo un decimo dell’originale per gli articoli non letti di questa fonte. Gemma funziona sul dispositivo; i modelli cloud inviano il testo al provider selezionato e richiedono una connessione.</string>
+    <string name="feeds_preload_ai_article_summary_error">Impossibile salvare l’impostazione di pre-generazione dei riepiloghi degli articoli.</string>
 </resources>

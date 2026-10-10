@@ -25,16 +25,14 @@ class ArticleAiGatewayRouter(
         content: String,
         modelId: String,
         onProgress: suspend (ArticleAiProgress) -> Unit
-    ): Result<String> = try {
-        gatewayFor(modelId)
-            .generateArticleOverview(title, content, modelId, onProgress)
-            .onFailure(::reportSummaryFailure)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        reportSummaryFailure(e)
-        Result.failure(e)
-    }
+    ): Result<String> = generateSummary(title, content, modelId, onProgress, isArticleSummary = false)
+
+    override suspend fun generateArticleSummary(
+        title: String,
+        content: String,
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit
+    ): Result<String> = generateSummary(title, content, modelId, onProgress, isArticleSummary = true)
 
     override suspend fun analyzeCredibility(
         source: CredibilitySource,
@@ -43,6 +41,27 @@ class ArticleAiGatewayRouter(
 
     private fun gatewayFor(modelId: String): ArticleAiGateway =
         if (modelId == Gemma4E2bModel.MODEL_ID) gemma else openRouter
+
+    private suspend fun generateSummary(
+        title: String,
+        content: String,
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit,
+        isArticleSummary: Boolean
+    ): Result<String> = try {
+        val gateway = gatewayFor(modelId)
+        val result = if (isArticleSummary) {
+            gateway.generateArticleSummary(title, content, modelId, onProgress)
+        } else {
+            gateway.generateArticleOverview(title, content, modelId, onProgress)
+        }
+        result.onFailure(::reportSummaryFailure)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        reportSummaryFailure(e)
+        Result.failure(e)
+    }
 
     private fun reportSummaryFailure(error: Throwable) {
         if (

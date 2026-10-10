@@ -113,6 +113,15 @@ fun FeedDetailScreen(feedId: Long, navController: NavController, viewModel: Feed
                     }
                 )
                 FeedSwitchSetting(
+                    title = stringResource(R.string.feeds_preload_ai_article_summary),
+                    description = stringResource(R.string.feeds_preload_ai_article_summary_description),
+                    checked = feed.preloadAiArticleSummary,
+                    enabled = !uiState.isBusy,
+                    onCheckedChange = { enabled ->
+                        viewModel.setAiArticleSummaryPreloading(feed.id, enabled)
+                    }
+                )
+                FeedSwitchSetting(
                     title = stringResource(R.string.feeds_auto_mark_read),
                     description = stringResource(R.string.feeds_auto_mark_read_description),
                     checked = feed.autoMarkRead,

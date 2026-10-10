@@ -622,4 +622,13 @@
     <string name="secret_configured">Yapılandırıldı</string>
     <string name="secret_not_configured">Yapılandırılmadı</string>
     <string name="secret_editor_placeholder">Gizli değeri girin</string>
+    <string name="article_ai_article_summary">Makale özeti</string>
+    <string name="article_generating_article_summary">Makale özeti oluşturuluyor…</string>
+    <string name="article_ai_working_article_summary">Taslak makale özeti — henüz son hâli değil</string>
+    <string name="article_show_article_summary">Makale özetini göster</string>
+    <string name="article_hide_article_summary">Makale özetini gizle</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Makale metni, özet oluşturmak için seçilen OpenRouter sağlayıcısına gönderilecek. Devam edilsin mi?</string>
+    <string name="feeds_preload_ai_article_summary">Makale özetlerini önceden oluştur</string>
+    <string name="feeds_preload_ai_article_summary_description">Eşitlemeden sonra bu kaynaktaki okunmamış makaleler için özgün uzunluğun en fazla onda biri kadar özet oluşturun. Gemma cihazda çalışır; bulut modelleri makale metnini seçilen sağlayıcıya gönderir ve ağ bağlantısı gerektirir.</string>
+    <string name="feeds_preload_ai_article_summary_error">Makale özeti ön oluşturma ayarı kaydedilemedi.</string>
 </resources>

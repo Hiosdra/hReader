@@ -695,4 +695,13 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="secret_configured">Skonfigurowano</string>
     <string name="secret_not_configured">Nie skonfigurowano</string>
     <string name="secret_editor_placeholder">Wpisz sekret</string>
+    <string name="article_ai_article_summary">Streszczenie artykułu AI</string>
+    <string name="article_generating_article_summary">Tworzenie streszczenia artykułu…</string>
+    <string name="article_ai_working_article_summary">Streszczenie robocze — to jeszcze nie jest wersja finalna</string>
+    <string name="article_show_article_summary">Pokaż streszczenie</string>
+    <string name="article_hide_article_summary">Ukryj streszczenie</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć streszczenie artykułu. Kontynuować?</string>
+    <string name="feeds_preload_ai_article_summary">Wstępnie generuj streszczenia artykułów</string>
+    <string name="feeds_preload_ai_article_summary_description">Po synchronizacji generuj streszczenia o długości do jednej dziesiątej oryginału dla nieprzeczytanych artykułów z tego źródła. Gemma działa na urządzeniu; modele chmurowe wysyłają tekst artykułu do wybranego dostawcy i wymagają sieci.</string>
+    <string name="feeds_preload_ai_article_summary_error">Nie można zapisać ustawienia wstępnego generowania streszczeń AI.</string>
 </resources>

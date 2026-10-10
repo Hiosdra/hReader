@@ -626,4 +626,13 @@
     <string name="secret_configured">Configurado</string>
     <string name="secret_not_configured">Não configurado</string>
     <string name="secret_editor_placeholder">Insira o segredo</string>
+    <string name="article_ai_article_summary">Resumo do artigo</string>
+    <string name="article_generating_article_summary">Gerando resumo do artigo…</string>
+    <string name="article_ai_working_article_summary">Resumo provisório do artigo — ainda não é final</string>
+    <string name="article_show_article_summary">Mostrar resumo do artigo</string>
+    <string name="article_hide_article_summary">Ocultar resumo do artigo</string>
+    <string name="article_ai_cloud_article_summary_confirmation">O texto do artigo será enviado ao provedor OpenRouter selecionado para criar um resumo. Continuar?</string>
+    <string name="feeds_preload_ai_article_summary">Pré-gerar resumos de artigos</string>
+    <string name="feeds_preload_ai_article_summary_description">Após a sincronização, gere resumos de até um décimo do tamanho original para artigos não lidos desta fonte. O Gemma funciona no dispositivo; modelos em nuvem enviam o texto ao provedor selecionado e precisam de conexão.</string>
+    <string name="feeds_preload_ai_article_summary_error">Não foi possível salvar a configuração de pré-geração de resumos de artigos.</string>
 </resources>

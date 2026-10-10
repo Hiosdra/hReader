@@ -618,4 +618,13 @@
     <string name="secret_configured">設定済み</string>
     <string name="secret_not_configured">未設定</string>
     <string name="secret_editor_placeholder">シークレットを入力</string>
+    <string name="article_ai_article_summary">記事の要約</string>
+    <string name="article_generating_article_summary">記事の要約を生成中…</string>
+    <string name="article_ai_working_article_summary">作業中の要約 — まだ最終版ではありません</string>
+    <string name="article_show_article_summary">記事の要約を表示</string>
+    <string name="article_hide_article_summary">記事の要約を非表示</string>
+    <string name="article_ai_cloud_article_summary_confirmation">記事本文を選択した OpenRouter プロバイダーに送信して要約を作成します。続行しますか？</string>
+    <string name="feeds_preload_ai_article_summary">記事の要約を事前生成</string>
+    <string name="feeds_preload_ai_article_summary_description">同期後、このソースの未読記事について、原文の最大10分の1の長さで要約を生成します。Gemma は端末上で動作します。クラウドモデルは記事本文を選択したプロバイダーに送信し、ネットワーク接続が必要です。</string>
+    <string name="feeds_preload_ai_article_summary_error">記事要約の事前生成設定を保存できませんでした。</string>
 </resources>

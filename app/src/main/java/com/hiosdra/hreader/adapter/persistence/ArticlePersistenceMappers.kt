@@ -68,7 +68,8 @@ internal fun FeedEntity.toArticleFeed(): Feed = Feed(
     siteUrl = siteUrl,
     feedUrl = feedUrl,
     preloadAiOverview = preloadAiOverview,
-    autoMarkRead = autoMarkRead
+    autoMarkRead = autoMarkRead,
+    preloadAiArticleSummary = preloadAiArticleSummary
 )
 
 internal fun Entry.toEntity(): ArticleEntity = ArticleEntity(
@@ -92,5 +93,6 @@ internal fun Feed.toArticleFeedEntity(): FeedEntity = FeedEntity(
     siteUrl = siteUrl,
     feedUrl = feedUrl,
     preloadAiOverview = preloadAiOverview,
-    autoMarkRead = autoMarkRead
+    autoMarkRead = autoMarkRead,
+    preloadAiArticleSummary = preloadAiArticleSummary
 )

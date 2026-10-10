@@ -23,6 +23,7 @@ internal class ArticleContentCoordinator(
     private val uiState: MutableStateFlow<ArticleUiState>,
     private val scope: CoroutineScope,
     private val loadCachedOverview: (Long, String) -> Unit,
+    private val loadCachedArticleSummary: (Long, String) -> Unit,
     private val loadCachedCredibility: (List<Long>) -> Unit
 ) {
     private val requestedContentIds = mutableSetOf<Long>()
@@ -342,6 +343,7 @@ internal class ArticleContentCoordinator(
             }
         }
         loadCachedOverview(entryId, text.html)
+        loadCachedArticleSummary(entryId, text.html)
         requestedContentIds.retainAll(uiState.value.readerWindowIds())
     }
 

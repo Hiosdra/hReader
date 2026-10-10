@@ -371,6 +371,7 @@ fun ArticleScreen(
         onRetryContent = viewModel::retryContent,
         onEffect = dispatchEffect,
         onAiOverview = viewModel::generateAiOverview,
+        onAiArticleSummary = viewModel::generateAiArticleSummary,
         onAnalyzeCredibility = viewModel::analyzeCredibility,
         defaultPaywallBypassMethod = configuredPaywallBypassMethod,
         canUsePaywallBypass = { url ->
@@ -406,6 +407,8 @@ fun ArticleScreen(
             onRetryNavigation = { reloadArticleList() },
             onGenerateAiOverview = viewModel::generateAiOverview,
             onClearOverviewError = viewModel::clearOverviewError,
+            onGenerateAiArticleSummary = viewModel::generateAiArticleSummary,
+            onClearArticleSummaryError = viewModel::clearArticleSummaryError,
             onRetryContent = viewModel::retryContent,
             onClearContentError = viewModel::clearContentError,
             onAnalyzeCredibility = { id ->

@@ -23,6 +23,7 @@ internal class CacheDataCleaner(
             val articleRecordDao = db.articleRecordDao()
             db.articleCredibilityDao().clearAll()
             db.articleAiOverviewDao().clearAll()
+            db.articleAiSummaryDao().clearAll()
             db.articleContentDao().clearAll()
             articleImageDao.clearAll()
             articleImageDao.clearExpectedImages()

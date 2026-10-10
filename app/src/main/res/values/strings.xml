@@ -732,4 +732,13 @@
     <string name="sync_content_failed">Article synchronization failed.</string>
     <string name="sync_article_content_failed">Article content download failed.</string>
     <string name="settings_network_metrics">Network: %1$d requests, %2$d errors, %3$d B transferred, %4$d B/s, average %5$d ms, max %6$d concurrent.</string>
+    <string name="article_ai_article_summary">Article summary</string>
+    <string name="article_generating_article_summary">Generating article summary…</string>
+    <string name="article_ai_working_article_summary">Working article summary — not final yet</string>
+    <string name="article_show_article_summary">Show article summary</string>
+    <string name="article_hide_article_summary">Hide article summary</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Article text will leave this device and be sent to the selected OpenRouter provider to create an article summary. Continue?</string>
+    <string name="feeds_preload_ai_article_summary">Pre-generate article summaries</string>
+    <string name="feeds_preload_ai_article_summary_description">After sync, generate summaries of up to one tenth of the original length for unread articles from this source. Gemma runs on device; cloud models send article text to the selected provider and need a network connection.</string>
+    <string name="feeds_preload_ai_article_summary_error">Could not save the AI article summary preload setting.</string>
 </resources>

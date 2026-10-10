@@ -71,4 +71,45 @@ class ArticleSummaryPipelineTest {
             result.length > ArticleSummaryPlanner.plan(content, 1_024).workingSummaryCharacterLimit
         )
     }
+
+    @Test
+    fun articleSummaryUsesTenPercentWordLimitAndSeparateCacheEntry() = runBlocking {
+        val pipeline = ArticleSummaryPipeline()
+        val content = (1..100).joinToString(" ") { "ArticleWord$it" }
+        val generatedSummary = (1..30).joinToString(" ") { "SummaryWord$it." }
+        var inferenceCalls = 0
+        var finalPrompt = ""
+
+        val result = pipeline.generate(
+            title = "Title",
+            content = content,
+            modelId = "test/article-summary",
+            contextLength = 1_024,
+            onProgress = {},
+            isArticleSummary = true
+        ) { part, _ ->
+            inferenceCalls++
+            if (part.isFinalPart) finalPrompt = part.userPrompt
+            Result.success(if (part.isFinalPart) generatedSummary else "Working summary")
+        }.getOrThrow()
+
+        assertEquals(10, result.split(Regex("\\s+")).size)
+        assertTrue(finalPrompt.contains("within 10 words"))
+        assertTrue(finalPrompt.contains("several sentences"))
+        val callsAfterArticleSummary = inferenceCalls
+
+        pipeline.generate(
+            title = "Title",
+            content = content,
+            modelId = "test/article-summary",
+            contextLength = 1_024,
+            onProgress = {},
+            isArticleSummary = false
+        ) { _, _ ->
+            inferenceCalls++
+            Result.success("Overview")
+        }.getOrThrow()
+
+        assertTrue(inferenceCalls > callsAfterArticleSummary)
+    }
 }

@@ -60,6 +60,7 @@ class ArticleViewModel(
         uiState = _uiState,
         scope = viewModelScope,
         loadCachedOverview = aiCoordinator::loadCachedOverview,
+        loadCachedArticleSummary = aiCoordinator::loadCachedArticleSummary,
         loadCachedCredibility = aiCoordinator::loadCachedCredibility
     )
 
@@ -273,10 +274,14 @@ class ArticleViewModel(
 
     fun generateAiOverview(entryId: Long) = aiCoordinator.generateOverview(entryId)
 
+    fun generateAiArticleSummary(entryId: Long) = aiCoordinator.generateArticleSummary(entryId)
+
     fun analyzeCredibility(entryId: Long, forceRefresh: Boolean = false) =
         aiCoordinator.analyzeCredibility(entryId, forceRefresh)
 
     fun clearOverviewError() = aiCoordinator.clearOverviewError()
+
+    fun clearArticleSummaryError() = aiCoordinator.clearArticleSummaryError()
 
     fun clearScoreError() = aiCoordinator.clearScoreError()
 }

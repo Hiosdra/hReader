@@ -634,4 +634,13 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="secret_configured">Konfiguriert</string>
     <string name="secret_not_configured">Nicht konfiguriert</string>
     <string name="secret_editor_placeholder">Wert eingeben</string>
+    <string name="article_ai_article_summary">Artikelzusammenfassung</string>
+    <string name="article_generating_article_summary">Artikelzusammenfassung wird erstellt…</string>
+    <string name="article_ai_working_article_summary">Vorläufige Artikelzusammenfassung — noch nicht fertig</string>
+    <string name="article_show_article_summary">Artikelzusammenfassung anzeigen</string>
+    <string name="article_hide_article_summary">Artikelzusammenfassung ausblenden</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Der Artikeltext wird an den ausgewählten OpenRouter-Anbieter gesendet, um eine Artikelzusammenfassung zu erstellen. Fortfahren?</string>
+    <string name="feeds_preload_ai_article_summary">Artikelzusammenfassungen vorab erstellen</string>
+    <string name="feeds_preload_ai_article_summary_description">Nach der Synchronisierung Zusammenfassungen mit höchstens einem Zehntel der Originallänge für ungelesene Artikel aus dieser Quelle erstellen. Gemma läuft auf dem Gerät; Cloud-Modelle senden den Artikeltext an den ausgewählten Anbieter und benötigen eine Netzwerkverbindung.</string>
+    <string name="feeds_preload_ai_article_summary_error">Die Einstellung zum Vorab-Erstellen von KI-Artikelzusammenfassungen konnte nicht gespeichert werden.</string>
 </resources>

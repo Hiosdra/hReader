@@ -20,4 +20,17 @@ class ArticleSummaryPlannerTest {
         assertTrue(plan.chunks.size > 1)
         assertTrue(plan.chunks.all { it.length <= 1_229 })
     }
+
+    @Test
+    fun appliesTenPercentCharacterLimitToCjkContent() {
+        val source = "漢".repeat(100)
+        val limit = ArticleSummaryPlanner.finalSummaryLengthLimit(source)
+
+        assertEquals(ArticleSummaryLengthUnit.CHARACTERS, limit.unit)
+        assertEquals(10, limit.value)
+        assertEquals(
+            "漢".repeat(10),
+            ArticleSummaryPlanner.boundFinalSummary("漢".repeat(30), limit)
+        )
+    }
 }

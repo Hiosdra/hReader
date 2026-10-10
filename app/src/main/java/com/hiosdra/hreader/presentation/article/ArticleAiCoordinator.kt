@@ -52,10 +52,14 @@ internal class ArticleAiCoordinator(
                     it.copy(
                         ai = it.ai.copy(
                             aiOverviews = emptyMap(),
+                            aiArticleSummaries = emptyMap(),
                             aiProvider = AiModel.providerFor(modelId),
                             credibilityReports = emptyMap(),
                             generatingOverviewIds = emptySet(),
                             aiOverviewProgress = emptyMap(),
+                            generatingArticleSummaryIds = emptySet(),
+                            aiArticleSummaryProgress = emptyMap(),
+                            articleSummaryError = null,
                             analyzingCredibilityIds = emptySet(),
                             overviewError = null,
                             scoreError = null
@@ -74,6 +78,17 @@ internal class ArticleAiCoordinator(
             val overview = reader.getCachedOverview(entryId, body, modelId) ?: return@launch
             updateVisibleForGeneration(generation, entryId) { current ->
                 current.copy(ai = current.ai.copy(aiOverviews = current.ai.aiOverviews + (entryId to overview)))
+            }
+        }
+    }
+
+    fun loadCachedArticleSummary(entryId: Long, body: String) {
+        val modelId = activeModelId
+        val generation = modelGeneration
+        scope.launch {
+            val summary = reader.getCachedArticleSummary(entryId, body, modelId) ?: return@launch
+            updateVisibleForGeneration(generation, entryId) { current ->
+                current.copy(ai = current.ai.copy(aiArticleSummaries = current.ai.aiArticleSummaries + (entryId to summary)))
             }
         }
     }
@@ -172,6 +187,68 @@ internal class ArticleAiCoordinator(
         }
     }
 
+    fun generateArticleSummary(entryId: Long) {
+        val entry = entry(entryId) ?: return
+        if (entryId in state.value.ai.generatingArticleSummaryIds) return
+        val modelId = activeModelId
+        val generation = modelGeneration
+        state.update {
+            it.copy(
+                ai = it.ai.copy(
+                    generatingArticleSummaryIds = it.ai.generatingArticleSummaryIds + entryId,
+                    aiArticleSummaryProgress = it.ai.aiArticleSummaryProgress +
+                        (entryId to ArticleAiProgress(ArticleAiPhase.PREPARING)),
+                    articleSummaryError = null
+                )
+            )
+        }
+        scope.launch {
+            val content = contentFor(entryId).orEmpty()
+            if (content.isBlank()) {
+                updateForGeneration(generation) { current ->
+                    current.copy(
+                        ai = current.ai.copy(
+                            generatingArticleSummaryIds = current.ai.generatingArticleSummaryIds - entryId,
+                            aiArticleSummaryProgress = current.ai.aiArticleSummaryProgress - entryId,
+                            articleSummaryError = MISSING_CONTENT_MESSAGE
+                        )
+                    )
+                }
+                return@launch
+            }
+            val result = reader.generateArticleSummary(
+                entryId = entryId,
+                title = entry.title,
+                body = content,
+                modelId = modelId
+            ) { progress ->
+                updateVisibleForGeneration(generation, entryId) { current ->
+                    current.copy(
+                        ai = current.ai.copy(
+                            aiArticleSummaryProgress = current.ai.aiArticleSummaryProgress +
+                                (entryId to progress)
+                        )
+                    )
+                }
+            }
+            updateForGeneration(generation) { current ->
+                current.copy(
+                    ai = current.ai.copy(
+                        generatingArticleSummaryIds = current.ai.generatingArticleSummaryIds - entryId,
+                        aiArticleSummaryProgress = current.ai.aiArticleSummaryProgress - entryId,
+                        aiArticleSummaries = result.getOrNull()
+                            ?.takeIf { entryId in current.readerWindowIds() }
+                            ?.let { current.ai.aiArticleSummaries + (entryId to it) }
+                            ?: current.ai.aiArticleSummaries,
+                        articleSummaryError = result.exceptionOrNull()
+                            ?.let { aiErrorText(it, R.string.article_summary_error) }
+                            ?: current.ai.articleSummaryError
+                    )
+                )
+            }
+        }
+    }
+
     fun analyzeCredibility(entryId: Long, forceRefresh: Boolean = false) {
         val entry = entry(entryId) ?: return
         if (!state.value.ai.credibilityEnabled) return
@@ -221,6 +298,10 @@ internal class ArticleAiCoordinator(
         state.update { it.copy(ai = it.ai.copy(overviewError = null)) }
     }
 
+    fun clearArticleSummaryError() {
+        state.update { it.copy(ai = it.ai.copy(articleSummaryError = null)) }
+    }
+
     fun clearScoreError() {
         state.update { it.copy(ai = it.ai.copy(scoreError = null)) }
     }
@@ -241,6 +322,23 @@ internal class ArticleAiCoordinator(
                     current.copy(
                         ai = current.ai.copy(
                             aiOverviews = cached.filterKeys { it in current.readerWindowIds() }
+                        )
+                    )
+                }
+            }
+        }
+        if (overviews.isNotEmpty()) {
+            scope.launch {
+                val cached = overviews.mapNotNull { (entryId, body) ->
+                    runCatchingCancellable {
+                        reader.getCachedArticleSummary(entryId, body, modelId)
+                    }.getOrNull()?.let { entryId to it }
+                }.toMap()
+                if (generation != modelGeneration) return@launch
+                state.update { current ->
+                    current.copy(
+                        ai = current.ai.copy(
+                            aiArticleSummaries = cached.filterKeys { it in current.readerWindowIds() }
                         )
                     )
                 }
