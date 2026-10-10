@@ -74,10 +74,17 @@ interface ArticleMaintenanceDao {
     suspend fun countPrefetchTargetsMissingPages(readStatus: ArticleStatus = ArticleStatus.READ): Int
 
     @Query(
-        "SELECT a.id AS id, a.title AS title, a.url AS url " +
+        "SELECT a.id AS id, a.title AS title, a.url AS url, " +
+            "f.preloadAiOverview AS preloadAiOverview, " +
+            "CASE WHEN f.preloadAiArticleSummary = 1 " +
+            "AND (a.status IS NULL OR a.status != :readStatus) THEN 1 ELSE 0 END " +
+            "AS preloadAiArticleSummary " +
             "FROM articles a INNER JOIN feeds f ON f.id = a.feedId " +
-            "WHERE f.preloadAiOverview = 1 " +
-            "AND ((a.status IS NULL OR a.status != :readStatus) OR a.backlogFetchedAt IS NOT NULL) " +
+            "WHERE (" +
+            "(f.preloadAiOverview = 1 AND " +
+            "((a.status IS NULL OR a.status != :readStatus) OR a.backlogFetchedAt IS NOT NULL)) " +
+            "OR (f.preloadAiArticleSummary = 1 AND " +
+            "(a.status IS NULL OR a.status != :readStatus))) " +
             "ORDER BY CASE WHEN (a.status IS NULL OR a.status != :readStatus) THEN 0 ELSE 1 END, " +
             "a.publishedAt DESC, a.id DESC LIMIT :limit OFFSET :offset"
     )

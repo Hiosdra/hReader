@@ -59,7 +59,9 @@ data class PrefetchTarget(
 data class AiOverviewPrefetchTarget(
     val id: String,
     val title: String,
-    val url: String
+    val url: String,
+    val preloadAiOverview: Boolean,
+    val preloadAiArticleSummary: Boolean
 )
 
 data class FeedUnreadCount(

@@ -1,38 +1,38 @@
 package com.hiosdra.hreader.adapter.persistence
 
 import android.util.Log
-import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiOverviewDao
-import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleAiOverview
-import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiSummaryDao
+import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleAiSummary
+import com.hiosdra.hreader.core.application.port.out.ArticleAiSummaryStore
 import kotlinx.coroutines.CancellationException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Instant
 
-class ArticleAiOverviewRepository(
-    private val dao: ArticleAiOverviewDao
-) : ArticleAiOverviewStore {
+class ArticleAiSummaryRepository(
+    private val dao: ArticleAiSummaryDao
+) : ArticleAiSummaryStore {
     companion object {
-        private const val TAG = "ArticleAiOverviewRepo"
+        private const val TAG = "ArticleAiSummaryRepo"
         private const val DELETE_CHUNK = 500
-        private const val PROMPT_REVISION = "quick-overview-v3"
+        private const val PROMPT_REVISION = "full-article-summary-v2"
     }
 
     override suspend fun get(entryId: Long, content: String, modelId: String): String? = try {
-        dao.get(entryId, modelId, content.cacheHash())?.overview
+        dao.get(entryId, modelId, content.cacheHash())?.summary
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        Log.w(TAG, "Could not read cached overview for entry $entryId", e)
+        Log.w(TAG, "Could not read cached summary for entry $entryId", e)
         null
     }
 
-    override suspend fun save(entryId: Long, content: String, modelId: String, overview: String) {
+    override suspend fun save(entryId: Long, content: String, modelId: String, summary: String) {
         try {
             dao.insert(
-                ArticleAiOverview(
+                ArticleAiSummary(
                     entryId = entryId,
-                    overview = overview,
+                    summary = summary,
                     modelId = modelId,
                     contentHash = content.cacheHash(),
                     generatedAt = Instant.now()
@@ -41,7 +41,7 @@ class ArticleAiOverviewRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w(TAG, "Could not cache overview for entry $entryId", e)
+            Log.w(TAG, "Could not cache summary for entry $entryId", e)
         }
     }
 

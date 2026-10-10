@@ -43,8 +43,8 @@ class MigrationsTest {
 
     @Test
     fun migrationsFormAContinuousChainToTheCurrentSchema() {
-        assertEquals(listOf(15, 16, 17, 18, 19, 20, 21, 22, 23), APP_MIGRATIONS.map { it.startVersion })
-        assertEquals(listOf(16, 17, 18, 19, 20, 21, 22, 23, 24), APP_MIGRATIONS.map { it.endVersion })
+        assertEquals(listOf(15, 16, 17, 18, 19, 20, 21, 22, 23, 24), APP_MIGRATIONS.map { it.startVersion })
+        assertEquals(listOf(16, 17, 18, 19, 20, 21, 22, 23, 24, 25), APP_MIGRATIONS.map { it.endVersion })
         APP_MIGRATIONS.asList().zipWithNext().forEach { (current, next) ->
             assertEquals(current.endVersion, next.startVersion)
         }
@@ -52,14 +52,14 @@ class MigrationsTest {
 
     @Test
     fun everySupportedSchemaVersionMigratesToTheCurrentSchema() {
-        (15..23).forEach { startVersion ->
+        (15..24).forEach { startVersion ->
             val databaseName = "migration-$startVersion-${System.nanoTime()}"
             migrationHelper.createDatabase(databaseName, startVersion).also { database ->
                 seedDatabase(database, startVersion)
                 database.close()
             }
 
-            migrationHelper.runMigrationsAndValidate(databaseName, 24, true, *APP_MIGRATIONS).also {
+            migrationHelper.runMigrationsAndValidate(databaseName, 25, true, *APP_MIGRATIONS).also {
                 assertMigratedData(it, startVersion)
                 it.close()
             }
@@ -229,6 +229,8 @@ class MigrationsTest {
             scalarInt(database, "SELECT preloadAiOverview FROM feeds WHERE id = 7")
         )
         assertEquals(1, scalarInt(database, "SELECT autoMarkRead FROM feeds WHERE id = 7"))
+        assertEquals(0, scalarInt(database, "SELECT preloadAiArticleSummary FROM feeds WHERE id = 7"))
+        assertEquals(0, scalarInt(database, "SELECT COUNT(*) FROM article_ai_summaries"))
         assertEquals(
             if (startVersion >= 22) 1 else 0,
             scalarInt(database, "SELECT COUNT(*) FROM full_sync_seen")

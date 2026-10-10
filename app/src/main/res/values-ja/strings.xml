@@ -139,17 +139,17 @@
     <string name="article_preparing_image">画像を準備中…</string>
     <string name="article_image_sharing_failed">画像を共有できませんでした</string>
     <plurals name="article_reading_time_minutes"><item quantity="other">読了時間 %1$d 分</item></plurals>
-    <string name="article_ai_summary">AI要約</string>
-    <string name="article_ai_working_summary">作業用の要約 — まだ最終版ではありません</string>
-    <string name="article_generating_summary">要約を生成中…</string>
+    <string name="article_ai_summary">短い概要</string>
+    <string name="article_ai_working_summary">概要を作成中 — まだ最終版ではありません</string>
+    <string name="article_generating_summary">短い概要を生成中…</string>
     <string name="article_ai_preparing">記事を準備中…</string>
     <string name="article_ai_loading_model">モデルを読み込み中…</string>
     <string name="article_ai_compacting">%2$d個中%1$d個目を要約中…</string>
     <string name="article_ai_thinking">モデルが思考中（%2$d個中%1$d個目）…</string>
     <string name="article_ai_streaming">回答を受信中（%2$d個中%1$d個目）…</string>
     <string name="article_ai_finalizing">要約を仕上げ中…</string>
-    <string name="article_hide_summary">要約を隠す</string>
-    <string name="article_show_summary">要約を表示</string>
+    <string name="article_hide_summary">概要を非表示</string>
+    <string name="article_show_summary">概要を表示</string>
     <string name="article_analyzing">分析中…</string>
     <string name="article_check_credibility">検証すべき兆候を確認</string>
     <string name="article_credibility">検証すべき兆候</string>
@@ -285,7 +285,7 @@
     <string name="article_ai_cloud_processing">クラウドAI — 確認後、記事本文が選択したプロバイダーに送信されます。</string>
     <string name="article_ai_cloud_summary_privacy">記事本文は確認後に送信されます。</string>
     <string name="article_ai_cloud_confirmation_title">記事本文をクラウドAIに送信しますか？</string>
-    <string name="article_ai_cloud_summary_confirmation">記事本文はこの端末から送信され、概要の生成のため選択したOpenRouterプロバイダーに渡されます。続行しますか？</string>
+    <string name="article_ai_cloud_summary_confirmation">記事本文はこの端末から送信され、選択した OpenRouter プロバイダーで短い概要を生成します。続行しますか？</string>
     <string name="article_ai_cloud_credibility_confirmation">記事本文はこの端末から送信され、検証すべき兆候の生成のため選択したOpenRouterプロバイダーに渡されます。続行しますか？</string>
     <string name="article_ai_cloud_confirm">送信して続行</string>
     <string name="settings_bypass_service">回避サービス</string>
@@ -618,4 +618,13 @@
     <string name="secret_configured">設定済み</string>
     <string name="secret_not_configured">未設定</string>
     <string name="secret_editor_placeholder">シークレットを入力</string>
+    <string name="article_ai_article_summary">記事全体の要約</string>
+    <string name="article_generating_article_summary">記事全体の要約を生成中…</string>
+    <string name="article_ai_working_article_summary">記事全体の要約を作成中 — まだ最終版ではありません</string>
+    <string name="article_show_article_summary">記事全体の要約を表示</string>
+    <string name="article_hide_article_summary">記事全体の要約を非表示</string>
+    <string name="article_ai_cloud_article_summary_confirmation">記事本文を選択した OpenRouter プロバイダーに送信して、記事全体の要約を作成します。続行しますか？</string>
+    <string name="feeds_preload_ai_article_summary">記事全体の要約を事前生成</string>
+    <string name="feeds_preload_ai_article_summary_description">同期後、このソースの未読記事について、原文の最大10分の1の長さで記事全体の要約を生成します。Gemma は端末上で動作します。クラウドモデルは記事本文を選択したプロバイダーに送信し、ネットワーク接続が必要です。</string>
+    <string name="feeds_preload_ai_article_summary_error">記事要約の事前生成設定を保存できませんでした。</string>
 </resources>

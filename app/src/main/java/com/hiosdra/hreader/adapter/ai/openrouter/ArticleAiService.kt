@@ -51,6 +51,21 @@ class ArticleAiService(
         content: String,
         modelId: String,
         onProgress: suspend (ArticleAiProgress) -> Unit
+    ): Result<String> = generateSummary(title, content, modelId, onProgress, isArticleSummary = false)
+
+    override suspend fun generateArticleSummary(
+        title: String,
+        content: String,
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit
+    ): Result<String> = generateSummary(title, content, modelId, onProgress, isArticleSummary = true)
+
+    private suspend fun generateSummary(
+        title: String,
+        content: String,
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit,
+        isArticleSummary: Boolean
     ): Result<String> = withContext(Dispatchers.IO) {
         onProgress(ArticleAiProgress(ArticleAiPhase.PREPARING))
         val plainText = stripToPlainText(content)
@@ -69,7 +84,8 @@ class ArticleAiService(
             content = plainText,
             modelId = modelId,
             contextLength = contextLength,
-            onProgress = onProgress
+            onProgress = onProgress,
+            isArticleSummary = isArticleSummary
         ) { part, onDelta ->
             executeChatStreaming(createSummaryRequest(part, modelId), onDelta)
         }

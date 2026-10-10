@@ -7,6 +7,7 @@ import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleCredibilityDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleImageDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiOverviewDao
+import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleAiSummaryDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMaintenanceDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleMutationDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticlePageSnapshotDao
@@ -25,6 +26,7 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleFts
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImage
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleImageManifest
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleAiOverview
+import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleAiSummary
 import com.hiosdra.hreader.adapter.persistence.room.entity.FeedEntity
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticlePageSnapshot
 import com.hiosdra.hreader.adapter.persistence.room.entity.ArticleReadingPosition
@@ -40,11 +42,12 @@ import com.hiosdra.hreader.adapter.persistence.room.entity.FullSyncSeenEntity
         ArticleImageManifest::class,
         ArticleCredibility::class,
         ArticleAiOverview::class,
+        ArticleAiSummary::class,
         ArticlePageSnapshot::class,
         ArticleReadingPosition::class,
         FullSyncSeenEntity::class
     ],
-    version = 24
+    version = 25
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -60,6 +63,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun articleImageDao(): ArticleImageDao
     abstract fun articleCredibilityDao(): ArticleCredibilityDao
     abstract fun articleAiOverviewDao(): ArticleAiOverviewDao
+    abstract fun articleAiSummaryDao(): ArticleAiSummaryDao
     abstract fun articlePageSnapshotDao(): ArticlePageSnapshotDao
     abstract fun articleReadingPositionDao(): ArticleReadingPositionDao
     abstract fun fullSyncSeenDao(): FullSyncSeenDao

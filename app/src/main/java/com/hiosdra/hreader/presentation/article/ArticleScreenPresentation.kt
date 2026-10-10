@@ -66,6 +66,8 @@ internal data class ArticleScreenPresentationActions(
     val onRetryNavigation: () -> Unit,
     val onGenerateAiOverview: (Long) -> Unit,
     val onClearOverviewError: () -> Unit,
+    val onGenerateAiArticleSummary: (Long) -> Unit,
+    val onClearArticleSummaryError: () -> Unit,
     val onRetryContent: (Long) -> Unit,
     val onClearContentError: () -> Unit,
     val onAnalyzeCredibility: (Long) -> Unit,
@@ -166,6 +168,18 @@ internal fun ArticleScreenPresentation(
                     },
                     onAction = { currentEntryId?.let(actions.onGenerateAiOverview) },
                     onDismissed = actions.onClearOverviewError
+                )
+            }
+
+            ai.articleSummaryError?.let { error ->
+                RetryableSnackbar(
+                    hostState = state.snackbarHostState,
+                    message = error.resolve(),
+                    actionLabel = stringResource(R.string.action_retry).takeIf {
+                        currentEntryId != null
+                    },
+                    onAction = { currentEntryId?.let(actions.onGenerateAiArticleSummary) },
+                    onDismissed = actions.onClearArticleSummaryError
                 )
             }
 
