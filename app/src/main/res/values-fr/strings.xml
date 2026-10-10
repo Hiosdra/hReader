@@ -139,17 +139,17 @@
     <string name="article_preparing_image">Préparation de l’image…</string>
     <string name="article_image_sharing_failed">Échec du partage de l’image</string>
     <plurals name="article_reading_time_minutes"><item quantity="one">Lecture de %1$d min</item><item quantity="many">Lecture de %1$d min</item><item quantity="other">Lecture de %1$d min</item></plurals>
-    <string name="article_ai_summary">Résumé par IA</string>
-    <string name="article_ai_working_summary">Résumé de travail — pas encore final</string>
-    <string name="article_generating_summary">Génération du résumé…</string>
+    <string name="article_ai_summary">Aperçu rapide</string>
+    <string name="article_ai_working_summary">Aperçu provisoire — pas encore définitif</string>
+    <string name="article_generating_summary">Génération de l’aperçu rapide…</string>
     <string name="article_ai_preparing">Préparation de l’article…</string>
     <string name="article_ai_loading_model">Chargement du modèle…</string>
     <string name="article_ai_compacting">Résumé de la partie %1$d sur %2$d…</string>
     <string name="article_ai_thinking">Le modèle réfléchit (partie %1$d sur %2$d)…</string>
     <string name="article_ai_streaming">Réception de la réponse (partie %1$d sur %2$d)…</string>
     <string name="article_ai_finalizing">Finalisation du résumé…</string>
-    <string name="article_hide_summary">Masquer le résumé</string>
-    <string name="article_show_summary">Afficher le résumé</string>
+    <string name="article_hide_summary">Masquer l’aperçu</string>
+    <string name="article_show_summary">Afficher l’aperçu</string>
     <string name="article_analyzing">Analyse…</string>
     <string name="article_check_credibility">Examiner les signaux à vérifier</string>
     <string name="article_credibility">Signaux à vérifier</string>
@@ -285,7 +285,7 @@
     <string name="article_ai_cloud_processing">IA cloud — le texte est envoyé au fournisseur choisi après votre confirmation.</string>
     <string name="article_ai_cloud_summary_privacy">Le texte de l’article est envoyé après confirmation.</string>
     <string name="article_ai_cloud_confirmation_title">Envoyer le texte de l’article à l’IA cloud ?</string>
-    <string name="article_ai_cloud_summary_confirmation">Le texte de l’article quittera cet appareil et sera envoyé au fournisseur OpenRouter choisi pour générer un résumé. Continuer ?</string>
+    <string name="article_ai_cloud_summary_confirmation">Le texte de l’article quittera cet appareil et sera envoyé au fournisseur OpenRouter choisi pour générer un aperçu rapide. Continuer ?</string>
     <string name="article_ai_cloud_credibility_confirmation">Le texte de l’article quittera cet appareil et sera envoyé au fournisseur OpenRouter choisi pour produire des signaux à vérifier. Continuer ?</string>
     <string name="article_ai_cloud_confirm">Envoyer et continuer</string>
     <string name="settings_bypass_service">Service de contournement</string>
@@ -626,13 +626,13 @@
     <string name="secret_configured">Configuré</string>
     <string name="secret_not_configured">Non configuré</string>
     <string name="secret_editor_placeholder">Saisir le secret</string>
-    <string name="article_ai_article_summary">Résumé de l’article</string>
-    <string name="article_generating_article_summary">Génération du résumé de l’article…</string>
-    <string name="article_ai_working_article_summary">Résumé provisoire — pas encore définitif</string>
-    <string name="article_show_article_summary">Afficher le résumé de l’article</string>
-    <string name="article_hide_article_summary">Masquer le résumé de l’article</string>
-    <string name="article_ai_cloud_article_summary_confirmation">Le texte de l’article sera envoyé au fournisseur OpenRouter sélectionné pour créer un résumé. Continuer ?</string>
-    <string name="feeds_preload_ai_article_summary">Pré-générer les résumés d’articles</string>
-    <string name="feeds_preload_ai_article_summary_description">Après la synchronisation, générer des résumés d’au plus un dixième de la longueur originale pour les articles non lus de cette source. Gemma fonctionne sur l’appareil ; les modèles cloud envoient le texte au fournisseur choisi et nécessitent une connexion réseau.</string>
+    <string name="article_ai_article_summary">Résumé complet de l’article</string>
+    <string name="article_generating_article_summary">Génération du résumé complet…</string>
+    <string name="article_ai_working_article_summary">Résumé complet provisoire — pas encore définitif</string>
+    <string name="article_show_article_summary">Afficher le résumé complet</string>
+    <string name="article_hide_article_summary">Masquer le résumé complet</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Le texte de l’article sera envoyé au fournisseur OpenRouter sélectionné pour créer un résumé complet de l’article. Continuer ?</string>
+    <string name="feeds_preload_ai_article_summary">Pré-générer les résumés complets</string>
+    <string name="feeds_preload_ai_article_summary_description">Après la synchronisation, générer des résumés complets d’au plus un dixième de la longueur originale pour les articles non lus de cette source. Gemma fonctionne sur l’appareil ; les modèles cloud envoient le texte au fournisseur choisi et nécessitent une connexion réseau.</string>
     <string name="feeds_preload_ai_article_summary_error">Impossible d’enregistrer le réglage de pré-génération des résumés d’articles.</string>
 </resources>

@@ -169,17 +169,17 @@
         <item quantity="many">%1$d min czytania</item>
         <item quantity="other">%1$d min czytania</item>
     </plurals>
-    <string name="article_ai_summary">Podsumowanie AI</string>
-    <string name="article_ai_working_summary">Podsumowanie robocze — to jeszcze nie jest wersja finalna</string>
-    <string name="article_generating_summary">Tworzenie podsumowania…</string>
+    <string name="article_ai_summary">Krótki przegląd</string>
+    <string name="article_ai_working_summary">Przegląd roboczy — to jeszcze nie jest wersja finalna</string>
+    <string name="article_generating_summary">Tworzenie krótkiego przeglądu…</string>
     <string name="article_ai_preparing">Przygotowywanie artykułu…</string>
     <string name="article_ai_loading_model">Ładowanie modelu…</string>
     <string name="article_ai_compacting">Tworzenie skrótu — część %1$d z %2$d…</string>
     <string name="article_ai_thinking">Model analizuje (część %1$d z %2$d)…</string>
     <string name="article_ai_streaming">Odbieranie odpowiedzi (część %1$d z %2$d)…</string>
     <string name="article_ai_finalizing">Finalizowanie skrótu…</string>
-    <string name="article_hide_summary">Ukryj podsumowanie</string>
-    <string name="article_show_summary">Pokaż podsumowanie</string>
+    <string name="article_hide_summary">Ukryj przegląd</string>
+    <string name="article_show_summary">Pokaż przegląd</string>
     <string name="article_analyzing">Analizowanie…</string>
     <string name="article_check_credibility">Przejrzyj sygnały do weryfikacji</string>
     <string name="article_credibility">Sygnały do weryfikacji</string>
@@ -325,7 +325,7 @@
     <string name="article_ai_cloud_processing">AI w chmurze — po potwierdzeniu tekst artykułu zostanie wysłany do wybranego dostawcy.</string>
     <string name="article_ai_cloud_summary_privacy">Tekst artykułu wyślemy po potwierdzeniu.</string>
     <string name="article_ai_cloud_confirmation_title">Wysłać tekst artykułu do chmurowego AI?</string>
-    <string name="article_ai_cloud_summary_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć podsumowanie. Kontynuować?</string>
+    <string name="article_ai_cloud_summary_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby wygenerować krótki przegląd. Kontynuować?</string>
     <string name="article_ai_cloud_credibility_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć sygnały do weryfikacji. Kontynuować?</string>
     <string name="article_ai_cloud_confirm">Wyślij i kontynuuj</string>
     <string name="settings_local_ai">AI na urządzeniu</string>
@@ -695,13 +695,13 @@ Zsynchronizuj artykuły, aby zobaczyć statystyki.</string>
     <string name="secret_configured">Skonfigurowano</string>
     <string name="secret_not_configured">Nie skonfigurowano</string>
     <string name="secret_editor_placeholder">Wpisz sekret</string>
-    <string name="article_ai_article_summary">Streszczenie artykułu AI</string>
-    <string name="article_generating_article_summary">Tworzenie streszczenia artykułu…</string>
-    <string name="article_ai_working_article_summary">Streszczenie robocze — to jeszcze nie jest wersja finalna</string>
-    <string name="article_show_article_summary">Pokaż streszczenie</string>
-    <string name="article_hide_article_summary">Ukryj streszczenie</string>
-    <string name="article_ai_cloud_article_summary_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć streszczenie artykułu. Kontynuować?</string>
-    <string name="feeds_preload_ai_article_summary">Wstępnie generuj streszczenia artykułów</string>
-    <string name="feeds_preload_ai_article_summary_description">Po synchronizacji generuj streszczenia o długości do jednej dziesiątej oryginału dla nieprzeczytanych artykułów z tego źródła. Gemma działa na urządzeniu; modele chmurowe wysyłają tekst artykułu do wybranego dostawcy i wymagają sieci.</string>
+    <string name="article_ai_article_summary">Skrót artykułu</string>
+    <string name="article_generating_article_summary">Tworzenie skrótu artykułu…</string>
+    <string name="article_ai_working_article_summary">Roboczy skrót artykułu — to jeszcze nie jest wersja finalna</string>
+    <string name="article_show_article_summary">Pokaż skrót artykułu</string>
+    <string name="article_hide_article_summary">Ukryj skrót artykułu</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Tekst artykułu opuści to urządzenie i zostanie wysłany do wybranego dostawcy OpenRouter, aby utworzyć skrót całego artykułu. Kontynuować?</string>
+    <string name="feeds_preload_ai_article_summary">Wstępnie generuj skróty artykułów</string>
+    <string name="feeds_preload_ai_article_summary_description">Po synchronizacji generuj skróty obejmujące całą treść, o długości do jednej dziesiątej oryginału, dla nieprzeczytanych artykułów z tego źródła. Gemma działa na urządzeniu; modele chmurowe wysyłają tekst artykułu do wybranego dostawcy i wymagają sieci.</string>
     <string name="feeds_preload_ai_article_summary_error">Nie można zapisać ustawienia wstępnego generowania streszczeń AI.</string>
 </resources>

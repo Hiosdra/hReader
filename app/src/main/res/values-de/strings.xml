@@ -148,17 +148,17 @@
         <item quantity="one">%1$d Min. Lesezeit</item>
         <item quantity="other">%1$d Min. Lesezeit</item>
     </plurals>
-    <string name="article_ai_summary">KI-Zusammenfassung</string>
-    <string name="article_ai_working_summary">Arbeitszusammenfassung — noch nicht final</string>
-    <string name="article_generating_summary">Zusammenfassung wird erstellt…</string>
+    <string name="article_ai_summary">Kurzer Überblick</string>
+    <string name="article_ai_working_summary">Vorläufiger Überblick — noch nicht final</string>
+    <string name="article_generating_summary">Kurzer Überblick wird erstellt…</string>
     <string name="article_ai_preparing">Artikel wird vorbereitet…</string>
     <string name="article_ai_loading_model">Modell wird geladen…</string>
     <string name="article_ai_compacting">Teil %1$d von %2$d wird zusammengefasst…</string>
     <string name="article_ai_thinking">Modell denkt nach (Teil %1$d von %2$d)…</string>
     <string name="article_ai_streaming">Antwort wird empfangen (Teil %1$d von %2$d)…</string>
     <string name="article_ai_finalizing">Zusammenfassung wird abgeschlossen…</string>
-    <string name="article_hide_summary">Zusammenfassung ausblenden</string>
-    <string name="article_show_summary">Zusammenfassung anzeigen</string>
+    <string name="article_hide_summary">Überblick ausblenden</string>
+    <string name="article_show_summary">Überblick anzeigen</string>
     <string name="article_analyzing">Analyse läuft…</string>
     <string name="article_check_credibility">Verifizierungssignale prüfen</string>
     <string name="article_credibility">Verifizierungssignale</string>
@@ -296,7 +296,7 @@
     <string name="article_ai_cloud_processing">Cloud-KI — der Artikeltext wird nach deiner Bestätigung an den ausgewählten Anbieter gesendet.</string>
     <string name="article_ai_cloud_summary_privacy">Artikeltext senden wir erst nach Bestätigung.</string>
     <string name="article_ai_cloud_confirmation_title">Artikeltext an Cloud-KI senden?</string>
-    <string name="article_ai_cloud_summary_confirmation">Der Artikeltext verlässt dieses Gerät und wird zur Erstellung einer Zusammenfassung an den ausgewählten OpenRouter-Anbieter gesendet. Fortfahren?</string>
+    <string name="article_ai_cloud_summary_confirmation">Der Artikeltext verlässt dieses Gerät und wird zur Erstellung eines kurzen Überblicks an den ausgewählten OpenRouter-Anbieter gesendet. Fortfahren?</string>
     <string name="article_ai_cloud_credibility_confirmation">Der Artikeltext verlässt dieses Gerät und wird zur Erstellung von Verifizierungssignalen an den ausgewählten OpenRouter-Anbieter gesendet. Fortfahren?</string>
     <string name="article_ai_cloud_confirm">Senden und fortfahren</string>
     <string name="settings_bypass_service">Umgehungsdienst</string>
@@ -634,13 +634,13 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="secret_configured">Konfiguriert</string>
     <string name="secret_not_configured">Nicht konfiguriert</string>
     <string name="secret_editor_placeholder">Wert eingeben</string>
-    <string name="article_ai_article_summary">Artikelzusammenfassung</string>
-    <string name="article_generating_article_summary">Artikelzusammenfassung wird erstellt…</string>
-    <string name="article_ai_working_article_summary">Vorläufige Artikelzusammenfassung — noch nicht fertig</string>
-    <string name="article_show_article_summary">Artikelzusammenfassung anzeigen</string>
-    <string name="article_hide_article_summary">Artikelzusammenfassung ausblenden</string>
-    <string name="article_ai_cloud_article_summary_confirmation">Der Artikeltext wird an den ausgewählten OpenRouter-Anbieter gesendet, um eine Artikelzusammenfassung zu erstellen. Fortfahren?</string>
-    <string name="feeds_preload_ai_article_summary">Artikelzusammenfassungen vorab erstellen</string>
-    <string name="feeds_preload_ai_article_summary_description">Nach der Synchronisierung Zusammenfassungen mit höchstens einem Zehntel der Originallänge für ungelesene Artikel aus dieser Quelle erstellen. Gemma läuft auf dem Gerät; Cloud-Modelle senden den Artikeltext an den ausgewählten Anbieter und benötigen eine Netzwerkverbindung.</string>
+    <string name="article_ai_article_summary">Ausführliche Artikelzusammenfassung</string>
+    <string name="article_generating_article_summary">Ausführliche Artikelzusammenfassung wird erstellt…</string>
+    <string name="article_ai_working_article_summary">Vorläufige ausführliche Artikelzusammenfassung — noch nicht final</string>
+    <string name="article_show_article_summary">Ausführliche Zusammenfassung anzeigen</string>
+    <string name="article_hide_article_summary">Ausführliche Zusammenfassung ausblenden</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Der Artikeltext wird an den ausgewählten OpenRouter-Anbieter gesendet, um eine ausführliche Zusammenfassung des ganzen Artikels zu erstellen. Fortfahren?</string>
+    <string name="feeds_preload_ai_article_summary">Ausführliche Artikelzusammenfassungen vorab erstellen</string>
+    <string name="feeds_preload_ai_article_summary_description">Nach der Synchronisierung ausführliche Zusammenfassungen mit höchstens einem Zehntel der Originallänge für ungelesene Artikel aus dieser Quelle erstellen. Gemma läuft auf dem Gerät; Cloud-Modelle senden den Artikeltext an den ausgewählten Anbieter und benötigen eine Netzwerkverbindung.</string>
     <string name="feeds_preload_ai_article_summary_error">Die Einstellung zum Vorab-Erstellen von KI-Artikelzusammenfassungen konnte nicht gespeichert werden.</string>
 </resources>

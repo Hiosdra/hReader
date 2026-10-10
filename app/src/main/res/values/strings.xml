@@ -166,17 +166,17 @@
         <item quantity="one">%1$d min read</item>
         <item quantity="other">%1$d min read</item>
     </plurals>
-    <string name="article_ai_summary">AI summary</string>
-    <string name="article_ai_working_summary">Working summary — not final yet</string>
-    <string name="article_generating_summary">Generating summary…</string>
+    <string name="article_ai_summary">Quick overview</string>
+    <string name="article_ai_working_summary">Working overview — not final yet</string>
+    <string name="article_generating_summary">Generating quick overview…</string>
     <string name="article_ai_preparing">Preparing article…</string>
     <string name="article_ai_loading_model">Loading model…</string>
     <string name="article_ai_compacting">Summarizing part %1$d of %2$d…</string>
     <string name="article_ai_thinking">Model is thinking (part %1$d of %2$d)…</string>
     <string name="article_ai_streaming">Receiving answer (part %1$d of %2$d)…</string>
     <string name="article_ai_finalizing">Finishing summary…</string>
-    <string name="article_hide_summary">Hide summary</string>
-    <string name="article_show_summary">Show summary</string>
+    <string name="article_hide_summary">Hide overview</string>
+    <string name="article_show_summary">Show overview</string>
     <string name="article_analyzing">Analyzing…</string>
     <string name="article_check_credibility">Review verification signals</string>
     <string name="article_credibility">Verification signals</string>
@@ -329,7 +329,7 @@
     <string name="article_ai_cloud_processing">Cloud AI — article text is sent to the selected provider after you confirm.</string>
     <string name="article_ai_cloud_summary_privacy">Article text is sent after you confirm.</string>
     <string name="article_ai_cloud_confirmation_title">Send article text to cloud AI?</string>
-    <string name="article_ai_cloud_summary_confirmation">The article text will leave this device and be sent to the selected OpenRouter provider to generate a summary. Continue?</string>
+    <string name="article_ai_cloud_summary_confirmation">The article text will leave this device and be sent to the selected OpenRouter provider to generate a quick overview. Continue?</string>
     <string name="article_ai_cloud_credibility_confirmation">The article text will leave this device and be sent to the selected OpenRouter provider to produce verification signals. Continue?</string>
     <string name="article_ai_cloud_confirm">Send and continue</string>
     <string name="settings_local_ai">On-device AI</string>
@@ -732,13 +732,13 @@
     <string name="sync_content_failed">Article synchronization failed.</string>
     <string name="sync_article_content_failed">Article content download failed.</string>
     <string name="settings_network_metrics">Network: %1$d requests, %2$d errors, %3$d B transferred, %4$d B/s, average %5$d ms, max %6$d concurrent.</string>
-    <string name="article_ai_article_summary">Article summary</string>
-    <string name="article_generating_article_summary">Generating article summary…</string>
-    <string name="article_ai_working_article_summary">Working article summary — not final yet</string>
-    <string name="article_show_article_summary">Show article summary</string>
-    <string name="article_hide_article_summary">Hide article summary</string>
-    <string name="article_ai_cloud_article_summary_confirmation">Article text will leave this device and be sent to the selected OpenRouter provider to create an article summary. Continue?</string>
-    <string name="feeds_preload_ai_article_summary">Pre-generate article summaries</string>
-    <string name="feeds_preload_ai_article_summary_description">After sync, generate summaries of up to one tenth of the original length for unread articles from this source. Gemma runs on device; cloud models send article text to the selected provider and need a network connection.</string>
+    <string name="article_ai_article_summary">Full article summary</string>
+    <string name="article_generating_article_summary">Generating full article summary…</string>
+    <string name="article_ai_working_article_summary">Working full article summary — not final yet</string>
+    <string name="article_show_article_summary">Show full summary</string>
+    <string name="article_hide_article_summary">Hide full summary</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Article text will leave this device and be sent to the selected OpenRouter provider to create a full article summary. Continue?</string>
+    <string name="feeds_preload_ai_article_summary">Pre-generate full article summaries</string>
+    <string name="feeds_preload_ai_article_summary_description">After sync, generate full article summaries of up to one tenth of the original length for unread articles from this source. Gemma runs on device; cloud models send article text to the selected provider and need a network connection.</string>
     <string name="feeds_preload_ai_article_summary_error">Could not save the AI article summary preload setting.</string>
 </resources>

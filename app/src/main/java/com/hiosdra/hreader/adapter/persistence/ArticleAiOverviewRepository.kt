@@ -15,10 +15,11 @@ class ArticleAiOverviewRepository(
     companion object {
         private const val TAG = "ArticleAiOverviewRepo"
         private const val DELETE_CHUNK = 500
+        private const val PROMPT_REVISION = "quick-overview-v2"
     }
 
     override suspend fun get(entryId: Long, content: String, modelId: String): String? = try {
-        dao.get(entryId, modelId, content.sha256())?.overview
+        dao.get(entryId, modelId, content.cacheHash())?.overview
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
@@ -33,7 +34,7 @@ class ArticleAiOverviewRepository(
                     entryId = entryId,
                     overview = overview,
                     modelId = modelId,
-                    contentHash = content.sha256(),
+                    contentHash = content.cacheHash(),
                     generatedAt = Instant.now()
                 )
             )
@@ -52,4 +53,6 @@ class ArticleAiOverviewRepository(
     private fun String.sha256(): String = MessageDigest.getInstance("SHA-256")
         .digest(toByteArray(StandardCharsets.UTF_8))
         .joinToString("") { byte -> "%02x".format(byte) }
+
+    private fun String.cacheHash(): String = "$PROMPT_REVISION\u0000$this".sha256()
 }

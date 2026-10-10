@@ -139,17 +139,17 @@
     <string name="article_preparing_image">Görsel hazırlanıyor…</string>
     <string name="article_image_sharing_failed">Görsel paylaşılamadı</string>
     <plurals name="article_reading_time_minutes"><item quantity="one">%1$d dakikalık okuma</item><item quantity="other">%1$d dakikalık okuma</item></plurals>
-    <string name="article_ai_summary">Yapay zekâ özeti</string>
-    <string name="article_ai_working_summary">Çalışma özeti — henüz son hâli değil</string>
-    <string name="article_generating_summary">Özet oluşturuluyor…</string>
+    <string name="article_ai_summary">Kısa genel bakış</string>
+    <string name="article_ai_working_summary">Genel bakış taslağı — henüz son hâli değil</string>
+    <string name="article_generating_summary">Kısa genel bakış oluşturuluyor…</string>
     <string name="article_ai_preparing">Makale hazırlanıyor…</string>
     <string name="article_ai_loading_model">Model yükleniyor…</string>
     <string name="article_ai_compacting">%2$d bölümden %1$d. bölüm özetleniyor…</string>
     <string name="article_ai_thinking">Model düşünüyor (%2$d bölümden %1$d. bölüm)…</string>
     <string name="article_ai_streaming">Yanıt alınıyor (%2$d bölümden %1$d. bölüm)…</string>
     <string name="article_ai_finalizing">Özet tamamlanıyor…</string>
-    <string name="article_hide_summary">Özeti gizle</string>
-    <string name="article_show_summary">Özeti göster</string>
+    <string name="article_hide_summary">Genel bakışı gizle</string>
+    <string name="article_show_summary">Genel bakışı göster</string>
     <string name="article_analyzing">Analiz ediliyor…</string>
     <string name="article_check_credibility">Doğrulama işaretlerini incele</string>
     <string name="article_credibility">Doğrulama işaretleri</string>
@@ -285,7 +285,7 @@
     <string name="article_ai_cloud_processing">Bulut AI — onayınızdan sonra makale metni seçilen sağlayıcıya gönderilir.</string>
     <string name="article_ai_cloud_summary_privacy">Makale metni onayınızdan sonra gönderilir.</string>
     <string name="article_ai_cloud_confirmation_title">Makale metni bulut AI’ya gönderilsin mi?</string>
-    <string name="article_ai_cloud_summary_confirmation">Makale metni bu cihazdan ayrılıp özet oluşturmak için seçilen OpenRouter sağlayıcısına gönderilecek. Devam edilsin mi?</string>
+    <string name="article_ai_cloud_summary_confirmation">Kısa bir genel bakış oluşturmak için makale metni bu cihazdan ayrılıp seçilen OpenRouter sağlayıcısına gönderilecek. Devam edilsin mi?</string>
     <string name="article_ai_cloud_credibility_confirmation">Makale metni bu cihazdan ayrılıp doğrulama işaretleri oluşturmak için seçilen OpenRouter sağlayıcısına gönderilecek. Devam edilsin mi?</string>
     <string name="article_ai_cloud_confirm">Gönder ve devam et</string>
     <string name="settings_bypass_service">Atlama hizmeti</string>
@@ -622,13 +622,13 @@
     <string name="secret_configured">Yapılandırıldı</string>
     <string name="secret_not_configured">Yapılandırılmadı</string>
     <string name="secret_editor_placeholder">Gizli değeri girin</string>
-    <string name="article_ai_article_summary">Makale özeti</string>
-    <string name="article_generating_article_summary">Makale özeti oluşturuluyor…</string>
-    <string name="article_ai_working_article_summary">Taslak makale özeti — henüz son hâli değil</string>
-    <string name="article_show_article_summary">Makale özetini göster</string>
-    <string name="article_hide_article_summary">Makale özetini gizle</string>
-    <string name="article_ai_cloud_article_summary_confirmation">Makale metni, özet oluşturmak için seçilen OpenRouter sağlayıcısına gönderilecek. Devam edilsin mi?</string>
+    <string name="article_ai_article_summary">Makalenin tam özeti</string>
+    <string name="article_generating_article_summary">Makalenin tam özeti oluşturuluyor…</string>
+    <string name="article_ai_working_article_summary">Makalenin tam özeti taslağı — henüz son hâli değil</string>
+    <string name="article_show_article_summary">Tam özeti göster</string>
+    <string name="article_hide_article_summary">Tam özeti gizle</string>
+    <string name="article_ai_cloud_article_summary_confirmation">Makalenin tam özetini oluşturmak için makale metni seçilen OpenRouter sağlayıcısına gönderilecek. Devam edilsin mi?</string>
     <string name="feeds_preload_ai_article_summary">Makale özetlerini önceden oluştur</string>
-    <string name="feeds_preload_ai_article_summary_description">Eşitlemeden sonra bu kaynaktaki okunmamış makaleler için özgün uzunluğun en fazla onda biri kadar özet oluşturun. Gemma cihazda çalışır; bulut modelleri makale metnini seçilen sağlayıcıya gönderir ve ağ bağlantısı gerektirir.</string>
+    <string name="feeds_preload_ai_article_summary_description">Eşitlemeden sonra bu kaynaktaki okunmamış makaleler için özgün uzunluğun en fazla onda biri kadar tam özet oluşturun. Gemma cihazda çalışır; bulut modelleri makale metnini seçilen sağlayıcıya gönderir ve ağ bağlantısı gerektirir.</string>
     <string name="feeds_preload_ai_article_summary_error">Makale özeti ön oluşturma ayarı kaydedilemedi.</string>
 </resources>

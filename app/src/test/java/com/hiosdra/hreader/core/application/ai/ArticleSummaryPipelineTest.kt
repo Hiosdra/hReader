@@ -95,7 +95,8 @@ class ArticleSummaryPipelineTest {
 
         assertEquals(10, result.split(Regex("\\s+")).size)
         assertTrue(finalPrompt.contains("within 10 words"))
-        assertTrue(finalPrompt.contains("several sentences"))
+        assertTrue(finalPrompt.contains("cover every major point"))
+        assertTrue(finalPrompt.contains("aiming close to the limit"))
         val callsAfterArticleSummary = inferenceCalls
 
         pipeline.generate(
@@ -111,5 +112,70 @@ class ArticleSummaryPipelineTest {
         }.getOrThrow()
 
         assertTrue(inferenceCalls > callsAfterArticleSummary)
+    }
+
+    @Test
+    fun quickOverviewAndFullArticleSummaryHaveDistinctGoals() = runBlocking {
+        val pipeline = ArticleSummaryPipeline()
+        val content = (1..200).joinToString(" ") { "ArticleWord$it." }
+        var overviewPrompt = ""
+        var articleSummaryPrompt = ""
+
+        pipeline.generate(
+            title = "Title",
+            content = content,
+            modelId = "test/distinct-summary-styles",
+            contextLength = 8_192,
+            onProgress = {}
+        ) { part, _ ->
+            overviewPrompt = part.userPrompt
+            Result.success("A very brief overview.")
+        }.getOrThrow()
+
+        pipeline.generate(
+            title = "Title",
+            content = content,
+            modelId = "test/distinct-summary-styles",
+            contextLength = 8_192,
+            onProgress = {},
+            isArticleSummary = true
+        ) { part, _ ->
+            articleSummaryPrompt = part.userPrompt
+            Result.success("A detailed summary of all major article points.")
+        }.getOrThrow()
+
+        assertTrue(overviewPrompt.contains("one concise sentence, no more than 25 words"))
+        assertTrue(overviewPrompt.contains("omit supporting details"))
+        assertTrue(!overviewPrompt.contains("without reading the original"))
+        assertTrue(articleSummaryPrompt.contains("without reading the original"))
+        assertTrue(articleSummaryPrompt.contains("cover every major point or section"))
+        assertTrue(articleSummaryPrompt.contains("aiming close to the limit"))
+        assertTrue(articleSummaryPrompt.contains("Use multiple sentences"))
+        assertTrue(articleSummaryPrompt.contains("within 20 words"))
+    }
+
+    @Test
+    fun gemmaFullArticleSummaryKeepsDetailedContextAcrossParts() = runBlocking {
+        val pipeline = ArticleSummaryPipeline()
+        val content = (1..300).joinToString(" ") { "Section $it explains an important fact." }
+        var intermediatePrompt = ""
+
+        pipeline.generate(
+            title = "Title",
+            content = content,
+            modelId = "test/gemma-detailed-summary",
+            contextLength = 1_024,
+            onProgress = {},
+            promptPolicy = ArticleSummaryPromptPolicy.GEMMA,
+            isArticleSummary = true
+        ) { part, _ ->
+            if (!part.isFinalPart) intermediatePrompt = part.userPrompt
+            Result.success(if (part.isFinalPart) "A sufficiently detailed final summary." else "Retained facts.")
+        }.getOrThrow()
+
+        assertTrue(intermediatePrompt.contains("cumulative, detailed digest"))
+        assertTrue(intermediatePrompt.contains("each major point"))
+        assertTrue(intermediatePrompt.contains("CZYTAJ TEŻ"))
+        assertTrue(!intermediatePrompt.contains("compact factual working overview"))
     }
 }
