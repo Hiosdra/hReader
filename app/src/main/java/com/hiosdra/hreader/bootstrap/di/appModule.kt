@@ -11,6 +11,7 @@ import com.hiosdra.hreader.adapter.persistence.ArticleContentReader
 import com.hiosdra.hreader.adapter.persistence.ArticleContentService
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewPrefetchRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleAiOverviewRepository
+import com.hiosdra.hreader.adapter.persistence.ArticleAiSummaryRepository
 import com.hiosdra.hreader.adapter.persistence.ArticleImageDownloadCoordinator
 import com.hiosdra.hreader.adapter.persistence.ArticleImageFileStore
 import com.hiosdra.hreader.adapter.persistence.ArticleImageIndex
@@ -77,6 +78,7 @@ import com.hiosdra.hreader.core.application.port.out.AiModelCatalogCache
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
+import com.hiosdra.hreader.core.application.port.out.ArticleAiSummaryStore
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewPrefetchStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
@@ -176,6 +178,7 @@ val appModule = module {
     single { get<AppDatabase>().articleImageDao() }
     single { get<AppDatabase>().articleCredibilityDao() }
     single { get<AppDatabase>().articleAiOverviewDao() }
+    single { get<AppDatabase>().articleAiSummaryDao() }
     single { get<AppDatabase>().articlePageSnapshotDao() }
     single { get<AppDatabase>().fullSyncSeenDao() }
     single { RemoteResourcePolicyAdapter(get<BackendPreferences>()) }
@@ -295,7 +298,7 @@ val appModule = module {
             maintenance = get()
         )
     }
-    single { CacheMaintenanceRepository(get(), get(), get(), get(), get(), get()) }
+    single { CacheMaintenanceRepository(get(), get(), get(), get(), get(), get(), get()) }
     single<CacheMaintenanceStore> { get<CacheMaintenanceRepository>() }
     single {
         CacheOwnershipCoordinator(
@@ -309,6 +312,8 @@ val appModule = module {
     single<CacheStore> { get<CacheOwnershipCoordinator>() }
     single { ArticleAiOverviewRepository(get()) }
     single<ArticleAiOverviewStore> { get<ArticleAiOverviewRepository>() }
+    single { ArticleAiSummaryRepository(get()) }
+    single<ArticleAiSummaryStore> { get<ArticleAiSummaryRepository>() }
     single { PaywallBypassService() }
     single<PaywallBypass> { get<PaywallBypassService>() }
     single { PreferenceStorage(androidApplication()) }
@@ -398,6 +403,7 @@ val appModule = module {
             pages = get<ArticlePageStore>(),
             ai = get<ArticleAiGateway>(),
             overviews = get<ArticleAiOverviewStore>(),
+            summaries = get<ArticleAiSummaryStore>(),
             credibility = get<CredibilityStore>(),
             preferences = get<ReaderPreferences>(),
             aiPreferences = get<AiPreferences>(),
@@ -456,7 +462,7 @@ val appModule = module {
     single { StorageUseCase(get<StorageStore>(), get<SyncRequester>()) }
     worker { ContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { ArticleContentSyncWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
+    worker { ArticleAiOverviewPreloadWorker(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { CacheMaintenanceWorker(get(), get(), get(), get(), get(), get()) }
     worker { FullPageSyncWorker(get(), get(), get(), get(), get(), get(), get(), get()) }
     worker { TtsModelDownloadWorker(get(), get(), get(), get()) }

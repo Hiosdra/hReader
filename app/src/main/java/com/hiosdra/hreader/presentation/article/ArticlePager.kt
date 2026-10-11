@@ -33,6 +33,7 @@ internal data class ArticlePagerBindings(
     val onRetryContent: (Long) -> Unit,
     val onEffect: (ArticleRouteEffect) -> Unit = {},
     val onAiOverview: ((Long) -> Unit)? = null,
+    val onAiArticleSummary: ((Long) -> Unit)? = null,
     val onAnalyzeCredibility: ((Long, Boolean) -> Unit)? = null,
     val defaultPaywallBypassMethod: PaywallBypassMethod = PaywallBypassMethod.SMRY_AI,
     val canUsePaywallBypass: (String) -> Boolean = { false },

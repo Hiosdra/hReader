@@ -75,7 +75,11 @@ data class ArticleAiState(
     val credibilityEnabled: Boolean = false,
     val credibilityReports: Map<Long, CredibilityReport> = emptyMap(),
     val analyzingCredibilityIds: Set<Long> = emptySet(),
-    val scoreError: UiText? = null
+    val scoreError: UiText? = null,
+    val aiArticleSummaries: Map<Long, String> = emptyMap(),
+    val generatingArticleSummaryIds: Set<Long> = emptySet(),
+    val aiArticleSummaryProgress: Map<Long, ArticleAiProgress> = emptyMap(),
+    val articleSummaryError: UiText? = null
 )
 
 data class ArticleUiState(
@@ -146,7 +150,10 @@ internal fun ArticleContentState.trimTo(retainedIds: Set<Long>): ArticleContentS
 
 internal fun ArticleAiState.trimTo(retainedIds: Set<Long>): ArticleAiState = copy(
     aiOverviews = aiOverviews.filterKeys { it in retainedIds },
+    aiArticleSummaries = aiArticleSummaries.filterKeys { it in retainedIds },
     aiOverviewProgress = aiOverviewProgress.filterKeys { it in retainedIds },
+    aiArticleSummaryProgress = aiArticleSummaryProgress.filterKeys { it in retainedIds },
+    generatingArticleSummaryIds = generatingArticleSummaryIds.filterTo(mutableSetOf()) { it in retainedIds },
     credibilityReports = credibilityReports.filterKeys { it in retainedIds }
 )
 

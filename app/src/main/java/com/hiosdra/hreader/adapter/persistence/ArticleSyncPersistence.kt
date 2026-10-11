@@ -144,7 +144,8 @@ internal class ArticleSyncPersistence(
             val existing = existingSettings[feed.id]
             feed.copy(
                 preloadAiOverview = existing?.preloadAiOverview ?: feed.preloadAiOverview,
-                autoMarkRead = existing?.autoMarkRead ?: feed.autoMarkRead
+                autoMarkRead = existing?.autoMarkRead ?: feed.autoMarkRead,
+                preloadAiArticleSummary = existing?.preloadAiArticleSummary ?: feed.preloadAiArticleSummary
             )
         }
     }

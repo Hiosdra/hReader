@@ -139,17 +139,17 @@
     <string name="article_preparing_image">正在准备图片…</string>
     <string name="article_image_sharing_failed">图片分享失败</string>
     <plurals name="article_reading_time_minutes"><item quantity="other">阅读 %1$d 分钟</item></plurals>
-    <string name="article_ai_summary">AI 摘要</string>
-    <string name="article_ai_working_summary">工作摘要 — 还不是最终版本</string>
-    <string name="article_generating_summary">正在生成摘要…</string>
+    <string name="article_ai_summary">快速概览</string>
+    <string name="article_ai_working_summary">概览草稿 — 尚未完成</string>
+    <string name="article_generating_summary">正在生成快速概览…</string>
     <string name="article_ai_preparing">正在准备文章…</string>
     <string name="article_ai_loading_model">正在加载模型…</string>
     <string name="article_ai_compacting">正在总结第 %1$d/%2$d 部分…</string>
     <string name="article_ai_thinking">模型思考中（第 %1$d/%2$d 部分）…</string>
     <string name="article_ai_streaming">正在接收回答（第 %1$d/%2$d 部分）…</string>
     <string name="article_ai_finalizing">正在完成摘要…</string>
-    <string name="article_hide_summary">隐藏摘要</string>
-    <string name="article_show_summary">显示摘要</string>
+    <string name="article_hide_summary">隐藏概览</string>
+    <string name="article_show_summary">显示概览</string>
     <string name="article_analyzing">正在分析…</string>
     <string name="article_check_credibility">查看待核实信号</string>
     <string name="article_credibility">待核实信号</string>
@@ -285,7 +285,7 @@
     <string name="article_ai_cloud_processing">云端 AI — 确认后，文章文本会发送给所选提供商。</string>
     <string name="article_ai_cloud_summary_privacy">文章文本会在确认后发送。</string>
     <string name="article_ai_cloud_confirmation_title">要将文章文本发送给云端 AI 吗？</string>
-    <string name="article_ai_cloud_summary_confirmation">文章文本将离开此设备，并发送给所选 OpenRouter 提供商以生成摘要。继续吗？</string>
+    <string name="article_ai_cloud_summary_confirmation">文章文本将离开此设备并发送给所选 OpenRouter 提供商以生成快速概览。继续吗？</string>
     <string name="article_ai_cloud_credibility_confirmation">文章文本将离开此设备，并发送给所选 OpenRouter 提供商以生成待核实信号。继续吗？</string>
     <string name="article_ai_cloud_confirm">发送并继续</string>
     <string name="settings_bypass_service">绕过服务</string>
@@ -618,4 +618,13 @@
     <string name="secret_configured">已配置</string>
     <string name="secret_not_configured">未配置</string>
     <string name="secret_editor_placeholder">输入密钥</string>
+    <string name="article_ai_article_summary">全文摘要</string>
+    <string name="article_generating_article_summary">正在生成全文摘要…</string>
+    <string name="article_ai_working_article_summary">全文摘要草稿 — 尚未完成</string>
+    <string name="article_show_article_summary">显示全文摘要</string>
+    <string name="article_hide_article_summary">隐藏全文摘要</string>
+    <string name="article_ai_cloud_article_summary_confirmation">文章内容将发送到所选 OpenRouter 提供商以生成全文摘要。继续吗？</string>
+    <string name="feeds_preload_ai_article_summary">预生成全文摘要</string>
+    <string name="feeds_preload_ai_article_summary_description">同步后，为此来源的未读文章生成长度最多为原文十分之一的全文摘要。Gemma 在设备上运行；云端模型会将文章文本发送给所选提供商，并需要网络连接。</string>
+    <string name="feeds_preload_ai_article_summary_error">无法保存文章摘要预生成设置。</string>
 </resources>

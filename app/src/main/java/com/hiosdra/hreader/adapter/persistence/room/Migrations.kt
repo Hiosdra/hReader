@@ -288,6 +288,24 @@ val MIGRATION_23_24 = object : Migration(23, 24) {
     }
 }
 
+val MIGRATION_24_25 = object : Migration(24, 25) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `feeds` ADD COLUMN `preloadAiArticleSummary` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(
+            """
+            CREATE TABLE `article_ai_summaries` (
+                `entryId` INTEGER NOT NULL,
+                `summary` TEXT NOT NULL,
+                `modelId` TEXT NOT NULL,
+                `contentHash` TEXT NOT NULL,
+                `generatedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`entryId`, `modelId`)
+            )
+            """.trimIndent()
+        )
+    }
+}
+
 val APP_MIGRATIONS = arrayOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
@@ -297,7 +315,8 @@ val APP_MIGRATIONS = arrayOf(
     MIGRATION_20_21,
     MIGRATION_21_22,
     MIGRATION_22_23,
-    MIGRATION_23_24
+    MIGRATION_23_24,
+    MIGRATION_24_25
 )
 
 private const val ENCLOSURE_RECORD_SEPARATOR = "\u001e"

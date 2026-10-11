@@ -3,6 +3,7 @@ package com.hiosdra.hreader.adapter.persistence
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleContentDao
 import com.hiosdra.hreader.adapter.persistence.room.dao.ArticleRecordDao
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
+import com.hiosdra.hreader.core.application.port.out.ArticleAiSummaryStore
 import com.hiosdra.hreader.core.application.port.out.CacheMaintenanceStore
 import com.hiosdra.hreader.core.application.port.out.CredibilityStore
 
@@ -11,6 +12,7 @@ internal class CacheMaintenanceRepository(
     private val articleContentDao: ArticleContentDao,
     private val credibilityStore: CredibilityStore,
     private val articleAiOverviewStore: ArticleAiOverviewStore,
+    private val articleAiSummaryStore: ArticleAiSummaryStore,
     private val imageMaintenance: ArticleImageMaintenance,
     private val pageMaintenance: ArticlePageCacheMaintenance
 ) : CacheMaintenanceStore {
@@ -18,6 +20,7 @@ internal class CacheMaintenanceRepository(
         val currentEntryIds = articleRecordDao.getAllIds().mapNotNull { it.toLongOrNull() }.toHashSet()
         credibilityStore.cleanupOrphanedReports(currentEntryIds)
         articleAiOverviewStore.cleanupOrphaned(currentEntryIds)
+        articleAiSummaryStore.cleanupOrphaned(currentEntryIds)
 
         while (true) {
             val orphanedContent = articleContentDao.getOrphanedEntryIds(DELETE_CHUNK)

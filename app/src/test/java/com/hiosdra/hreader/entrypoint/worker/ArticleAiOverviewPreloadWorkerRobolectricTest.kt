@@ -12,6 +12,7 @@ import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewPrefetchStore
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
+import com.hiosdra.hreader.core.application.port.out.ArticleAiSummaryStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.AiOverviewPrefetchTarget
 import com.hiosdra.hreader.core.application.port.out.ErrorReporter
@@ -80,6 +81,66 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
     }
 
     @Test
+    fun preloadsArticleSummaryForEnabledUnreadTarget() = runBlocking {
+        setBattery(level = 90, status = android.os.BatteryManager.BATTERY_STATUS_DISCHARGING)
+        val targetStore = mockk<ArticleAiOverviewPrefetchStore>()
+        val contentStore = mockk<ArticleContentStore>()
+        val aiGateway = mockk<ArticleAiGateway>()
+        val overviewStore = mockk<ArticleAiOverviewStore>(relaxed = true)
+        val summaryStore = mockk<ArticleAiSummaryStore>()
+        val aiPreferences = mockk<AiPreferences>()
+        val target = AiOverviewPrefetchTarget(
+            id = 1L,
+            title = "Title",
+            url = "https://example.com/article",
+            preloadAiOverview = false,
+            preloadAiArticleSummary = true
+        )
+
+        every { aiPreferences.getAiModelId() } returns AiModel.GEMMA_4_E2B_ID
+        coEvery { targetStore.getAiOverviewPrefetchTargets(any(), any()) } returns listOf(target)
+        coEvery {
+            contentStore.getArticleContent(target.id, target.url, allowNetwork = false)
+        } returns ArticleText("<p>Body</p>", null, ArticleContentSource.FULL)
+        coEvery { summaryStore.get(target.id, "<p>Body</p>", AiModel.GEMMA_4_E2B_ID) } returns null
+        coEvery {
+            aiGateway.generateArticleSummary(
+                target.title,
+                "<p>Body</p>",
+                AiModel.GEMMA_4_E2B_ID,
+                any()
+            )
+        } returns Result.success("Article summary")
+        coEvery {
+            summaryStore.save(target.id, "<p>Body</p>", AiModel.GEMMA_4_E2B_ID, "Article summary")
+        } just runs
+
+        val result = createWorker(
+            targetStore = targetStore,
+            contentStore = contentStore,
+            aiGateway = aiGateway,
+            overviewStore = overviewStore,
+            aiPreferences = aiPreferences,
+            errorReporter = mockk(relaxed = true),
+            summaryStore = summaryStore
+        ).doWork()
+
+        assertTrue(result is ListenableWorker.Result.Success)
+        coVerify {
+            aiGateway.generateArticleSummary(
+                target.title,
+                "<p>Body</p>",
+                AiModel.GEMMA_4_E2B_ID,
+                any()
+            )
+        }
+        coVerify {
+            summaryStore.save(target.id, "<p>Body</p>", AiModel.GEMMA_4_E2B_ID, "Article summary")
+        }
+        coVerify(exactly = 0) { aiGateway.generateArticleOverview(any(), any(), any(), any()) }
+    }
+
+    @Test
     fun lowBatteryDefersWithoutLoadingArticles() = runBlocking {
         setBattery(level = 80, status = android.os.BatteryManager.BATTERY_STATUS_DISCHARGING)
         val targetStore = mockk<ArticleAiOverviewPrefetchStore>(relaxed = true)
@@ -141,7 +202,8 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
         aiGateway: ArticleAiGateway,
         overviewStore: ArticleAiOverviewStore,
         aiPreferences: AiPreferences,
-        errorReporter: ErrorReporter
+        errorReporter: ErrorReporter,
+        summaryStore: ArticleAiSummaryStore = mockk(relaxed = true)
     ): ArticleAiOverviewPreloadWorker {
         val factory = object : WorkerFactory() {
             override fun createWorker(
@@ -157,7 +219,8 @@ class ArticleAiOverviewPreloadWorkerRobolectricTest {
                     aiGateway,
                     overviewStore,
                     aiPreferences,
-                    errorReporter
+                    errorReporter,
+                    summaryStore
                 )
             } else {
                 null

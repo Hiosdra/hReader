@@ -6,5 +6,6 @@ data class Feed(
     val siteUrl: String?,
     val feedUrl: String,
     val preloadAiOverview: Boolean = false,
-    val autoMarkRead: Boolean = true
+    val autoMarkRead: Boolean = true,
+    val preloadAiArticleSummary: Boolean = false
 )

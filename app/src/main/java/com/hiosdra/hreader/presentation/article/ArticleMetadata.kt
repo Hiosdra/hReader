@@ -51,6 +51,7 @@ import com.hiosdra.hreader.presentation.theme.MotionDuration
 
 private enum class CloudAiAction {
     SUMMARY,
+    ARTICLE_SUMMARY,
     CREDIBILITY
 }
 
@@ -68,13 +69,19 @@ internal fun ArticleMetadata(
     credibilityEnabled: Boolean = false,
     credibilityReport: CredibilityReport? = null,
     isAnalyzingCredibility: Boolean = false,
-    onAnalyzeCredibility: ((Boolean) -> Unit)? = null
+    onAnalyzeCredibility: ((Boolean) -> Unit)? = null,
+    aiArticleSummary: String? = null,
+    isGeneratingArticleSummary: Boolean = false,
+    aiArticleSummaryProgress: ArticleAiProgress? = null,
+    onAiArticleSummaryClick: (() -> Unit)? = null
 ) {
     var isAiExpanded by rememberSaveable { mutableStateOf(false) }
+    var isArticleSummaryExpanded by rememberSaveable { mutableStateOf(false) }
     var isCredibilityExpanded by rememberSaveable { mutableStateOf(false) }
     var pendingCloudAction by rememberSaveable { mutableStateOf<CloudAiAction?>(null) }
 
     val aiOverviewClick = onAiOverviewClick
+    val aiArticleSummaryClick = onAiArticleSummaryClick
     val analyzeCredibility = if (credibilityEnabled) onAnalyzeCredibility else null
     val isLocalAi = aiProvider == AiProvider.GEMMA_LOCAL
 
@@ -100,7 +107,7 @@ internal fun ArticleMetadata(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        if (aiOverviewClick != null || analyzeCredibility != null) {
+        if (aiOverviewClick != null || aiArticleSummaryClick != null || analyzeCredibility != null) {
             Spacer(modifier = Modifier.height(HReaderSpacing.space2))
         }
         @OptIn(ExperimentalLayoutApi::class)
@@ -144,6 +151,52 @@ internal fun ArticleMetadata(
                     enabled = isGeneratingOverview || aiOverview != null || isOnline || isLocalAi,
                     colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
                         containerColor = if (aiOverview != null || isGeneratingOverview) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                        }
+                    )
+                )
+            }
+            if (aiArticleSummaryClick != null) {
+                androidx.compose.material3.AssistChip(
+                    onClick = {
+                        if (aiArticleSummary == null) {
+                            if (isGeneratingArticleSummary) {
+                                isArticleSummaryExpanded = !isArticleSummaryExpanded
+                            } else {
+                                isArticleSummaryExpanded = true
+                                startAiAction(CloudAiAction.ARTICLE_SUMMARY, aiArticleSummaryClick)
+                            }
+                        } else {
+                            isArticleSummaryExpanded = !isArticleSummaryExpanded
+                        }
+                    },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Info,
+                                contentDescription = stringResource(R.string.article_ai_article_summary),
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            val chipText = when {
+                                aiArticleSummary == null && isGeneratingArticleSummary ->
+                                    articleAiProgressLabel(
+                                        aiArticleSummaryProgress,
+                                        R.string.article_generating_article_summary
+                                    )
+                                aiArticleSummary == null -> stringResource(R.string.article_ai_article_summary)
+                                isArticleSummaryExpanded -> stringResource(R.string.article_hide_article_summary)
+                                else -> stringResource(R.string.article_show_article_summary)
+                            }
+                            Text(chipText)
+                        }
+                    },
+                    enabled = isGeneratingArticleSummary || aiArticleSummary != null || isOnline || isLocalAi,
+                    colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
+                        containerColor = if (aiArticleSummary != null || isGeneratingArticleSummary) {
                             MaterialTheme.colorScheme.primaryContainer
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerLow
@@ -258,7 +311,16 @@ internal fun ArticleMetadata(
             }
         }
 
-        if (!isLocalAi && (aiOverviewClick != null || analyzeCredibility != null)) {
+        if (aiArticleSummary != null || isGeneratingArticleSummary) {
+            AiArticleSummaryCard(
+                summary = aiArticleSummary,
+                isGenerating = isGeneratingArticleSummary,
+                progress = aiArticleSummaryProgress,
+                expanded = isArticleSummaryExpanded
+            )
+        }
+
+        if (!isLocalAi && (aiOverviewClick != null || aiArticleSummaryClick != null || analyzeCredibility != null)) {
             Text(
                 text = stringResource(R.string.article_ai_cloud_processing),
                 style = MaterialTheme.typography.bodySmall,
@@ -300,6 +362,7 @@ internal fun ArticleMetadata(
                         stringResource(
                             when (action) {
                                 CloudAiAction.SUMMARY -> R.string.article_ai_cloud_summary_confirmation
+                                CloudAiAction.ARTICLE_SUMMARY -> R.string.article_ai_cloud_article_summary_confirmation
                                 CloudAiAction.CREDIBILITY -> R.string.article_ai_cloud_credibility_confirmation
                             }
                         )
@@ -311,6 +374,7 @@ internal fun ArticleMetadata(
                             pendingCloudAction = null
                             when (action) {
                                 CloudAiAction.SUMMARY -> aiOverviewClick?.invoke()
+                                CloudAiAction.ARTICLE_SUMMARY -> aiArticleSummaryClick?.invoke()
                                 CloudAiAction.CREDIBILITY -> analyzeCredibility?.invoke(false)
                             }
                         }
@@ -324,6 +388,93 @@ internal fun ArticleMetadata(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun AiArticleSummaryCard(
+    summary: String?,
+    isGenerating: Boolean,
+    progress: ArticleAiProgress?,
+    expanded: Boolean
+) {
+    AnimatedVisibility(
+        visible = expanded,
+        enter = aiPanelEnter(),
+        exit = aiPanelExit()
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = HReaderSpacing.space2),
+            colors = androidx.compose.material3.CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            )
+        ) {
+            Column(modifier = Modifier.padding(HReaderSpacing.space4)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.Info,
+                        contentDescription = stringResource(R.string.article_ai_article_summary),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.article_ai_article_summary),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.height(HReaderSpacing.space2))
+                AnimatedContent(
+                    targetState = isGenerating,
+                    transitionSpec = { aiContentTransition() },
+                    label = "AI article summary content"
+                ) { generating ->
+                    if (generating) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = articleAiProgressLabel(
+                                        progress,
+                                        R.string.article_generating_article_summary
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            progress?.draft?.takeIf(String::isNotBlank)?.let { draft ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = stringResource(R.string.article_ai_working_article_summary),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = draft,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = summary.orEmpty(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -349,7 +500,10 @@ private fun aiContentTransition() = (fadeIn(
 ))
 
 @Composable
-private fun articleAiProgressLabel(progress: ArticleAiProgress?): String = when (progress?.phase) {
+private fun articleAiProgressLabel(
+    progress: ArticleAiProgress?,
+    fallbackResourceId: Int = R.string.article_generating_summary
+): String = when (progress?.phase) {
     ArticleAiPhase.PREPARING -> stringResource(R.string.article_ai_preparing)
     ArticleAiPhase.LOADING_MODEL -> stringResource(R.string.article_ai_loading_model)
     ArticleAiPhase.COMPACTING -> progressPartLabel(
@@ -365,7 +519,7 @@ private fun articleAiProgressLabel(progress: ArticleAiProgress?): String = when 
         R.string.article_ai_streaming
     )
     ArticleAiPhase.FINALIZING -> stringResource(R.string.article_ai_finalizing)
-    null -> stringResource(R.string.article_generating_summary)
+    null -> stringResource(fallbackResourceId)
 }
 
 @Composable

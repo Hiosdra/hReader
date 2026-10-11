@@ -12,6 +12,13 @@ interface ArticleAiGateway {
         onProgress: suspend (ArticleAiProgress) -> Unit = {}
     ): Result<String>
 
+    suspend fun generateArticleSummary(
+        title: String,
+        content: String,
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit = {}
+    ): Result<String>
+
     suspend fun analyzeCredibility(
         source: CredibilitySource,
         modelId: String

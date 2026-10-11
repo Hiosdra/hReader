@@ -4,6 +4,7 @@ import com.hiosdra.hreader.core.application.ai.ArticleAiProgress
 import com.hiosdra.hreader.core.application.port.out.AiPreferences
 import com.hiosdra.hreader.core.application.port.out.ArticleAiGateway
 import com.hiosdra.hreader.core.application.port.out.ArticleAiOverviewStore
+import com.hiosdra.hreader.core.application.port.out.ArticleAiSummaryStore
 import com.hiosdra.hreader.core.application.port.out.ArticleContentStore
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
 import com.hiosdra.hreader.core.application.port.out.ArticleListWindow
@@ -37,6 +38,7 @@ class ArticleReaderUseCase(
     private val pages: ArticlePageStore,
     private val ai: ArticleAiGateway,
     private val overviews: ArticleAiOverviewStore,
+    private val summaries: ArticleAiSummaryStore,
     private val credibility: CredibilityStore,
     private val preferences: ReaderPreferences,
     private val aiPreferences: AiPreferences,
@@ -84,6 +86,25 @@ class ArticleReaderUseCase(
         overviews.get(entryId, body, modelId)?.let { return Result.success(it) }
         return ai.generateArticleOverview(title, body, modelId, onProgress).onSuccess { overview ->
             overviews.save(entryId, body, modelId, overview)
+        }
+    }
+
+    suspend fun getCachedArticleSummary(
+        entryId: Long,
+        body: String,
+        modelId: String = getAiModelId()
+    ): String? = summaries.get(entryId, body, modelId)
+
+    suspend fun generateArticleSummary(
+        entryId: Long,
+        title: String,
+        body: String,
+        modelId: String = getAiModelId(),
+        onProgress: suspend (ArticleAiProgress) -> Unit = {}
+    ): Result<String> {
+        summaries.get(entryId, body, modelId)?.let { return Result.success(it) }
+        return ai.generateArticleSummary(title, body, modelId, onProgress).onSuccess { summary ->
+            summaries.save(entryId, body, modelId, summary)
         }
     }
 

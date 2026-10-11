@@ -14,7 +14,13 @@ internal class ArticleAiOverviewPrefetchRepository(
         .getAiOverviewPrefetchTargets(limit = limit, offset = offset)
         .mapNotNull { target ->
             target.id.toLongOrNull()?.let { id ->
-                AiOverviewPrefetchTarget(id = id, title = target.title, url = target.url)
+                AiOverviewPrefetchTarget(
+                    id = id,
+                    title = target.title,
+                    url = target.url,
+                    preloadAiOverview = target.preloadAiOverview,
+                    preloadAiArticleSummary = target.preloadAiArticleSummary
+                )
             }
         }
 }

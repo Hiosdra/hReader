@@ -33,6 +33,21 @@ class GemmaArticleAiService(
         content: String,
         modelId: String,
         onProgress: suspend (ArticleAiProgress) -> Unit
+    ): Result<String> = generateSummary(title, content, modelId, onProgress, isArticleSummary = false)
+
+    override suspend fun generateArticleSummary(
+        title: String,
+        content: String,
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit
+    ): Result<String> = generateSummary(title, content, modelId, onProgress, isArticleSummary = true)
+
+    private suspend fun generateSummary(
+        title: String,
+        content: String,
+        modelId: String,
+        onProgress: suspend (ArticleAiProgress) -> Unit,
+        isArticleSummary: Boolean
     ): Result<String> = withContext(Dispatchers.Default) {
         onProgress(ArticleAiProgress(ArticleAiPhase.PREPARING))
         val plainText = stripToPlainText(content)
@@ -44,7 +59,8 @@ class GemmaArticleAiService(
             modelId = modelId,
             contextLength = Gemma4E2bModel.CONTEXT_LENGTH,
             onProgress = onProgress,
-            promptPolicy = ArticleSummaryPromptPolicy.GEMMA
+            promptPolicy = ArticleSummaryPromptPolicy.GEMMA,
+            isArticleSummary = isArticleSummary
         ) { part, onDelta ->
             engine.generate(
                 systemPrompt = part.systemPrompt,

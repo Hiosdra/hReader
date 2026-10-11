@@ -44,6 +44,7 @@ internal fun ArticleContentHeader(
     val ai = state.ai
     val isOnline = content.isOnline
     val onAiOverview = bindings.onAiOverview?.let { callback -> { callback(entry.id) } }
+    val onAiArticleSummary = bindings.onAiArticleSummary?.let { callback -> { callback(entry.id) } }
     val onAnalyzeCredibility: ((Boolean) -> Unit)? = bindings.onAnalyzeCredibility?.let {
         callback -> { force: Boolean -> callback(entry.id, force) }
     }
@@ -80,6 +81,10 @@ internal fun ArticleContentHeader(
             isGeneratingOverview = entry.id in ai.generatingOverviewIds,
             aiOverviewProgress = ai.aiOverviewProgress[entry.id],
             onAiOverviewClick = onAiOverview,
+            aiArticleSummary = ai.aiArticleSummaries[entry.id],
+            isGeneratingArticleSummary = entry.id in ai.generatingArticleSummaryIds,
+            aiArticleSummaryProgress = ai.aiArticleSummaryProgress[entry.id],
+            onAiArticleSummaryClick = onAiArticleSummary,
             credibilityEnabled = ai.credibilityEnabled,
             credibilityReport = ai.credibilityReports[entry.id],
             isAnalyzingCredibility = entry.id in ai.analyzingCredibilityIds,

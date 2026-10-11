@@ -50,6 +50,34 @@ class ArticleAiGatewayRouterTest {
     }
 
     @Test
+    fun localModelUsesGemmaForArticleSummary() = runBlocking {
+        val progress: suspend (ArticleAiProgress) -> Unit = {}
+        coEvery {
+            gemma.generateArticleSummary("Title", "Body", Gemma4E2bModel.MODEL_ID, progress)
+        } returns Result.success("local article summary")
+
+        assertEquals(
+            "local article summary",
+            router.generateArticleSummary("Title", "Body", Gemma4E2bModel.MODEL_ID, progress).getOrThrow()
+        )
+        coVerify(exactly = 0) { openRouter.generateArticleSummary(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun remoteModelUsesOpenRouterForArticleSummary() = runBlocking {
+        val progress: suspend (ArticleAiProgress) -> Unit = {}
+        coEvery {
+            openRouter.generateArticleSummary("Title", "Body", "vendor/model", progress)
+        } returns Result.success("remote article summary")
+
+        assertEquals(
+            "remote article summary",
+            router.generateArticleSummary("Title", "Body", "vendor/model", progress).getOrThrow()
+        )
+        coVerify(exactly = 0) { gemma.generateArticleSummary(any(), any(), any(), any()) }
+    }
+
+    @Test
     fun reportsRemoteSummaryFailures() = runBlocking {
         val progress: suspend (ArticleAiProgress) -> Unit = {}
         val failure = IllegalStateException("remote failure")

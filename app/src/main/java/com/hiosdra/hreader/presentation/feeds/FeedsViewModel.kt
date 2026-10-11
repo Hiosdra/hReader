@@ -237,6 +237,18 @@ class FeedsViewModel(
         )
     }
 
+    fun setAiArticleSummaryPreloading(feedId: Long, enabled: Boolean) {
+        updateFeedSetting(
+            feedId = feedId,
+            enabled = enabled,
+            isEnabled = Feed::preloadAiArticleSummary,
+            update = { feed, value -> feed.copy(preloadAiArticleSummary = value) },
+            action = { feeds.setAiArticleSummaryPreloading(feedId, enabled) },
+            errorRes = R.string.feeds_preload_ai_article_summary_error,
+            retry = { setAiArticleSummaryPreloading(feedId, enabled) }
+        )
+    }
+
     fun setAutoMarkRead(feedId: Long, enabled: Boolean) {
         updateFeedSetting(
             feedId = feedId,

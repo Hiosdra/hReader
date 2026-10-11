@@ -139,17 +139,17 @@
     <string name="article_preparing_image">Preparando imagem…</string>
     <string name="article_image_sharing_failed">Falha ao compartilhar imagem</string>
     <plurals name="article_reading_time_minutes"><item quantity="one">%1$d min de leitura</item><item quantity="many">%1$d min de leitura</item><item quantity="other">%1$d min de leitura</item></plurals>
-    <string name="article_ai_summary">Resumo de IA</string>
-    <string name="article_ai_working_summary">Resumo de trabalho — ainda não é o resultado final</string>
-    <string name="article_generating_summary">Gerando resumo…</string>
+    <string name="article_ai_summary">Visão geral rápida</string>
+    <string name="article_ai_working_summary">Visão geral provisória — ainda não é final</string>
+    <string name="article_generating_summary">Gerando visão geral rápida…</string>
     <string name="article_ai_preparing">Preparando o artigo…</string>
     <string name="article_ai_loading_model">Carregando o modelo…</string>
     <string name="article_ai_compacting">Resumindo a parte %1$d de %2$d…</string>
     <string name="article_ai_thinking">O modelo está pensando (parte %1$d de %2$d)…</string>
     <string name="article_ai_streaming">Recebendo a resposta (parte %1$d de %2$d)…</string>
     <string name="article_ai_finalizing">Finalizando o resumo…</string>
-    <string name="article_hide_summary">Ocultar resumo</string>
-    <string name="article_show_summary">Mostrar resumo</string>
+    <string name="article_hide_summary">Ocultar visão geral</string>
+    <string name="article_show_summary">Mostrar visão geral</string>
     <string name="article_analyzing">Analisando…</string>
     <string name="article_check_credibility">Revisar sinais de verificação</string>
     <string name="article_credibility">Sinais de verificação</string>
@@ -285,7 +285,7 @@
     <string name="article_ai_cloud_processing">IA na nuvem — o texto é enviado ao provedor escolhido após sua confirmação.</string>
     <string name="article_ai_cloud_summary_privacy">O texto do artigo será enviado após sua confirmação.</string>
     <string name="article_ai_cloud_confirmation_title">Enviar o texto do artigo para a IA na nuvem?</string>
-    <string name="article_ai_cloud_summary_confirmation">O texto do artigo sairá deste dispositivo e será enviado ao provedor OpenRouter escolhido para gerar um resumo. Continuar?</string>
+    <string name="article_ai_cloud_summary_confirmation">O texto do artigo sairá deste dispositivo e será enviado ao provedor OpenRouter escolhido para gerar uma visão geral rápida. Continuar?</string>
     <string name="article_ai_cloud_credibility_confirmation">O texto do artigo sairá deste dispositivo e será enviado ao provedor OpenRouter escolhido para gerar sinais de verificação. Continuar?</string>
     <string name="article_ai_cloud_confirm">Enviar e continuar</string>
     <string name="settings_bypass_service">Serviço de bypass</string>
@@ -626,4 +626,13 @@
     <string name="secret_configured">Configurado</string>
     <string name="secret_not_configured">Não configurado</string>
     <string name="secret_editor_placeholder">Insira o segredo</string>
+    <string name="article_ai_article_summary">Resumo completo do artigo</string>
+    <string name="article_generating_article_summary">Gerando resumo completo do artigo…</string>
+    <string name="article_ai_working_article_summary">Resumo completo provisório — ainda não é final</string>
+    <string name="article_show_article_summary">Mostrar resumo completo</string>
+    <string name="article_hide_article_summary">Ocultar resumo completo</string>
+    <string name="article_ai_cloud_article_summary_confirmation">O texto do artigo será enviado ao provedor OpenRouter selecionado para criar um resumo completo do artigo. Continuar?</string>
+    <string name="feeds_preload_ai_article_summary">Pré-gerar resumos completos de artigos</string>
+    <string name="feeds_preload_ai_article_summary_description">Após a sincronização, gere resumos completos de até um décimo do tamanho original para artigos não lidos desta fonte. O Gemma funciona no dispositivo; modelos em nuvem enviam o texto ao provedor selecionado e precisam de conexão.</string>
+    <string name="feeds_preload_ai_article_summary_error">Não foi possível salvar a configuração de pré-geração de resumos de artigos.</string>
 </resources>
