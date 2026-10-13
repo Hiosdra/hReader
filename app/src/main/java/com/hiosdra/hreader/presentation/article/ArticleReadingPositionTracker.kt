@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -27,7 +28,7 @@ internal fun ArticleReadingPositionTracker(
     onReadingProgressChanged: (Long, Float) -> Unit,
     onReadingCompleted: (Long) -> Unit
 ) {
-    var restoredContentPositionKey by rememberSaveable(entryId) { mutableStateOf<Int?>(null) }
+    var restoredContentPositionKey by remember(entryId) { mutableStateOf<Int?>(null) }
     var readingCompletionReported by rememberSaveable(entryId) { mutableStateOf(false) }
     val latestPositionReady = rememberUpdatedState(positionReady)
     val latestCurrentProgress = rememberUpdatedState(currentProgress)
@@ -56,7 +57,10 @@ internal fun ArticleReadingPositionTracker(
     LaunchedEffect(entryId, contentKey, effectKey, readingPositionLoaded, positionReady) {
         if (!readingPositionLoaded || !positionReady) return@LaunchedEffect
         readingCompletionReported = false
-        snapshotFlow { latestCurrentProgress.value() }
+        snapshotFlow {
+            val (progress, ready) = latestCurrentProgress.value()
+            progress to (ready && restoredContentPositionKey == contentKey)
+        }
             .filter { (_, ready) -> ready }
             .sample(READING_POSITION_SAMPLE_MILLIS)
             .collect { (progress, _) ->
@@ -74,7 +78,11 @@ internal fun ArticleReadingPositionTracker(
 
     DisposableEffect(entryId, contentKey, effectKey, positionReady) {
         onDispose {
-            if (!latestReadingPositionLoaded.value || !latestPositionReady.value) return@onDispose
+            if (
+                !latestReadingPositionLoaded.value ||
+                !latestPositionReady.value ||
+                restoredContentPositionKey != contentKey
+            ) return@onDispose
             val (progress, ready) = latestCurrentProgress.value()
             if (!ready) return@onDispose
             if (progress >= READING_POSITION_COMPLETE_THRESHOLD) {
