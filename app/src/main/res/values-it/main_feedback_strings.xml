@@ -1,0 +1,6 @@
+<resources>
+    <string name="main_feedback_success">Operazione riuscita</string>
+    <string name="main_feedback_info">Informazione</string>
+    <string name="main_feedback_error">Errore</string>
+    <string name="main_bulk_read_failed">Impossibile contrassegnare gli articoli come letti.</string>
+</resources>
