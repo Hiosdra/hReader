@@ -1,24 +1,17 @@
 package com.hiosdra.hreader.presentation.main
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -32,10 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -51,7 +41,6 @@ import com.hiosdra.hreader.presentation.feedback.FeedbackKind
 import com.hiosdra.hreader.presentation.feedback.FeedbackRequest
 import com.hiosdra.hreader.presentation.feedback.showFeedback
 import com.hiosdra.hreader.presentation.text.resolve
-import com.hiosdra.hreader.presentation.theme.MotionDuration
 import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,6 +69,8 @@ internal fun MainScreen(
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    var dockHeight by remember { mutableStateOf(80.dp) }
     var offlineBannerDismissed by rememberSaveable { mutableStateOf(false) }
     val undoActionLabel = stringResource(R.string.action_undo)
     val retryActionLabel = stringResource(R.string.action_retry)
@@ -124,10 +115,12 @@ internal fun MainScreen(
         val undoMessage = undo.message.resolve()
         LaunchedEffect(undo.id) {
             try {
+                snackbarHostState.currentSnackbarData?.dismiss()
                 snackbarHostState.showFeedback(
                     FeedbackRequest(
                         message = undoMessage,
                         kind = FeedbackKind.UNDO,
+                        supportingText = undo.feedTitle,
                         actionLabel = undoActionLabel,
                         onAction = viewModel::undoLastAction
                     )
@@ -142,6 +135,7 @@ internal fun MainScreen(
         val errorMessage = message.resolve()
         LaunchedEffect(message) {
             if (articles.itemCount == 0) return@LaunchedEffect
+            snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showFeedback(
                 FeedbackRequest(
                     message = errorMessage,
@@ -154,127 +148,127 @@ internal fun MainScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.background)
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = {},
-        bottomBar = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            MainTopBar(
-                MainTopBarBindings(
-                    uiState = uiState,
-                    unreadCount = unreadCount,
+    uiState.bulkReadFailure?.let { failure ->
+        val message = stringResource(R.string.main_bulk_read_failed)
+        LaunchedEffect(failure.id) {
+            try {
+                snackbarHostState.currentSnackbarData?.dismiss()
+                snackbarHostState.showFeedback(
+                    FeedbackRequest(
+                        message = message,
+                        supportingText = failure.feedTitle,
+                        kind = FeedbackKind.RECOVERABLE_ERROR,
+                        actionLabel = retryActionLabel,
+                        onAction = { viewModel.retryBulkRead(failure, onFeedMarkedRead) }
+                    )
+                )
+            } finally {
+                viewModel.dismissBulkReadFailure(failure.id)
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.background)
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            snackbarHost = {},
+            topBar = {
+                MainTopBar(
+                    MainTopBarBindings(
+                        uiState = uiState,
+                        unreadCount = unreadCount,
+                        feedId = feedId,
+                        scrollBehavior = scrollBehavior,
+                        searchActive = searchActive,
+                        searchFocusRequester = searchFocusRequester,
+                        keyboardController = keyboardController,
+                        offlineBannerDismissed = offlineBannerDismissed,
+                        onDismissOfflineBanner = { offlineBannerDismissed = true },
+                        onOpenSubscriptions = onOpenSubscriptions,
+                        onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                        onDismissAiModelWarning = viewModel::dismissAiModelWarning,
+                        onRefresh = viewModel::refreshFromNetwork,
+                        onSearchQueryChange = viewModel::updateSearchQuery,
+                        onShowReadArticles = viewModel::setShowReadArticles,
+                        onPrepareOffline = viewModel::prepareForOffline,
+                        onLeaveFeed = onLeaveFeed,
+                        snackbarHostState = snackbarHostState,
+                        snackbarScope = snackbarScope,
+                        offlineStartedMessage = offlineStartedMessage
+                    )
+                )
+            }
+        ) { paddingValues ->
+            when {
+                refreshState is LoadState.Loading && articles.itemCount == 0 ->
+                    ArticleListSkeleton(modifier = Modifier.padding(paddingValues))
+
+                articles.itemCount == 0 &&
+                    !uiState.hasCompletedSync &&
+                    uiState.readCount == 0 &&
+                    uiState.syncState == SyncOperationState.RUNNING ->
+                    InitialSyncState(modifier = Modifier.padding(paddingValues))
+
+                articles.itemCount == 0 -> EmptyState(
+                    modifier = Modifier.padding(paddingValues),
+                    model = emptyState,
+                    hasSearchQuery = uiState.searchQuery.isNotBlank(),
+                    showReadArticles = uiState.showReadArticles,
+                    readCount = uiState.readCount,
                     feedId = feedId,
-                    scrollBehavior = scrollBehavior,
-                    searchActive = searchActive,
-                    searchFocusRequester = searchFocusRequester,
-                    keyboardController = keyboardController,
-                    offlineBannerDismissed = offlineBannerDismissed,
-                    onDismissOfflineBanner = { offlineBannerDismissed = true },
-                    onOpenSubscriptions = onOpenSubscriptions,
-                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                    onDismissAiModelWarning = viewModel::dismissAiModelWarning,
-                    onRefresh = viewModel::refreshFromNetwork,
-                    onSearchQueryChange = viewModel::updateSearchQuery,
-                    onShowReadArticles = viewModel::setShowReadArticles,
-                    onPrepareOffline = viewModel::prepareForOffline,
-                    onLeaveFeed = onLeaveFeed,
-                    snackbarHostState = snackbarHostState,
-                    snackbarScope = snackbarScope,
-                    offlineStartedMessage = offlineStartedMessage
+                    onClearSearch = { viewModel.updateSearchQuery("") },
+                    onBrowseFeeds = onOpenSubscriptions,
+                    onAddFeed = { navController.navigate(Routes.addFeed()) },
+                    onBack = onLeaveFeed,
+                    onShowAllArticles = {
+                        viewModel.setShowReadArticles(true)
+                        viewModel.updateSearchQuery("")
+                    }
                 )
-            )
-        },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = unreadCount > 0,
-                enter = fadeIn(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.STANDARD))
-                ),
-                exit = fadeOut(
-                    animationSpec = tween(MotionDuration.scaled(MotionDuration.EXIT))
-                )
-            ) {
-                FloatingActionButton(
-                    onClick = {
-                        if (!uiState.isBulkReadStateUpdating) {
-                            viewModel.markAllAsRead(onFeedMarkedRead)
-                        }
+
+                else -> PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = {
+                        if (uiState.isOnline) viewModel.refreshFromNetwork()
                     },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
                 ) {
-                    Icon(
-                        Icons.Filled.Done,
-                        contentDescription = pluralStringResource(
-                            R.plurals.main_mark_articles_read,
-                            unreadCount,
-                            unreadCount
-                        )
+                    ArticleListGrouped(
+                        items = articles,
+                        modifier = Modifier.fillMaxSize(),
+                        listState = listState,
+                        onOpen = { articleId ->
+                            val query = viewModel.currentQuery().withFeed(feedId, Instant.now())
+                            navController.navigate(
+                                Routes.article(
+                                    feedId = query.feedId,
+                                    startArticleId = articleId,
+                                    includeRead = query.includeRead,
+                                    sessionStartMillis = query.sessionStart.toEpochMilli()
+                                )
+                            )
+                        },
+                        onCheckedChange = viewModel::updateEntryReadStatus,
+                        imageDependencies = imageDependencies,
+                        readStateAnimationEnabled = !uiState.isBulkReadStateUpdating &&
+                            uiState.syncState != com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING,
+                        isOnline = uiState.isOnline,
+                        contentPadding = PaddingValues(bottom = dockHeight + 32.dp)
                     )
                 }
             }
         }
-    ) { paddingValues ->
-        when {
-            refreshState is LoadState.Loading && articles.itemCount == 0 ->
-                ArticleListSkeleton(modifier = Modifier.padding(paddingValues))
-
-            articles.itemCount == 0 &&
-                !uiState.hasCompletedSync &&
-                uiState.readCount == 0 &&
-                uiState.syncState == SyncOperationState.RUNNING ->
-                InitialSyncState(modifier = Modifier.padding(paddingValues))
-
-            articles.itemCount == 0 -> EmptyState(
-                modifier = Modifier.padding(paddingValues),
-                model = emptyState,
-                hasSearchQuery = uiState.searchQuery.isNotBlank(),
-                showReadArticles = uiState.showReadArticles,
-                readCount = uiState.readCount,
-                feedId = feedId,
-                onClearSearch = { viewModel.updateSearchQuery("") },
-                onBrowseFeeds = onOpenSubscriptions,
-                onAddFeed = { navController.navigate(Routes.addFeed()) },
-                onBack = onLeaveFeed,
-                onShowAllArticles = {
-                    viewModel.setShowReadArticles(true)
-                    viewModel.updateSearchQuery("")
-                }
-            )
-
-            else -> PullToRefreshBox(
-                isRefreshing = uiState.isRefreshing,
-                onRefresh = {
-                    if (uiState.isOnline) viewModel.refreshFromNetwork()
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                ArticleListGrouped(
-                    items = articles,
-                    modifier = Modifier.fillMaxSize(),
-                    listState = listState,
-                    onOpen = { articleId ->
-                        val query = viewModel.currentQuery().withFeed(feedId, Instant.now())
-                        navController.navigate(
-                            Routes.article(
-                                feedId = query.feedId,
-                                startArticleId = articleId,
-                                includeRead = query.includeRead,
-                                sessionStartMillis = query.sessionStart.toEpochMilli()
-                            )
-                        )
-                    },
-                    onCheckedChange = viewModel::updateEntryReadStatus,
-                    imageDependencies = imageDependencies,
-                    readStateAnimationEnabled = !uiState.isBulkReadStateUpdating &&
-                        uiState.syncState != com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING,
-                    isOnline = uiState.isOnline
-                )
-            }
-        }
+        MainActionDock(
+            unreadCount = unreadCount,
+            busy = uiState.isBulkReadStateUpdating || viewModel.currentQuery().feedId != feedId,
+            snackbarHostState = snackbarHostState,
+            onMarkRead = { viewModel.markAllAsRead(onFeedMarkedRead) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+            onHeightChanged = { dockHeight = with(density) { it.toDp() } }
+        )
     }
 }

@@ -8,8 +8,11 @@ import com.hiosdra.hreader.presentation.text.UiText
 data class UndoableAction(
     val id: Long,
     val message: UiText,
-    val marker: BulkReadMarker
+    val marker: BulkReadMarker,
+    val feedTitle: String? = null
 )
+
+data class BulkReadFailure(val id: Long, val feedId: Long?, val feedTitle: String?)
 
 data class MainUiState(
     val isRefreshing: Boolean = false,
@@ -25,5 +28,6 @@ data class MainUiState(
     val hasCompletedSync: Boolean = false,
     val offlinePreparation: OfflinePreparationProgress = OfflinePreparationProgress(),
     val isBulkReadStateUpdating: Boolean = false,
-    val undo: UndoableAction? = null
+    val undo: UndoableAction? = null,
+    val bulkReadFailure: BulkReadFailure? = null
 )

@@ -209,6 +209,15 @@ class MainViewModel(
     fun markAllAsRead(onMarkedAsRead: (Long) -> Unit = {}) =
         readActions.markAllAsRead(query.value.feedId, onMarkedAsRead)
 
+    internal fun retryBulkRead(failure: BulkReadFailure, onMarkedAsRead: (Long) -> Unit) =
+        readActions.markAllAsRead(failure.feedId, onMarkedAsRead, failure.feedTitle)
+
+    internal fun dismissBulkReadFailure(id: Long) {
+        _uiState.update { state ->
+            if (state.bulkReadFailure?.id == id) state.copy(bulkReadFailure = null) else state
+        }
+    }
+
     fun undoLastAction() = readActions.undoLastAction()
 
     fun dismissUndo(actionId: Long? = null) = readActions.dismissUndo(actionId)

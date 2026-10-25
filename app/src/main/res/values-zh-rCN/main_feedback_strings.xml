@@ -1,0 +1,6 @@
+<resources>
+    <string name="main_feedback_success">成功</string>
+    <string name="main_feedback_info">信息</string>
+    <string name="main_feedback_error">错误</string>
+    <string name="main_bulk_read_failed">无法将文章标记为已读。</string>
+</resources>
