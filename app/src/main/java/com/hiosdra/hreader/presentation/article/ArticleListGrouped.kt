@@ -2,6 +2,7 @@ package com.hiosdra.hreader.presentation.article
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,6 +57,7 @@ internal fun ArticleListGrouped(
     imageDependencies: ArticleImageDependencies,
     readStateAnimationEnabled: Boolean,
     isOnline: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     val snapshot = items.itemSnapshotList.items
     val locale = LocalLocale.current.platformLocale
@@ -108,7 +110,8 @@ internal fun ArticleListGrouped(
     Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            state = listState
+            state = listState,
+            contentPadding = contentPadding
         ) {
             var rangeStart = 0
             separatorIndices.forEach { separatorIndex ->

@@ -19,14 +19,21 @@ internal class MainArticleReadActions(
         applyReadStatus(listOf(entryId), read = checked)
     }
 
-    fun markAllAsRead(feedId: Long?, onMarkedAsRead: (Long) -> Unit) {
+    fun markAllAsRead(
+        feedId: Long?,
+        onMarkedAsRead: (Long) -> Unit,
+        feedTitle: String? = uiState.value.feedTitle
+    ) {
         if (uiState.value.isBulkReadStateUpdating) return
-        uiState.update { it.copy(isBulkReadStateUpdating = true) }
+        uiState.update { it.copy(isBulkReadStateUpdating = true, bulkReadFailure = null) }
         scope.launch {
             try {
                 val marker = runCatchingCancellable { reader.markUnreadAsRead(feedId) }
                     .getOrElse {
                         Log.w(TAG, "Could not mark unread articles as read", it)
+                        uiState.update { state ->
+                            state.copy(bulkReadFailure = BulkReadFailure(System.nanoTime(), feedId, feedTitle))
+                        }
                         return@launch
                     }
                 if (marker.count == 0) return@launch
@@ -39,7 +46,8 @@ internal class MainArticleReadActions(
                                 count = marker.count,
                                 args = listOf(marker.count)
                             ),
-                            marker = marker
+                            marker = marker,
+                            feedTitle = feedTitle
                         )
                     )
                 }

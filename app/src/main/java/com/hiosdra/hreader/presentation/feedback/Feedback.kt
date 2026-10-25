@@ -3,6 +3,7 @@ package com.hiosdra.hreader.presentation.feedback
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarVisuals
 
 internal enum class FeedbackSurface {
     INLINE,
@@ -58,6 +59,7 @@ internal data class FeedbackRequest(
     val message: String,
     val kind: FeedbackKind = FeedbackKind.CONFIRMATION,
     val actionLabel: String? = null,
+    val supportingText: String? = null,
     val onAction: () -> Unit = {}
 )
 
@@ -65,11 +67,21 @@ internal suspend fun SnackbarHostState.showFeedback(request: FeedbackRequest): S
     val presentation = FeedbackPolicy.presentation(request.kind)
     check(presentation.surface == FeedbackSurface.SNACKBAR)
     val result = showSnackbar(
-        message = request.message,
-        actionLabel = request.actionLabel,
-        withDismissAction = presentation.withDismissAction,
-        duration = requireNotNull(presentation.duration)
+        visuals = FeedbackSnackbarVisuals(
+            request = request,
+            duration = requireNotNull(presentation.duration),
+            withDismissAction = presentation.withDismissAction
+        )
     )
     if (result == SnackbarResult.ActionPerformed) request.onAction()
     return result
+}
+
+internal data class FeedbackSnackbarVisuals(
+    val request: FeedbackRequest,
+    override val duration: SnackbarDuration,
+    override val withDismissAction: Boolean
+) : SnackbarVisuals {
+    override val message: String get() = request.message
+    override val actionLabel: String? get() = request.actionLabel
 }
