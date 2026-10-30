@@ -13,9 +13,9 @@ androidx.arch.core:core-common:2.2.0
 androidx.arch.core:core-runtime:2.2.0
 androidx.autofill:autofill:1.0.0
 androidx.browser:browser:1.10.0
-androidx.collection:collection-jvm:1.5.0
-androidx.collection:collection-ktx:1.5.0
-androidx.collection:collection:1.5.0
+androidx.collection:collection-jvm:1.6.0
+androidx.collection:collection-ktx:1.6.0
+androidx.collection:collection:1.6.0
 androidx.compose.animation:animation-android:1.12.1
 androidx.compose.animation:animation-core-android:1.12.1
 androidx.compose.animation:animation-core:1.12.1
@@ -141,8 +141,9 @@ androidx.sqlite:sqlite-framework-android:2.6.2
 androidx.sqlite:sqlite-framework:2.6.2
 androidx.sqlite:sqlite:2.6.2
 androidx.startup:startup-runtime:1.2.0
-androidx.tracing:tracing-ktx:1.2.0
-androidx.tracing:tracing:1.2.0
+androidx.tracing:tracing-android:2.0.1
+androidx.tracing:tracing-ktx:2.0.1
+androidx.tracing:tracing:2.0.1
 androidx.vectordrawable:vectordrawable-animated:1.1.0
 androidx.vectordrawable:vectordrawable:1.1.0
 androidx.versionedparcelable:versionedparcelable:1.1.1
@@ -243,6 +244,8 @@ org.jetbrains.kotlin:kotlin-stdlib-common:2.4.21
 org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.21
 org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21
 org.jetbrains.kotlin:kotlin-stdlib:2.4.21
+org.jetbrains.kotlinx:atomicfu-jvm:0.28.0
+org.jetbrains.kotlinx:atomicfu:0.28.0
 org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0
 org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.11.0
 org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0
@@ -250,8 +253,6 @@ org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0
 org.jetbrains.kotlinx:kotlinx-serialization-bom:1.7.3
 org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.7.3
 org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3
-org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.7.3
-org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3
 org.jetbrains:annotations:23.0.0
 org.jsoup:jsoup:1.23.2
 org.jspecify:jspecify:1.0.0
