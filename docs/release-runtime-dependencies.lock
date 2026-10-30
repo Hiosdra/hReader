@@ -166,9 +166,9 @@ com.google.errorprone:error_prone_annotations:2.48.0
 com.google.guava:listenablefuture:1.0
 com.squareup.moshi:moshi-kotlin:1.15.2
 com.squareup.moshi:moshi:1.15.2
-com.squareup.okhttp3:logging-interceptor:5.5.0
-com.squareup.okhttp3:okhttp-android:5.5.0
-com.squareup.okhttp3:okhttp:5.5.0
+com.squareup.okhttp3:logging-interceptor:5.5.1
+com.squareup.okhttp3:okhttp-android:5.5.1
+com.squareup.okhttp3:okhttp:5.5.1
 com.squareup.okio:okio-jvm:3.18.1
 com.squareup.okio:okio:3.18.1
 com.squareup.retrofit2:converter-moshi:3.0.0
