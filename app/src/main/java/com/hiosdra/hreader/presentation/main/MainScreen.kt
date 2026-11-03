@@ -34,7 +34,6 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.presentation.navigation.Routes
-import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.article.ArticleListGrouped
 import com.hiosdra.hreader.presentation.components.ArticleListSkeleton
 import com.hiosdra.hreader.presentation.feedback.FeedbackKind
@@ -51,8 +50,7 @@ internal fun MainScreen(
     onLeaveFeed: () -> Unit = {},
     onFeedMarkedRead: (Long) -> Unit = {},
     feedId: Long? = null,
-    viewModel: MainViewModel,
-    imageDependencies: ArticleImageDependencies
+    viewModel: MainViewModel
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val articles = viewModel.articles.collectAsLazyPagingItems()
@@ -253,10 +251,8 @@ internal fun MainScreen(
                             )
                         },
                         onCheckedChange = viewModel::updateEntryReadStatus,
-                        imageDependencies = imageDependencies,
                         readStateAnimationEnabled = !uiState.isBulkReadStateUpdating &&
                             uiState.syncState != com.hiosdra.hreader.core.application.sync.SyncOperationState.RUNNING,
-                        isOnline = uiState.isOnline,
                         contentPadding = PaddingValues(bottom = dockHeight + 32.dp)
                     )
                 }

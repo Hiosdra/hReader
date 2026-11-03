@@ -26,7 +26,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil3.ImageLoader as CoilImageLoader
-import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.article.ArticleScreen
 import com.hiosdra.hreader.core.application.port.out.ArticleImageDownloader
 import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
@@ -125,17 +124,6 @@ fun AppNavigation(
             else -> Routes.MAIN
         }
     }
-    val articleImageDependencies = remember(
-        articleImageLoader,
-        coilImageLoader,
-        remoteResourcePolicy
-    ) {
-        ArticleImageDependencies(
-            articleImageLoader = articleImageLoader,
-            coilImageLoader = coilImageLoader,
-            remoteResourcePolicy = remoteResourcePolicy
-        )
-    }
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -198,8 +186,7 @@ fun AppNavigation(
                 navController = navController,
                 mainViewModel = koinViewModel(),
                 feedsViewModel = koinViewModel(),
-                networkStatus = networkStatus,
-                imageDependencies = articleImageDependencies
+                networkStatus = networkStatus
             )
         }
         composable(
@@ -311,8 +298,7 @@ private fun MainWithSubscriptions(
     navController: NavHostController,
     mainViewModel: MainViewModel,
     feedsViewModel: FeedsViewModel,
-    networkStatus: NetworkStatus,
-    imageDependencies: ArticleImageDependencies
+    networkStatus: NetworkStatus
 ) {
     val drawerState = rememberSubscriptionsDrawerState()
     val scope = rememberCoroutineScope()
@@ -341,7 +327,6 @@ private fun MainWithSubscriptions(
             onOpenSubscriptions = { scope.launch { drawerState.open() } },
             feedId = selectedFeedId,
             viewModel = mainViewModel,
-            imageDependencies = imageDependencies,
             onLeaveFeed = { selectedFeedId = null },
             onFeedMarkedRead = onFeedMarkedRead
         )

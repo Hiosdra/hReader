@@ -21,10 +21,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLocale
@@ -54,9 +51,7 @@ internal fun ArticleListGrouped(
     listState: LazyListState,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
-    imageDependencies: ArticleImageDependencies,
     readStateAnimationEnabled: Boolean,
-    isOnline: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val snapshot = items.itemSnapshotList.items
@@ -67,18 +62,6 @@ internal fun ArticleListGrouped(
             .withZone(ZoneId.systemDefault())
     }
     val unknownFeedTitle = stringResource(R.string.article_unknown_feed)
-    val imageRequests = remember(snapshot) {
-        snapshot.mapNotNull { item ->
-            (item as? ArticleListItem.Article)?.entry?.let { entry ->
-                entry.imageUrl?.let { imageUrl -> entry.id to imageUrl }
-            }
-        }
-    }
-    var localImagePaths by remember { mutableStateOf<Map<Long, Map<String, String>>>(emptyMap()) }
-    LaunchedEffect(imageRequests) {
-        val ids = imageRequests.map { it.first }
-        localImagePaths = imageDependencies.articleImageLoader.getLocalImagePaths(ids)
-    }
     val separatorIndices = remember(snapshot) {
         snapshot.mapIndexedNotNull { index, item ->
             index.takeIf { item is ArticleListItem.DayHeader }
@@ -122,12 +105,9 @@ internal fun ArticleListGrouped(
                     endExclusive = separatorIndex,
                     onOpen = onOpen,
                     onCheckedChange = onCheckedChange,
-                    imageDependencies = imageDependencies,
                     readStateAnimationEnabled = readStateAnimationEnabled,
                     timeFormatter = timeFormatter,
-                    unknownFeedTitle = unknownFeedTitle,
-                    isOnline = isOnline,
-                    localImagePaths = localImagePaths
+                    unknownFeedTitle = unknownFeedTitle
                 )
                 val separator = snapshot[separatorIndex] as ArticleListItem.DayHeader
                 stickyHeader(
@@ -145,12 +125,9 @@ internal fun ArticleListGrouped(
                 endExclusive = snapshot.size,
                 onOpen = onOpen,
                 onCheckedChange = onCheckedChange,
-                imageDependencies = imageDependencies,
                 readStateAnimationEnabled = readStateAnimationEnabled,
                 timeFormatter = timeFormatter,
-                unknownFeedTitle = unknownFeedTitle,
-                isOnline = isOnline,
-                localImagePaths = localImagePaths
+                unknownFeedTitle = unknownFeedTitle
             )
             when (val append = items.loadState.append) {
                 is LoadState.Loading -> item(key = "append-spinner") {
@@ -200,12 +177,9 @@ private fun LazyListScope.articleRange(
     endExclusive: Int,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
-    imageDependencies: ArticleImageDependencies,
     readStateAnimationEnabled: Boolean,
     timeFormatter: DateTimeFormatter,
-    unknownFeedTitle: String,
-    isOnline: Boolean,
-    localImagePaths: Map<Long, Map<String, String>>
+    unknownFeedTitle: String
 ) {
     if (start >= endExclusive) return
     items(
@@ -225,10 +199,7 @@ private fun LazyListScope.articleRange(
                 entry = item.entry.toArticleRowModel(timeFormatter, unknownFeedTitle),
                 onOpen = onOpen,
                 onCheckedChange = onCheckedChange,
-                imageDependencies = imageDependencies,
-                readStateAnimationEnabled = readStateAnimationEnabled,
-                isOnline = isOnline,
-                localImagePath = item.entry.imageUrl?.let { localImagePaths[item.entry.id]?.get(it) }
+                readStateAnimationEnabled = readStateAnimationEnabled
             )
 
             is ArticleListItem.DayHeader -> DayHeader(item.date)
@@ -249,7 +220,6 @@ private fun ArticleListEntry.toArticleRowModel(
     preview = preview,
     feedTitle = feed.title.ifBlank { unknownFeedTitle },
     publishedTime = timeFormatter.format(publishedAt),
-    imageUrl = imageUrl,
     isRead = isRead
 )
 

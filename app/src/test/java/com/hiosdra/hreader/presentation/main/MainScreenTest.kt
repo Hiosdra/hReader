@@ -12,16 +12,12 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
-import coil3.ImageLoader
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.core.application.port.out.ArticleImageLoader
-import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.application.sync.SyncOperationState
 import com.hiosdra.hreader.core.domain.model.ArticleListEntry
 import com.hiosdra.hreader.core.domain.model.ArticleListItem
 import com.hiosdra.hreader.core.domain.model.ArticleListQuery
 import com.hiosdra.hreader.core.domain.model.Feed
-import com.hiosdra.hreader.presentation.article.ArticleImageDependencies
 import com.hiosdra.hreader.presentation.navigation.Routes
 import com.hiosdra.hreader.presentation.theme.HReaderTheme
 import io.mockk.every
@@ -210,19 +206,13 @@ class MainScreenTest {
         feedId: Long? = null,
         navController: NavController = mockk(relaxed = true)
     ) {
-        val context = RuntimeEnvironment.getApplication()
         composeTestRule.setContent {
             HReaderTheme {
                 MainScreen(
                     navController = navController,
                     onOpenSubscriptions = {},
                     feedId = feedId,
-                    viewModel = viewModel,
-                    imageDependencies = ArticleImageDependencies(
-                        articleImageLoader = mockk<ArticleImageLoader>(relaxed = true),
-                        coilImageLoader = ImageLoader.Builder(context).build(),
-                        remoteResourcePolicy = mockk<RemoteResourcePolicy>(relaxed = true)
-                    )
+                    viewModel = viewModel
                 )
             }
         }
