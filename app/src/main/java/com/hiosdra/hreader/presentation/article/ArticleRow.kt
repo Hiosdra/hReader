@@ -26,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -36,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.R
-import com.hiosdra.hreader.presentation.components.OfflineAwareImage
 import com.hiosdra.hreader.presentation.theme.HReaderSpacing
 import com.hiosdra.hreader.presentation.theme.MotionDuration
 
@@ -45,10 +43,7 @@ internal fun ArticleRow(
     entry: ArticleRowModel,
     onOpen: (Long) -> Unit,
     onCheckedChange: (entryId: Long, checked: Boolean) -> Unit,
-    imageDependencies: ArticleImageDependencies,
-    readStateAnimationEnabled: Boolean,
-    isOnline: Boolean = true,
-    localImagePath: String? = null
+    readStateAnimationEnabled: Boolean
 ) {
     val checked = entry.isRead
     val readStateDescription = stringResource(
@@ -148,24 +143,6 @@ internal fun ArticleRow(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                }
-                if (entry.imageUrl != null) {
-                    OfflineAwareImage(
-                        entryId = entry.id,
-                        imageUrl = entry.imageUrl,
-                        contentDescription = null,
-                        isOnline = isOnline,
-                        articleImageLoader = imageDependencies.articleImageLoader,
-                        coilImageLoader = imageDependencies.coilImageLoader,
-                        remoteResourcePolicy = imageDependencies.remoteResourcePolicy,
-                        localImagePath = localImagePath,
-                        lookupLocalPath = false,
-                        checkRemotePolicy = false,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(MaterialTheme.shapes.small),
-                        contentScale = ContentScale.Crop
-                    )
                 }
                 Checkbox(
                     checked = checked,
