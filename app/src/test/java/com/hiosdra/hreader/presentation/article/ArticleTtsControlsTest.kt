@@ -2,6 +2,8 @@ package com.hiosdra.hreader.presentation.article
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -52,7 +54,7 @@ class ArticleTtsControlsTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Article title").performClick()
+        composeTestRule.onNodeWithText("Article title", useUnmergedTree = true).performClick()
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.article_pause))
             .performClick()
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.article_stop_reading))
@@ -61,6 +63,66 @@ class ArticleTtsControlsTest {
         assertEquals(1, opens.get())
         assertEquals(1, pauses.get())
         assertEquals(1, stops.get())
+    }
+
+    @Test
+    fun `mini player skips between paragraphs`() {
+        val previous = AtomicInteger()
+        val next = AtomicInteger()
+        val context = RuntimeEnvironment.getApplication()
+        composeTestRule.setContent {
+            HReaderTheme {
+                ArticleTtsMiniPlayer(
+                    state = ArticleTtsState(
+                        articleId = 42L,
+                        title = "Article title",
+                        isPlaying = true,
+                        paragraphIndex = 1,
+                        paragraphCount = 3
+                    ),
+                    onOpen = {},
+                    onPause = {},
+                    onResume = {},
+                    onStop = {},
+                    onSkipToPreviousParagraph = { previous.incrementAndGet() },
+                    onSkipToNextParagraph = { next.incrementAndGet() }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.tts_previous_paragraph))
+            .performClick()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.tts_next_paragraph))
+            .performClick()
+
+        assertEquals(1, previous.get())
+        assertEquals(1, next.get())
+    }
+
+    @Test
+    fun `next paragraph is disabled on the last paragraph`() {
+        val context = RuntimeEnvironment.getApplication()
+        composeTestRule.setContent {
+            HReaderTheme {
+                ArticleTtsMiniPlayer(
+                    state = ArticleTtsState(
+                        articleId = 42L,
+                        isPlaying = true,
+                        paragraphIndex = 2,
+                        paragraphCount = 3
+                    ),
+                    onOpen = {},
+                    onPause = {},
+                    onResume = {},
+                    onStop = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.tts_next_paragraph))
+            .assertIsNotEnabled()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.tts_previous_paragraph))
+            .assertIsEnabled()
     }
 
     @Test

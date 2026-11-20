@@ -1,5 +1,7 @@
 package com.hiosdra.hreader.presentation.article
 
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -41,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,6 +64,8 @@ internal fun ArticleTtsMiniPlayer(
     onResume: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
+    onSkipToPreviousParagraph: () -> Unit = {},
+    onSkipToNextParagraph: () -> Unit = {},
     onSizeChanged: (Int) -> Unit = {}
 ) {
     val playbackAction = stringResource(
@@ -111,6 +116,12 @@ internal fun ArticleTtsMiniPlayer(
                             )
                             ArticleTtsStatusText(state = state, maxLines = 1)
                         }
+                        ArticleTtsParagraphButton(
+                            iconRes = R.drawable.ic_skip_previous_24,
+                            labelRes = R.string.tts_previous_paragraph,
+                            enabled = state.canSkipParagraphs,
+                            onClick = onSkipToPreviousParagraph
+                        )
                         IconButton(
                             onClick = if (state.isPaused) onResume else onPause,
                             enabled = playbackEnabled,
@@ -124,6 +135,12 @@ internal fun ArticleTtsMiniPlayer(
                                 Text("Ⅱ")
                             }
                         }
+                        ArticleTtsParagraphButton(
+                            iconRes = R.drawable.ic_skip_next_24,
+                            labelRes = R.string.tts_next_paragraph,
+                            enabled = state.hasNextParagraph,
+                            onClick = onSkipToNextParagraph
+                        )
                         IconButton(
                             onClick = onStop,
                             modifier = Modifier.semantics {
@@ -156,7 +173,9 @@ internal fun ArticleTtsPlayerSheet(
     onResume: () -> Unit,
     onStop: () -> Unit,
     onRetry: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSkipToPreviousParagraph: () -> Unit = {},
+    onSkipToNextParagraph: () -> Unit = {}
 ) {
     val playbackAction = stringResource(
         if (state.isPaused) R.string.article_resume else R.string.article_pause
@@ -195,6 +214,37 @@ internal fun ArticleTtsPlayerSheet(
                 progress = { state.progress.coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth()
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onSkipToPreviousParagraph,
+                    enabled = state.canSkipParagraphs,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(painterResource(R.drawable.ic_skip_previous_24), contentDescription = null)
+                    Text(
+                        text = stringResource(R.string.tts_previous_paragraph),
+                        modifier = Modifier.padding(start = 4.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                OutlinedButton(
+                    onClick = onSkipToNextParagraph,
+                    enabled = state.hasNextParagraph,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = stringResource(R.string.tts_next_paragraph),
+                        modifier = Modifier.padding(end = 4.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Icon(painterResource(R.drawable.ic_skip_next_24), contentDescription = null)
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -247,6 +297,23 @@ internal fun ArticleTtsPlayerSheet(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ArticleTtsParagraphButton(
+    @DrawableRes iconRes: Int,
+    @StringRes labelRes: Int,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val label = stringResource(labelRes)
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.semantics { contentDescription = label }
+    ) {
+        Icon(painterResource(iconRes), contentDescription = null)
     }
 }
 

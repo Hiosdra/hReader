@@ -12,6 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import com.hiosdra.hreader.R
 import com.hiosdra.hreader.core.application.port.out.RemoteResourcePolicy
 import com.hiosdra.hreader.core.domain.service.cleanUrl
 import kotlinx.coroutines.Dispatchers
@@ -37,9 +39,12 @@ internal fun ArticleWebView(
     onScrollProgress: ((Float) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
     onImageLongClick: ((String) -> Unit)? = null,
+    onReadAloudFromParagraph: ((String) -> Unit)? = null,
     bionicReadingEnabled: Boolean,
     remoteResourcePolicy: RemoteResourcePolicy
 ) {
+    val readAloudLabel = stringResource(R.string.tts_read_from_here)
+    val currentOnReadAloudFromParagraph = rememberUpdatedState(onReadAloudFromParagraph)
     val colors = ArticleHtmlColors(
         text = MaterialTheme.colorScheme.onSurface.toArgb(),
         link = MaterialTheme.colorScheme.primary.toArgb(),
@@ -108,6 +113,7 @@ internal fun ArticleWebView(
                 android.view.View.OVER_SCROLL_NEVER
             }
             loadedContentTopInsetPx = contentTopInsetPx
+            onReadAloudSelection = { text -> currentOnReadAloudFromParagraph.value?.invoke(text) }
         },
         interceptRequest = { view, request ->
             val url = request?.url?.toString() ?: return@ArticleReadingWebView null
@@ -157,6 +163,9 @@ internal fun ArticleWebView(
                 android.view.View.OVER_SCROLL_NEVER
             }
             webView.loadedContentTopInsetPx = contentTopInsetPx
+            webView.readAloudSelectionLabel = readAloudLabel.takeIf {
+                currentOnReadAloudFromParagraph.value != null
+            }
 
             val textZoom = (currentTextScale.value.coerceIn(0.85f, 1.35f) * 100).roundToInt()
             val textZoomChanged = webView.settings.textZoom != textZoom

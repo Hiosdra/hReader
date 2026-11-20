@@ -7,6 +7,7 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Build
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -69,12 +70,25 @@ class ArticleTtsController internal constructor(
         }
     }
     private var audioFocusRequest: AudioFocusRequest? = null
+    private var session: PlaybackSession? = null
+    private val paragraphClock = ParagraphPlaybackClock(SystemClock::elapsedRealtime)
+
+    private data class PlaybackSession(
+        val model: TtsModel,
+        val language: String,
+        val sourceChunks: List<TtsChunk>,
+        val synthesisChunks: List<TtsChunk>
+    ) {
+        val activeChunks: List<TtsChunk>
+            get() = if (model == TtsModel.ANDROID) sourceChunks else synthesisChunks
+    }
 
     override fun play(
         articleId: Long,
         title: String,
         html: String,
-        modelOverride: TtsModel?
+        modelOverride: TtsModel?,
+        startAnchorText: String?
     ) {
         stopPlayback()
         if (!hasReadableArticleText(html)) {
@@ -97,12 +111,19 @@ class ArticleTtsController internal constructor(
         warmReleaseJob?.cancel()
         warmReleaseJob = null
         val version = playbackVersion
+        val startParagraph = TtsTextProcessor.paragraphIndexForAnchor(
+            articleText.paragraphs,
+            startAnchorText
+        ) ?: 0
         _state.value = ArticleTtsState(
             articleId = articleId,
             title = title,
             model = modelOverride ?: preferences.getTtsModel(),
             isPreparing = true,
-            totalChunks = chunks.size
+            currentChunk = TtsParagraphNavigation.firstChunkIndex(chunks, startParagraph) ?: 0,
+            totalChunks = chunks.size,
+            paragraphIndex = startParagraph,
+            paragraphCount = articleText.paragraphs.size
         )
         if (!playbackService.start()) {
             abandonAudioFocus()
@@ -129,41 +150,14 @@ class ArticleTtsController internal constructor(
                     isPreparing = true,
                     error = null
                 )
-                val synthesisChunks = TtsTextProcessor.forModel(model, chunks, language)
-                _state.value = _state.value.copy(totalChunks = synthesisChunks.size)
-                runCatchingCancellable {
-                    if (model == TtsModel.ANDROID) {
-                        speakWithAndroid(chunks.map(TtsChunk::text), language)
-                    } else {
-                        speakWithNeuralTts(model, synthesisChunks, language)
-                    }
-                }.onFailure failure@{
-                    if (version != playbackVersion) return@failure
-                    if (it !is CancellationException && model != TtsModel.ANDROID) {
-                        Log.e(TAG, "Neural TTS failed for ${model.name}", it)
-                        _state.value = _state.value.copy(
-                            model = TtsModel.ANDROID,
-                            isPreparing = true,
-                            error = neuralFallbackMessage(model, it)
-                        )
-                        runCatchingCancellable {
-                            speakWithAndroid(chunks.map(TtsChunk::text), language)
-                        }
-                            .onFailure { androidFailure ->
-                                if (version == playbackVersion && androidFailure !is CancellationException) {
-                                    finishPlaybackWithError(
-                                        version,
-                                        appContext.getString(R.string.tts_system_voice_failed)
-                                    )
-                                }
-                            }
-                    } else if (it !is CancellationException) {
-                        finishPlaybackWithError(
-                            version,
-                            appContext.getString(R.string.tts_speech_playback_failed)
-                        )
-                    }
-                }
+                val playbackSession = PlaybackSession(
+                    model = model,
+                    language = language,
+                    sourceChunks = chunks,
+                    synthesisChunks = TtsTextProcessor.forModel(model, chunks, language)
+                )
+                session = playbackSession
+                speakSession(version, playbackSession, startParagraph)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -176,6 +170,124 @@ class ArticleTtsController internal constructor(
         }
     }
 
+    override fun skipToNextParagraph() {
+        val playbackSession = session ?: return
+        if (!_state.value.canSkipParagraphs) return
+        val target = TtsParagraphNavigation.nextParagraph(
+            playbackSession.activeChunks,
+            _state.value.paragraphIndex
+        ) ?: return
+        restartFromParagraph(playbackSession, target)
+    }
+
+    override fun skipToPreviousParagraph() {
+        val playbackSession = session ?: return
+        if (!_state.value.canSkipParagraphs) return
+        val target = TtsParagraphNavigation.previousParagraph(
+            chunks = playbackSession.activeChunks,
+            currentParagraph = _state.value.paragraphIndex,
+            elapsedInParagraphMs = paragraphClock.elapsedMs()
+        )
+        restartFromParagraph(playbackSession, target)
+    }
+
+    private fun restartFromParagraph(playbackSession: PlaybackSession, paragraph: Int) {
+        playbackVersion++
+        val version = playbackVersion
+        playbackJob?.cancel()
+        audioTrack?.runCatching { stop() }
+        androidTts?.runCatching { stop() }
+        val paused = _state.value.isPaused
+        val engineReady = playbackSession.model == TtsModel.ANDROID && androidTts != null
+        _state.value = _state.value.copy(
+            isPreparing = !paused && !engineReady,
+            isPlaying = !paused && engineReady,
+            currentChunk = TtsParagraphNavigation.firstChunkIndex(
+                playbackSession.activeChunks,
+                paragraph
+            ) ?: _state.value.currentChunk,
+            paragraphIndex = paragraph,
+            error = null
+        )
+        paragraphClock.restart(paused)
+        playbackJob = scope.launch {
+            try {
+                speakSession(version, playbackSession, paragraph)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                finishPlaybackWithError(
+                    version,
+                    appContext.getString(R.string.tts_speech_playback_failed)
+                )
+            }
+            if (version == playbackVersion) scheduleWarmRelease()
+        }
+    }
+
+    private suspend fun speakSession(version: Int, playbackSession: PlaybackSession, fromParagraph: Int) {
+        val model = playbackSession.model
+        runCatchingCancellable {
+            if (model == TtsModel.ANDROID) {
+                speakWithAndroid(playbackSession.sourceChunks, fromParagraph, playbackSession.language)
+            } else {
+                speakWithNeuralTts(model, playbackSession.synthesisChunks, fromParagraph, playbackSession.language)
+            }
+        }.onFailure failure@{
+            if (version != playbackVersion) return@failure
+            if (it !is CancellationException && model != TtsModel.ANDROID) {
+                Log.e(TAG, "Neural TTS failed for ${model.name}", it)
+                val fallbackSession = playbackSession.copy(model = TtsModel.ANDROID)
+                session = fallbackSession
+                _state.value = _state.value.copy(
+                    model = TtsModel.ANDROID,
+                    isPreparing = true,
+                    error = neuralFallbackMessage(model, it)
+                )
+                runCatchingCancellable {
+                    speakWithAndroid(
+                        fallbackSession.sourceChunks,
+                        _state.value.paragraphIndex,
+                        fallbackSession.language
+                    )
+                }
+                    .onFailure { androidFailure ->
+                        if (version == playbackVersion && androidFailure !is CancellationException) {
+                            finishPlaybackWithError(
+                                version,
+                                appContext.getString(R.string.tts_system_voice_failed)
+                            )
+                        }
+                    }
+            } else if (it !is CancellationException) {
+                finishPlaybackWithError(
+                    version,
+                    appContext.getString(R.string.tts_speech_playback_failed)
+                )
+            }
+        }
+    }
+
+    private fun releaseAndroidTts() {
+        androidTts?.runCatching { stop() }
+        androidTts?.runCatching { shutdown() }
+        androidTts = null
+    }
+
+    private fun markChunkStarted(chunks: List<TtsChunk>, index: Int) {
+        val paragraph = chunks[index].paragraphIndex
+        if (index == 0 || chunks[index - 1].paragraphIndex != paragraph) {
+            paragraphClock.restart(_state.value.isPaused)
+        }
+        _state.value = _state.value.copy(
+            isPreparing = false,
+            isPlaying = !_state.value.isPaused,
+            currentChunk = index,
+            totalChunks = chunks.size,
+            paragraphIndex = paragraph
+        )
+    }
+
     override fun stop() {
         stopPlayback()
         scheduleWarmRelease()
@@ -185,6 +297,7 @@ class ArticleTtsController internal constructor(
     override fun pause() {
         if (_state.value.articleId == null || _state.value.isPaused) return
         resumeSignal = CompletableDeferred()
+        paragraphClock.pause()
         audioTrack?.runCatching { pause() }
         androidTts?.runCatching { stop() }
         abandonAudioFocus()
@@ -198,6 +311,7 @@ class ArticleTtsController internal constructor(
             return
         }
         resumeSignal.complete(Unit)
+        paragraphClock.resume()
         audioTrack?.runCatching { play() }
         _state.value = _state.value.copy(isPaused = false, isPlaying = true)
     }
@@ -206,10 +320,9 @@ class ArticleTtsController internal constructor(
         playbackVersion++
         playbackJob?.cancel()
         playbackJob = null
+        session = null
         audioTrack?.runCatching { stop() }
-        androidTts?.runCatching { stop() }
-        androidTts?.runCatching { shutdown() }
-        androidTts = null
+        releaseAndroidTts()
         abandonAudioFocus()
         resumeSignal.complete(Unit)
         _state.value = ArticleTtsState()
@@ -236,6 +349,7 @@ class ArticleTtsController internal constructor(
 
     private fun finishPlaybackWithError(version: Int, message: String) {
         if (version != playbackVersion) return
+        releaseAndroidTts()
         abandonAudioFocus()
         _state.value = _state.value.copy(
             isPreparing = false,
@@ -258,8 +372,14 @@ class ArticleTtsController internal constructor(
     private suspend fun speakWithNeuralTts(
         model: TtsModel,
         chunks: List<TtsChunk>,
+        fromParagraph: Int,
         language: String
     ) {
+        val startIndex = TtsParagraphNavigation.firstChunkIndex(chunks, fromParagraph)
+        if (startIndex == null) {
+            finishPlayback()
+            return
+        }
         coroutineScope {
             val settings = preferences.getTtsAdvancedSettings()
             val modelPreparation = async(Dispatchers.Default) {
@@ -268,20 +388,16 @@ class ArticleTtsController internal constructor(
             modelPreparation.await()
             val speed = preferences.getTtsSpeed()
             var audio = withContext(Dispatchers.Default) {
-                neuralTts.generate(model, chunks.first().text, speed, language, settings)
+                neuralTts.generate(model, chunks[startIndex].text, speed, language, settings)
             }
-            chunks.forEachIndexed { index, _ ->
+            for (index in startIndex until chunks.size) {
                 val nextAudio = chunks.getOrNull(index + 1)?.let { nextChunk ->
                     async(Dispatchers.Default) {
                         neuralTts.generate(model, nextChunk.text, speed, language, settings)
                     }
                 }
                 resumeSignal.await()
-                _state.value = _state.value.copy(
-                    isPreparing = false,
-                    isPlaying = !_state.value.isPaused,
-                    currentChunk = index
-                )
+                markChunkStarted(chunks, index)
                 val pauseMillis = chunks
                     .getOrNull(index + 1)
                     ?.boundaryBefore
@@ -292,6 +408,12 @@ class ArticleTtsController internal constructor(
                 audio = nextAudio?.await() ?: return@coroutineScope
             }
         }
+        finishPlayback()
+    }
+
+    private fun finishPlayback() {
+        session = null
+        releaseAndroidTts()
         abandonAudioFocus()
         _state.value = ArticleTtsState()
     }
@@ -337,36 +459,31 @@ class ArticleTtsController internal constructor(
         }
     }
 
-    private suspend fun speakWithAndroid(chunks: List<String>, language: String) {
-        val tts = initializeAndroidTts()
-        try {
-            tts.setSpeechRate(preferences.getTtsSpeed())
-            val languageResult = tts.setLanguage(Locale.forLanguageTag(language))
-            if (
-                languageResult == TextToSpeech.LANG_MISSING_DATA ||
-                languageResult == TextToSpeech.LANG_NOT_SUPPORTED
-            ) {
-                val fallbackResult = tts.setLanguage(Locale.getDefault())
-                check(
-                    fallbackResult != TextToSpeech.LANG_MISSING_DATA &&
-                        fallbackResult != TextToSpeech.LANG_NOT_SUPPORTED
-                ) { appContext.getString(R.string.tts_system_voice_language_missing) }
-            }
-            chunks.forEachIndexed { index, chunk ->
-                resumeSignal.await()
-                _state.value = _state.value.copy(
-                    isPreparing = false,
-                    isPlaying = !_state.value.isPaused,
-                    currentChunk = index
-                )
-                while (!speakChunk(tts, chunk)) resumeSignal.await()
-            }
-            abandonAudioFocus()
-            _state.value = ArticleTtsState()
-        } finally {
-            if (androidTts === tts) androidTts = null
-            tts.runCatching { shutdown() }
+    private suspend fun speakWithAndroid(chunks: List<TtsChunk>, fromParagraph: Int, language: String) {
+        val startIndex = TtsParagraphNavigation.firstChunkIndex(chunks, fromParagraph)
+        if (startIndex == null) {
+            finishPlayback()
+            return
         }
+        val tts = initializeAndroidTts()
+        tts.setSpeechRate(preferences.getTtsSpeed())
+        val languageResult = tts.setLanguage(Locale.forLanguageTag(language))
+        if (
+            languageResult == TextToSpeech.LANG_MISSING_DATA ||
+            languageResult == TextToSpeech.LANG_NOT_SUPPORTED
+        ) {
+            val fallbackResult = tts.setLanguage(Locale.getDefault())
+            check(
+                fallbackResult != TextToSpeech.LANG_MISSING_DATA &&
+                    fallbackResult != TextToSpeech.LANG_NOT_SUPPORTED
+            ) { appContext.getString(R.string.tts_system_voice_language_missing) }
+        }
+        for (index in startIndex until chunks.size) {
+            resumeSignal.await()
+            markChunkStarted(chunks, index)
+            while (!speakChunk(tts, chunks[index].text)) resumeSignal.await()
+        }
+        finishPlayback()
     }
 
     private suspend fun speakChunk(tts: TextToSpeech, text: String): Boolean =

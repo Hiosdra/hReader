@@ -21,6 +21,9 @@
     <string name="tts_chunk_progress">Bloc %1$d sur %2$d</string>
     <string name="tts_resume">Reprendre</string>
     <string name="tts_pause">Pause</string>
+    <string name="tts_previous_paragraph">Paragraphe précédent</string>
+    <string name="tts_next_paragraph">Paragraphe suivant</string>
+    <string name="tts_read_from_here">Lire à partir d’ici</string>
     <string name="tts_stop">Arrêter</string>
     <string name="action_back">Retour</string>
     <string name="action_close">Fermer</string>

@@ -12,10 +12,18 @@ data class ArticleTtsState(
     val isPaused: Boolean = false,
     val currentChunk: Int = 0,
     val totalChunks: Int = 0,
+    val paragraphIndex: Int = 0,
+    val paragraphCount: Int = 0,
     val error: String? = null
 ) {
     val progress: Float
         get() = if (totalChunks == 0) 0f else currentChunk.toFloat() / totalChunks
+
+    val canSkipParagraphs: Boolean
+        get() = articleId != null && (isPlaying || isPaused || isPreparing)
+
+    val hasNextParagraph: Boolean
+        get() = canSkipParagraphs && paragraphIndex < paragraphCount - 1
 }
 
 interface ArticleTtsPlayer {
@@ -24,10 +32,13 @@ interface ArticleTtsPlayer {
         articleId: Long,
         title: String,
         html: String,
-        modelOverride: TtsModel? = null
+        modelOverride: TtsModel? = null,
+        startAnchorText: String? = null
     )
     fun stop()
     fun stopFromService()
     fun pause()
     fun resume()
+    fun skipToNextParagraph()
+    fun skipToPreviousParagraph()
 }

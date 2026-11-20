@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +31,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -191,6 +193,18 @@ internal fun ArticleContent(
     val oversizedContentLayoutReady = !webViewNeedsInternalScroll ||
         webContentTopInsetPx > 0 && measuredWebContentTopInsetPx == webContentTopInsetPx
     val webViewScrollController = remember(entry.id) { ArticleWebViewScrollController() }
+    val viewportGeometry = remember(entry.id) { ArticleViewportGeometry() }
+    val ttsStartAnchors = bindings.ttsStartAnchors
+    DisposableEffect(entry.id, ttsStartAnchors, webViewScrollController, viewportGeometry) {
+        val provider: suspend () -> String? = {
+            webViewScrollController.firstVisibleParagraphText(viewportGeometry.visibleTopInWebViewPx())
+        }
+        ttsStartAnchors?.register(entry.id, provider)
+        onDispose { ttsStartAnchors?.unregister(entry.id, provider) }
+    }
+    val onReadAloudFromParagraph = bindings.onReadAloudFromParagraph?.let { readAloud ->
+        { paragraphText: String -> readAloud(entry, paragraphText) }
+    }
     val headerScrollableState = rememberScrollableState { deltaY ->
         webViewScrollController.consumeComposeScrollDelta(deltaY)
     }
@@ -286,6 +300,7 @@ internal fun ArticleContent(
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { articleViewportHeightPx = it.height }
+                .onGloballyPositioned { viewportGeometry.viewport = it }
         ) {
             if (webViewNeedsInternalScroll) {
                 if (webContentTopInsetPx > 0) {
@@ -294,7 +309,8 @@ internal fun ArticleContent(
                         baseUrl = entry.url,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 16.dp)
+                            .onGloballyPositioned { viewportGeometry.webView = it },
                         allowNetworkLoads = isOnline,
                         localImagePaths = localImagePaths,
                         textScale = textScale,
@@ -308,6 +324,7 @@ internal fun ArticleContent(
                         onContentLoadStarted = { webContentHeightSettled = false },
                         onLinkClick = onArticleLinkClick,
                         onImageLongClick = { url -> imageActionsUrl = url },
+                        onReadAloudFromParagraph = onReadAloudFromParagraph,
                         bionicReadingEnabled = bionicReadingEnabled,
                         remoteResourcePolicy = remoteResourcePolicy
                     )
@@ -380,17 +397,20 @@ internal fun ArticleContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .widthIn(max = 760.dp)
-                                .height(webViewHeight.coerceAtLeast(240.dp)),
+                                .height(webViewHeight.coerceAtLeast(240.dp))
+                                .onGloballyPositioned { viewportGeometry.webView = it },
                             allowNetworkLoads = isOnline,
                             localImagePaths = localImagePaths,
                             textScale = textScale,
                             scrollEnabled = false,
+                            scrollController = webViewScrollController,
                             restoreScrollY = 0,
                             onScrollProgress = { progress -> webViewScrollProgress = progress },
                             onContentHeightChanged = onWebContentHeightChanged,
                             onContentLoadStarted = { webContentHeightSettled = false },
                             onLinkClick = onArticleLinkClick,
                             onImageLongClick = { url -> imageActionsUrl = url },
+                            onReadAloudFromParagraph = onReadAloudFromParagraph,
                             bionicReadingEnabled = bionicReadingEnabled,
                             remoteResourcePolicy = remoteResourcePolicy
                         )

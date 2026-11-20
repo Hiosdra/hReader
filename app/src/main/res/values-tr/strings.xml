@@ -21,6 +21,9 @@
     <string name="tts_chunk_progress">%2$d parçanın %1$d. parçası</string>
     <string name="tts_resume">Sürdür</string>
     <string name="tts_pause">Duraklat</string>
+    <string name="tts_previous_paragraph">Önceki paragraf</string>
+    <string name="tts_next_paragraph">Sonraki paragraf</string>
+    <string name="tts_read_from_here">Buradan sesli oku</string>
     <string name="tts_stop">Durdur</string>
     <string name="action_back">Geri</string>
     <string name="action_close">Kapat</string>

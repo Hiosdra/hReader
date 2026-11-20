@@ -38,7 +38,9 @@ internal data class ArticlePagerBindings(
     val defaultPaywallBypassMethod: PaywallBypassMethod = PaywallBypassMethod.SMRY_AI,
     val canUsePaywallBypass: (String) -> Boolean = { false },
     val onOpenInChrome: (String) -> Unit = {},
-    val onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> }
+    val onBypassPaywall: (String, PaywallBypassMethod) -> Unit = { _, _ -> },
+    val ttsStartAnchors: ArticleTtsStartAnchors? = null,
+    val onReadAloudFromParagraph: ((Entry, String) -> Unit)? = null
 )
 
 @Composable
