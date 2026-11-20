@@ -13,9 +13,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.ConscryptMode
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = PreferenceMigrationIntegrationTestApplication::class, sdk = [35])
+@ConscryptMode(ConscryptMode.Mode.OFF)
 class PreferenceMigrationIntegrationTest {
     private val secretKey = SecretKeySpec(ByteArray(16) { 9 }, "AES")
 

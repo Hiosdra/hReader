@@ -19,11 +19,13 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.ConscryptMode
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = PreferenceStoresPersistenceTestApplication::class, sdk = [35])
+@ConscryptMode(ConscryptMode.Mode.OFF)
 class PreferenceStoresPersistenceTest {
     private val secretKey = SecretKeySpec(ByteArray(16) { 7 }, "AES")
 

@@ -57,6 +57,11 @@ internal class PreferenceStorage(
             } catch (error: Exception) {
                 Log.e(TAG, "Preference migration failed; retaining stored values", error)
                 migrationReady.complete(Unit)
+            } catch (error: Throwable) {
+                preferenceStore.ready.completeExceptionally(error)
+                secretStore.ready.completeExceptionally(error)
+                migrationReady.completeExceptionally(error)
+                throw error
             }
         }
         scope.launch {
