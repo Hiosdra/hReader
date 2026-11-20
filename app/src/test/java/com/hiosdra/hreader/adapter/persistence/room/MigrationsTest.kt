@@ -9,6 +9,8 @@ import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteOpenHelper
+import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.After
@@ -33,7 +35,9 @@ class MigrationsTest {
     @get:Rule
     val migrationHelper = MigrationTestHelper(
         TestInstrumentation(schemaContext),
-        AppDatabase::class.java
+        AppDatabase::class.java,
+        emptyList(),
+        ResolvedDatabasePathOpenHelperFactory()
     )
 
     @After
@@ -300,6 +304,18 @@ private class SchemaContext(base: Context, schemaArchive: File) : ContextWrapper
     }
 
     override fun getAssets(): AssetManager = schemaAssets
+}
+
+private class ResolvedDatabasePathOpenHelperFactory(
+    private val delegate: SupportSQLiteOpenHelper.Factory = FrameworkSQLiteOpenHelperFactory()
+) : SupportSQLiteOpenHelper.Factory {
+    override fun create(configuration: SupportSQLiteOpenHelper.Configuration): SupportSQLiteOpenHelper {
+        val openHelper = delegate.create(configuration)
+        val resolvedName = configuration.name?.let { configuration.context.getDatabasePath(it).path }
+        return object : SupportSQLiteOpenHelper by openHelper {
+            override val databaseName: String? = resolvedName
+        }
+    }
 }
 
 internal class MigrationsTestApplication : Application()
