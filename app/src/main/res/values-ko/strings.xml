@@ -21,6 +21,9 @@
     <string name="tts_chunk_progress">%2$d개 중 %1$d번째 청크</string>
     <string name="tts_resume">재개</string>
     <string name="tts_pause">일시중지</string>
+    <string name="tts_previous_paragraph">이전 단락</string>
+    <string name="tts_next_paragraph">다음 단락</string>
+    <string name="tts_read_from_here">여기부터 읽기</string>
     <string name="tts_stop">중지</string>
     <string name="action_back">뒤로</string>
     <string name="action_close">닫기</string>

@@ -21,6 +21,9 @@
     <string name="tts_chunk_progress">第 %1$d 段，共 %2$d 段</string>
     <string name="tts_resume">继续</string>
     <string name="tts_pause">暂停</string>
+    <string name="tts_previous_paragraph">上一段</string>
+    <string name="tts_next_paragraph">下一段</string>
+    <string name="tts_read_from_here">从这里朗读</string>
     <string name="tts_stop">停止</string>
     <string name="action_back">返回</string>
     <string name="action_close">关闭</string>

@@ -21,6 +21,9 @@
     <string name="tts_chunk_progress">Abschnitt %1$d von %2$d</string>
     <string name="tts_resume">Fortsetzen</string>
     <string name="tts_pause">Pausieren</string>
+    <string name="tts_previous_paragraph">Vorheriger Absatz</string>
+    <string name="tts_next_paragraph">Nächster Absatz</string>
+    <string name="tts_read_from_here">Ab hier vorlesen</string>
     <string name="tts_stop">Stoppen</string>
     <string name="action_back">Zurück</string>
     <string name="action_close">Schließen</string>

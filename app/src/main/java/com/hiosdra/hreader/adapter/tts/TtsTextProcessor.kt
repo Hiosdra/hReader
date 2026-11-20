@@ -18,12 +18,14 @@ internal enum class TtsChunkBoundary(val pauseBeforeMillis: Int) {
 
 internal data class TtsChunk(
     val text: String,
-    val boundaryBefore: TtsChunkBoundary
+    val boundaryBefore: TtsChunkBoundary,
+    val paragraphIndex: Int = 0
 )
 
 internal data class TtsArticleText(
     val chunks: List<TtsChunk>,
-    val languageSample: String
+    val languageSample: String,
+    val paragraphs: List<String> = emptyList()
 )
 
 internal object TtsTextProcessor {
@@ -37,13 +39,33 @@ internal object TtsTextProcessor {
         val bodyBlocks = normalizedBlocks(readableBlocks(document.body()))
         val languageSource = bodyBlocks.joinToString(" ", transform = ReadableBlock::text)
         val fallbackLanguageSource = titleBlocks.joinToString(" ", transform = ReadableBlock::text)
+        val blocks = titleBlocks + bodyBlocks
         return TtsArticleText(
-            chunks = chunkBlocks(titleBlocks + bodyBlocks),
+            chunks = chunkBlocks(blocks),
             languageSample = stripLanguageNoise(
                 languageSource.ifBlank { fallbackLanguageSource }
-            )
+            ),
+            paragraphs = blocks.map(ReadableBlock::text)
         )
     }
+
+    fun paragraphIndexForAnchor(paragraphs: List<String>, anchorText: String?): Int? {
+        val anchorKey = anchorText?.let(::matchingKey)?.take(ANCHOR_KEY_LENGTH) ?: return null
+        if (anchorKey.length < MIN_ANCHOR_KEY_LENGTH) return null
+        val paragraphKeys = paragraphs.map(::matchingKey)
+        val bodyIndices = paragraphKeys.indices.drop(1)
+        return bodyIndices.firstOrNull { paragraphKeys[it].startsWith(anchorKey) }
+            ?: bodyIndices.firstOrNull { paragraphKeys[it].contains(anchorKey) }
+            ?: bodyIndices.firstOrNull { index ->
+                paragraphKeys[index].length >= MIN_ANCHOR_KEY_LENGTH &&
+                    anchorKey.startsWith(paragraphKeys[index])
+            }
+    }
+
+    private fun matchingKey(text: String): String =
+        Normalizer.normalize(text, Normalizer.Form.NFKC)
+            .lowercase(Locale.ROOT)
+            .filter(Char::isLetterOrDigit)
 
     fun forModel(
         model: TtsModel,
@@ -59,7 +81,7 @@ internal object TtsTextProcessor {
         return normalizer?.let { normalize ->
             sourceChunks.flatMap { chunk ->
                 chunks(normalize(chunk.text), addTerminalPunctuation = false)
-                    .withBoundary(chunk.boundaryBefore)
+                    .withBoundary(chunk.boundaryBefore, chunk.paragraphIndex)
             }
         } ?: sourceChunks
     }
@@ -78,7 +100,7 @@ internal object TtsTextProcessor {
     ): List<TtsChunk> = buildList {
         require(maxCharacters > 0)
         var firstChunk = true
-        blocks.forEach { block ->
+        blocks.forEachIndexed { paragraphIndex, block ->
             chunks(block.text, maxCharacters, addTerminalPunctuation = false)
                 .forEachIndexed { index, text ->
                     add(
@@ -88,7 +110,8 @@ internal object TtsTextProcessor {
                                 firstChunk -> TtsChunkBoundary.START
                                 index == 0 -> block.boundaryBefore
                                 else -> TtsChunkBoundary.CONTINUATION
-                            }
+                            },
+                            paragraphIndex = paragraphIndex
                         )
                     )
                     firstChunk = false
@@ -96,11 +119,15 @@ internal object TtsTextProcessor {
             }
     }
 
-    private fun List<String>.withBoundary(boundary: TtsChunkBoundary): List<TtsChunk> =
+    private fun List<String>.withBoundary(
+        boundary: TtsChunkBoundary,
+        paragraphIndex: Int
+    ): List<TtsChunk> =
         mapIndexed { index, text ->
             TtsChunk(
                 text = text,
-                boundaryBefore = if (index == 0) boundary else TtsChunkBoundary.CONTINUATION
+                boundaryBefore = if (index == 0) boundary else TtsChunkBoundary.CONTINUATION,
+                paragraphIndex = paragraphIndex
             )
         }
 
@@ -323,6 +350,8 @@ internal object TtsTextProcessor {
         this in 0x1F000..0x1FAFF || this in 0x2600..0x27BF
 
     private const val DEFAULT_MAX_CHARACTERS = 300
+    private const val ANCHOR_KEY_LENGTH = 48
+    private const val MIN_ANCHOR_KEY_LENGTH = 4
     private const val MAX_LANGUAGE_SAMPLE_LENGTH = 4_000
     private const val PARAGRAPH_SEPARATOR = "\n\n"
     private val TERMINAL_PUNCTUATION = ".!?…"

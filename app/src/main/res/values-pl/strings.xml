@@ -23,6 +23,9 @@
     <string name="tts_chunk_progress">Fragment %1$d z %2$d</string>
     <string name="tts_resume">Wznów</string>
     <string name="tts_pause">Wstrzymaj</string>
+    <string name="tts_previous_paragraph">Poprzedni akapit</string>
+    <string name="tts_next_paragraph">Następny akapit</string>
+    <string name="tts_read_from_here">Czytaj stąd</string>
     <string name="tts_stop">Zatrzymaj</string>
 
     <string name="action_back">Wstecz</string>

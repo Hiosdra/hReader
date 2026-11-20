@@ -25,6 +25,9 @@
     <string name="tts_chunk_progress">Chunk %1$d of %2$d</string>
     <string name="tts_resume">Resume</string>
     <string name="tts_pause">Pause</string>
+    <string name="tts_previous_paragraph">Previous paragraph</string>
+    <string name="tts_next_paragraph">Next paragraph</string>
+    <string name="tts_read_from_here">Read aloud from here</string>
     <string name="tts_stop">Stop</string>
 
     <string name="action_back">Back</string>

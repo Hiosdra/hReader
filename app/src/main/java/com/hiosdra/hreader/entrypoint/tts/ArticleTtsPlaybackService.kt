@@ -31,11 +31,13 @@ class ArticleTtsPlaybackService : Service() {
         private const val ACTION_PAUSE = "com.hiosdra.hreader.action.TTS_PAUSE"
         private const val ACTION_RESUME = "com.hiosdra.hreader.action.TTS_RESUME"
         private const val ACTION_STOP = "com.hiosdra.hreader.action.TTS_STOP"
+        private const val ACTION_NEXT_PARAGRAPH = "com.hiosdra.hreader.action.TTS_NEXT_PARAGRAPH"
         private const val NOTIFICATION_ID = 4201
         private const val REQUEST_CONTENT = 4202
         private const val REQUEST_PAUSE = 4203
         private const val REQUEST_RESUME = 4204
         private const val REQUEST_STOP = 4205
+        private const val REQUEST_NEXT_PARAGRAPH = 4206
     }
 
     private val player: ArticleTtsPlayer by inject()
@@ -54,6 +56,11 @@ class ArticleTtsPlaybackService : Service() {
                 override fun onPause() = this@ArticleTtsPlaybackService.player.pause()
 
                 override fun onStop() = this@ArticleTtsPlaybackService.player.stop()
+
+                override fun onSkipToNext() = this@ArticleTtsPlaybackService.player.skipToNextParagraph()
+
+                override fun onSkipToPrevious() =
+                    this@ArticleTtsPlaybackService.player.skipToPreviousParagraph()
             })
             setSessionActivity(contentIntent())
         }
@@ -64,6 +71,7 @@ class ArticleTtsPlaybackService : Service() {
             ACTION_START -> startPlayback()
             ACTION_PAUSE -> player.pause()
             ACTION_RESUME -> player.resume()
+            ACTION_NEXT_PARAGRAPH -> player.skipToNextParagraph()
             ACTION_STOP -> {
                 player.stop()
                 stopSelfResult(startId)
@@ -129,11 +137,17 @@ class ArticleTtsPlaybackService : Service() {
             state.isPlaying -> PlaybackState.STATE_PLAYING
             else -> PlaybackState.STATE_NONE
         }
-        val actions = PlaybackState.ACTION_STOP or if (state.isPaused) {
+        val playbackActions = PlaybackState.ACTION_STOP or if (state.isPaused) {
             PlaybackState.ACTION_PLAY
         } else {
             PlaybackState.ACTION_PAUSE
         }
+        val paragraphActions = if (state.canSkipParagraphs) {
+            PlaybackState.ACTION_SKIP_TO_PREVIOUS or PlaybackState.ACTION_SKIP_TO_NEXT
+        } else {
+            0L
+        }
+        val actions = playbackActions or paragraphActions
         return PlaybackState.Builder()
             .setActions(actions)
             .setState(playback, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
@@ -177,6 +191,13 @@ class ArticleTtsPlaybackService : Service() {
                 R.drawable.baseline_details_24,
                 getString(R.string.tts_pause),
                 actionIntent(ACTION_PAUSE, REQUEST_PAUSE)
+            )
+        }
+        if (state.hasNextParagraph) {
+            builder.addAction(
+                R.drawable.ic_skip_next_24,
+                getString(R.string.tts_next_paragraph),
+                actionIntent(ACTION_NEXT_PARAGRAPH, REQUEST_NEXT_PARAGRAPH)
             )
         }
         builder.addAction(
