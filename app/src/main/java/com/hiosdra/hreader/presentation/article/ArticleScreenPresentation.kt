@@ -75,6 +75,8 @@ internal data class ArticleScreenPresentationActions(
     val onOpenTtsPlayer: () -> Unit,
     val onPauseTts: () -> Unit,
     val onResumeTts: () -> Unit,
+    val onSkipToPreviousTtsParagraph: () -> Unit,
+    val onSkipToNextTtsParagraph: () -> Unit,
     val onStopTts: () -> Unit,
     val onTtsMiniPlayerSizeChanged: (Int) -> Unit,
     val onTemporaryTtsModelChanged: (TtsModel?) -> Unit,
@@ -217,6 +219,8 @@ internal fun ArticleScreenPresentation(
                     onOpen = actions.onOpenTtsPlayer,
                     onPause = actions.onPauseTts,
                     onResume = actions.onResumeTts,
+                    onSkipToPreviousParagraph = actions.onSkipToPreviousTtsParagraph,
+                    onSkipToNextParagraph = actions.onSkipToNextTtsParagraph,
                     onStop = actions.onStopTts,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -236,6 +240,8 @@ internal fun ArticleScreenPresentation(
                     onTemporaryModelChange = actions.onTemporaryTtsModelChanged,
                     onPause = actions.onPauseTts,
                     onResume = actions.onResumeTts,
+                    onSkipToPreviousParagraph = actions.onSkipToPreviousTtsParagraph,
+                    onSkipToNextParagraph = actions.onSkipToNextTtsParagraph,
                     onStop = actions.onStopTts,
                     onRetry = actions.onRetryTts,
                     onDismiss = actions.onDismissTtsPlayer

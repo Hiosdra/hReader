@@ -2,6 +2,7 @@ package com.hiosdra.hreader.presentation.article
 
 import android.content.Context
 import android.os.SystemClock
+import android.view.ActionMode
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.ViewGroup
@@ -20,8 +21,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.hiosdra.hreader.R
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+private const val TRANSIENT_JAVASCRIPT_ATTEMPTS = 3
+private const val TRANSIENT_JAVASCRIPT_RETRY_DELAY_MS = 50L
 
 private const val CONTENT_HEIGHT_UPDATE_ATTEMPTS = 40
 private const val CONTENT_HEIGHT_UPDATE_INITIAL_DELAY_MS = 100L
@@ -192,6 +198,13 @@ internal class ArticleWebViewScrollController {
         fractionalScrollY = 0f
     }
 
+    suspend fun firstVisibleParagraphText(visibleTopPx: Int): String? {
+        val view = webView?.takeUnless { it.isReleased } ?: return null
+        return decodeJavascriptString(
+            view.evaluateTransientJavascript(firstVisibleParagraphScript(visibleTopPx))
+        )
+    }
+
     fun consumeComposeScrollDelta(deltaY: Float): Float {
         val target = scrollTarget ?: return 0f
         val requestedScrollY = -deltaY + fractionalScrollY
@@ -267,6 +280,67 @@ internal class ReaderWebView(context: Context) : WebView(context) {
     val isReleased: Boolean
         get() = released
 
+    var readAloudSelectionLabel: String? = null
+    var onReadAloudSelection: ((String) -> Unit)? = null
+
+    suspend fun evaluateTransientJavascript(script: String): String? =
+        suspendCancellableCoroutine { continuation ->
+            continuation.invokeOnCancellation {
+                post { if (!released) settings.javaScriptEnabled = false }
+            }
+            evaluateTransientJavascript(script) { result ->
+                if (continuation.isActive) continuation.resume(result)
+            }
+        }
+
+    fun evaluateTransientJavascript(script: String, onResult: (String?) -> Unit) {
+        if (released) {
+            onResult(null)
+            return
+        }
+        settings.javaScriptEnabled = true
+        attemptTransientJavascript(script, TRANSIENT_JAVASCRIPT_ATTEMPTS, onResult)
+    }
+
+    private fun attemptTransientJavascript(script: String, remainingAttempts: Int, onResult: (String?) -> Unit) {
+        evaluateJavascript(script) { result ->
+            if (released) {
+                onResult(null)
+                return@evaluateJavascript
+            }
+            val evaluated = result?.takeUnless { it == "null" }
+            if (evaluated == null && remainingAttempts > 1) {
+                postDelayed({
+                    if (released) onResult(null) else attemptTransientJavascript(script, remainingAttempts - 1, onResult)
+                }, TRANSIENT_JAVASCRIPT_RETRY_DELAY_MS)
+                return@evaluateJavascript
+            }
+            settings.javaScriptEnabled = false
+            onResult(evaluated)
+        }
+    }
+
+    override fun startActionMode(callback: ActionMode.Callback?): ActionMode? =
+        super.startActionMode(withReadAloudAction(callback))
+
+    override fun startActionMode(callback: ActionMode.Callback?, type: Int): ActionMode? =
+        super.startActionMode(withReadAloudAction(callback), type)
+
+    private fun withReadAloudAction(callback: ActionMode.Callback?): ActionMode.Callback? {
+        val label = readAloudSelectionLabel ?: return callback
+        if (callback == null || onReadAloudSelection == null) return callback
+        return ReadAloudActionModeCallback(callback, label, ::readSelectedParagraphAloud)
+    }
+
+    private fun readSelectedParagraphAloud(mode: ActionMode) {
+        evaluateTransientJavascript(SELECTED_PARAGRAPH_SCRIPT) { result ->
+            mode.finish()
+            decodeJavascriptString(result)
+                ?.takeIf(String::isNotBlank)
+                ?.let { text -> onReadAloudSelection?.invoke(text) }
+        }
+    }
+
     fun postIfActive(action: () -> Unit) {
         if (released) return
         post {
@@ -341,6 +415,7 @@ internal class ReaderWebView(context: Context) : WebView(context) {
         cancelContentHeightUpdates()
         setOnScrollChangeListener(null)
         setOnLongClickListener(null)
+        onReadAloudSelection = null
         webViewClient = WebViewClient()
         webChromeClient = null
     }

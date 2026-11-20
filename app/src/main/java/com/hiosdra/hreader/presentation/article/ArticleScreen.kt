@@ -133,6 +133,8 @@ fun ArticleScreen(
     var ttsPlayerSheetVisible by rememberSaveable { mutableStateOf(false) }
     var paywallMethodPickerVisible by rememberSaveable { mutableStateOf(false) }
     var ttsMiniPlayerHeightPx by remember { mutableIntStateOf(0) }
+    val ttsStartAnchors = remember { ArticleTtsStartAnchors() }
+    val ttsScope = rememberCoroutineScope()
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
     LaunchedEffect(routeArguments) {
@@ -229,19 +231,28 @@ fun ArticleScreen(
     } else {
         0.dp
     }
-    val playArticleTts: (Entry) -> Unit = { entry ->
+    val startArticleTts: (Entry, suspend () -> String?) -> Unit = { entry, startAnchor ->
         requestNotificationPermission {
             viewModel.getContentForEntry(entry.id)
                 ?.takeIf(::hasReadableArticleText)
                 ?.let { html ->
-                    ttsController.play(
-                        articleId = entry.id,
-                        title = entry.title,
-                        html = html,
-                        modelOverride = temporaryTtsModel
-                    )
+                    ttsScope.launch {
+                        ttsController.play(
+                            articleId = entry.id,
+                            title = entry.title,
+                            html = html,
+                            modelOverride = temporaryTtsModel,
+                            startAnchorText = startAnchor()
+                        )
+                    }
                 }
         }
+    }
+    val playArticleTts: (Entry) -> Unit = { entry ->
+        startArticleTts(entry) { ttsStartAnchors.anchorFor(entry.id) }
+    }
+    val readArticleAloudFromParagraph: (Entry, String) -> Unit = { entry, paragraphText ->
+        startArticleTts(entry) { paragraphText }
     }
     val retryTts = {
         ttsState.articleId
@@ -378,7 +389,9 @@ fun ArticleScreen(
             url.isNotBlank() && !paywallBypassService.isPaywallBypassUrl(url)
         },
         onOpenInChrome = openArticleInChrome,
-        onBypassPaywall = openArticleThroughPaywall
+        onBypassPaywall = openArticleThroughPaywall,
+        ttsStartAnchors = ttsStartAnchors,
+        onReadAloudFromParagraph = readArticleAloudFromParagraph
     )
     ArticleScreenPresentation(
         state = ArticleScreenPresentationState(
@@ -418,6 +431,8 @@ fun ArticleScreen(
             onOpenTtsPlayer = { ttsPlayerSheetVisible = true },
             onPauseTts = ttsController::pause,
             onResumeTts = ttsController::resume,
+            onSkipToPreviousTtsParagraph = ttsController::skipToPreviousParagraph,
+            onSkipToNextTtsParagraph = ttsController::skipToNextParagraph,
             onStopTts = {
                 ttsPlayerSheetVisible = false
                 ttsController.stop()
