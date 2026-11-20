@@ -71,7 +71,7 @@ class ArticleTtsController internal constructor(
     }
     private var audioFocusRequest: AudioFocusRequest? = null
     private var session: PlaybackSession? = null
-    private var paragraphStartedAtMs = 0L
+    private val paragraphClock = ParagraphPlaybackClock(SystemClock::elapsedRealtime)
 
     private data class PlaybackSession(
         val model: TtsModel,
@@ -186,7 +186,7 @@ class ArticleTtsController internal constructor(
         val target = TtsParagraphNavigation.previousParagraph(
             chunks = playbackSession.activeChunks,
             currentParagraph = _state.value.paragraphIndex,
-            elapsedInParagraphMs = SystemClock.elapsedRealtime() - paragraphStartedAtMs
+            elapsedInParagraphMs = paragraphClock.elapsedMs()
         )
         restartFromParagraph(playbackSession, target)
     }
@@ -209,7 +209,7 @@ class ArticleTtsController internal constructor(
             paragraphIndex = paragraph,
             error = null
         )
-        paragraphStartedAtMs = SystemClock.elapsedRealtime()
+        paragraphClock.restart(paused)
         playbackJob = scope.launch {
             try {
                 speakSession(version, playbackSession, paragraph)
@@ -277,7 +277,7 @@ class ArticleTtsController internal constructor(
     private fun markChunkStarted(chunks: List<TtsChunk>, index: Int) {
         val paragraph = chunks[index].paragraphIndex
         if (index == 0 || chunks[index - 1].paragraphIndex != paragraph) {
-            paragraphStartedAtMs = SystemClock.elapsedRealtime()
+            paragraphClock.restart(_state.value.isPaused)
         }
         _state.value = _state.value.copy(
             isPreparing = false,
@@ -297,6 +297,7 @@ class ArticleTtsController internal constructor(
     override fun pause() {
         if (_state.value.articleId == null || _state.value.isPaused) return
         resumeSignal = CompletableDeferred()
+        paragraphClock.pause()
         audioTrack?.runCatching { pause() }
         androidTts?.runCatching { stop() }
         abandonAudioFocus()
@@ -310,6 +311,7 @@ class ArticleTtsController internal constructor(
             return
         }
         resumeSignal.complete(Unit)
+        paragraphClock.resume()
         audioTrack?.runCatching { play() }
         _state.value = _state.value.copy(isPaused = false, isPlaying = true)
     }

@@ -23,6 +23,15 @@ class ArticleTtsStartAnchorTest {
     }
 
     @Test
+    fun `looks up the same block elements as the TTS text processor`() {
+        val script = firstVisibleParagraphScript(0)
+
+        assertTrue(script.contains(",div,"))
+        assertTrue(script.contains("hasBlockChild(el)"))
+        assertTrue(SELECTED_PARAGRAPH_SCRIPT.contains(",div,"))
+    }
+
+    @Test
     fun `returns the registered anchor only for its article`() = runTest {
         val anchors = ArticleTtsStartAnchors()
         val provider: suspend () -> String? = { "Visible paragraph" }

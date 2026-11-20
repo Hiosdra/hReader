@@ -37,7 +37,15 @@ internal class ArticleViewportGeometry {
     }
 }
 
-private const val PARAGRAPH_SELECTOR = "p,li,h1,h2,h3,h4,h5,h6,blockquote,pre,dd,dt,td,th,figcaption"
+private const val PARAGRAPH_SELECTOR = "address,article,blockquote,dd,div,dl,dt,h1,h2,h3,h4,h5,h6," +
+    "header,li,main,ol,p,pre,section,table,td,th,tr,ul,figure,figcaption"
+
+private const val HAS_BLOCK_CHILD_FUNCTION = """
+      function hasBlockChild(el){
+        for(var c=0;c<el.children.length;c++){if(el.children[c].matches(selector))return true;}
+        return false;
+      }
+"""
 
 internal val SELECTED_PARAGRAPH_SCRIPT = """
     (function(){
@@ -56,12 +64,13 @@ internal val SELECTED_PARAGRAPH_SCRIPT = """
 internal fun firstVisibleParagraphScript(visibleTopPx: Int): String = """
     (function(topPx){
       var selector='$PARAGRAPH_SELECTOR';
+$HAS_BLOCK_CHILD_FUNCTION
       var limit=topPx/(window.devicePixelRatio||1)+24;
       var nodes=document.body.querySelectorAll(selector);
       var first=true;
       for(var i=0;i<nodes.length;i++){
         var el=nodes[i];
-        if(el.querySelector(selector)||el.closest('nav,aside,footer'))continue;
+        if(hasBlockChild(el)||el.closest('nav,aside,footer'))continue;
         var text=(el.innerText||el.textContent||'').trim();
         if(!text)continue;
         if(el.getBoundingClientRect().bottom>limit)return first?'':text.substring(0,$ANCHOR_MAX_LENGTH);
