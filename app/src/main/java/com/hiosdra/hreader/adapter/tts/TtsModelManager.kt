@@ -28,7 +28,6 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.IOException
 import java.security.MessageDigest
 
 class TtsModelManager(
@@ -384,7 +383,7 @@ class TtsModelManager(
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-    private class ModelIntegrityException(message: String) : IOException(message)
+    private class ModelIntegrityException(message: String) : IllegalStateException(message)
 
     private companion object {
         const val INTEGRITY_MARKER = ".hreader-integrity-v1"

@@ -88,8 +88,8 @@ internal object TtsModelPackageCatalog {
             archive = RemoteFile(
                 name = "kokoro-int8-multi-lang-v1_1.tar.bz2",
                 url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_1.tar.bz2",
-                sha256 = "a1e94694776049035c4f2c6529f003aaece993c76aae9a78995831c3c4dcafc6",
-                size = 147_031_220
+                sha256 = "259c9c8bc906d6078e4e0570421885dabb68b539c2f970fcbb890a58eeaf3e9c",
+                size = 147_052_523
             )
         ),
         TtsModel.KOKORO_V1_0 to TtsModelPackage(
@@ -112,8 +112,8 @@ internal object TtsModelPackageCatalog {
             archive = RemoteFile(
                 name = "kokoro-multi-lang-v1_0.tar.bz2",
                 url = "$TTS_RELEASE_ROOT/kokoro-multi-lang-v1_0.tar.bz2",
-                sha256 = "c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298",
-                size = 349_906_910
+                sha256 = "60703707bc05ccd48d60e1eb723f38b07d6e474795a0b6a588d7220400e0f7a4",
+                size = 349_886_476
             )
         ),
         TtsModel.COQUI_PL_MAI_FEMALE to TtsModelPackage(

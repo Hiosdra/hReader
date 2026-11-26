@@ -39,9 +39,9 @@ class TtsModelPackageCatalogTest {
         val kokoroV1 = checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO_V1_0))
         assertTrue(kokoroV1.engineFiles is SherpaModelFiles.Kokoro)
         assertEquals("kokoro-multi-lang-v1_0.tar.bz2", kokoroV1.archive?.name)
-        assertEquals(349_906_910L, kokoroV1.archive?.size)
+        assertEquals(349_886_476L, kokoroV1.archive?.size)
         assertEquals(
-            "c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298",
+            "60703707bc05ccd48d60e1eb723f38b07d6e474795a0b6a588d7220400e0f7a4",
             kokoroV1.archive?.sha256
         )
         val coqui = TtsModelPackageCatalog.packageFor(TtsModel.COQUI_PL_MAI_FEMALE)
