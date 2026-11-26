@@ -27,13 +27,6 @@ internal sealed interface SherpaModelFiles {
         val tokens: String,
         val dataDir: String
     ) : SherpaModelFiles
-
-    data class Kitten(
-        val model: String,
-        val voices: String,
-        val tokens: String,
-        val dataDir: String
-    ) : SherpaModelFiles
 }
 
 internal data class TtsModelPackage(
@@ -69,30 +62,6 @@ internal object TtsModelPackageCatalog {
             )
         ),
         TtsModel.KOKORO to TtsModelPackage(
-            directoryName = "kokoro",
-            engineFiles = SherpaModelFiles.Kokoro(
-                model = "model.int8.onnx",
-                voices = "voices.bin",
-                tokens = "tokens.txt",
-                dataDir = "espeak-ng-data",
-                lexicon = "lexicon-us-en.txt,lexicon-zh.txt"
-            ),
-            requiredFiles = listOf(
-                "model.int8.onnx",
-                "voices.bin",
-                "tokens.txt",
-                "lexicon-us-en.txt",
-                "lexicon-zh.txt"
-            ),
-            requiredDirectories = listOf("espeak-ng-data"),
-            archive = RemoteFile(
-                name = "kokoro-int8-multi-lang-v1_1.tar.bz2",
-                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_1.tar.bz2",
-                sha256 = "a1e94694776049035c4f2c6529f003aaece993c76aae9a78995831c3c4dcafc6",
-                size = 147_031_220
-            )
-        ),
-        TtsModel.KOKORO_V1_0 to TtsModelPackage(
             directoryName = "kokoro-v1_0",
             engineFiles = SherpaModelFiles.Kokoro(
                 model = "model.onnx",
@@ -112,8 +81,8 @@ internal object TtsModelPackageCatalog {
             archive = RemoteFile(
                 name = "kokoro-multi-lang-v1_0.tar.bz2",
                 url = "$TTS_RELEASE_ROOT/kokoro-multi-lang-v1_0.tar.bz2",
-                sha256 = "c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298",
-                size = 349_906_910
+                sha256 = "60703707bc05ccd48d60e1eb723f38b07d6e474795a0b6a588d7220400e0f7a4",
+                size = 349_886_476
             )
         ),
         TtsModel.COQUI_PL_MAI_FEMALE to TtsModelPackage(
@@ -125,23 +94,6 @@ internal object TtsModelPackageCatalog {
             ),
             requiredFiles = listOf("model.onnx", "tokens.txt"),
             files = COQUI_FILES
-        ),
-        TtsModel.KITTEN_MINI to TtsModelPackage(
-            directoryName = "kitten-mini-en-v0_8",
-            engineFiles = SherpaModelFiles.Kitten(
-                model = "model.onnx",
-                voices = "voices.bin",
-                tokens = "tokens.txt",
-                dataDir = "espeak-ng-data"
-            ),
-            requiredFiles = listOf("model.onnx", "voices.bin", "tokens.txt"),
-            requiredDirectories = listOf("espeak-ng-data"),
-            archive = RemoteFile(
-                name = "kitten-mini-en-v0_8.tar.bz2",
-                url = "$TTS_RELEASE_ROOT/kitten-mini-en-v0_8.tar.bz2",
-                sha256 = "518f9b130320f690d5b5476df77bde4215fca67773cda16710318e5081234b9d",
-                size = 67_547_594
-            )
         )
     )
 

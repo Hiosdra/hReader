@@ -33,14 +33,12 @@ by the application at this inventory snapshot.
 - Files: `coqui-pl-mai-female/LICENSE`, `coqui-pl-mai-female/NOTICE.md`
 - Sources: [pinned model tree](https://huggingface.co/csukuangfj/vits-coqui-pl-mai_female/tree/19e9a1a8e697491e5b9849f8f904584792d60fb8), [Coqui model metadata](https://github.com/coqui-ai/TTS/blob/dev/TTS/.models.json)
 
-## Kokoro and KittenTTS
+## Kokoro
 
-Kokoro and KittenTTS archives include their own Apache-2.0 license text and
-also carry helper data with separate attribution requirements. The complete
-helper texts are under `helpers/`.
+The Kokoro archive includes its own Apache-2.0 license text and also carries
+helper data with separate attribution requirements. The complete helper texts are under `helpers/`.
 
-- `kokoro/NOTICE.md`, `kokoro/LICENSE`: Kokoro v1.1 and v1.0 archives
-- `kitten/NOTICE.md`, `kitten/LICENSE`: KittenTTS mini v0.8 archive
+- `kokoro/NOTICE.md`, `kokoro/LICENSE`: Kokoro v1.0 archive
 - `helpers/espeak-ng/NOTICE.md`, `helpers/espeak-ng/COPYING`: eSpeak NG data
 - `helpers/cppjieba/NOTICE.md`, `helpers/cppjieba/LICENSE`: cppjieba-derived data
 

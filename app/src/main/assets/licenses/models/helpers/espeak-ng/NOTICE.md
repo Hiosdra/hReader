@@ -1,6 +1,6 @@
 # eSpeak NG helper-data notice
 
-Kokoro and KittenTTS require the `espeak-ng-data` directory for
+Kokoro requires the `espeak-ng-data` directory for
 pronunciation/phonemization support. It is helper data, not an additional
 selectable hReader voice.
 

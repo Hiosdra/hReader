@@ -157,6 +157,8 @@ internal fun migrateLegacyPreferenceKeys(preferences: MutablePreferences) {
     }
     preferences.remove(TtsPreferenceKeys.legacyTtsVitsNoiseScale)
     preferences.remove(TtsPreferenceKeys.legacyTtsVitsDurationNoiseScale)
+    preferences.remove(TtsPreferenceKeys.legacyTtsKokoroSpeaker)
+    preferences.remove(TtsPreferenceKeys.legacyTtsKittenSpeaker)
 }
 
 internal fun TtsAdvancedSettings.normalizedForStorage() = copy(
@@ -164,8 +166,7 @@ internal fun TtsAdvancedSettings.normalizedForStorage() = copy(
     silenceScale = silenceScale.coerceIn(0f, 1f),
     supertonicSpeaker = supertonicSpeaker.coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.SUPERTONIC)),
     supertonicSteps = supertonicSteps.coerceIn(4, 12),
-    kokoroSpeaker = kokoroSpeaker.coerceIn(0, 102),
-    kittenSpeaker = kittenSpeaker.coerceIn(0, 7),
+    kokoroSpeaker = kokoroSpeaker.coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.KOKORO)),
     vitsNoiseScale = vitsNoiseScale.coerceIn(0f, 1f),
     vitsDurationNoiseScale = vitsDurationNoiseScale.coerceIn(0f, 1f)
 )

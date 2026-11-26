@@ -518,13 +518,9 @@
     <string name="tts_model_supertonic_name">Supertonic 3</string>
     <string name="tts_model_supertonic_description">Voz neural multilíngue · download de 129 MB</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
-    <string name="tts_model_kokoro_description">Vozes neurais para inglês e chinês · download de 140 MB</string>
-    <string name="tts_model_kokoro_v1_0_name">Kokoro 82M v1.0</string>
-    <string name="tts_model_kokoro_v1_0_description">Vozes neurais em inglês e chinês · 54 vozes · download de 350 MB</string>
+    <string name="tts_model_kokoro_description">Vozes neurais em inglês e chinês · 54 vozes · download de 350 MB</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (feminina)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Voz neural polonesa Coqui · download de 71 MB</string>
-    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_kitten_description">Voz inglesa do KittenTTS · download de 68 MB</string>
     <string name="tts_model_android_name">Voz do sistema</string>
     <string name="tts_model_android_description">Voz integrada · sempre disponível</string>
     <string name="tts_speech_playback_failed">Falha na reprodução da fala.</string>

@@ -57,7 +57,7 @@ internal fun TtsSettingsSection(
     var selectedModel by remember { mutableStateOf(preferences.getTtsModel()) }
     var advancedExpanded by remember { mutableStateOf(false) }
     var advanced by remember {
-        mutableStateOf(preferences.getTtsAdvancedSettings().forModel(selectedModel))
+        mutableStateOf(preferences.getTtsAdvancedSettings())
     }
     var languageOverrides by remember { mutableStateOf(preferences.getTtsLanguageOverrides()) }
     var languageMenuExpanded by remember { mutableStateOf(false) }
@@ -81,11 +81,8 @@ internal fun TtsSettingsSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = status == TtsModelStatus.Available) {
-                            val modelSettings = advanced.forModel(model)
                             preferences.setTtsModel(model)
-                            preferences.setTtsAdvancedSettings(modelSettings)
                             selectedModel = model
-                            advanced = modelSettings
                         }
                         .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -344,19 +341,15 @@ private fun AdvancedTtsSettings(
         }
         TtsEngineFamily.KOKORO -> {
             val voiceRange = TtsModelCatalog.voiceIdRange(model)
+            val speaker = settings.kokoroSpeaker.coerceIn(voiceRange)
             IntegerSetting(
                 label = stringResource(R.string.tts_voice_id),
-                value = settings.kokoroSpeaker.coerceIn(voiceRange),
+                value = speaker,
                 range = voiceRange,
+                displayValue = TtsModelCatalog.voiceName(model, speaker),
                 onValueChange = { onSettingsChange(settings.copy(kokoroSpeaker = it)) }
             )
         }
-        TtsEngineFamily.KITTEN -> IntegerSetting(
-            label = stringResource(R.string.tts_voice_id),
-            value = settings.kittenSpeaker,
-            range = 0..7,
-            onValueChange = { onSettingsChange(settings.copy(kittenSpeaker = it)) }
-        )
         TtsEngineFamily.VITS -> {
             AdvancedSlider(
                 label = stringResource(R.string.tts_voice_variation),
@@ -392,13 +385,6 @@ private fun AdvancedTtsSettings(
         Text(stringResource(R.string.tts_reset_settings))
     }
 }
-
-private fun TtsAdvancedSettings.forModel(model: TtsModel): TtsAdvancedSettings =
-    if (model.family == TtsEngineFamily.KOKORO) {
-        copy(kokoroSpeaker = kokoroSpeaker.coerceIn(TtsModelCatalog.voiceIdRange(model)))
-    } else {
-        this
-    }
 
 @Composable
 private fun AdvancedSlider(

@@ -35,4 +35,19 @@ class PreferenceMigrationTest {
         assertEquals(0.8f, preferences[TtsPreferenceKeys.ttsVitsNoiseScale])
         assertTrue(!preferences.contains(TtsPreferenceKeys.legacyTtsVitsNoiseScale))
     }
+
+    @Test
+    fun `legacy preference migration drops retired voice settings and keeps the Kokoro voice`() {
+        val preferences = mutablePreferencesOf(
+            TtsPreferenceKeys.legacyTtsKokoroSpeaker to 40,
+            TtsPreferenceKeys.legacyTtsKittenSpeaker to 5,
+            TtsPreferenceKeys.ttsKokoroSpeaker to 16
+        )
+
+        migrateLegacyPreferenceKeys(preferences)
+
+        assertFalse(preferences.contains(TtsPreferenceKeys.legacyTtsKokoroSpeaker))
+        assertFalse(preferences.contains(TtsPreferenceKeys.legacyTtsKittenSpeaker))
+        assertEquals(16, preferences[TtsPreferenceKeys.ttsKokoroSpeaker])
+    }
 }

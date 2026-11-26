@@ -112,8 +112,7 @@ optional neural voices downloaded to the device, including:
 
 - Supertonic 3 — a multilingual voice, including Polish;
 - Coqui M-AILABS — a Polish female voice;
-- Kokoro — English and Chinese voices;
-- KittenTTS — an English voice.
+- Kokoro — English and Chinese voices.
 
 You can adjust reading speed, choose a voice for a specific language, and tune
 advanced parameters. If a downloaded voice cannot start, hReader automatically

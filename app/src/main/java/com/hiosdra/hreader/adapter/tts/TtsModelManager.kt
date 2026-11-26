@@ -28,7 +28,6 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.IOException
 import java.security.MessageDigest
 
 class TtsModelManager(
@@ -44,7 +43,10 @@ class TtsModelManager(
     override val statuses: StateFlow<Map<TtsModel, TtsModelStatus>> = _statuses.asStateFlow()
 
     init {
-        statusScope.launch { refreshInstalledStatuses() }
+        statusScope.launch {
+            deleteRetiredModels()
+            refreshInstalledStatuses()
+        }
     }
 
     fun directory(model: TtsModel): File = File(modelRoot, TtsModelPackageCatalog.directoryName(model))
@@ -318,6 +320,13 @@ class TtsModelManager(
         }
     }
 
+    private fun deleteRetiredModels() {
+        RETIRED_MODEL_DIRECTORIES
+            .flatMap { name -> RETIRED_MODEL_SUFFIXES.map { suffix -> File(modelRoot, name + suffix) } }
+            .filter(File::exists)
+            .forEach(File::deleteRecursively)
+    }
+
     private suspend fun refreshInstalledStatuses() {
         TtsModelCatalog.models.filterNot(TtsModel::bundled).forEach { model ->
             modelLocks.getValue(model).withLock {
@@ -384,10 +393,12 @@ class TtsModelManager(
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-    private class ModelIntegrityException(message: String) : IOException(message)
+    private class ModelIntegrityException(message: String) : IllegalStateException(message)
 
     private companion object {
         const val INTEGRITY_MARKER = ".hreader-integrity-v1"
         const val INTEGRITY_MARKER_VERSION = "hreader-tts-model-v1"
+        val RETIRED_MODEL_DIRECTORIES = listOf("kokoro", "kitten-mini-en-v0_8")
+        val RETIRED_MODEL_SUFFIXES = listOf("", ".download", ".staging", ".backup")
     }
 }

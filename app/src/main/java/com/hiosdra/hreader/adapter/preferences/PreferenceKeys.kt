@@ -115,8 +115,9 @@ internal object TtsPreferenceKeys {
     const val TTS_SILENCE_SCALE = "tts_silence_scale"
     const val TTS_SUPERTONIC_SPEAKER = "tts_supertonic_speaker"
     const val TTS_SUPERTONIC_STEPS = "tts_supertonic_steps"
-    const val TTS_KOKORO_SPEAKER = "tts_kokoro_speaker"
-    const val TTS_KITTEN_SPEAKER = "tts_kitten_speaker"
+    const val LEGACY_TTS_KOKORO_SPEAKER = "tts_kokoro_speaker"
+    const val TTS_KOKORO_SPEAKER = "tts_kokoro_v1_0_speaker"
+    const val LEGACY_TTS_KITTEN_SPEAKER = "tts_kitten_speaker"
     const val TTS_VITS_NOISE_SCALE = "tts_vits_noise_scale"
     const val TTS_VITS_DURATION_NOISE_SCALE = "tts_vits_duration_noise_scale"
     const val LEGACY_TTS_VITS_NOISE_SCALE = "tts_gosia_noise_scale"
@@ -129,8 +130,9 @@ internal object TtsPreferenceKeys {
     val ttsSilenceScale = floatPreferencesKey(TTS_SILENCE_SCALE)
     val ttsSupertonicSpeaker = intPreferencesKey(TTS_SUPERTONIC_SPEAKER)
     val ttsSupertonicSteps = intPreferencesKey(TTS_SUPERTONIC_STEPS)
+    val legacyTtsKokoroSpeaker = intPreferencesKey(LEGACY_TTS_KOKORO_SPEAKER)
     val ttsKokoroSpeaker = intPreferencesKey(TTS_KOKORO_SPEAKER)
-    val ttsKittenSpeaker = intPreferencesKey(TTS_KITTEN_SPEAKER)
+    val legacyTtsKittenSpeaker = intPreferencesKey(LEGACY_TTS_KITTEN_SPEAKER)
     val ttsVitsNoiseScale = floatPreferencesKey(TTS_VITS_NOISE_SCALE)
     val ttsVitsDurationNoiseScale = floatPreferencesKey(TTS_VITS_DURATION_NOISE_SCALE)
     val legacyTtsVitsNoiseScale = floatPreferencesKey(LEGACY_TTS_VITS_NOISE_SCALE)

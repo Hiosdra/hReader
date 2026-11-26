@@ -20,4 +20,14 @@ class TtsModelTest {
             )
         )
     }
+
+    @Test
+    fun `moves retired Kokoro and Kitten selections to Kokoro`() {
+        assertEquals(TtsModel.KOKORO, TtsModel.fromName("KOKORO_V1_0"))
+        assertEquals(TtsModel.KOKORO, TtsModel.fromName("KITTEN_MINI"))
+        assertEquals(
+            mapOf("en" to TtsModel.KOKORO, "zh" to TtsModel.KOKORO),
+            parseTtsLanguageOverrides(setOf("en=KITTEN_MINI", "zh=KOKORO_V1_0"))
+        )
+    }
 }

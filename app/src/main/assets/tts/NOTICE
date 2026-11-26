@@ -21,43 +21,25 @@ metadata and BSD-3-Clause text with the model files.
 
 Source: https://github.com/coqui-ai/TTS/blob/dev/TTS/.models.json
 
-## Kokoro v1.1 and v1.0
+## Kokoro v1.0
 
-The exact archives contain an Apache-2.0 LICENSE. The model cards for Kokoro
-v1.1-zh and v1.0 declare Apache-2.0 for the model weights. The archive also
+The exact archive contains an Apache-2.0 LICENSE. The model card for Kokoro
+v1.0 declares Apache-2.0 for the model weights. The archive also
 contains helper data that has separate notices:
 
 - eSpeak NG data: GPL-3.0-or-later;
 - cppjieba-related dictionary data: MIT attribution;
 - lexicons, FSTs and voice tables: retain the provenance of the exact archive.
 
-v1.1 archive SHA-256:
-a1e94694776049035c4f2c6529f003aaece993c76aae9a78995831c3c4dcafc6
-
-v1.0 archive SHA-256:
-c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298
+Archive SHA-256:
+60703707bc05ccd48d60e1eb723f38b07d6e474795a0b6a588d7220400e0f7a4
 
 Sources:
 
-- https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh
 - https://huggingface.co/hexgrad/Kokoro-82M
 - https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
 - https://github.com/espeak-ng/espeak-ng
 - https://github.com/yanyiwu/cppjieba/blob/master/LICENSE
-
-## KittenTTS mini v0.8
-
-The exact archive contains an Apache-2.0 LICENSE and points to KittenML. Its
-bundled eSpeak NG data has a separate GPL-3.0-or-later notice.
-
-Archive SHA-256:
-518f9b130320f690d5b5476df77bde4215fca67773cda16710318e5081234b9d
-
-Sources:
-
-- https://github.com/KittenML/KittenTTS/blob/main/LICENSE
-- https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
-- https://github.com/espeak-ng/espeak-ng
 
 The full model and helper-data texts are bundled under
 `app/src/main/assets/licenses/models/` and exposed by the in-app legal screen.

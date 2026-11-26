@@ -514,13 +514,9 @@
     <string name="tts_model_supertonic_name">Supertonic 3</string>
     <string name="tts_model_supertonic_description">Çok dilli sinirsel ses · 129 MB indirme</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
-    <string name="tts_model_kokoro_description">İngilizce ve Çince için sinirsel sesler · 140 MB indirme</string>
-    <string name="tts_model_kokoro_v1_0_name">Kokoro 82M v1.0</string>
-    <string name="tts_model_kokoro_v1_0_description">İngilizce ve Çince sinirsel sesler · 54 ses · 350 MB indirme</string>
+    <string name="tts_model_kokoro_description">İngilizce ve Çince sinirsel sesler · 54 ses · 350 MB indirme</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (kadın)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Lehçe Coqui sinirsel sesi · 71 MB indirme</string>
-    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_kitten_description">İngilizce KittenTTS sesi · 68 MB indirme</string>
     <string name="tts_model_android_name">Sistem sesi</string>
     <string name="tts_model_android_description">Yerleşik ses · her zaman kullanılabilir</string>
     <string name="tts_speech_playback_failed">Konuşma oynatılamadı.</string>
