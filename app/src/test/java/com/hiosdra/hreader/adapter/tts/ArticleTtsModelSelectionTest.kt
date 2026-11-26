@@ -9,12 +9,12 @@ class ArticleTtsModelSelectionTest {
     @Test
     fun `keeps an installed compatible neural model on arm64`() {
         assertEquals(
-            TtsModel.KITTEN_MINI,
+            TtsModel.KOKORO,
             resolveArticleTtsModel(
-                modelOverride = TtsModel.KITTEN_MINI,
+                modelOverride = TtsModel.KOKORO,
                 settingsModel = TtsModel.SUPERTONIC,
                 language = "en",
-                statuses = mapOf(TtsModel.KITTEN_MINI to TtsModelStatus.Available),
+                statuses = mapOf(TtsModel.KOKORO to TtsModelStatus.Available),
                 supportsArm64 = true
             )
         )
@@ -25,7 +25,7 @@ class ArticleTtsModelSelectionTest {
         assertEquals(
             TtsModel.ANDROID,
             resolveArticleTtsModel(
-                modelOverride = TtsModel.KITTEN_MINI,
+                modelOverride = TtsModel.KOKORO,
                 settingsModel = TtsModel.SUPERTONIC,
                 language = "en",
                 statuses = emptyMap(),
@@ -39,10 +39,10 @@ class ArticleTtsModelSelectionTest {
         assertEquals(
             TtsModel.ANDROID,
             resolveArticleTtsModel(
-                modelOverride = TtsModel.KITTEN_MINI,
+                modelOverride = TtsModel.KOKORO,
                 settingsModel = TtsModel.SUPERTONIC,
                 language = "pl",
-                statuses = mapOf(TtsModel.KITTEN_MINI to TtsModelStatus.Available),
+                statuses = mapOf(TtsModel.KOKORO to TtsModelStatus.Available),
                 supportsArm64 = true
             )
         )

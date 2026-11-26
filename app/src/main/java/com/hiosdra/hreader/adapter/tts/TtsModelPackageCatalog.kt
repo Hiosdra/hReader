@@ -27,13 +27,6 @@ internal sealed interface SherpaModelFiles {
         val tokens: String,
         val dataDir: String
     ) : SherpaModelFiles
-
-    data class Kitten(
-        val model: String,
-        val voices: String,
-        val tokens: String,
-        val dataDir: String
-    ) : SherpaModelFiles
 }
 
 internal data class TtsModelPackage(
@@ -69,30 +62,6 @@ internal object TtsModelPackageCatalog {
             )
         ),
         TtsModel.KOKORO to TtsModelPackage(
-            directoryName = "kokoro",
-            engineFiles = SherpaModelFiles.Kokoro(
-                model = "model.int8.onnx",
-                voices = "voices.bin",
-                tokens = "tokens.txt",
-                dataDir = "espeak-ng-data",
-                lexicon = "lexicon-us-en.txt,lexicon-zh.txt"
-            ),
-            requiredFiles = listOf(
-                "model.int8.onnx",
-                "voices.bin",
-                "tokens.txt",
-                "lexicon-us-en.txt",
-                "lexicon-zh.txt"
-            ),
-            requiredDirectories = listOf("espeak-ng-data"),
-            archive = RemoteFile(
-                name = "kokoro-int8-multi-lang-v1_1.tar.bz2",
-                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_1.tar.bz2",
-                sha256 = "259c9c8bc906d6078e4e0570421885dabb68b539c2f970fcbb890a58eeaf3e9c",
-                size = 147_052_523
-            )
-        ),
-        TtsModel.KOKORO_V1_0 to TtsModelPackage(
             directoryName = "kokoro-v1_0",
             engineFiles = SherpaModelFiles.Kokoro(
                 model = "model.onnx",
@@ -125,23 +94,6 @@ internal object TtsModelPackageCatalog {
             ),
             requiredFiles = listOf("model.onnx", "tokens.txt"),
             files = COQUI_FILES
-        ),
-        TtsModel.KITTEN_MINI to TtsModelPackage(
-            directoryName = "kitten-mini-en-v0_8",
-            engineFiles = SherpaModelFiles.Kitten(
-                model = "model.onnx",
-                voices = "voices.bin",
-                tokens = "tokens.txt",
-                dataDir = "espeak-ng-data"
-            ),
-            requiredFiles = listOf("model.onnx", "voices.bin", "tokens.txt"),
-            requiredDirectories = listOf("espeak-ng-data"),
-            archive = RemoteFile(
-                name = "kitten-mini-en-v0_8.tar.bz2",
-                url = "$TTS_RELEASE_ROOT/kitten-mini-en-v0_8.tar.bz2",
-                sha256 = "518f9b130320f690d5b5476df77bde4215fca67773cda16710318e5081234b9d",
-                size = 67_547_594
-            )
         )
     )
 

@@ -35,7 +35,7 @@ class SupertonicLanguagesTest {
     fun `routes Chinese to Kokoro without offering Supertonic`() {
         assertEquals("zh", TtsLanguages.resolve(listOf("zh"), "en"))
         assertEquals(
-            listOf(TtsModel.KOKORO, TtsModel.KOKORO_V1_0, TtsModel.ANDROID),
+            listOf(TtsModel.KOKORO, TtsModel.ANDROID),
             TtsLanguages.compatibleModels("zh")
         )
     }
@@ -46,8 +46,6 @@ class SupertonicLanguagesTest {
             listOf(
                 TtsModel.SUPERTONIC,
                 TtsModel.KOKORO,
-                TtsModel.KOKORO_V1_0,
-                TtsModel.KITTEN_MINI,
                 TtsModel.ANDROID
             ),
             TtsLanguages.compatibleModels("en")

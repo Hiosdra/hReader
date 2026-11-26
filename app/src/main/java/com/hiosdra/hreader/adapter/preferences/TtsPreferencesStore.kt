@@ -44,12 +44,10 @@ internal class TtsPreferencesStore(
         supertonicSpeaker = storage.value(TtsPreferenceKeys.ttsSupertonicSpeaker, 0)
             .coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.SUPERTONIC)),
         supertonicSteps = storage.value(TtsPreferenceKeys.ttsSupertonicSteps, 8).coerceIn(4, 12),
-        kokoroSpeaker = storage.value(TtsPreferenceKeys.ttsKokoroSpeaker, 0).coerceIn(0, 102),
-        kokoroV10Speaker = storage.value(
-            TtsPreferenceKeys.ttsKokoroV10Speaker,
-            TtsModelCatalog.DEFAULT_KOKORO_V1_0_VOICE
-        ).coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.KOKORO_V1_0)),
-        kittenSpeaker = storage.value(TtsPreferenceKeys.ttsKittenSpeaker, 0).coerceIn(0, 7),
+        kokoroSpeaker = storage.value(
+            TtsPreferenceKeys.ttsKokoroSpeaker,
+            TtsModelCatalog.DEFAULT_KOKORO_VOICE
+        ).coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.KOKORO)),
         vitsNoiseScale = (
             storage.get(TtsPreferenceKeys.ttsVitsNoiseScale)
                 ?: storage.get(TtsPreferenceKeys.legacyTtsVitsNoiseScale)
@@ -70,12 +68,12 @@ internal class TtsPreferencesStore(
             this[TtsPreferenceKeys.ttsSupertonicSpeaker] = normalizedSettings.supertonicSpeaker
             this[TtsPreferenceKeys.ttsSupertonicSteps] = normalizedSettings.supertonicSteps
             this[TtsPreferenceKeys.ttsKokoroSpeaker] = normalizedSettings.kokoroSpeaker
-            this[TtsPreferenceKeys.ttsKokoroV10Speaker] = normalizedSettings.kokoroV10Speaker
-            this[TtsPreferenceKeys.ttsKittenSpeaker] = normalizedSettings.kittenSpeaker
             this[TtsPreferenceKeys.ttsVitsNoiseScale] = normalizedSettings.vitsNoiseScale
             this[TtsPreferenceKeys.ttsVitsDurationNoiseScale] = normalizedSettings.vitsDurationNoiseScale
             remove(TtsPreferenceKeys.legacyTtsVitsNoiseScale)
             remove(TtsPreferenceKeys.legacyTtsVitsDurationNoiseScale)
+            remove(TtsPreferenceKeys.legacyTtsKokoroSpeaker)
+            remove(TtsPreferenceKeys.legacyTtsKittenSpeaker)
         }
     }
 

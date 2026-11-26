@@ -341,21 +341,15 @@ private fun AdvancedTtsSettings(
         }
         TtsEngineFamily.KOKORO -> {
             val voiceRange = TtsModelCatalog.voiceIdRange(model)
-            val speaker = settings.kokoroSpeakerFor(model)
+            val speaker = settings.kokoroSpeaker.coerceIn(voiceRange)
             IntegerSetting(
                 label = stringResource(R.string.tts_voice_id),
                 value = speaker,
                 range = voiceRange,
                 displayValue = TtsModelCatalog.voiceName(model, speaker),
-                onValueChange = { onSettingsChange(settings.withKokoroSpeaker(model, it)) }
+                onValueChange = { onSettingsChange(settings.copy(kokoroSpeaker = it)) }
             )
         }
-        TtsEngineFamily.KITTEN -> IntegerSetting(
-            label = stringResource(R.string.tts_voice_id),
-            value = settings.kittenSpeaker,
-            range = 0..7,
-            onValueChange = { onSettingsChange(settings.copy(kittenSpeaker = it)) }
-        )
         TtsEngineFamily.VITS -> {
             AdvancedSlider(
                 label = stringResource(R.string.tts_voice_variation),

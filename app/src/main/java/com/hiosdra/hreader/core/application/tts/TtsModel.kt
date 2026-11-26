@@ -4,7 +4,6 @@ enum class TtsEngineFamily {
     SUPERTONIC,
     KOKORO,
     VITS,
-    KITTEN,
     ANDROID
 }
 
@@ -14,13 +13,19 @@ enum class TtsModel(
 ) {
     SUPERTONIC(false, TtsEngineFamily.SUPERTONIC),
     KOKORO(false, TtsEngineFamily.KOKORO),
-    KOKORO_V1_0(false, TtsEngineFamily.KOKORO),
     COQUI_PL_MAI_FEMALE(false, TtsEngineFamily.VITS),
-    KITTEN_MINI(false, TtsEngineFamily.KITTEN),
     ANDROID(true, TtsEngineFamily.ANDROID);
 
     companion object {
-        fun fromName(value: String?) = TtsModelCatalog.models.firstOrNull { it.name == value } ?: SUPERTONIC
+        private val retiredModelReplacements = mapOf(
+            "KOKORO_V1_0" to KOKORO,
+            "KITTEN_MINI" to KOKORO
+        )
+
+        fun fromStoredName(value: String?): TtsModel? =
+            TtsModelCatalog.models.firstOrNull { it.name == value } ?: retiredModelReplacements[value]
+
+        fun fromName(value: String?) = fromStoredName(value) ?: SUPERTONIC
     }
 }
 
@@ -36,27 +41,15 @@ data class TtsAdvancedSettings(
     val silenceScale: Float = 0.2f,
     val supertonicSpeaker: Int = 0,
     val supertonicSteps: Int = 8,
-    val kokoroSpeaker: Int = 0,
-    val kokoroV10Speaker: Int = TtsModelCatalog.DEFAULT_KOKORO_V1_0_VOICE,
-    val kittenSpeaker: Int = 0,
+    val kokoroSpeaker: Int = TtsModelCatalog.DEFAULT_KOKORO_VOICE,
     val vitsNoiseScale: Float = 0.667f,
     val vitsDurationNoiseScale: Float = 0.8f
-) {
-    fun kokoroSpeakerFor(model: TtsModel): Int {
-        val speaker = if (model == TtsModel.KOKORO_V1_0) kokoroV10Speaker else kokoroSpeaker
-        return speaker.coerceIn(TtsModelCatalog.voiceIdRange(model))
-    }
-
-    fun withKokoroSpeaker(model: TtsModel, speaker: Int): TtsAdvancedSettings =
-        if (model == TtsModel.KOKORO_V1_0) copy(kokoroV10Speaker = speaker) else copy(kokoroSpeaker = speaker)
-}
+)
 
 internal fun parseTtsLanguageOverrides(entries: Set<String>): Map<String, TtsModel> =
     entries.mapNotNull { entry ->
         val parts = entry.split('=', limit = 2)
         val language = parts.firstOrNull()?.takeIf(String::isNotBlank)
-        val model = parts.getOrNull(1)?.let { name ->
-            TtsModelCatalog.models.firstOrNull { it.name == name }
-        }
+        val model = parts.getOrNull(1)?.let(TtsModel::fromStoredName)
         if (language != null && model != null) language to model else null
     }.toMap()

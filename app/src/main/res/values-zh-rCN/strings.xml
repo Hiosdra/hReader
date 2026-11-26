@@ -510,13 +510,9 @@
     <string name="tts_model_supertonic_name">Supertonic 3</string>
     <string name="tts_model_supertonic_description">多语言神经语音 · 下载 129 MB</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
-    <string name="tts_model_kokoro_description">英语和中文神经语音 · 下载 140 MB</string>
-    <string name="tts_model_kokoro_v1_0_name">Kokoro 82M v1.0</string>
-    <string name="tts_model_kokoro_v1_0_description">英语和中文神经语音 · 54 个声音 · 下载 350 MB</string>
+    <string name="tts_model_kokoro_description">英语和中文神经语音 · 54 个声音 · 下载 350 MB</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS（女声）</string>
     <string name="tts_model_coqui_pl_mai_female_description">波兰语 Coqui 神经语音 · 下载 71 MB</string>
-    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_kitten_description">英语 KittenTTS 语音 · 下载 68 MB</string>
     <string name="tts_model_android_name">系统语音</string>
     <string name="tts_model_android_description">内置语音 · 始终可用</string>
     <string name="tts_speech_playback_failed">语音播放失败。</string>

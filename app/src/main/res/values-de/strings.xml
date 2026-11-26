@@ -526,13 +526,9 @@ Artikel synchronisieren, um Leistungswerte zu sehen.</string>
     <string name="tts_model_supertonic_name">Supertonic 3</string>
     <string name="tts_model_supertonic_description">Mehrsprachige neuronale Stimme · 129 MB Download</string>
     <string name="tts_model_kokoro_name">Kokoro</string>
-    <string name="tts_model_kokoro_description">Neuronale Stimmen für Englisch und Chinesisch · 140 MB Download</string>
-    <string name="tts_model_kokoro_v1_0_name">Kokoro 82M v1.0</string>
-    <string name="tts_model_kokoro_v1_0_description">Neuronale Stimmen für Englisch und Chinesisch · 54 Stimmen · 350 MB Download</string>
+    <string name="tts_model_kokoro_description">Neuronale Stimmen für Englisch und Chinesisch · 54 Stimmen · 350 MB Download</string>
     <string name="tts_model_coqui_pl_mai_female_name">Coqui M-AILABS (weiblich)</string>
     <string name="tts_model_coqui_pl_mai_female_description">Polnische Coqui-Stimme · 71 MB Download</string>
-    <string name="tts_model_kitten_mini_name">Kitten Mini</string>
-    <string name="tts_model_kitten_description">Englische KittenTTS-Stimme · 68 MB Download</string>
     <string name="tts_model_android_name">Systemstimme</string>
     <string name="tts_model_android_description">Integrierte Stimme · immer verfügbar</string>
     <string name="tts_speech_playback_failed">Sprachwiedergabe fehlgeschlagen.</string>

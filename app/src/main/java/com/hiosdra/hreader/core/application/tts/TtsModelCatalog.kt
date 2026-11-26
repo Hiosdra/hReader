@@ -11,13 +11,13 @@ data class TtsModelDefinition(
 }
 
 object TtsModelCatalog {
-    const val DEFAULT_KOKORO_V1_0_VOICE = 3
+    const val DEFAULT_KOKORO_VOICE = 3
 
     private val supertonicVoiceNames = listOf(
         "M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"
     )
 
-    private val kokoroV10VoiceNames = listOf(
+    private val kokoroVoiceNames = listOf(
         "af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica", "af_kore", "af_nicole",
         "af_nova", "af_river", "af_sarah", "af_sky", "am_adam", "am_echo", "am_eric", "am_fenrir",
         "am_liam", "am_michael", "am_onyx", "am_puck", "am_santa", "bf_alice", "bf_emma",
@@ -28,17 +28,6 @@ object TtsModelCatalog {
         "zm_yunxia", "zm_yunyang", "em_santa"
     )
 
-    private val kokoroV11VoiceNames = listOf("af_maple", "af_sol", "bf_vale") +
-        listOf(
-            1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 21, 22, 23, 24, 26, 27, 28, 32, 36, 38, 39, 40, 42,
-            43, 44, 46, 47, 48, 49, 51, 59, 60, 67, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 83, 84,
-            85, 86, 87, 88, 90, 92, 93, 94, 99
-        ).map { "zf_%03d".format(it) } +
-        listOf(
-            9, 10, 11, 12, 13, 14, 15, 16, 20, 25, 29, 30, 31, 33, 34, 35, 37, 41, 45, 50, 52, 53,
-            54, 55, 56, 57, 58, 61, 62, 63, 64, 65, 66, 68, 69, 80, 81, 82, 89, 91, 95, 96, 97, 98,
-            100
-        ).map { "zm_%03d".format(it) }
 
     private val definitions = listOf(
         TtsModelDefinition(
@@ -53,20 +42,11 @@ object TtsModelCatalog {
         TtsModelDefinition(
             model = TtsModel.KOKORO,
             supportedLanguages = setOf("en", "zh"),
-            voiceNames = kokoroV11VoiceNames
-        ),
-        TtsModelDefinition(
-            model = TtsModel.KOKORO_V1_0,
-            supportedLanguages = setOf("en", "zh"),
-            voiceNames = kokoroV10VoiceNames
+            voiceNames = kokoroVoiceNames
         ),
         TtsModelDefinition(
             model = TtsModel.COQUI_PL_MAI_FEMALE,
             supportedLanguages = setOf("pl")
-        ),
-        TtsModelDefinition(
-            model = TtsModel.KITTEN_MINI,
-            supportedLanguages = setOf("en")
         ),
         TtsModelDefinition(
             model = TtsModel.ANDROID,

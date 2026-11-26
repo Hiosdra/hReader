@@ -43,7 +43,10 @@ class TtsModelManager(
     override val statuses: StateFlow<Map<TtsModel, TtsModelStatus>> = _statuses.asStateFlow()
 
     init {
-        statusScope.launch { refreshInstalledStatuses() }
+        statusScope.launch {
+            deleteRetiredModels()
+            refreshInstalledStatuses()
+        }
     }
 
     fun directory(model: TtsModel): File = File(modelRoot, TtsModelPackageCatalog.directoryName(model))
@@ -317,6 +320,13 @@ class TtsModelManager(
         }
     }
 
+    private fun deleteRetiredModels() {
+        RETIRED_MODEL_DIRECTORIES
+            .flatMap { name -> RETIRED_MODEL_SUFFIXES.map { suffix -> File(modelRoot, name + suffix) } }
+            .filter(File::exists)
+            .forEach(File::deleteRecursively)
+    }
+
     private suspend fun refreshInstalledStatuses() {
         TtsModelCatalog.models.filterNot(TtsModel::bundled).forEach { model ->
             modelLocks.getValue(model).withLock {
@@ -388,5 +398,7 @@ class TtsModelManager(
     private companion object {
         const val INTEGRITY_MARKER = ".hreader-integrity-v1"
         const val INTEGRITY_MARKER_VERSION = "hreader-tts-model-v1"
+        val RETIRED_MODEL_DIRECTORIES = listOf("kokoro", "kitten-mini-en-v0_8")
+        val RETIRED_MODEL_SUFFIXES = listOf("", ".download", ".staging", ".backup")
     }
 }

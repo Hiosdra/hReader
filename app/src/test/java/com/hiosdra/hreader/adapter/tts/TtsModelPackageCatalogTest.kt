@@ -22,34 +22,30 @@ class TtsModelPackageCatalogTest {
     @Test
     fun `registers one package for every neural model`() {
         assertEquals("supertonic", TtsModelPackageCatalog.directoryName(TtsModel.SUPERTONIC))
-        assertEquals("kokoro", TtsModelPackageCatalog.directoryName(TtsModel.KOKORO))
-        assertEquals("kokoro-v1_0", TtsModelPackageCatalog.directoryName(TtsModel.KOKORO_V1_0))
+        assertEquals("kokoro-v1_0", TtsModelPackageCatalog.directoryName(TtsModel.KOKORO))
         assertEquals(
             "vits-coqui-pl-mai_female",
             TtsModelPackageCatalog.directoryName(TtsModel.COQUI_PL_MAI_FEMALE)
         )
-        assertEquals("kitten-mini-en-v0_8", TtsModelPackageCatalog.directoryName(TtsModel.KITTEN_MINI))
         assertNull(TtsModelPackageCatalog.packageFor(TtsModel.ANDROID))
     }
 
     @Test
     fun `keeps package engine family data typed`() {
         assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.SUPERTONIC)?.engineFiles is SherpaModelFiles.Supertonic)
-        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO)?.engineFiles is SherpaModelFiles.Kokoro)
-        val kokoroV1 = checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO_V1_0))
-        assertTrue(kokoroV1.engineFiles is SherpaModelFiles.Kokoro)
-        assertEquals("kokoro-multi-lang-v1_0.tar.bz2", kokoroV1.archive?.name)
-        assertEquals(349_886_476L, kokoroV1.archive?.size)
+        val kokoro = checkNotNull(TtsModelPackageCatalog.packageFor(TtsModel.KOKORO))
+        assertTrue(kokoro.engineFiles is SherpaModelFiles.Kokoro)
+        assertEquals("kokoro-multi-lang-v1_0.tar.bz2", kokoro.archive?.name)
+        assertEquals(349_886_476L, kokoro.archive?.size)
         assertEquals(
             "60703707bc05ccd48d60e1eb723f38b07d6e474795a0b6a588d7220400e0f7a4",
-            kokoroV1.archive?.sha256
+            kokoro.archive?.sha256
         )
         val coqui = TtsModelPackageCatalog.packageFor(TtsModel.COQUI_PL_MAI_FEMALE)
         assertTrue(coqui?.engineFiles is SherpaModelFiles.Vits)
         assertEquals(listOf("model.onnx", "tokens.txt"), coqui?.files?.map(RemoteFile::name))
         assertEquals("", (coqui?.engineFiles as SherpaModelFiles.Vits).dataDir)
         assertNull(coqui.archive)
-        assertTrue(TtsModelPackageCatalog.packageFor(TtsModel.KITTEN_MINI)?.engineFiles is SherpaModelFiles.Kitten)
         TtsModelCatalog.models
             .filter { it.family == TtsEngineFamily.VITS }
             .forEach { model ->

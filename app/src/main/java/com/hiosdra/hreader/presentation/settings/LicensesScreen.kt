@@ -56,8 +56,6 @@ private val LICENSE_DOCUMENTS = listOf(
     LicenseDocument("licenses/models/coqui-pl-mai-female/LICENSE"),
     LicenseDocument("licenses/models/kokoro/NOTICE.md"),
     LicenseDocument("licenses/models/kokoro/LICENSE"),
-    LicenseDocument("licenses/models/kitten/NOTICE.md"),
-    LicenseDocument("licenses/models/kitten/LICENSE"),
     LicenseDocument("licenses/models/helpers/espeak-ng/NOTICE.md"),
     LicenseDocument("licenses/models/helpers/espeak-ng/COPYING"),
     LicenseDocument("licenses/models/helpers/cppjieba/NOTICE.md"),

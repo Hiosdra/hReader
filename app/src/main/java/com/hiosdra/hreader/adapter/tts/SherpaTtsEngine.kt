@@ -14,8 +14,7 @@ internal class SherpaTtsEngine(
     private val adapters = listOf(
         SupertonicTtsModelAdapter,
         KokoroTtsModelAdapter,
-        VitsTtsModelAdapter,
-        KittenTtsModelAdapter
+        VitsTtsModelAdapter
     ).associateBy(SherpaTtsModelAdapter::family)
     override val supportedModels: Set<TtsModel> = TtsModelCatalog.models
         .filter { it.family in adapters && TtsModelPackageCatalog.packageFor(it) != null }
@@ -41,12 +40,7 @@ internal class SherpaTtsEngine(
         val config = GenerationConfig().apply {
             this.speed = speed
             silenceScale = settings.silenceScale
-            val generationSettings = if (model.family == TtsEngineFamily.KOKORO) {
-                settings.copy(kokoroSpeaker = settings.kokoroSpeakerFor(model))
-            } else {
-                settings
-            }
-            adapter.configureGeneration(this, generationSettings, language)
+            adapter.configureGeneration(this, settings, language)
         }
         val audio = engine.generateWithConfig(text, config)
         return TtsAudio(samples = audio.samples, sampleRate = audio.sampleRate)
