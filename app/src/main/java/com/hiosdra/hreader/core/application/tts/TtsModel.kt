@@ -37,10 +37,19 @@ data class TtsAdvancedSettings(
     val supertonicSpeaker: Int = 0,
     val supertonicSteps: Int = 8,
     val kokoroSpeaker: Int = 0,
+    val kokoroV10Speaker: Int = TtsModelCatalog.DEFAULT_KOKORO_V1_0_VOICE,
     val kittenSpeaker: Int = 0,
     val vitsNoiseScale: Float = 0.667f,
     val vitsDurationNoiseScale: Float = 0.8f
-)
+) {
+    fun kokoroSpeakerFor(model: TtsModel): Int {
+        val speaker = if (model == TtsModel.KOKORO_V1_0) kokoroV10Speaker else kokoroSpeaker
+        return speaker.coerceIn(TtsModelCatalog.voiceIdRange(model))
+    }
+
+    fun withKokoroSpeaker(model: TtsModel, speaker: Int): TtsAdvancedSettings =
+        if (model == TtsModel.KOKORO_V1_0) copy(kokoroV10Speaker = speaker) else copy(kokoroSpeaker = speaker)
+}
 
 internal fun parseTtsLanguageOverrides(entries: Set<String>): Map<String, TtsModel> =
     entries.mapNotNull { entry ->

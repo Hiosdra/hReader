@@ -42,11 +42,7 @@ internal class SherpaTtsEngine(
             this.speed = speed
             silenceScale = settings.silenceScale
             val generationSettings = if (model.family == TtsEngineFamily.KOKORO) {
-                settings.copy(
-                    kokoroSpeaker = settings.kokoroSpeaker.coerceIn(
-                        TtsModelCatalog.voiceIdRange(model)
-                    )
-                )
+                settings.copy(kokoroSpeaker = settings.kokoroSpeakerFor(model))
             } else {
                 settings
             }

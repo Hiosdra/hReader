@@ -165,6 +165,7 @@ internal fun TtsAdvancedSettings.normalizedForStorage() = copy(
     supertonicSpeaker = supertonicSpeaker.coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.SUPERTONIC)),
     supertonicSteps = supertonicSteps.coerceIn(4, 12),
     kokoroSpeaker = kokoroSpeaker.coerceIn(0, 102),
+    kokoroV10Speaker = kokoroV10Speaker.coerceIn(TtsModelCatalog.voiceIdRange(TtsModel.KOKORO_V1_0)),
     kittenSpeaker = kittenSpeaker.coerceIn(0, 7),
     vitsNoiseScale = vitsNoiseScale.coerceIn(0f, 1f),
     vitsDurationNoiseScale = vitsDurationNoiseScale.coerceIn(0f, 1f)
