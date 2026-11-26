@@ -26,9 +26,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -380,35 +382,51 @@ class ArticleTtsController internal constructor(
             finishPlayback()
             return
         }
+        val settings = preferences.getTtsAdvancedSettings()
+        val speed = preferences.getTtsSpeed()
+        withContext(Dispatchers.Default) { neuralTts.prepare(model, settings) }
         coroutineScope {
-            val settings = preferences.getTtsAdvancedSettings()
-            val modelPreparation = async(Dispatchers.Default) {
-                neuralTts.prepare(model, settings)
-            }
-            modelPreparation.await()
-            val speed = preferences.getTtsSpeed()
-            var audio = withContext(Dispatchers.Default) {
-                neuralTts.generate(model, chunks[startIndex].text, speed, language, settings)
-            }
-            for (index in startIndex until chunks.size) {
-                val nextAudio = chunks.getOrNull(index + 1)?.let { nextChunk ->
-                    async(Dispatchers.Default) {
-                        neuralTts.generate(model, nextChunk.text, speed, language, settings)
-                    }
+            val generated = Channel<GeneratedSegment>(PREFETCH_SEGMENTS)
+            launch(Dispatchers.Default) {
+                TtsSpeechSegmenter.segments(chunks, startIndex).forEach { segment ->
+                    ensureActive()
+                    val audio = neuralTts.generate(model, segment.text, speed, language, settings)
+                    generated.send(
+                        GeneratedSegment(
+                            chunkIndex = segment.chunkIndex,
+                            audio = audio.withTrailingSilence(segment.trailingSilenceMillis)
+                        )
+                    )
                 }
-                resumeSignal.await()
-                markChunkStarted(chunks, index)
-                val pauseMillis = chunks
-                    .getOrNull(index + 1)
-                    ?.boundaryBefore
-                    ?.pauseBeforeMillis
-                    ?: 0
-                val playbackAudio = audio.withTrailingSilence(pauseMillis)
-                playSamples(playbackAudio.samples, playbackAudio.sampleRate)
-                audio = nextAudio?.await() ?: return@coroutineScope
+                generated.close()
             }
+            streamSegments(chunks, generated)
         }
         finishPlayback()
+    }
+
+    private class GeneratedSegment(val chunkIndex: Int, val audio: TtsAudio)
+
+    private suspend fun streamSegments(chunks: List<TtsChunk>, generated: ReceiveChannel<GeneratedSegment>) {
+        var stream: NeuralAudioStream? = null
+        try {
+            var currentChunk = -1
+            for (segment in generated) {
+                val output = stream ?: openAudioStream(chunks, segment.audio.sampleRate).also { stream = it }
+                check(segment.audio.sampleRate == output.sampleRate) { "Sample rate changed during playback" }
+                if (segment.chunkIndex != currentChunk) {
+                    currentChunk = segment.chunkIndex
+                    output.markChunkStart(segment.chunkIndex)
+                }
+                output.write(segment.audio.samples)
+            }
+            stream?.drain()
+        } finally {
+            stream?.let { output ->
+                if (audioTrack === output.track) audioTrack = null
+                output.close()
+            }
+        }
     }
 
     private fun finishPlayback() {
@@ -418,20 +436,14 @@ class ArticleTtsController internal constructor(
         _state.value = ArticleTtsState()
     }
 
-    private suspend fun playSamples(samples: FloatArray, sampleRate: Int) = withContext(Dispatchers.IO) {
+    private fun openAudioStream(chunks: List<TtsChunk>, sampleRate: Int): NeuralAudioStream {
         val minBuffer = AudioTrack.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_OUT_MONO,
             AudioFormat.ENCODING_PCM_FLOAT
         )
-        val bufferSize = maxOf(
-            samples.size * Float.SIZE_BYTES,
-            pcmFloatMonoBufferSize(sampleRate, minBuffer)
-        )
         val track = AudioTrack.Builder()
-            .setAudioAttributes(
-                speechAudioAttributes
-            )
+            .setAudioAttributes(speechAudioAttributes)
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setSampleRate(sampleRate)
@@ -439,24 +451,17 @@ class ArticleTtsController internal constructor(
                     .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
                     .build()
             )
-            .setBufferSizeInBytes(bufferSize)
-            .setTransferMode(AudioTrack.MODE_STATIC)
-            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+            .setBufferSizeInBytes(pcmFloatMonoBufferSize(sampleRate, minBuffer))
+            .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
-        try {
-            audioTrack = track
-            val written = track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-            check(written == samples.size) { "Audio playback failed ($written/${samples.size})" }
-            track.play()
-            while (track.playbackHeadPosition < samples.size) {
-                resumeSignal.await()
-                delay(20)
-            }
-        } finally {
-            track.runCatching { stop() }
-            track.release()
-            if (audioTrack === track) audioTrack = null
-        }
+        audioTrack = track
+        if (!_state.value.isPaused) track.play()
+        return NeuralAudioStream(
+            track = track,
+            sampleRate = sampleRate,
+            awaitResumed = { resumeSignal.await() },
+            onChunkStarted = { markChunkStarted(chunks, it) }
+        )
     }
 
     private suspend fun speakWithAndroid(chunks: List<TtsChunk>, fromParagraph: Int, language: String) {
@@ -568,6 +573,7 @@ class ArticleTtsController internal constructor(
     private companion object {
         const val TAG = "ArticleTtsController"
         const val MODEL_WARM_TIMEOUT_MS = 5 * 60 * 1_000L
+        const val PREFETCH_SEGMENTS = 3
     }
 }
 

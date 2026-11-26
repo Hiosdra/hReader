@@ -167,6 +167,12 @@ internal object TtsTextProcessor {
         return result
     }
 
+    fun sentences(text: String): List<String> =
+        text.split(PARAGRAPH_SEPARATOR)
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .flatMap { sentenceParts(it, DEFAULT_MAX_CHARACTERS) }
+
     private fun sentenceParts(paragraph: String, maxCharacters: Int): List<String> {
         val iterator = BreakIterator.getSentenceInstance(Locale.ROOT).apply { setText(paragraph) }
         val sentences = mutableListOf<String>()
